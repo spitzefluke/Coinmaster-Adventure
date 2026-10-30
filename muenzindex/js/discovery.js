@@ -104,7 +104,7 @@ const runeTexture = () =>
     }
   });
 
-const beamTexture = () =>
+export const beamTexture = () =>
   canvasTex(64, 512, (ctx, w, h) => {
     const g = ctx.createLinearGradient(0, 0, w, 0);
     g.addColorStop(0, 'rgba(255,255,255,0)');
@@ -121,7 +121,7 @@ const beamTexture = () =>
     ctx.fillRect(0, 0, w, h);
   });
 
-const ringTexture = () =>
+export const ringTexture = () =>
   canvasTex(256, 256, (ctx, s) => {
     const g = ctx.createRadialGradient(s / 2, s / 2, s * 0.3, s / 2, s / 2, s / 2);
     g.addColorStop(0, 'rgba(255,255,255,0)');
@@ -138,7 +138,7 @@ const additive = (opts) =>
 // ── Funken-System ────────────────────────────────────────────────────────────
 // Feste Anzahl Teilchen, die wiederverwendet werden. Tote Teilchen sind schwarz (additiv = unsichtbar).
 
-class Sparks {
+export class Sparks {
   constructor(n, size, { gravity = -3, drag = 1.2 } = {}) {
     this.n = n;
     this.gravity = gravity;
@@ -206,7 +206,7 @@ class Sparks {
 
 // ── Sternen-Warp ─────────────────────────────────────────────────────────────
 
-class Warp {
+export class Warp {
   constructor(n) {
     this.n = n;
     this.stars = Array.from({ length: n }, () => this.spawn({}, true));

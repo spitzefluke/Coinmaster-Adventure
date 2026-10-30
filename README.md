@@ -7,6 +7,8 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 |---|---|---|
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
+| Eierhalle | `eier/` | Vorschau |
+| Haustiere | – | geplant |
 
 ## Online stellen (GitHub Pages)
 
@@ -66,6 +68,27 @@ Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
 Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede einzelne Münze abspielen
 (mit „Nächste Münze“ der Reihe nach durch alle 50) oder eine zufällige Münze einer Stufe.
 
+## Eierhalle
+
+Sieben Eier (`eier/js/eggs.js`), jedes mit eigener Schale und 3D-Extras:
+
+| Ei | Stufe | Preis (Vorschlag) | Besonderheiten |
+|---|---|---|---|
+| Normal Egg | Normal | 250 Münzen | Sprenkel, Zickzack-Band, Strohnest |
+| Wald Egg | Selten | 2.500 Münzen | Ranke mit Blättern, Moos, Pilze, Glühwürmchen |
+| Eis Egg | Episch | 15.000 Münzen | Eisblumen, Kristalle am Fuß, Schneefall |
+| Engels Egg | Engelsgleich | 75.000 Münzen | Perlmutt, Goldfiligran, Flügel, Heiligenschein |
+| Galaxie Egg | Galaktisch | 400.000 Münzen | bewegter Nebel, Sternbilder, Planetenring |
+| Admin Egg | Admin | nicht kaufbar | Hex-Panzer, rote Leiterbahnen, Holo-Ringe, Glitch |
+| Release Egg (Robux Egg) | Limitiert | R$ 199 | Gold mit Regenbogen-Emaille, Schleife, Konfetti |
+
+Die Schale ist in Scherben aufgeteilt, die beim Schlüpfen echt auseinanderfliegen.
+Die Schlüpf-Animation (`eier/js/hatch.js`): Landung, Wackel-Stöße mit wachsenden Rissen,
+Aufladen mit Licht aus den Rissen, Explosion, dann erscheint das Haustier (vorerst ein
+Platzhalter). Je seltener das Ei, desto mehr Stöße und desto größer die Explosion:
+etwa 5 s beim Normal Egg bis 11 s beim Release Egg. Mit `#debug` in der Adresse ist die
+Animation zum Testen als `window.hatch` erreichbar.
+
 ## Lokal starten
 
 ES-Module brauchen einen lokalen Server:
@@ -81,6 +104,7 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
+- `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggFactory.js` (Eier), `js/hatch.js` (Schlüpfen)
 - `muenzindex/` – Münzindex: `js/main.js` (Fächer, Ziehen, Spielstand), `js/discovery.js` (Animation)
 - `muenzen/` – Münzkabinett:
   - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv, Metallfarben, Text)

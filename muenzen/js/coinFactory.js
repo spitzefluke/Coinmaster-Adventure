@@ -453,7 +453,7 @@ function emblemLayers(emoji, size, pal) {
 
 // Höhenbild → Normal-Map (Sobel). Canvas-y zeigt nach unten, Texturen werden beim
 // Hochladen gespiegelt – daher das Vorzeichen bei ny.
-function heightToNormal(hctx, S, strength) {
+export function heightToNormal(hctx, S, strength) {
   const blurred = document.createElement('canvas');
   blurred.width = blurred.height = S;
   const bctx = blurred.getContext('2d', { willReadFrequently: true });
@@ -786,7 +786,7 @@ export function particles(count, color, size, texture = sparkTexture()) {
   return new THREE.Points(geo, mat);
 }
 
-function wingShape() {
+export function wingShape() {
   const s = new THREE.Shape();
   s.moveTo(0, 0.3);
   s.bezierCurveTo(0.35, 0.75, 1.05, 0.95, 1.55, 0.78);
