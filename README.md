@@ -29,6 +29,8 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 
 Alle Münzen sind rund. Die Prägung hat einen spiegelpolierten Grund und ein mattiertes Relief
 mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster und Zierband.
+Jedes der 50 Motive ist als eigenes Relief gezeichnet (`muenzen/js/emblems.js`) und sieht
+dadurch auf allen Geräten gleich aus. Alle Motive auf einen Blick: `muenzen/praegungen.html`.
 
 | Stufe | Münzen | Drop-Chance | Rand | Gravur im Feld | Zierband | Effekte |
 |---|---|---|---|---|---|---|
@@ -107,7 +109,8 @@ Dann <http://localhost:8000> öffnen.
 - `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggFactory.js` (Eier), `js/hatch.js` (Schlüpfen)
 - `muenzindex/` – Münzindex: `js/main.js` (Fächer, Ziehen, Spielstand), `js/discovery.js` (Animation)
 - `muenzen/` – Münzkabinett:
-  - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv, Metallfarben, Text)
+  - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv-Schlüssel, Metallfarben, Text)
+  - `js/emblems.js` – die 50 Prägemotive als Relief-Zeichnungen
   - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
   - `js/main.js` – Galerie, Filter, Detailansicht, „Münze ziehen“
   - `css/style.css` – Gestaltung
