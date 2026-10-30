@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { TIERS, COINS, tierById, rollCoin } from '../../muenzen/js/coins.js';
 import { createCoin, makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
+import { MUTATIONS, WEATHER, weatherById, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { Discovery } from './discovery.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -18,9 +19,9 @@ const coinChance = (coin) => tierById[coin.tier].chance / tierCount[coin.tier];
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (s && typeof s.found === 'object') return { found: s.found, draws: s.draws | 0 };
+    if (s && typeof s.found === 'object') return { found: s.found, draws: s.draws | 0, mut: s.mut && typeof s.mut === 'object' ? s.mut : {} };
   } catch {}
-  return { found: {}, draws: 0 };
+  return { found: {}, draws: 0, mut: {} };
 }
 let state = load();
 function save() {
@@ -85,9 +86,13 @@ const slots = COINS.map((coin, i) => {
     <span class="slot-no">#${String(i + 1).padStart(2, '0')}</span>
     <span class="slot-art"><span class="slot-mystery" aria-hidden="true">?</span></span>
     <span class="slot-name">???</span>
-    <span class="slot-tier">${tier.name}</span>`;
+    <span class="slot-tier">${tier.name}</span>
+    <span class="slot-muts">${MUTATIONS.map((m) => `<i data-mut="${m.id}" style="--mut:${m.color}" title="${m.name}"></i>`).join('')}</span>`;
+  // erneut ansehen – mit der wertvollsten gefundenen Mutation
   el.addEventListener('click', () => {
-    if (state.found[i]) play(i, { preview: true, replay: true });
+    if (!state.found[i]) return;
+    const best = [...MUTATIONS].reverse().find((m) => state.mut[i]?.[m.id]);
+    play(i, { replay: true, mutation: best?.id });
   });
   slotsEl.append(el);
   return el;
@@ -98,7 +103,10 @@ function renderSlot(i, { fresh = false } = {}) {
   const n = state.found[i] | 0;
   const coin = COINS[i];
   el.classList.toggle('is-found', n > 0);
-  el.setAttribute('aria-label', n ? `#${i + 1} ${coin.name}, ${tierById[coin.tier].name}, ${n}× gezogen. Animation ansehen` : `#${i + 1} unentdeckt, ${tierById[coin.tier].name}`);
+  const muts = MUTATIONS.filter((m) => state.mut[i]?.[m.id]);
+  for (const dot of el.querySelectorAll('.slot-muts i')) dot.classList.toggle('is-on', !!state.mut[i]?.[dot.dataset.mut]);
+  const mutText = muts.length ? `, Mutationen: ${muts.map((m) => m.name).join(', ')}` : '';
+  el.setAttribute('aria-label', n ? `#${i + 1} ${coin.name}, ${tierById[coin.tier].name}, ${n}× gezogen${mutText}. Animation ansehen` : `#${i + 1} unentdeckt, ${tierById[coin.tier].name}`);
   el.disabled = !n;
   el.querySelector('.slot-name').textContent = n ? coin.name : '???';
   let count = el.querySelector('.slot-count');
@@ -130,6 +138,18 @@ function renderProgress() {
   document.getElementById('found-count').textContent = found;
   document.getElementById('draw-count').textContent = state.draws.toLocaleString('de-DE');
   document.getElementById('progress-fill').style.width = `${(found / COINS.length) * 100}%`;
+  const mutTotal = Object.values(state.mut).reduce((s, o) => s + Object.keys(o).length, 0);
+  document.getElementById('mut-count').textContent = mutTotal;
+  document.getElementById('mut-progress').replaceChildren(
+    ...MUTATIONS.map((m) => {
+      const have = COINS.filter((_, i) => state.mut[i]?.[m.id]).length;
+      const li = document.createElement('li');
+      li.style.setProperty('--tier', m.color);
+      li.classList.toggle('is-complete', have === COINS.length);
+      li.innerHTML = `<span class="tp-name">${m.name}</span><span class="tp-num">${have}/${COINS.length}</span>`;
+      return li;
+    }),
+  );
   const list = document.getElementById('tier-progress');
   list.replaceChildren(
     ...TIERS.map((t) => {
@@ -146,20 +166,77 @@ function renderProgress() {
 COINS.forEach((_, i) => renderSlot(i));
 renderProgress();
 
+// ── Wetter ───────────────────────────────────────────────────────────────────
+// Das Wetter wechselt jede Minute. Welches Wetter gerade herrscht, ergibt sich aus der Uhrzeit,
+// damit es nach einem Neuladen gleich bleibt. Über die Test-Knöpfe lässt es sich festlegen.
+
+const WEATHER_MS = 60000;
+let manualWeather = null;
+const totalWeight = WEATHER.reduce((s, w) => s + w.weight, 0);
+
+function weatherNow(now = Date.now()) {
+  if (manualWeather && now < manualWeather.until) return { w: weatherById[manualWeather.id], ends: manualWeather.until };
+  const slot = Math.floor(now / WEATHER_MS);
+  const x = Math.sin(slot * 12.9898) * 43758.5453;
+  let roll = (x - Math.floor(x)) * totalWeight;
+  const w = WEATHER.find((w) => (roll -= w.weight) < 0) || WEATHER[0];
+  return { w, ends: (slot + 1) * WEATHER_MS };
+}
+
+const weatherEl = document.getElementById('weather');
+function renderWeather() {
+  const { w, ends } = weatherNow();
+  const m = mutationForWeather(w.id);
+  weatherEl.dataset.weather = w.id;
+  weatherEl.style.setProperty('--weather', w.color);
+  document.getElementById('weather-name').textContent = w.name;
+  document.getElementById('weather-text').textContent = w.text;
+  document.getElementById('weather-mut').textContent = m ? `${m.chance} % Chance auf ${m.name} (${fmtMultiplier(m)})` : 'Keine Mutationen möglich';
+  const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
+  document.getElementById('weather-time').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+renderWeather();
+setInterval(renderWeather, 1000);
+
+const weatherBtns = document.getElementById('weather-buttons');
+for (const w of WEATHER) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'chip';
+  b.style.setProperty('--tier', w.color);
+  b.textContent = w.name;
+  b.addEventListener('click', () => {
+    manualWeather = { id: w.id, until: Date.now() + WEATHER_MS };
+    renderWeather();
+  });
+  weatherBtns.append(b);
+}
+
+// Erklär-Tabelle
+document.getElementById('mut-rows').replaceChildren(
+  ...MUTATIONS.map((m) => {
+    const tr = document.createElement('tr');
+    tr.style.setProperty('--mut', m.color);
+    tr.innerHTML = `<th scope="row"><span class="mut-pill">${m.name}</span></th><td>${weatherById[m.weather].name}</td><td>${m.chance} %</td><td>${fmtMultiplier(m)}</td><td>${m.effect}</td>`;
+    return tr;
+  }),
+);
+
 // ── Ziehen und Entdecken ─────────────────────────────────────────────────────
 
 const discovery = new Discovery(document.getElementById('reveal'));
 const drawBtn = document.getElementById('draw-btn');
 let busy = false;
 
-async function play(i, { preview = false, replay = false } = {}) {
+async function play(i, { preview = false, replay = false, mutation = null, eyebrow } = {}) {
   busy = true;
   drawBtn.disabled = true;
   await discovery.play(COINS[i], {
     number: i + 1,
     total: COINS.length,
     chance: fmtPct(coinChance(COINS[i])),
-    eyebrow: replay ? 'Aus deinem Index' : preview ? 'Vorschau · zählt nicht für den Index' : 'Neue Münze entdeckt',
+    mutation,
+    eyebrow: eyebrow || (replay ? 'Aus deinem Index' : preview ? 'Vorschau · zählt nicht für den Index' : 'Neue Münze entdeckt'),
   });
   busy = false;
   drawBtn.disabled = false;
@@ -182,19 +259,26 @@ drawBtn.addEventListener('click', async () => {
   if (busy) return;
   const coin = rollCoin();
   const i = COINS.indexOf(coin);
+  const m = rollMutation(weatherNow().w.id);
   const isNew = !state.found[i];
+  const mutNew = !!m && !state.mut[i]?.[m.id];
   state.found[i] = (state.found[i] | 0) + 1;
+  if (m) {
+    state.mut[i] ??= {};
+    state.mut[i][m.id] = (state.mut[i][m.id] | 0) + 1;
+  }
   state.draws += 1;
   save();
   renderProgress();
-  if (isNew) {
-    await play(i);
+  if (isNew || mutNew) {
+    await play(i, { mutation: m?.id, eyebrow: isNew ? (m ? 'Neue Münze mit Mutation!' : 'Neue Münze entdeckt') : 'Neue Mutation entdeckt' });
     renderSlot(i, { fresh: true });
     slots[i].scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   } else {
     renderSlot(i, { fresh: true });
     const tier = tierById[coin.tier];
-    showToast(`<strong>${coin.name}</strong> ist schon im Index · jetzt ×${state.found[i]}`, tier.color);
+    const mText = m ? ` · ${m.name} ×${state.mut[i][m.id]}` : '';
+    showToast(`<strong>${coin.name}</strong> ist schon im Index · jetzt ×${state.found[i]}${mText}`, m ? m.color : tier.color);
   }
 });
 
@@ -226,11 +310,14 @@ for (const t of TIERS) {
   });
   picker.append(group);
 }
-document.getElementById('test-play').addEventListener('click', () => !busy && play(+picker.value, { preview: true }));
+const mutPicker = document.getElementById('test-mut');
+mutPicker.append(new Option('Ohne Mutation', ''), ...MUTATIONS.map((m) => new Option(`${m.name} ${fmtMultiplier(m)}`, m.id)));
+const testMutation = () => mutPicker.value || null;
+document.getElementById('test-play').addEventListener('click', () => !busy && play(+picker.value, { preview: true, mutation: testMutation() }));
 document.getElementById('test-next').addEventListener('click', () => {
   if (busy) return;
   picker.value = String((+picker.value + 1) % COINS.length);
-  play(+picker.value, { preview: true });
+  play(+picker.value, { preview: true, mutation: testMutation() });
 });
 
 const resetBtn = document.getElementById('reset-btn');
@@ -248,7 +335,7 @@ resetBtn.addEventListener('click', () => {
   }
   clearTimeout(armed);
   armed = null;
-  state = { found: {}, draws: 0 };
+  state = { found: {}, draws: 0, mut: {} };
   save();
   slots.forEach((el) => {
     el.querySelector('.slot-art').innerHTML = '<span class="slot-mystery" aria-hidden="true">?</span>';

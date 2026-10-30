@@ -45,6 +45,49 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .draw-btn-label { font: 700 var(--step-1)/1 var(--font-display); }
 .draw-btn-hint { font: 500 0.6875rem/1 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
 
+/* ── Wetter ── */
+.weather {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 18px 22px;
+  border: 1px solid color-mix(in srgb, var(--weather, var(--brass)) 55%, var(--seam));
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--weather, var(--brass)) 22%, transparent), transparent 60%), var(--velvet);
+}
+.weather::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.5; }
+.weather > div { display: grid; gap: 2px; min-width: 0; }
+.weather p { margin: 0; }
+.weather-eyebrow { font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.weather-name { font: 700 var(--step-2)/1 var(--font-display); color: var(--weather, var(--ink)); text-shadow: 0 0 18px color-mix(in srgb, var(--weather) 60%, transparent); }
+.weather-text { color: var(--muted); font-size: var(--step--1); }
+.weather-side { justify-items: end; text-align: right; }
+.weather-mut { font: 600 var(--step--1)/1.3 var(--font-data); color: var(--weather, var(--ink)); }
+.weather-time { font: 400 0.75rem/1.3 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .weather-side { justify-items: start; text-align: left; } }
+
+/* Hintergrund-Animation je Wetter (ruhig gehalten, kein Flackern) */
+.weather[data-weather="regen"]::before {
+  background: repeating-linear-gradient(105deg, transparent 0 14px, #9fdcff33 14px 15px);
+  background-size: 200% 200%;
+  animation: rain 0.9s linear infinite;
+}
+.weather[data-weather="erdbeben"]::before { background: radial-gradient(circle at 80% 120%, #b59b7a55, transparent 60%); animation: quake 2.4s ease-in-out infinite; }
+.weather[data-weather="disconacht"]::before { background: conic-gradient(from 0deg at 85% 50%, #ff3df233, #3de8ff33, #ffe23d33, #7a5cff33, #ff3df233); animation: spin-bg 8s linear infinite; }
+.weather[data-weather="blutmond"]::before { background: radial-gradient(circle at 88% 30%, #ff2a2a88 0 26px, #ff2a2a22 27px, transparent 140px); }
+.weather[data-weather="neonsturm"]::before { background: linear-gradient(90deg, #c6ff0033, #ff00e633, #00e5ff33, #c6ff0033); background-size: 300% 100%; animation: slide-bg 6s linear infinite; }
+.weather[data-weather="datensturm"]::before { background: repeating-linear-gradient(0deg, #3dff7a14 0 2px, transparent 2px 5px); animation: scan 3s linear infinite; }
+@keyframes rain { to { background-position: -60px 120px; } }
+@keyframes quake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } }
+@keyframes spin-bg { to { filter: hue-rotate(360deg); } }
+@keyframes slide-bg { to { background-position: 300% 0; } }
+@keyframes scan { to { background-position: 0 60px; } }
+
 /* ── Fortschritt ── */
 .progress { display: grid; gap: 12px; }
 .progress-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
@@ -145,6 +188,39 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
   font: 600 0.6875rem/1 var(--font-data);
   color: var(--ink);
 }
+.slot-muts { display: flex; gap: 4px; justify-content: center; margin-top: 2px; }
+.slot-muts i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--mut) 55%, transparent);
+  background: transparent;
+}
+.slot-muts i.is-on { background: var(--mut); border-color: var(--mut); box-shadow: 0 0 6px var(--mut); }
+.mut-progress li::before { box-shadow: 0 0 8px var(--tier); }
+
+/* ── Wetter & Mutationen ── */
+.mutations { display: grid; gap: 10px; }
+.mutations h2 { margin: 0; font: 700 var(--step-2)/1 var(--font-display); }
+.mutations > p { margin: 0; color: var(--muted); max-width: 64ch; }
+.mut-table-wrap { overflow-x: auto; border: 1px solid var(--seam); border-radius: 12px; }
+.mut-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: var(--step--1); }
+.mut-table th, .mut-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--seam); vertical-align: top; }
+.mut-table thead th { font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--velvet); }
+.mut-table tbody tr:last-child > * { border-bottom: 0; }
+.mut-table td:nth-child(3), .mut-table td:nth-child(4) { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mut-table td:last-child { color: var(--muted); }
+.mut-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border: 1px solid var(--mut);
+  border-radius: 999px;
+  color: var(--mut);
+  font: 600 0.75rem/1.3 var(--font-data);
+  white-space: nowrap;
+}
+.coin-picker select#test-mut { flex: 0 1 190px; }
+
 .slot.is-fresh { animation: slot-pop 0.9s cubic-bezier(.2, 1.5, .4, 1); }
 @keyframes slot-pop {
   0% { transform: scale(0.85); box-shadow: 0 0 0 0 var(--tier); }
@@ -304,6 +380,16 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.reveal-mutation {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mut) 22%, #0b0a10);
+  border: 1px solid var(--mut);
+  color: #fff;
+  font: 600 var(--step--1)/1.3 var(--font-data);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--mut) 50%, transparent);
+}
+.reveal-text.is-shown .reveal-mutation { animation: slam 0.55s cubic-bezier(.2, 1.3, .3, 1) both 0.55s; }
 .reveal-meta { color: #cfc8d8; font: 400 var(--step--1)/1.3 var(--font-data); font-variant-numeric: tabular-nums; }
 .reveal-continue {
   margin-top: 10px;
@@ -375,6 +461,6 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot.is-fresh, .toast.is-in { animation: none; }
+  .slot.is-fresh, .toast.is-in, .weather::before { animation: none; }
   .reveal-text.is-shown * { animation: none !important; }
 }

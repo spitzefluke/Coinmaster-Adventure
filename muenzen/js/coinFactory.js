@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { tierById } from './coins.js';
 import { renderEmblem } from './emblems.js';
+import { applyMutation } from './mutations.js';
 
 const DEPTH = 0.12;
 const LEGEND_FONT = '"Marcellus SC", "Cinzel", Georgia, serif';
@@ -765,7 +766,8 @@ export function makeScene(env) {
 
 // ── Münze ────────────────────────────────────────────────────────────────────
 
-export function createCoin(coin, { resolution = 512 } = {}) {
+// mutation: optionale Mutations-ID aus mutations.js, wird dauerhaft an der Münze gezeigt
+export function createCoin(coin, { resolution = 512, mutation = null } = {}) {
   const tier = tierById[coin.tier];
   const fx = new Set(tier.fx);
   const pal = coin.metal;
@@ -1110,10 +1112,13 @@ export function createCoin(coin, { resolution = 512 } = {}) {
     });
   }
 
+  if (mutation) applyMutation(mutation, { spinner, fx: fxGroup, faces, bodyMat, faceZ, track, onUpdate, particles, glowSprite });
+
   return {
     root,
     spinner,
     tier,
+    mutation,
     update(t) {
       for (const fn of updaters) fn(t);
     },
