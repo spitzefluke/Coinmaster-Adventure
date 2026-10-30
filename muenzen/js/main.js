@@ -126,9 +126,14 @@ const io = new IntersectionObserver(
     for (const e of entries) {
       const entry = cards.find((c) => c.view === e.target);
       entry.near = e.isIntersecting;
+      // weit weg gescrollt: Texturen freigeben, beim Zurückscrollen neu bauen
+      if (!entry.near && entry.obj) {
+        entry.obj.dispose();
+        entry.obj = entry.scene = null;
+      }
     }
   },
-  { rootMargin: '400px 0px' },
+  { rootMargin: '800px 0px' },
 );
 cards.forEach((c) => io.observe(c.view));
 
@@ -141,9 +146,12 @@ function ensureBuilt(entry) {
     () =>
       new Promise((res) =>
         requestAnimationFrame(() => {
-          entry.scene = makeScene(env);
-          entry.obj = createCoin(entry.coin, { resolution: 384 });
-          entry.scene.add(entry.obj.root);
+          entry.building = false;
+          if (entry.near && !entry.obj) {
+            entry.scene = makeScene(env);
+            entry.obj = createCoin(entry.coin, { resolution: 384 });
+            entry.scene.add(entry.obj.root);
+          }
           res();
         }),
       ),

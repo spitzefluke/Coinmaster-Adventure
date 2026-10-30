@@ -5,8 +5,8 @@
 //   ├─ spinner   dreht sich: Körper (extrudierte Kontur), Vorder-/Rückseite, Edelsteine, Flügel
 //   └─ fx        bleibt aufrecht: Glühen, Strahlen, Partikel, Ringe, Planeten, Heiligenschein
 //
-// Die Prägung (Motiv, Schrift, Perlkreis) wird pro Münze auf ein Canvas gezeichnet und
-// als Farb- und Relieftextur (bumpMap) verwendet. Das Motiv ist ein Emoji, das in
+// Die Prägung (Motiv, Schrift, Stufenmuster, Zierband) wird pro Münze auf Canvas gezeichnet
+// und als Farb-, Normal- und Rauheitstextur verwendet. Das Motiv ist ein Emoji, das in
 // Metallfarben umgefärbt wird, damit es wie geprägt aussieht.
 
 import * as THREE from 'three';
@@ -17,60 +17,369 @@ const DEPTH = 0.12;
 const LEGEND_FONT = '"Marcellus SC", "Cinzel", Georgia, serif';
 const EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 
-// ── Konturen ─────────────────────────────────────────────────────────────────
-// Radius (max. 1) in Abhängigkeit vom Winkel – bestimmt die Silhouette der Münze.
+// ── Kontur ───────────────────────────────────────────────────────────────────
+// Alle Münzen sind rund. Geriffelte Stufen bekommen einen fein gezahnten Rand.
 
-const tri = (x) => 1 - Math.abs(2 * (x - Math.floor(x)) - 1); // Dreieckswelle 0..1..0
-
-const SHAPES = {
-  circle: () => 1,
-  octagon: (a) => {
-    const seg = (Math.PI * 2) / 8;
-    const local = ((a % seg) + seg) % seg - seg / 2;
-    return 0.45 + 0.55 * (Math.cos(seg / 2) / Math.cos(local));
-  },
-  scallop: (a) => 0.93 + 0.07 * Math.sqrt(Math.abs(Math.cos(6 * a))),
-  reuleaux: (a) => 0.965 + 0.035 * Math.cos(7 * a),
-  flower: (a) => 0.88 + 0.12 * Math.pow(Math.abs(Math.cos(5 * a)), 0.55),
-  sun: (a) => 0.86 + 0.14 * Math.pow(tri((a * 16) / (Math.PI * 2) + 0.5), 1.6),
-  gear: (a) => 0.93 + 0.07 * (0.5 + 0.5 * Math.tanh(5 * Math.cos(12 * a))),
-  star: (a) => 0.82 + 0.18 * Math.pow(0.5 + 0.5 * Math.cos(8 * a), 1.8),
-};
-
-function contourPoints(shapeId, reeded) {
-  const f = SHAPES[shapeId];
-  const n = reeded ? 240 : 256;
+function contourPoints(reeded) {
+  const n = reeded ? 240 : 192;
   const pts = [];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    let r = f(a);
-    if (reeded) r *= i % 2 ? 0.988 : 1;
+    const r = reeded && i % 2 ? 0.988 : 1;
     pts.push(new THREE.Vector2(Math.cos(a) * r, Math.sin(a) * r));
   }
   return pts;
 }
 
-// Kontur als Canvas-Pfad, skaliert um `scale` (für Rand und Feld auf der Prägung).
-function tracePath(ctx, shapeId, c, u, scale) {
-  const f = SHAPES[shapeId];
-  ctx.beginPath();
-  for (let i = 0; i <= 256; i++) {
-    const a = (i / 256) * Math.PI * 2;
-    const r = f(a) * scale * u;
-    // Canvas-y zeigt nach unten, Textur wird beim Hochladen gespiegelt -> -sin
-    const x = c + Math.cos(a) * r;
-    const y = c - Math.sin(a) * r;
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  }
-  ctx.closePath();
-}
-
 // ── Prägung ──────────────────────────────────────────────────────────────────
+// Jede Seite wird auf mehrere gleich große Ebenen gezeichnet:
+//   Farbe    – Metallfarben, Motiv in die Palette umgefärbt
+//   Höhe     – wird zur Normal-Map, damit das Relief auf Licht reagiert
+//   Rauheit  – spiegelpolierter Grund, mattiertes Relief (wie bei „Polierter Platte“)
+//   Leuchten – nur bei Stufen mit leuchtender Prägung
+//
+// Aufteilung von innen nach außen (in Münzradien):
+//   0 – 0.64   Feld mit graviertem Stufenmuster und Motiv bzw. Nennwert
+//   0.64–0.81  Schriftband mit Umschrift
+//   0.81–0.9   Zierband der Stufe
+//   0.9 – 1    erhöhter Rand
+
+const TAU = Math.PI * 2;
+const gray = (v) => {
+  const n = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  return `rgb(${n},${n},${n})`;
+};
 
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+
+class Plate {
+  constructor(S, glowing) {
+    this.S = S;
+    this.c = S / 2;
+    this.u = S / 2;
+    const mk = () => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = S;
+      return cv.getContext('2d', { willReadFrequently: true });
+    };
+    this.col = mk();
+    this.hgt = mk();
+    this.rgh = mk();
+    this.em = glowing ? mk() : null;
+  }
+
+  // Zeichnet dieselbe Form in alle Ebenen. `draw(ctx, style)` setzt Füllung/Linie selbst.
+  // height/rough sind 0..1; null lässt die Ebene aus.
+  paint(draw, { color, height = null, rough = null, glow = null }) {
+    const layers = [
+      [this.col, color],
+      [this.hgt, height === null ? null : gray(height)],
+      [this.rgh, rough === null ? null : gray(rough)],
+      [this.em, glow],
+    ];
+    for (const [ctx, style] of layers) {
+      if (!ctx || style === null || style === undefined) continue;
+      ctx.save();
+      draw(ctx, style);
+      ctx.restore();
+    }
+  }
+
+  // Wölbt eine Form: weich aufgetragene Höhe macht aus flacher Gravur ein Kissenrelief.
+  dome(draw, amount, blur) {
+    const ctx = this.hgt;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = amount;
+    ctx.filter = `blur(${blur}px)`;
+    draw(ctx, '#ffffff');
+    ctx.restore();
+  }
+
+  clipField(ctx, r0, r1) {
+    ctx.beginPath();
+    ctx.arc(this.c, this.c, r1 * this.u, 0, TAU);
+    if (r0 > 0) ctx.arc(this.c, this.c, r0 * this.u, 0, TAU, true);
+    ctx.clip('evenodd');
+  }
+}
+
+function ring(ctx, c, r0, r1) {
+  ctx.beginPath();
+  ctx.arc(c, c, r1, 0, TAU);
+  ctx.arc(c, c, r0, 0, TAU, true);
+}
+
+function seeded(seed) {
+  let s = seed % 2147483647 || 1;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
+}
+
+function starPath(ctx, x, y, r, points = 5, inner = 0.45) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const a = (i / (points * 2)) * TAU - Math.PI / 2;
+    const rr = i % 2 ? r * inner : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+}
+
+// ── Gravierte Feldmuster (innerhalb von r < 0.64) ──
+
+const FIELD_PATTERNS = {
+  plain() {},
+
+  // feine Drehrillen
+  lathe(ctx, c, u) {
+    ctx.lineWidth = u * 0.005;
+    for (let r = 0.03; r < 0.64; r += 0.022) {
+      ctx.beginPath();
+      ctx.arc(c, c, r * u, 0, TAU);
+      ctx.stroke();
+    }
+  },
+
+  // Strahlenkranz aus schmalen Keilen
+  sunburst(ctx, c, u) {
+    const n = 90;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU, w = (TAU / n) * 0.28;
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.arc(c, c, u * 0.64, a - w, a + w);
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
+
+  // Rautengitter
+  crosshatch(ctx, c, u) {
+    ctx.lineWidth = u * 0.007;
+    const step = u * 0.075;
+    for (const dir of [1, -1]) {
+      for (let k = -u; k <= u; k += step) {
+        ctx.beginPath();
+        ctx.moveTo(c + k - u, c - dir * u);
+        ctx.lineTo(c + k + u, c + dir * u);
+        ctx.stroke();
+      }
+    }
+  },
+
+  // Feuerwirbel
+  vortex(ctx, c, u) {
+    ctx.lineWidth = u * 0.007;
+    for (let k = 0; k < 28; k++) {
+      ctx.beginPath();
+      for (let r = 0.04; r <= 0.66; r += 0.01) {
+        const a = (k / 28) * TAU + r * 3.2;
+        ctx.lineTo(c + Math.cos(a) * r * u, c + Math.sin(a) * r * u);
+      }
+      ctx.stroke();
+    }
+  },
+
+  // Bannkreis: Siebenstern mit Doppelkreis
+  sigil(ctx, c, u) {
+    ctx.lineWidth = u * 0.009;
+    for (const r of [0.6, 0.56]) {
+      ctx.beginPath();
+      ctx.arc(c, c, r * u, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    for (let i = 0; i <= 7; i++) {
+      const a = ((i * 3) / 7) * TAU - Math.PI / 2;
+      ctx.lineTo(c + Math.cos(a) * u * 0.56, c + Math.sin(a) * u * 0.56);
+    }
+    ctx.stroke();
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * TAU - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(c + Math.cos(a) * u * 0.58, c + Math.sin(a) * u * 0.58, u * 0.022, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  // Gloriole: lange und kurze Strahlen im Wechsel
+  glory(ctx, c, u) {
+    const n = 48;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU, w = (TAU / n) * (i % 2 ? 0.18 : 0.32);
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.arc(c, c, u * (i % 2 ? 0.5 : 0.64), a - w, a + w);
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
+
+  // Umlaufbahnen und Sternstaub
+  orbits(ctx, c, u) {
+    ctx.lineWidth = u * 0.006;
+    for (const rot of [0.3, 1.35, 2.4]) {
+      ctx.beginPath();
+      ctx.ellipse(c, c, u * 0.6, u * 0.2, rot, 0, TAU);
+      ctx.stroke();
+    }
+    const rnd = seeded(4242);
+    for (let i = 0; i < 40; i++) {
+      const a = rnd() * TAU, r = Math.sqrt(rnd()) * 0.62;
+      starPath(ctx, c + Math.cos(a) * r * u, c + Math.sin(a) * r * u, u * (0.008 + rnd() * 0.014), 4, 0.35);
+      ctx.fill();
+    }
+  },
+
+  // Guilloche-Rosette wie auf Banknoten
+  guilloche(ctx, c, u) {
+    ctx.lineWidth = u * 0.0035;
+    for (let k = 0; k < 22; k++) {
+      ctx.beginPath();
+      for (let i = 0; i <= 720; i++) {
+        const a = (i / 720) * TAU;
+        const r = 0.42 + 0.12 * Math.sin(9 * a + (k / 22) * TAU) + 0.06 * Math.sin(4 * a - (k / 22) * TAU * 2);
+        ctx.lineTo(c + Math.cos(a) * r * u, c + Math.sin(a) * r * u);
+      }
+      ctx.stroke();
+    }
+  },
+};
+
+// ── Zierbänder (0.81 – 0.9) ──
+
+const BORDER_PATTERNS = {
+  beads(ctx, c, u) {
+    for (let i = 0; i < 64; i++) {
+      const a = (i / 64) * TAU;
+      ctx.beginPath();
+      ctx.arc(c + Math.cos(a) * u * 0.855, c + Math.sin(a) * u * 0.855, u * 0.016, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  // gedrehte Kordel
+  rope(ctx, c, u) {
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * TAU;
+      ctx.beginPath();
+      ctx.ellipse(c + Math.cos(a) * u * 0.855, c + Math.sin(a) * u * 0.855, u * 0.032, u * 0.011, a + 0.9, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  // Lorbeerkranz
+  laurel(ctx, c, u) {
+    ctx.lineWidth = u * 0.006;
+    ctx.beginPath();
+    ctx.arc(c, c, u * 0.855, 0, TAU);
+    ctx.stroke();
+    for (let i = 0; i < 56; i++) {
+      const a = (i / 56) * TAU, side = i % 2 ? 1 : -1;
+      const r = 0.855 + side * 0.018;
+      ctx.beginPath();
+      ctx.ellipse(c + Math.cos(a) * u * r, c + Math.sin(a) * u * r, u * 0.026, u * 0.011, a + Math.PI / 2 + side * 0.5, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  zigzag(ctx, c, u) {
+    ctx.lineWidth = u * 0.014;
+    ctx.lineJoin = 'miter';
+    ctx.beginPath();
+    for (let i = 0; i <= 64; i++) {
+      const a = (i / 64) * TAU, r = i % 2 ? 0.83 : 0.88;
+      ctx.lineTo(c + Math.cos(a) * u * r, c + Math.sin(a) * u * r);
+    }
+    ctx.stroke();
+  },
+
+  // Runen aus wenigen geraden Strichen, für jede Münze gleich (fester Startwert)
+  runes(ctx, c, u) {
+    const rnd = seeded(777);
+    ctx.lineWidth = u * 0.008;
+    ctx.lineCap = 'round';
+    const n = 26, h = u * 0.05;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      ctx.save();
+      ctx.translate(c + Math.cos(a) * u * 0.855, c + Math.sin(a) * u * 0.855);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -h / 2);
+      ctx.lineTo(0, h / 2);
+      const strokes = 1 + Math.floor(rnd() * 3);
+      for (let k = 0; k < strokes; k++) {
+        const y0 = (rnd() - 0.5) * h, y1 = (rnd() - 0.5) * h, s = rnd() < 0.5 ? -1 : 1;
+        ctx.moveTo(0, y0);
+        ctx.lineTo(s * h * 0.4, y1);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+
+  feathers(ctx, c, u) {
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * TAU;
+      ctx.save();
+      ctx.translate(c + Math.cos(a) * u * 0.855, c + Math.sin(a) * u * 0.855);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(-u * 0.035, 0);
+      ctx.quadraticCurveTo(0, -u * 0.03, u * 0.035, 0);
+      ctx.quadraticCurveTo(0, u * 0.012, -u * 0.035, 0);
+      ctx.fill();
+      ctx.restore();
+    }
+  },
+
+  rays(ctx, c, u) {
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * TAU, w = TAU / 48 / 2.4;
+      ctx.beginPath();
+      ctx.moveTo(c + Math.cos(a - w) * u * 0.82, c + Math.sin(a - w) * u * 0.82);
+      ctx.lineTo(c + Math.cos(a) * u * 0.895, c + Math.sin(a) * u * 0.895);
+      ctx.lineTo(c + Math.cos(a + w) * u * 0.82, c + Math.sin(a + w) * u * 0.82);
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
+
+  stars(ctx, c, u) {
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * TAU, x = c + Math.cos(a) * u * 0.855, y = c + Math.sin(a) * u * 0.855;
+      if (i % 2) {
+        ctx.beginPath();
+        ctx.arc(x, y, u * 0.008, 0, TAU);
+      } else starPath(ctx, x, y, u * 0.03);
+      ctx.fill();
+    }
+  },
+
+  diamonds(ctx, c, u) {
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * TAU;
+      ctx.save();
+      ctx.translate(c + Math.cos(a) * u * 0.855, c + Math.sin(a) * u * 0.855);
+      ctx.rotate(a);
+      ctx.beginPath();
+      if (i % 2) ctx.arc(0, 0, u * 0.01, 0, TAU);
+      else {
+        ctx.moveTo(-u * 0.03, 0);
+        ctx.lineTo(0, -u * 0.018);
+        ctx.lineTo(u * 0.03, 0);
+        ctx.lineTo(0, u * 0.018);
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+  },
+};
 
 function arcText(ctx, str, c, radius, top, maxAngle) {
   const chars = [...str];
@@ -94,7 +403,7 @@ function arcText(ctx, str, c, radius, top, maxAngle) {
 }
 
 // Zeichnet ein Emoji und färbt es nach Helligkeit in die Metallpalette um.
-// Liefert Farb- und Höhen-Canvas des Motivs.
+// Liefert Farb-, Detailhöhen- und Silhouetten-Canvas des Motivs.
 function emblemLayers(emoji, size, pal) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = size;
@@ -117,158 +426,205 @@ function emblemLayers(emoji, size, pal) {
   const [cHi, cMid, cLo] = pal.map(hexToRgb);
   const color = new ImageData(size, size);
   const height = new ImageData(size, size);
-  const cd = color.data, hd = height.data;
+  const mask = new ImageData(size, size);
+  const cd = color.data, hd = height.data, md = mask.data;
   for (let i = 0; i < d.length; i += 4) {
-    const a = d[i + 3] / 255;
-    if (a === 0) continue;
+    if (d[i + 3] === 0) continue;
     const l = ((0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255 - lo) / range;
-    const t = Math.min(1, Math.max(0, 0.15 + l * 0.85));
+    const t = Math.min(1, Math.max(0, 0.12 + l * 0.88));
     for (let k = 0; k < 3; k++) {
       cd[i + k] = t < 0.5 ? cLo[k] + (cMid[k] - cLo[k]) * t * 2 : cMid[k] + (cHi[k] - cMid[k]) * (t - 0.5) * 2;
     }
     cd[i + 3] = d[i + 3];
-    const h = Math.round(255 * (0.55 + 0.45 * t));
+    const h = Math.round(255 * (0.42 + 0.3 * t));
     hd[i] = hd[i + 1] = hd[i + 2] = h;
     hd[i + 3] = d[i + 3];
+    md[i] = md[i + 1] = md[i + 2] = 255;
+    md[i + 3] = d[i + 3];
   }
-  const colorCv = document.createElement('canvas');
-  colorCv.width = colorCv.height = size;
-  colorCv.getContext('2d').putImageData(color, 0, 0);
-  const heightCv = document.createElement('canvas');
-  heightCv.width = heightCv.height = size;
-  heightCv.getContext('2d').putImageData(height, 0, 0);
-  return { colorCv, heightCv };
+  const toCanvas = (data) => {
+    const out = document.createElement('canvas');
+    out.width = out.height = size;
+    out.getContext('2d').putImageData(data, 0, 0);
+    return out;
+  };
+  return { colorCv: toCanvas(color), heightCv: toCanvas(height), maskCv: toCanvas(mask) };
 }
 
-// Erzeugt Farbe, Relief und (optional) Leuchtmaske einer Münzseite.
+// Höhenbild → Normal-Map (Sobel). Canvas-y zeigt nach unten, Texturen werden beim
+// Hochladen gespiegelt – daher das Vorzeichen bei ny.
+function heightToNormal(hctx, S, strength) {
+  const blurred = document.createElement('canvas');
+  blurred.width = blurred.height = S;
+  const bctx = blurred.getContext('2d', { willReadFrequently: true });
+  bctx.filter = `blur(${Math.max(0.6, S / 700)}px)`;
+  bctx.drawImage(hctx.canvas, 0, 0);
+  const src = bctx.getImageData(0, 0, S, S).data;
+  const out = new ImageData(S, S);
+  const o = out.data;
+  const h = (x, y) => src[(Math.min(S - 1, Math.max(0, y)) * S + Math.min(S - 1, Math.max(0, x))) * 4] / 255;
+  const k = strength * (S / 512);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = (h(x + 1, y - 1) + 2 * h(x + 1, y) + h(x + 1, y + 1) - h(x - 1, y - 1) - 2 * h(x - 1, y) - h(x - 1, y + 1)) * k;
+      const dy = (h(x - 1, y + 1) + 2 * h(x, y + 1) + h(x + 1, y + 1) - h(x - 1, y - 1) - 2 * h(x, y - 1) - h(x + 1, y - 1)) * k;
+      const nx = -dx, ny = dy, inv = 1 / Math.hypot(nx, ny, 1);
+      const i = (y * S + x) * 4;
+      o[i] = (nx * inv * 0.5 + 0.5) * 255;
+      o[i + 1] = (ny * inv * 0.5 + 0.5) * 255;
+      o[i + 2] = (inv * 0.5 + 0.5) * 255;
+      o[i + 3] = 255;
+    }
+  }
+  bctx.filter = 'none';
+  bctx.putImageData(out, 0, 0);
+  return blurred;
+}
+
+// Erzeugt Farbe, Relief, Rauheit und (optional) Leuchtmaske einer Münzseite.
 function paintFace(coin, tier, side, S) {
   const pal = coin.metal;
-  const c = S / 2, u = S / 2;
-  const mk = () => {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = S;
-    return [cv, cv.getContext('2d')];
-  };
-  const [colorCv, col] = mk();
-  const [bumpCv, bump] = mk();
   const glowing = tier.id === 'mystisch';
-  const [emCv, em] = glowing ? mk() : [null, null];
-
+  const plate = new Plate(S, glowing);
+  const { c, u } = plate;
   const dark = tier.id === 'galaktisch' || tier.id === 'mystisch';
+  const engrave = dark ? pal[1] : pal[2];
+  const raised = pal[0];
 
-  // Grund: ganzes Canvas (ragt über die Kontur hinaus)
-  let g = col.createRadialGradient(c * 0.8, c * 0.7, 0, c, c, u);
-  g.addColorStop(0, dark ? pal[1] : pal[0]);
-  g.addColorStop(0.6, dark ? pal[2] : pal[1]);
-  g.addColorStop(1, pal[2]);
-  col.fillStyle = g;
-  col.fillRect(0, 0, S, S);
-  bump.fillStyle = '#5a5a5a';
-  bump.fillRect(0, 0, S, S);
+  // Grund: spiegelnd poliertes Feld
+  plate.paint(
+    (ctx, style) => {
+      ctx.fillStyle = style;
+      ctx.fillRect(0, 0, S, S);
+    },
+    { color: dark ? '#000000' : pal[1], height: 0.3, rough: 0.12 },
+  );
+  const field = plate.col.createRadialGradient(c * 0.75, c * 0.7, 0, c, c, u);
+  field.addColorStop(0, dark ? pal[2] : pal[1]);
+  field.addColorStop(1, dark ? '#000000' : pal[2]);
+  plate.col.fillStyle = field;
+  plate.col.fillRect(0, 0, S, S);
 
-  // Erhöhter Rand, folgt der Kontur
-  tracePath(col, tier.shape, c, u, 1.0);
-  col.fillStyle = pal[1];
-  col.fill();
-  tracePath(col, tier.shape, c, u, 0.9);
-  g = col.createRadialGradient(c * 0.85, c * 0.75, 0, c, c, u * 0.9);
-  if (dark) {
-    g.addColorStop(0, pal[2]);
-    g.addColorStop(1, '#000000');
-  } else {
-    g.addColorStop(0, pal[1]);
-    g.addColorStop(1, pal[2]);
-  }
-  col.fillStyle = g;
-  col.fill();
-  col.lineWidth = u * 0.012;
-  col.strokeStyle = pal[0];
-  col.stroke();
+  // Graviertes Stufenmuster im Feld (vertieft und mattiert)
+  plate.paint(
+    (ctx, style) => {
+      plate.clipField(ctx, 0, 0.635);
+      ctx.fillStyle = ctx.strokeStyle = style;
+      FIELD_PATTERNS[tier.field](ctx, c, u);
+    },
+    { color: engrave, height: 0.22, rough: 0.55, glow: glowing ? coin.glow : null },
+  );
 
-  tracePath(bump, tier.shape, c, u, 1.0);
-  bump.fillStyle = '#e8e8e8';
-  bump.fill();
-  tracePath(bump, tier.shape, c, u, 0.9);
-  bump.fillStyle = '#4a4a4a';
-  bump.fill();
-
-  // Perlkreis
-  const beads = 56;
-  for (let i = 0; i < beads; i++) {
-    const a = (i / beads) * Math.PI * 2;
-    const x = c + Math.cos(a) * u * 0.83, y = c + Math.sin(a) * u * 0.83;
-    for (const [ctx, fill] of [[col, pal[0]], [bump, '#c8c8c8'], [em, coin.glow]]) {
-      if (!ctx) continue;
+  // Fadenkreise um das Schriftband
+  for (const r of [0.645, 0.81]) {
+    const draw = (ctx, style) => {
+      ctx.strokeStyle = style;
+      ctx.lineWidth = u * 0.008;
       ctx.beginPath();
-      ctx.arc(x, y, u * 0.014, 0, Math.PI * 2);
-      ctx.fillStyle = fill;
-      ctx.fill();
-    }
+      ctx.arc(c, c, r * u, 0, TAU);
+      ctx.stroke();
+    };
+    plate.paint(draw, { color: raised, height: 0.55, rough: 0.35, glow: glowing ? coin.glow : null });
   }
 
-  // Umschrift
+  // Zierband der Stufe (erhaben)
+  const border = (ctx, style) => {
+    ctx.fillStyle = ctx.strokeStyle = style;
+    BORDER_PATTERNS[tier.border](ctx, c, u);
+  };
+  plate.paint(border, { color: raised, height: 0.62, rough: 0.4, glow: glowing ? coin.glow : null });
+  plate.dome(border, 0.15, u * 0.01);
+
+  // Erhöhter Rand mit Schräge nach innen
+  const rimColor = plate.col.createRadialGradient(c, c, u * 0.9, c, c, u);
+  rimColor.addColorStop(0, pal[2]);
+  rimColor.addColorStop(0.35, pal[0]);
+  rimColor.addColorStop(1, pal[1]);
+  const rimHeight = plate.hgt.createRadialGradient(c, c, u * 0.895, c, c, u);
+  rimHeight.addColorStop(0, gray(0.35));
+  rimHeight.addColorStop(0.4, gray(0.85));
+  rimHeight.addColorStop(1, gray(0.8));
+  plate.paint(
+    (ctx, style) => {
+      ring(ctx, c, u * 0.895, u * 1.01);
+      ctx.fillStyle = ctx === plate.col ? rimColor : ctx === plate.hgt ? rimHeight : style;
+      ctx.fill('evenodd');
+    },
+    { color: 'x', height: 0.8, rough: 0.22 },
+  );
+
+  // Umschrift (erhaben, mit Schatten in der Farbebene)
   const legendTop = side === 'front' ? coin.name.toUpperCase() : 'COINMASTER';
   const legendBottom = side === 'front' ? `· ${tier.name.toUpperCase()} ·` : 'ADVENTURE';
-  for (const [ctx, fill] of [[col, pal[0]], [bump, '#d0d0d0'], [em, coin.glow]]) {
-    if (!ctx) continue;
-    ctx.font = `${Math.round(u * 0.105)}px ${LEGEND_FONT}`;
+  const legend = (ctx, style) => {
+    ctx.font = `${Math.round(u * 0.1)}px ${LEGEND_FONT}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    if (ctx === col) {
-      ctx.fillStyle = pal[2];
-      ctx.save();
-      ctx.translate(u * 0.006, u * 0.008);
-      arcText(ctx, legendTop, c, u * 0.72, true, Math.PI * 0.95);
-      arcText(ctx, legendBottom, c, u * 0.72, false, Math.PI * 0.7);
-      ctx.restore();
-    }
-    ctx.fillStyle = fill;
-    arcText(ctx, legendTop, c, u * 0.72, true, Math.PI * 0.95);
-    arcText(ctx, legendBottom, c, u * 0.72, false, Math.PI * 0.7);
-  }
+    ctx.fillStyle = style;
+    arcText(ctx, legendTop, c, u * 0.728, true, Math.PI * 0.95);
+    arcText(ctx, legendBottom, c, u * 0.728, false, Math.PI * 0.7);
+  };
+  plate.col.save();
+  plate.col.translate(u * 0.008, u * 0.01);
+  plate.col.globalAlpha = 0.6;
+  legend(plate.col, '#000000');
+  plate.col.restore();
+  plate.paint(legend, { color: raised, height: 0.68, rough: 0.5, glow: glowing ? coin.glow : null });
+  plate.dome(legend, 0.12, u * 0.006);
 
-  // Zentrum: Motiv (Vorderseite) oder Nennwert (Rückseite)
+  // Zentrum
   if (side === 'front') {
     const es = Math.round(u * 1.12);
-    const { colorCv: ec, heightCv: eh } = emblemLayers(coin.emblem, es, pal);
+    const { colorCv, heightCv, maskCv } = emblemLayers(coin.emblem, es, pal);
     const x = c - es / 2, y = c - es / 2;
-    col.save();
-    col.shadowColor = 'rgba(0,0,0,0.55)';
-    col.shadowBlur = u * 0.03;
-    col.shadowOffsetX = u * 0.012;
-    col.shadowOffsetY = u * 0.018;
-    col.drawImage(ec, x, y);
-    col.restore();
-    bump.save();
-    bump.filter = `blur(${Math.max(1, Math.round(S / 400))}px)`;
-    bump.drawImage(eh, x, y);
-    bump.restore();
-    if (em) {
-      em.save();
-      em.globalAlpha = 0.35;
-      em.filter = `blur(${Math.round(S / 120)}px)`;
-      em.drawImage(eh, x, y);
-      em.restore();
+    // Schlagschatten und abgesenkter Sockel um das Motiv
+    plate.col.save();
+    plate.col.shadowColor = 'rgba(0,0,0,0.65)';
+    plate.col.shadowBlur = u * 0.04;
+    plate.col.shadowOffsetX = u * 0.015;
+    plate.col.shadowOffsetY = u * 0.022;
+    plate.col.drawImage(colorCv, x, y);
+    plate.col.restore();
+    plate.hgt.drawImage(heightCv, x, y);
+    plate.dome((ctx) => ctx.drawImage(maskCv, x, y), 0.35, u * 0.05);
+    plate.dome((ctx) => ctx.drawImage(maskCv, x, y), 0.1, u * 0.012);
+    plate.rgh.save();
+    plate.rgh.globalAlpha = 0.85;
+    plate.rgh.filter = `brightness(0) invert(0.62)`;
+    plate.rgh.drawImage(maskCv, x, y);
+    plate.rgh.restore();
+    if (plate.em) {
+      plate.em.save();
+      plate.em.globalAlpha = 0.4;
+      plate.em.filter = `blur(${Math.round(S / 120)}px)`;
+      plate.em.drawImage(maskCv, x, y);
+      plate.em.restore();
     }
   } else {
     const value = tier.value;
-    const fs = value.length > 3 ? 0.36 : value.length > 2 ? 0.46 : 0.6;
-    for (const [ctx, fill] of [[col, pal[0]], [bump, '#e0e0e0'], [em, coin.glow]]) {
-      if (!ctx) continue;
+    const fs = value.length > 3 ? 0.34 : value.length > 2 ? 0.44 : 0.58;
+    const numeral = (ctx, style) => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      ctx.fillStyle = style;
       ctx.font = `${Math.round(u * fs)}px ${LEGEND_FONT}`;
-      if (ctx === col) {
-        ctx.fillStyle = pal[2];
-        ctx.fillText(value, c + u * 0.012, c - u * 0.03 + u * 0.016);
-      }
-      ctx.fillStyle = fill;
-      ctx.fillText(value, c, c - u * 0.03);
+      ctx.fillText(value, c, c - u * 0.04);
       ctx.font = `${Math.round(u * 0.09)}px ${LEGEND_FONT}`;
       ctx.fillText('TALER', c, c + u * 0.36);
-      // Sterne links und rechts
-      for (const sx of [-1, 1]) drawStar(ctx, c + sx * u * 0.42, c + u * 0.32, u * 0.04, fill);
-    }
+      for (const sx of [-1, 1]) {
+        starPath(ctx, c + sx * u * 0.42, c + u * 0.32, u * 0.04);
+        ctx.fill();
+      }
+    };
+    plate.col.save();
+    plate.col.shadowColor = 'rgba(0,0,0,0.65)';
+    plate.col.shadowBlur = u * 0.03;
+    plate.col.shadowOffsetX = u * 0.012;
+    plate.col.shadowOffsetY = u * 0.018;
+    numeral(plate.col, raised);
+    plate.col.restore();
+    plate.paint(numeral, { color: null, height: 0.62, rough: 0.55, glow: glowing ? coin.glow : null });
+    plate.dome(numeral, 0.3, u * 0.03);
   }
 
   const tex = (cv, srgb) => {
@@ -278,22 +634,11 @@ function paintFace(coin, tier, side, S) {
     return t;
   };
   return {
-    map: tex(colorCv, true),
-    bumpMap: tex(bumpCv, false),
-    emissiveMap: emCv ? tex(emCv, true) : null,
+    map: tex(plate.col.canvas, true),
+    normalMap: tex(heightToNormal(plate.hgt, S, 2.2), false),
+    roughnessMap: tex(plate.rgh.canvas, false),
+    emissiveMap: plate.em ? tex(plate.em.canvas, true) : null,
   };
-}
-
-function drawStar(ctx, x, y, r, fill) {
-  ctx.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
-    const rr = i % 2 ? r * 0.45 : r;
-    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
 }
 
 // ── Gemeinsame Effekt-Texturen ───────────────────────────────────────────────
@@ -491,7 +836,7 @@ export function createCoin(coin, { resolution = 512 } = {}) {
 
   // Körper
   const reeded = tier.edge === 'reeded';
-  const pts = contourPoints(tier.shape, reeded);
+  const pts = contourPoints(reeded);
   const bodyShape = new THREE.Shape(pts);
   const bevel = reeded ? 0.012 : 0.035;
   const bodyGeo = track(
@@ -524,7 +869,7 @@ export function createCoin(coin, { resolution = 512 } = {}) {
   spinner.add(body);
 
   // Seiten
-  const faceShape = new THREE.Shape(contourPoints(tier.shape, false));
+  const faceShape = new THREE.Shape(contourPoints(false));
   const faceGeo = track(new THREE.ShapeGeometry(faceShape, 1));
   const uv = faceGeo.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.5 + 0.5, uv.getY(i) * 0.5 + 0.5);
@@ -537,10 +882,10 @@ export function createCoin(coin, { resolution = 512 } = {}) {
     const mat = track(
       new (fx.has('rainbow') ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial)({
         map: t.map,
-        bumpMap: t.bumpMap,
-        bumpScale: 3,
+        normalMap: t.normalMap,
+        roughnessMap: t.roughnessMap,
+        roughness: 1,
         metalness: fx.has('wings') ? 0.75 : 1,
-        roughness: tier.id === 'normal' ? 0.48 : 0.38,
       }),
     );
     if (t.emissiveMap) {
@@ -599,7 +944,7 @@ export function createCoin(coin, { resolution = 512 } = {}) {
     );
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      const r = SHAPES[tier.shape](a) * 0.95;
+      const r = 0.95;
       for (const s of [1, -1]) {
         const gem = new THREE.Mesh(gemGeo, gemMat);
         gem.position.set(Math.cos(a) * r, Math.sin(a) * r, s * (faceZ + 0.015));
