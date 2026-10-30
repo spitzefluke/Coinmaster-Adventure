@@ -99,6 +99,9 @@ function ensureBuilt(entry) {
 let overlayOpen = false;
 const clock = new THREE.Clock();
 
+// Unterkante der Navigation (js/nav.js); die Leiste klebt beim Scrollen oben
+const navBottom = () => document.querySelector('.site-nav')?.getBoundingClientRect().bottom ?? 0;
+
 function renderGallery(t, dt) {
   renderer.setScissorTest(false);
   renderer.clear();
@@ -110,7 +113,9 @@ function renderGallery(t, dt) {
     ensureBuilt(entry);
     if (!entry.obj) continue;
     const r = entry.view.getBoundingClientRect();
-    if (r.bottom < 0 || r.top > H || r.width === 0) continue;
+    // nur unterhalb der klebenden Navigation zeichnen
+    const top = Math.max(r.top, navBottom());
+    if (r.bottom <= top || r.top > H || r.width === 0) continue;
     entry.spin += dt * (reducedMotion ? 0.1 : entry.hover ? 1.6 : 0.4);
     const o = entry.obj;
     o.spinner.rotation.y = entry.spin;
@@ -119,7 +124,7 @@ function renderGallery(t, dt) {
     camera.aspect = r.width / r.height;
     camera.updateProjectionMatrix();
     renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
-    renderer.setScissor(r.left, H - r.bottom, r.width, r.height);
+    renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
     renderer.render(entry.scene, camera);
   }
 }
