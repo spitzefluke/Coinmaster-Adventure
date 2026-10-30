@@ -138,7 +138,7 @@ Dann <http://localhost:8000> öffnen.
 ## Aufbau
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
-- `js/nav.js` – gemeinsame Navigation und „Nach oben“-Knopf für alle Seiten
+- `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
