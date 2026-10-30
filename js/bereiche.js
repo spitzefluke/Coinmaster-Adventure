@@ -12,6 +12,13 @@ export const BEREICHE = [
     eckdaten: ['50 Münzen', '10 Stufen', '3D'],
   },
   {
+    titel: 'Münzindex',
+    text: 'Das Sammelbuch aus dem Spiel: Münzen ziehen, Index füllen und jede neue Münze mit einer Animation enthüllen, die mit der Seltenheit wächst.',
+    href: 'muenzindex/',
+    status: 'vorschau',
+    eckdaten: ['50 Fächer', '10 Animationsstufen', 'Spielvorschau'],
+  },
+  {
     titel: 'Nächster Bereich',
     text: 'Hier erscheint, was wir als Nächstes bauen.',
     status: 'geplant',

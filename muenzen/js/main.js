@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TIERS, COINS, tierById } from './coins.js';
+import { TIERS, COINS, tierById, rollCoin } from './coins.js';
 import { createCoin, makeEnvironment, makeScene } from './coinFactory.js';
 
 // Die Umschrift wird auf Canvas gezeichnet – vorher die Schrift laden (mit Zeitlimit).
@@ -288,17 +288,7 @@ function renderDetail(t, dt) {
 
 // ── Münze ziehen ─────────────────────────────────────────────────────────────
 
-document.getElementById('draw-btn').addEventListener('click', () => {
-  let roll = Math.random() * 100;
-  for (const tier of TIERS) {
-    if ((roll -= tier.chance) <= 0) {
-      const pool = COINS.filter((c) => c.tier === tier.id);
-      openDetail(pool[Math.floor(Math.random() * pool.length)], true);
-      return;
-    }
-  }
-  openDetail(COINS[0], true);
-});
+document.getElementById('draw-btn').addEventListener('click', () => openDetail(rollCoin(), true));
 
 // ── Schleife ─────────────────────────────────────────────────────────────────
 

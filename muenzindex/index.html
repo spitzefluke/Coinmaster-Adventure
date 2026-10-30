@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Münzindex · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div class="masthead-text">
+      <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Spielvorschau</p>
+      <h1>Münzindex</h1>
+      <p class="lede">Ziehe Münzen und fülle deinen Index. Jede neue Münze wird mit einer Animation enthüllt, die mit der Seltenheit länger und größer wird.</p>
+    </div>
+    <div class="actions">
+      <button id="draw-btn" class="draw-btn" type="button">
+        <span class="draw-btn-label">Münze ziehen</span>
+        <span class="draw-btn-hint">nach Drop-Chance</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="progress" aria-labelledby="progress-title">
+    <div class="progress-head">
+      <h2 id="progress-title">Fortschritt</h2>
+      <p class="progress-count"><strong id="found-count">0</strong> von 50 entdeckt · <span id="draw-count">0</span> Züge</p>
+    </div>
+    <div class="progress-bar" aria-hidden="true"><span id="progress-fill"></span></div>
+    <ul id="tier-progress" class="tier-progress"></ul>
+  </section>
+
+  <main>
+    <div id="slots" class="slots"></div>
+  </main>
+
+  <section class="tools" aria-labelledby="tools-title">
+    <h2 id="tools-title">Animationen testen</h2>
+    <p>Spielt die Entdeckung einer zufälligen Münze der gewählten Stufe ab, ohne sie in den Index aufzunehmen.</p>
+    <div id="test-buttons" class="test-buttons"></div>
+    <button id="reset-btn" class="reset-btn" type="button">Index zurücksetzen</button>
+  </section>
+
+  <footer class="foot">Der Fortschritt wird nur in diesem Browser gespeichert.</footer>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<div id="reveal" class="reveal" hidden>
+  <canvas class="reveal-canvas"></canvas>
+  <div class="reveal-flash" aria-hidden="true"></div>
+  <p class="reveal-stage" aria-hidden="true"></p>
+  <div class="reveal-text" role="dialog" aria-modal="true" aria-labelledby="reveal-name">
+    <p class="reveal-eyebrow"></p>
+    <p class="reveal-banner" aria-hidden="true"></p>
+    <h2 id="reveal-name" class="reveal-name"></h2>
+    <p class="reveal-tier"></p>
+    <p class="reveal-meta"></p>
+    <button class="reveal-continue" type="button" hidden>In den Index</button>
+  </div>
+  <p class="reveal-hint">Tippen zum Überspringen</p>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

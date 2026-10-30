@@ -190,3 +190,11 @@ export const COINS = [
 ];
 
 export const tierById = Object.fromEntries(TIERS.map((t, i) => [t.id, { ...t, index: i }]));
+
+// Zieht eine Münze nach Drop-Chance: erst die Stufe, dann gleichverteilt innerhalb der Stufe.
+export function rollCoin(random = Math.random) {
+  let roll = random() * 100;
+  const tier = TIERS.find((t) => (roll -= t.chance) <= 0) ?? TIERS[0];
+  const pool = COINS.filter((c) => c.tier === tier.id);
+  return pool[Math.floor(random() * pool.length)];
+}
