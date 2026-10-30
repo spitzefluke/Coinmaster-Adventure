@@ -46,8 +46,12 @@
         <div><dt>Preis</dt><dd id="detail-price"></dd></div>
         <div><dt>Erhältlich</dt><dd id="detail-avail"></dd></div>
       </dl>
-      <button id="detail-hatch" class="hatch-btn" type="button">Schlüpfen lassen</button>
-      <p class="detail-hint">Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen.</p>
+      <div class="detail-actions">
+        <button id="detail-hatch" class="hatch-btn" type="button">Schlüpfen lassen</button>
+        <button id="detail-prev" class="look-btn" type="button" aria-label="Vorheriges Ei">‹</button>
+        <button id="detail-next" class="look-btn" type="button" aria-label="Nächstes Ei">›</button>
+      </div>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen. Pfeiltasten wechseln das Ei.</p>
     </div>
   </div>
 </div>
@@ -67,5 +71,6 @@
 </div>
 
 <script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
 </body>
 </html>

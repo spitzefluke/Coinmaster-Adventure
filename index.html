@@ -26,10 +26,22 @@
       <p class="eyebrow">In Entwicklung</p>
       <h1>Coinmaster Adventure</h1>
       <p class="lede">Hier sammeln wir alles, was wir für das Spiel bauen. Jeder Bereich ist eine eigene Vorschau, die du direkt im Browser ausprobieren kannst.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="muenzindex/">Münze ziehen</a>
+        <a class="btn" href="eier/">Ei schlüpfen lassen</a>
+        <a class="btn" href="muenzen/">Alle Münzen ansehen</a>
+      </div>
+      <dl class="stats">
+        <div><dt>Münzen</dt><dd>50</dd></div>
+        <div><dt>Seltenheiten</dt><dd>10</dd></div>
+        <div><dt>Mutationen</dt><dd>6</dd></div>
+        <div><dt>Eier</dt><dd>7</dd></div>
+      </dl>
     </div>
     <figure class="hero-coin">
       <a href="muenzen/" class="hero-stage" aria-label="Zum Münzkabinett"><canvas id="hero-canvas"></canvas></a>
       <figcaption id="hero-caption">Zufallsmünze aus dem Münzkabinett</figcaption>
+      <button id="reroll" class="btn" type="button">Andere Münze</button>
     </figure>
   </header>
 
@@ -42,5 +54,6 @@
 </div>
 
 <script type="module" src="js/start.js"></script>
+<script type="module" src="js/nav.js"></script>
 </body>
 </html>

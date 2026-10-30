@@ -181,7 +181,15 @@ function sizeDetail() {
 }
 addEventListener('resize', () => !detail.hidden && sizeDetail());
 detail.addEventListener('click', (e) => e.target.closest('[data-close]') && closeDetail());
-addEventListener('keydown', (e) => e.key === 'Escape' && !detail.hidden && closeDetail());
+addEventListener('keydown', (e) => {
+  if (detail.hidden) return;
+  if (e.key === 'Escape') closeDetail();
+  else if (e.key === 'ArrowRight') stepDetail(1);
+  else if (e.key === 'ArrowLeft') stepDetail(-1);
+});
+const stepDetail = (dir) => openDetail(EGGS[(EGGS.indexOf(dData) + dir + EGGS.length) % EGGS.length]);
+document.getElementById('detail-prev').addEventListener('click', () => stepDetail(-1));
+document.getElementById('detail-next').addEventListener('click', () => stepDetail(1));
 document.getElementById('detail-hatch').addEventListener('click', () => {
   closeDetail();
   startHatch(dData);

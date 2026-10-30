@@ -30,6 +30,13 @@ h1 {
   text-wrap: balance;
 }
 .lede { margin: 16px 0 0; color: var(--muted); max-width: 52ch; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 24px 0 0; max-width: 480px; }
+.stats div { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-radius: 12px; background: var(--velvet); }
+.stats dt { font: 500 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 0; font: 700 var(--step-2)/1 var(--font-display); color: var(--brass); font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.area.is-locked .area-status { color: #9fd0ff; }
 
 .hero-coin { margin: 0; display: grid; gap: 8px; justify-items: center; min-width: 0; }
 .hero-stage { display: block; width: min(360px, 100%); aspect-ratio: 1; max-width: 100%; border-radius: 50%; }

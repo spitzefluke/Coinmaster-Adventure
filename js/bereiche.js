@@ -1,7 +1,7 @@
 // Alle Bereiche, die auf der Startseite als Kachel erscheinen.
 // Neuer Bereich: Ordner anlegen (z. B. `karte/index.html`) und hier einen Eintrag ergänzen.
 //
-// status: 'vorschau' = anklickbar, 'geplant' = Platzhalter ohne Link
+// status: 'vorschau' = anklickbar, 'code' = anklickbar, aber nur mit Code nutzbar, 'geplant' = Platzhalter ohne Link
 
 export const BEREICHE = [
   {
@@ -24,6 +24,13 @@ export const BEREICHE = [
     href: 'eier/',
     status: 'vorschau',
     eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
+  },
+  {
+    titel: 'Nach Roblox Studio übertragen',
+    text: 'Münzen, Mutationen, Wetter und Eier als fertiges Paket für Roblox Studio: Daten, Ziehen-Logik, 3D-Modelle und Motive.',
+    href: 'roblox/',
+    status: 'code',
+    eckdaten: ['Installer-Skript', 'ModuleScripts', 'Motive als PNG'],
   },
   {
     titel: 'Haustiere',

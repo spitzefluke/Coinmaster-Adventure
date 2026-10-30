@@ -41,9 +41,17 @@
     </div>
     <div id="dropbar" class="dropbar" role="group" aria-label="Seltenheitsstufen filtern"></div>
     <div id="chips" class="chips" role="group" aria-label="Seltenheitsstufen filtern"></div>
+    <div class="search-row">
+      <label class="search" for="search">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="Münze suchen, z. B. Drache" autocomplete="off">
+      </label>
+      <p id="search-count" class="search-count" aria-live="polite"></p>
+    </div>
   </section>
 
   <main id="cabinet" class="cabinet"></main>
+  <p id="no-results" class="no-results" hidden>Keine Münze passt zur Suche. Probier einen anderen Namen oder zeig alle Stufen.</p>
 
   <footer class="foot">Gerendert mit three.js · Jedes Motiv ist als eigenes Relief gezeichnet und auf allen Geräten gleich.</footer>
 </div>
@@ -70,15 +78,18 @@
         <div id="mutation-chips" class="mutation-chips" role="group" aria-label="Mutation ansehen"></div>
       </div>
       <div class="detail-actions">
+        <button id="prev-btn" type="button" aria-label="Vorherige Münze">‹ Vorherige</button>
+        <button id="next-btn" type="button" aria-label="Nächste Münze">Nächste ›</button>
         <button id="flip-btn" type="button">Umdrehen</button>
         <button id="spin-btn" type="button" aria-pressed="true">Drehung an</button>
       </div>
-      <p class="detail-hint">Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen.</p>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen. Pfeiltasten wechseln die Münze.</p>
     </div>
   </div>
 </div>
 
 <script type="module" src="js/main.js"></script>
 <!--/BODY-->
+<script type="module" src="../js/nav.js"></script>
 </body>
 </html>
