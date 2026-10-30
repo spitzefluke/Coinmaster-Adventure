@@ -655,7 +655,7 @@ function canvasTexture(key, size, draw) {
   return (shared[key] = t);
 }
 
-const glowTexture = () =>
+export const glowTexture = () =>
   canvasTexture('glow', 256, (ctx, s) => {
     const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
     g.addColorStop(0, 'rgba(255,255,255,1)');
@@ -666,7 +666,7 @@ const glowTexture = () =>
     ctx.fillRect(0, 0, s, s);
   });
 
-const sparkTexture = () =>
+export const sparkTexture = () =>
   canvasTexture('spark', 64, (ctx, s) => {
     const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
     g.addColorStop(0, 'rgba(255,255,255,1)');
@@ -679,7 +679,7 @@ const sparkTexture = () =>
     ctx.fillRect(2, s / 2 - 1, s - 4, 2);
   });
 
-const raysTexture = () =>
+export const raysTexture = () =>
   canvasTexture('rays', 512, (ctx, s) => {
     const c = s / 2;
     ctx.translate(c, c);
@@ -754,7 +754,7 @@ function nebulaTexture(seedHue) {
 
 // ── Bausteine ────────────────────────────────────────────────────────────────
 
-function glowSprite(color, scale, opacity = 0.75) {
+export function glowSprite(color, scale, opacity = 0.75) {
   const s = new THREE.Sprite(
     new THREE.SpriteMaterial({
       map: glowTexture(),
@@ -770,7 +770,7 @@ function glowSprite(color, scale, opacity = 0.75) {
   return s;
 }
 
-function particles(count, color, size, texture = sparkTexture()) {
+export function particles(count, color, size, texture = sparkTexture()) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3).fill(1), 3));

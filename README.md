@@ -6,6 +6,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Bereich | Ordner | Status |
 |---|---|---|
 | Münzkabinett | `muenzen/` | Vorschau |
+| Münzindex | `muenzindex/` | Spielvorschau |
 
 ## Online stellen (GitHub Pages)
 
@@ -40,6 +41,30 @@ mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster 
 | Galaktisch | 2 | 0,5 % | glatt | Umlaufbahnen, Sterne | Sterne | Nebel, Planetenbahn |
 | Unerreichbar | 2 | 0,1 % | glatt | Guilloche-Rosette | Rauten | Regenbogen, Ringe, Strahlen |
 
+## Münzindex
+
+Sammelbuch mit 50 Fächern. „Münze ziehen“ zieht nach Drop-Chance. Neue Münzen werden mit einer
+Entdeckungs-Animation enthüllt, doppelte erhöhen nur den Zähler. Der Fortschritt liegt im
+`localStorage` des Browsers.
+
+Die Animation (`muenzindex/js/discovery.js`) lädt eine „?“-Münze Stufe für Stufe bis zur echten
+Seltenheit auf. Je seltener, desto mehr Stufen, desto länger: etwa 2,5 s bei Normal bis 10 s bei
+Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
+
+| ab Stufe | Effekt |
+|---|---|
+| Selten | Schockwelle |
+| Sehr selten | Strahlenkranz |
+| Episch | Bildschirmbeben |
+| Legendär | Funkenfontäne, großes Stufen-Banner |
+| Mystisch | Runenkreis, Buchstaben fallen einzeln ein |
+| Engelsgleich | Himmelslicht und Lichtpartikel |
+| Göttlich | Mehrfach-Blitze |
+| Galaktisch | Sternen-Warp |
+| Unerreichbar | Regenbogen-Glitch |
+
+Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede Stufe abspielen.
+
 ## Lokal starten
 
 ES-Module brauchen einen lokalen Server:
@@ -55,6 +80,7 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
+- `muenzindex/` – Münzindex: `js/main.js` (Fächer, Ziehen, Spielstand), `js/discovery.js` (Animation)
 - `muenzen/` – Münzkabinett:
   - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv, Metallfarben, Text)
   - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
