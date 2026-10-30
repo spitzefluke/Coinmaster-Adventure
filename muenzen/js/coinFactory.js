@@ -6,16 +6,16 @@
 //   └─ fx        bleibt aufrecht: Glühen, Strahlen, Partikel, Ringe, Planeten, Heiligenschein
 //
 // Die Prägung (Motiv, Schrift, Stufenmuster, Zierband) wird pro Münze auf Canvas gezeichnet
-// und als Farb-, Normal- und Rauheitstextur verwendet. Das Motiv ist ein Emoji, das in
-// Metallfarben umgefärbt wird, damit es wie geprägt aussieht.
+// und als Farb-, Normal- und Rauheitstextur verwendet. Das Motiv ist ein eigenes Relief
+// (emblems.js) aus demselben Metall wie die Münze – keine Kontur, kein Schlagschatten.
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { tierById } from './coins.js';
+import { renderEmblem } from './emblems.js';
 
 const DEPTH = 0.12;
 const LEGEND_FONT = '"Marcellus SC", "Cinzel", Georgia, serif';
-const EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 
 // ── Kontur ───────────────────────────────────────────────────────────────────
 // Alle Münzen sind rund. Geriffelte Stufen bekommen einen fein gezahnten Rand.
@@ -49,11 +49,6 @@ const gray = (v) => {
   const n = Math.round(Math.min(1, Math.max(0, v)) * 255);
   return `rgb(${n},${n},${n})`;
 };
-
-function hexToRgb(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
 
 class Plate {
   constructor(S, glowing) {
@@ -402,55 +397,6 @@ function arcText(ctx, str, c, radius, top, maxAngle) {
   });
 }
 
-// Zeichnet ein Emoji und färbt es nach Helligkeit in die Metallpalette um.
-// Liefert Farb-, Detailhöhen- und Silhouetten-Canvas des Motivs.
-function emblemLayers(emoji, size, pal) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = size;
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = `${Math.round(size * 0.78)}px ${EMOJI_FONT}`;
-  ctx.fillText(emoji, size / 2, size / 2 + size * 0.04);
-
-  const img = ctx.getImageData(0, 0, size, size);
-  const d = img.data;
-  let lo = 1, hi = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 40) continue;
-    const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
-    lo = Math.min(lo, l);
-    hi = Math.max(hi, l);
-  }
-  const range = Math.max(0.15, hi - lo);
-  const [cHi, cMid, cLo] = pal.map(hexToRgb);
-  const color = new ImageData(size, size);
-  const height = new ImageData(size, size);
-  const mask = new ImageData(size, size);
-  const cd = color.data, hd = height.data, md = mask.data;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] === 0) continue;
-    const l = ((0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255 - lo) / range;
-    const t = Math.min(1, Math.max(0, 0.12 + l * 0.88));
-    for (let k = 0; k < 3; k++) {
-      cd[i + k] = t < 0.5 ? cLo[k] + (cMid[k] - cLo[k]) * t * 2 : cMid[k] + (cHi[k] - cMid[k]) * (t - 0.5) * 2;
-    }
-    cd[i + 3] = d[i + 3];
-    const h = Math.round(255 * (0.42 + 0.3 * t));
-    hd[i] = hd[i + 1] = hd[i + 2] = h;
-    hd[i + 3] = d[i + 3];
-    md[i] = md[i + 1] = md[i + 2] = 255;
-    md[i + 3] = d[i + 3];
-  }
-  const toCanvas = (data) => {
-    const out = document.createElement('canvas');
-    out.width = out.height = size;
-    out.getContext('2d').putImageData(data, 0, 0);
-    return out;
-  };
-  return { colorCv: toCanvas(color), heightCv: toCanvas(height), maskCv: toCanvas(mask) };
-}
-
 // Höhenbild → Normal-Map (Sobel). Canvas-y zeigt nach unten, Texturen werden beim
 // Hochladen gespiegelt – daher das Vorzeichen bei ny.
 export function heightToNormal(hctx, S, strength) {
@@ -575,22 +521,21 @@ function paintFace(coin, tier, side, S) {
   // Zentrum
   if (side === 'front') {
     const es = Math.round(u * 1.12);
-    const { colorCv, heightCv, maskCv } = emblemLayers(coin.emblem, es, pal);
+    const { colorCv, heightCv, maskCv } = renderEmblem(coin.emblem, es, pal);
     const x = c - es / 2, y = c - es / 2;
-    // Schlagschatten und abgesenkter Sockel um das Motiv
+    // nur ein enger Kontaktschatten – das Motiv sitzt im Metall, nicht darauf
     plate.col.save();
-    plate.col.shadowColor = 'rgba(0,0,0,0.65)';
-    plate.col.shadowBlur = u * 0.04;
-    plate.col.shadowOffsetX = u * 0.015;
-    plate.col.shadowOffsetY = u * 0.022;
+    plate.col.shadowColor = 'rgba(0,0,0,0.45)';
+    plate.col.shadowBlur = u * 0.012;
+    plate.col.shadowOffsetX = u * 0.004;
+    plate.col.shadowOffsetY = u * 0.006;
     plate.col.drawImage(colorCv, x, y);
     plate.col.restore();
     plate.hgt.drawImage(heightCv, x, y);
-    plate.dome((ctx) => ctx.drawImage(maskCv, x, y), 0.35, u * 0.05);
-    plate.dome((ctx) => ctx.drawImage(maskCv, x, y), 0.1, u * 0.012);
+    plate.dome((ctx) => ctx.drawImage(maskCv, x, y), 0.08, u * 0.04);
     plate.rgh.save();
     plate.rgh.globalAlpha = 0.85;
-    plate.rgh.filter = `brightness(0) invert(0.62)`;
+    plate.rgh.filter = `brightness(0) invert(0.6)`;
     plate.rgh.drawImage(maskCv, x, y);
     plate.rgh.restore();
     if (plate.em) {

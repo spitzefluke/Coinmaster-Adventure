@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Prägungen</title>
+<style>body{margin:0;background:#0f0d14;color:#a39cad;font:12px monospace}#g{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;padding:8px}#g div{text-align:center}canvas{width:100%;display:block;border-radius:50%;background:radial-gradient(#8a7a5a,#3a2f1c)}</style></head>
+<body><div id="g"></div>
+<script type="module">
+import { COINS } from './js/coins.js';
+const { renderEmblem } = await import('./js/emblems.js?v=' + Date.now());
+const g = document.getElementById('g');
+const only = new URLSearchParams(location.search).get('only');
+for (const c of COINS.filter((c) => !only || only.split(',').includes(c.emblem))) {
+  const d = document.createElement('div');
+  const { colorCv } = renderEmblem(c.emblem, 240, c.metal);
+  colorCv.style.cssText = '';
+  d.append(colorCv, c.emblem);
+  g.append(d);
+}
+</script></body></html>
