@@ -34,18 +34,42 @@
     </div>
   </header>
 
+  <section id="weather" class="weather" aria-live="polite">
+    <div class="weather-main">
+      <p class="weather-eyebrow">Aktuelles Wetter</p>
+      <p class="weather-name" id="weather-name">Klar</p>
+      <p class="weather-text" id="weather-text"></p>
+    </div>
+    <div class="weather-side">
+      <p class="weather-mut" id="weather-mut"></p>
+      <p class="weather-time">Wechselt in <span id="weather-time">1:00</span></p>
+    </div>
+  </section>
+
   <section class="progress" aria-labelledby="progress-title">
     <div class="progress-head">
       <h2 id="progress-title">Fortschritt</h2>
-      <p class="progress-count"><strong id="found-count">0</strong> von 50 entdeckt · <span id="draw-count">0</span> Züge</p>
+      <p class="progress-count"><strong id="found-count">0</strong> von 50 entdeckt · <span id="draw-count">0</span> Züge · <strong id="mut-count">0</strong> von 300 Mutationen</p>
     </div>
     <div class="progress-bar" aria-hidden="true"><span id="progress-fill"></span></div>
     <ul id="tier-progress" class="tier-progress"></ul>
+    <ul id="mut-progress" class="tier-progress mut-progress"></ul>
   </section>
 
   <main>
     <div id="slots" class="slots"></div>
   </main>
+
+  <section class="mutations" aria-labelledby="mut-title">
+    <h2 id="mut-title">Wetter &amp; Mutationen</h2>
+    <p>Während eines Wetters kann jede gezogene Münze mutieren. Die Mutation bleibt für immer an der Münze und erhöht ihren Wert.</p>
+    <div class="mut-table-wrap">
+      <table class="mut-table">
+        <thead><tr><th scope="col">Mutation</th><th scope="col">Wetter</th><th scope="col">Chance</th><th scope="col">Wert</th><th scope="col">Effekt</th></tr></thead>
+        <tbody id="mut-rows"></tbody>
+      </table>
+    </div>
+  </section>
 
   <section class="tools" aria-labelledby="tools-title">
     <h2 id="tools-title">Animationen testen</h2>
@@ -55,9 +79,12 @@
       <div class="coin-picker-row">
         <select id="test-coin"></select>
         <button id="test-play" class="picker-btn picker-btn-main" type="button">Abspielen</button>
+        <select id="test-mut" aria-label="Mutation"></select>
         <button id="test-next" class="picker-btn" type="button">Nächste Münze →</button>
       </div>
     </div>
+    <p class="tools-sub">Wetter für eine Minute festlegen:</p>
+    <div id="weather-buttons" class="test-buttons"></div>
     <p class="tools-sub">Zufällige Münze einer Stufe:</p>
     <div id="test-buttons" class="test-buttons"></div>
     <button id="reset-btn" class="reset-btn" type="button">Index zurücksetzen</button>
@@ -77,6 +104,7 @@
     <p class="reveal-banner" aria-hidden="true"></p>
     <h2 id="reveal-name" class="reveal-name"></h2>
     <p class="reveal-tier"></p>
+    <p class="reveal-mutation" hidden></p>
     <p class="reveal-meta"></p>
     <button class="reveal-continue" type="button" hidden>In den Index</button>
   </div>

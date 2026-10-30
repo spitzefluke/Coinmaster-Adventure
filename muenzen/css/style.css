@@ -236,6 +236,24 @@ button:focus-visible, .card:focus-visible, .dropbar button:focus-visible {
 .detail-facts div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--velvet-2); }
 .detail-facts dt { font: 500 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .detail-facts dd { margin: 0; font: 600 var(--step-1)/1.2 var(--font-data); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mutation-picker { display: grid; gap: 6px; }
+.mutation-label { margin: 0; font: 500 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mutation-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+  background: var(--velvet-2);
+  color: var(--ink);
+  font: 500 0.8125rem/1 var(--font-body);
+  cursor: pointer;
+}
+.mchip span { font-family: var(--font-data); font-size: 0.75rem; color: var(--mut, var(--muted)); }
+.mchip[data-mutation]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mut); box-shadow: 0 0 8px var(--mut); }
+.mchip[aria-pressed="true"] { border-color: var(--mut, var(--brass)); background: color-mix(in srgb, var(--mut, var(--brass)) 16%, var(--velvet-2)); }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .detail-actions button {
   padding: 9px 16px;

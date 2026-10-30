@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TIERS, COINS, tierById, rollCoin } from './coins.js';
 import { createCoin, makeEnvironment, makeScene } from './coinFactory.js';
+import { MUTATIONS, mutationById, mutatedValue, fmtMultiplier } from './mutations.js';
 
 // Die Umschrift wird auf Canvas gezeichnet – vorher die Schrift laden (mit Zeitlimit).
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -209,15 +210,52 @@ function initDetail() {
   dScene = makeScene(makeEnvironment(dRenderer));
 }
 
+let dData = null, dMutation = null;
+
+function buildDetailCoin() {
+  const spin = dCoin ? dCoin.spinner.rotation.y : 0;
+  if (dCoin) {
+    dScene.remove(dCoin.root);
+    dCoin.dispose();
+  }
+  dCoin = createCoin(dData, { resolution: 1024, mutation: dMutation });
+  dCoin.spinner.rotation.y = spin;
+  dScene.add(dCoin.root);
+  const tier = tierById[dData.tier];
+  const m = dMutation && mutationById[dMutation];
+  document.getElementById('detail-value').textContent = m ? `${mutatedValue(tier.value, m)} Taler (${fmtMultiplier(m)})` : `${tier.value} Taler`;
+  for (const chip of mutationChips.children) chip.setAttribute('aria-pressed', String((chip.dataset.mutation || null) === dMutation));
+}
+
+// Auswahl „Mutation ansehen“: Keine + alle Mutationen
+const mutationChips = document.getElementById('mutation-chips');
+for (const m of [null, ...MUTATIONS]) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'mchip';
+  if (m) {
+    chip.dataset.mutation = m.id;
+    chip.style.setProperty('--mut', m.color);
+    chip.innerHTML = `${m.name} <span>${fmtMultiplier(m)}</span>`;
+  } else chip.textContent = 'Keine';
+  chip.addEventListener('click', () => {
+    dMutation = m ? m.id : null;
+    buildDetailCoin();
+  });
+  mutationChips.append(chip);
+}
+
 function openDetail(coin, drawn) {
   if (!dRenderer) initDetail();
   if (dCoin) {
     dScene.remove(dCoin.root);
     dCoin.dispose();
+    dCoin = null;
   }
   const tier = tierById[coin.tier];
-  dCoin = createCoin(coin, { resolution: 1024 });
-  dScene.add(dCoin.root);
+  dData = coin;
+  dMutation = null;
+  buildDetailCoin();
   dControls.reset();
   dCamera.position.set(0, 0, CAMERA_DISTANCE[tier.index] + 0.4);
   dControls.update();
@@ -228,7 +266,6 @@ function openDetail(coin, drawn) {
   document.getElementById('detail-tier').style.setProperty('--tier', tier.color);
   document.getElementById('detail-name').textContent = coin.name;
   document.getElementById('detail-text').textContent = coin.text;
-  document.getElementById('detail-value').textContent = `${tier.value} Taler`;
   document.getElementById('detail-chance').textContent = fmtPct(coinChance(coin));
   document.getElementById('detail-odds').textContent = fmtInt(100 / coinChance(coin));
   document.getElementById('detail-drawn').hidden = !drawn;

@@ -70,6 +70,24 @@ Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
 Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede einzelne Münze abspielen
 (mit „Nächste Münze“ der Reihe nach durch alle 50) oder eine zufällige Münze einer Stufe.
 
+## Wetter & Mutationen
+
+Während eines Wetters kann jede gezogene Münze mutieren (`muenzen/js/mutations.js`).
+Die Mutation bleibt dauerhaft an der Münze sichtbar und multipliziert ihren Wert.
+
+| Wetter | Mutation | Chance | Wert | Effekt |
+|---|---|---|---|---|
+| Regen | Nass | 25 % | ×1,1 | Tropfen auf der Prägung, Wasser tropft herunter |
+| Erdbeben | Gestein | 18 % | ×1,25 | Felsbrocken am Rand, steinerner Belag, Staub |
+| Disconacht | Disco | 12 % | ×1,5 | kreisende bunte Discolichter, Discokugel, Lichtpunkte |
+| Blutmond | Dämonisch | 8 % | ×2 | Hörner, rote Aura, Höllenflammen, Blutring |
+| Neonsturm | Augenkrebs | 5 % | ×2,5 | grelle Neonfarben laufen durch (ohne schnelles Blitzen) |
+| Datensturm | Hacked | 3 % | ×3 | grüner Code-Regen, Glitch-Zucken, HACKED-Schild |
+
+Im Münzindex wechselt das Wetter jede Minute (nach Häufigkeit gewichtet, Klar ist am
+häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesamt gibt es
+50 × 6 = 300. Im Münzkabinett lässt sich jede Mutation in der Detailansicht ansehen.
+
 ## Eierhalle
 
 Sieben Eier (`eier/js/eggs.js`), jedes mit eigener Schale und 3D-Extras:
@@ -111,6 +129,7 @@ Dann <http://localhost:8000> öffnen.
 - `muenzen/` – Münzkabinett:
   - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv-Schlüssel, Metallfarben, Text)
   - `js/emblems.js` – die 50 Prägemotive als Relief-Zeichnungen
+  - `js/mutations.js` – Wetter, Mutationen, Chancen, Multiplikatoren und ihre Effekte
   - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
   - `js/main.js` – Galerie, Filter, Detailansicht, „Münze ziehen“
   - `css/style.css` – Gestaltung

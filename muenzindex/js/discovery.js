@@ -14,6 +14,7 @@
 
 import * as THREE from 'three';
 import { TIERS, tierById } from '../../muenzen/js/coins.js';
+import { mutationById, mutatedValue, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { createCoin, makeEnvironment, makeScene, glowSprite, raysTexture, sparkTexture } from '../../muenzen/js/coinFactory.js';
 
 const TAU = Math.PI * 2;
@@ -259,6 +260,7 @@ export class Discovery {
       name: el.querySelector('.reveal-name'),
       tier: el.querySelector('.reveal-tier'),
       meta: el.querySelector('.reveal-meta'),
+      mutation: el.querySelector('.reveal-mutation'),
       hint: el.querySelector('.reveal-hint'),
       done: el.querySelector('.reveal-continue'),
     };
@@ -347,7 +349,7 @@ export class Discovery {
   }
 
   // Spielt die Animation. Gibt ein Promise zurück, das beim Schließen erfüllt wird.
-  play(coin, { number, total, chance, eyebrow = 'Neue Münze entdeckt' }) {
+  play(coin, { number, total, chance, eyebrow = 'Neue Münze entdeckt', mutation = null }) {
     const tier = tierById[coin.tier];
     const k = tier.index;
     this.k = k;
@@ -365,7 +367,7 @@ export class Discovery {
       this.scene.remove(this.coin.root);
       this.coin.dispose();
     }
-    this.coin = createCoin(coin, { resolution: 1024 });
+    this.coin = createCoin(coin, { resolution: 1024, mutation });
     this.coin.root.visible = false;
     this.scene.add(this.coin.root);
 
@@ -392,6 +394,12 @@ export class Discovery {
     });
     u.tier.textContent = tier.name;
     u.meta.textContent = `#${String(number).padStart(2, '0')} von ${total} · ${chance} Drop-Chance`;
+    const m = mutation && mutationById[mutation];
+    u.mutation.hidden = !m;
+    if (m) {
+      u.mutation.style.setProperty('--mut', m.color);
+      u.mutation.textContent = `Mutation: ${m.name} · ${fmtMultiplier(m)} · Wert ${mutatedValue(tier.value, m)} Taler`;
+    }
     u.text.classList.remove('is-shown', 'is-glitch');
     u.done.hidden = true;
     u.hint.hidden = false;
