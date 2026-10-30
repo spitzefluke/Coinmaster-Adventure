@@ -1,6 +1,7 @@
 // Seltenheitsstufen und alle 50 Münzen der Coinmaster-Sammlung.
 //
-// Jede Stufe bestimmt Form, Rand, Material und Effekte einer Münze.
+// Alle Münzen sind rund. Jede Stufe bestimmt Rand (glatt/geriffelt), das gravierte
+// Muster im Feld (field), das Zierband am Rand (border), Material und Effekte.
 // Jede Münze bringt ihr eigenes Motiv (Emoji als Prägevorlage), ihre
 // Metallfarben und eine kurze Beschreibung mit.
 //
@@ -9,52 +10,52 @@
 export const TIERS = [
   {
     id: 'normal', name: 'Normal', value: '1', chance: 40,
-    color: '#c27a4a', shape: 'circle', edge: 'plain',
+    color: '#c27a4a', field: 'plain', border: 'beads', edge: 'plain',
     fx: [],
   },
   {
     id: 'selten', name: 'Selten', value: '5', chance: 25,
-    color: '#c9d1d9', shape: 'circle', edge: 'reeded',
+    color: '#c9d1d9', field: 'lathe', border: 'rope', edge: 'reeded',
     fx: [],
   },
   {
     id: 'sehr-selten', name: 'Sehr selten', value: '10', chance: 15,
-    color: '#f2c14e', shape: 'circle', edge: 'reeded',
+    color: '#f2c14e', field: 'sunburst', border: 'laurel', edge: 'reeded',
     fx: ['shine'],
   },
   {
     id: 'episch', name: 'Episch', value: '25', chance: 9,
-    color: '#b072ff', shape: 'octagon', edge: 'plain',
+    color: '#b072ff', field: 'crosshatch', border: 'zigzag', edge: 'plain',
     fx: ['glow', 'gems'],
   },
   {
     id: 'legendaer', name: 'Legendär', value: '50', chance: 5,
-    color: '#ff8a3d', shape: 'scallop', edge: 'plain',
+    color: '#ff8a3d', field: 'vortex', border: 'beads', edge: 'plain',
     fx: ['glow', 'embers'],
   },
   {
     id: 'mystisch', name: 'Mystisch', value: '100', chance: 3,
-    color: '#3ee6c8', shape: 'reuleaux', edge: 'plain',
+    color: '#3ee6c8', field: 'sigil', border: 'runes', edge: 'plain',
     fx: ['glow', 'runes', 'orbitRing'],
   },
   {
     id: 'engelsgleich', name: 'Engelsgleich', value: '250', chance: 1.5,
-    color: '#fff4d6', shape: 'flower', edge: 'plain',
+    color: '#fff4d6', field: 'glory', border: 'feathers', edge: 'plain',
     fx: ['glow', 'wings', 'halo', 'sparkles'],
   },
   {
     id: 'goettlich', name: 'Göttlich', value: '500', chance: 0.9,
-    color: '#ffd23f', shape: 'sun', edge: 'plain',
+    color: '#ffd23f', field: 'sunburst', border: 'rays', edge: 'plain',
     fx: ['glow', 'rays', 'sparkles'],
   },
   {
     id: 'galaktisch', name: 'Galaktisch', value: '1000', chance: 0.5,
-    color: '#7b6cff', shape: 'gear', edge: 'plain',
+    color: '#7b6cff', field: 'orbits', border: 'stars', edge: 'plain',
     fx: ['glow', 'nebula', 'planets', 'sparkles'],
   },
   {
     id: 'unerreichbar', name: 'Unerreichbar', value: '∞', chance: 0.1,
-    color: '#ff5fd2', shape: 'star', edge: 'plain',
+    color: '#ff5fd2', field: 'guilloche', border: 'diamonds', edge: 'plain',
     fx: ['glow', 'rainbow', 'rings', 'sparkles', 'rays'],
   },
 ];
@@ -182,7 +183,7 @@ export const COINS = [
     text: 'Enthält ungefähr 200 Milliarden Sterne.' },
 
   // ── Unerreichbar (2) ─────────────────────────────────────────
-  { tier: 'unerreichbar', name: 'Ewigkeit', emblem: '♾️', metal: ['#ffffff', '#d7c8ff', '#2a1d52'],
+  { tier: 'unerreichbar', name: 'Ewigkeit', emblem: '⌛', metal: ['#ffffff', '#d7c8ff', '#2a1d52'],
     text: 'Hat weder Anfang noch Ende. Noch nie hat sie jemand gezogen.' },
   { tier: 'unerreichbar', name: 'Die Allmächtige Kartoffel', emblem: '🥔', metal: ['#fffbe8', '#ffd7a0', '#5a3410'],
     text: 'Der Ursprung allen Reichtums. Niemand weiß, warum.' },

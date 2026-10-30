@@ -24,18 +24,21 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 
 50 3D-Münzen in 10 Seltenheitsstufen, gerendert mit three.js.
 
-| Stufe | Münzen | Drop-Chance | Form | Effekte |
-|---|---|---|---|---|
-| Normal | 9 | 40 % | rund | – |
-| Selten | 8 | 25 % | rund, geriffelter Rand | – |
-| Sehr selten | 7 | 15 % | rund, geriffelter Rand | Glanzblitz |
-| Episch | 6 | 9 % | Achteck | Glühen, Edelsteine |
-| Legendär | 5 | 5 % | Wellenrand | Glühen, Funkenflug |
-| Mystisch | 4 | 3 % | Reuleaux-Siebeneck | leuchtende Prägung, Runenringe |
-| Engelsgleich | 4 | 1,5 % | Blüte | Flügel, Heiligenschein, Funkeln |
-| Göttlich | 3 | 0,9 % | Sonne | Strahlenkranz, Funkeln |
-| Galaktisch | 2 | 0,5 % | Zahnrad | Nebel-Prägung, Planetenbahn |
-| Unerreichbar | 2 | 0,1 % | Stern | Regenbogen, Ringe, Strahlen |
+Alle Münzen sind rund. Die Prägung hat einen spiegelpolierten Grund und ein mattiertes Relief
+mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster und Zierband.
+
+| Stufe | Münzen | Drop-Chance | Rand | Gravur im Feld | Zierband | Effekte |
+|---|---|---|---|---|---|---|
+| Normal | 9 | 40 % | glatt | – | Perlkreis | – |
+| Selten | 8 | 25 % | geriffelt | Drehrillen | Kordel | – |
+| Sehr selten | 7 | 15 % | geriffelt | Strahlenkranz | Lorbeer | Glanzblitz |
+| Episch | 6 | 9 % | glatt | Rautengitter | Zickzack | Glühen, Edelsteine |
+| Legendär | 5 | 5 % | glatt | Feuerwirbel | Perlkreis | Glühen, Funkenflug |
+| Mystisch | 4 | 3 % | glatt | Bannkreis (Siebenstern) | Runen | leuchtende Prägung, Runenringe |
+| Engelsgleich | 4 | 1,5 % | glatt | Gloriole | Federn | Flügel, Heiligenschein, Funkeln |
+| Göttlich | 3 | 0,9 % | glatt | Strahlenkranz | Strahlen | Strahlenkranz, Funkeln |
+| Galaktisch | 2 | 0,5 % | glatt | Umlaufbahnen, Sterne | Sterne | Nebel, Planetenbahn |
+| Unerreichbar | 2 | 0,1 % | glatt | Guilloche-Rosette | Rauten | Regenbogen, Ringe, Strahlen |
 
 ## Lokal starten
 
@@ -54,8 +57,8 @@ Dann <http://localhost:8000> öffnen.
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
 - `muenzen/` – Münzkabinett:
   - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv, Metallfarben, Text)
-  - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Kontur, Prägung, Effekte)
+  - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
   - `js/main.js` – Galerie, Filter, Detailansicht, „Münze ziehen“
   - `css/style.css` – Gestaltung
 
-Neue Münze: einen Eintrag in `COINS` ergänzen. Form und Effekte kommen automatisch aus der Stufe.
+Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte kommen automatisch aus der Stufe.
