@@ -1,0 +1,93 @@
+/* Startseite – baut auf theme.css auf. Kopf mit drehender Zufallsmünze, darunter die Bereiche als Kacheln. */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
+  display: grid;
+  gap: 48px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.hero-text { min-width: 0; }
+.eyebrow {
+  margin: 0 0 6px;
+  font: 600 var(--step--1)/1.2 var(--font-data);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+h1 {
+  margin: 0;
+  font: 700 var(--step-4)/0.95 var(--font-display);
+  text-wrap: balance;
+}
+.lede { margin: 16px 0 0; color: var(--muted); max-width: 52ch; }
+
+.hero-coin { margin: 0; display: grid; gap: 8px; justify-items: center; min-width: 0; }
+.hero-stage { display: block; width: min(360px, 100%); aspect-ratio: 1; max-width: 100%; border-radius: 50%; }
+.hero-stage canvas { display: block; width: 100%; height: 100%; }
+.hero-coin figcaption { font: 400 var(--step--1)/1.3 var(--font-data); color: var(--muted); text-align: center; }
+
+.areas { display: grid; gap: 16px; }
+.areas h2 {
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--seam);
+  font: 700 var(--step-2)/1 var(--font-display);
+}
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+}
+
+.area {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--seam);
+  border-radius: 14px;
+  background: var(--velvet);
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+a.area { transition: border-color 0.2s ease, transform 0.2s ease; }
+a.area:hover { border-color: var(--brass); transform: translateY(-2px); }
+.area.is-planned { background: transparent; border-style: dashed; color: var(--muted); }
+
+.area-status {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font: 600 0.6875rem/1.2 var(--font-data);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.is-planned .area-status { color: var(--muted); }
+.area h3 { margin: 0; font: 700 var(--step-2)/1 var(--font-display); }
+.area p { margin: 0; color: var(--muted); }
+.area-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font: 400 0.75rem/1.3 var(--font-data); color: var(--muted); }
+.area-go { font-weight: 600; color: var(--brass); }
+
+.foot { color: var(--muted); font-size: var(--step--1); }
+
+@media (max-width: 720px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero-stage { width: min(280px, 100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.area { transition: none; }
+}

@@ -6,9 +6,8 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { TIERS, COINS, tierById } from './coins.js';
-import { createCoin } from './coinFactory.js';
+import { createCoin, makeEnvironment, makeScene } from './coinFactory.js';
 
 // Die Umschrift wird auf Canvas gezeichnet – vorher die Schrift laden (mit Zeitlimit).
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -19,26 +18,6 @@ const fmtInt = (n) => Math.round(n).toLocaleString('de-DE');
 
 const tierCount = Object.fromEntries(TIERS.map((t) => [t.id, COINS.filter((c) => c.tier === t.id).length]));
 const coinChance = (coin) => tierById[coin.tier].chance / tierCount[coin.tier];
-
-// ── Gemeinsame Szene-Bausteine ───────────────────────────────────────────────
-
-function makeEnvironment(renderer) {
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
-  pmrem.dispose();
-  return env;
-}
-
-function makeScene(env) {
-  const scene = new THREE.Scene();
-  scene.environment = env;
-  const key = new THREE.DirectionalLight('#fff4e0', 2.2);
-  key.position.set(2.5, 3, 4);
-  const rim = new THREE.DirectionalLight('#9fb4ff', 1.2);
-  rim.position.set(-3, -1, -2);
-  scene.add(key, rim, new THREE.AmbientLight('#ffffff', 0.25));
-  return scene;
-}
 
 // ── DOM aufbauen ─────────────────────────────────────────────────────────────
 
