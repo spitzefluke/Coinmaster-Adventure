@@ -19,8 +19,15 @@ export const BEREICHE = [
     eckdaten: ['50 Fächer', '10 Animationsstufen', 'Spielvorschau'],
   },
   {
-    titel: 'Nächster Bereich',
-    text: 'Hier erscheint, was wir als Nächstes bauen.',
+    titel: 'Eierhalle',
+    text: 'Sieben Eier für die Haustiere, vom Normal Egg bis zum Release Egg. Jedes mit eigenem Look und einer Schlüpf-Animation, die mit der Seltenheit wächst.',
+    href: 'eier/',
+    status: 'vorschau',
+    eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
+  },
+  {
+    titel: 'Haustiere',
+    text: 'Die Wesen, die aus den Eiern schlüpfen.',
     status: 'geplant',
     eckdaten: [],
   },
