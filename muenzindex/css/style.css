@@ -156,7 +156,32 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .tools { display: grid; gap: 10px; justify-items: start; padding-top: 20px; border-top: 1px solid var(--seam); }
 .tools h2 { margin: 0; font: 700 var(--step-1)/1 var(--font-display); }
 .tools p { margin: 0; color: var(--muted); font-size: var(--step--1); max-width: 62ch; }
+.tools-sub { margin-top: 6px !important; }
 .test-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.coin-picker { display: grid; gap: 6px; width: 100%; max-width: 640px; }
+.coin-picker label { font: 600 0.75rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.coin-picker-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.coin-picker select {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--seam);
+  border-radius: 10px;
+  background: var(--velvet);
+  color: var(--ink);
+  font: 500 var(--step-0)/1.2 var(--font-body);
+}
+.picker-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+  background: var(--velvet-2);
+  color: var(--ink);
+  font: 600 var(--step--1)/1 var(--font-body);
+  cursor: pointer;
+}
+.picker-btn:hover { border-color: var(--brass); }
+.picker-btn-main { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }
 .chip {
   display: inline-flex;
   align-items: center;

@@ -63,7 +63,8 @@ Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
 | Galaktisch | Sternen-Warp |
 | Unerreichbar | Regenbogen-Glitch |
 
-Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede Stufe abspielen.
+Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede einzelne Münze abspielen
+(mit „Nächste Münze“ der Reihe nach durch alle 50) oder eine zufällige Münze einer Stufe.
 
 ## Lokal starten
 
