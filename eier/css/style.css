@@ -123,7 +123,9 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .detail-info h2 { margin: 0; font: 700 clamp(2rem, 4vw, 3rem)/1 var(--font-display); text-wrap: balance; }
 .detail-text { margin: 0; color: var(--muted); max-width: 42ch; }
 .detail-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0; }
-.detail-info .hatch-btn { justify-self: start; padding: 13px 22px; font-size: var(--step-0); }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.detail-info .hatch-btn { padding: 13px 22px; font-size: var(--step-0); }
+.detail-actions .look-btn { width: 44px; height: 44px; padding: 0; font-size: 1.25rem; }
 .detail-hint { margin: 0; font-size: 0.75rem; color: var(--muted); }
 .detail-close {
   position: absolute;

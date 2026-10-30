@@ -91,12 +91,28 @@ chipsEl.prepend(allChip);
 let activeTier = 'all';
 function setFilter(id) {
   activeTier = activeTier === id ? 'all' : id;
-  for (const [tid, sec] of Object.entries(sections)) sec.hidden = activeTier !== 'all' && activeTier !== tid;
+  applySearch();
   for (const el of [...chipsEl.children, ...dropbar.children]) {
     const t = el.dataset.tier;
     el.setAttribute('aria-pressed', String(activeTier === 'all' ? t === 'all' || el.parentElement === dropbar : t === activeTier));
   }
 }
+// Suche nach Namen, kombiniert mit dem Stufen-Filter
+const search = document.getElementById('search');
+function applySearch() {
+  const q = search.value.trim().toLocaleLowerCase('de-DE');
+  for (const e of cards) e.card.hidden = !!q && !e.coin.name.toLocaleLowerCase('de-DE').includes(q);
+  let shown = 0;
+  for (const [tid, sec] of Object.entries(sections)) {
+    const visible = cards.filter((e) => e.coin.tier === tid && !e.card.hidden).length;
+    sec.hidden = (activeTier !== 'all' && activeTier !== tid) || visible === 0;
+    if (!sec.hidden) shown += visible;
+  }
+  document.getElementById('no-results').hidden = shown > 0;
+  document.getElementById('search-count').textContent = q || activeTier !== 'all' ? `${shown} von ${COINS.length} Münzen` : '';
+}
+search.addEventListener('input', applySearch);
+
 for (const el of [...chipsEl.children, ...dropbar.children]) el.addEventListener('click', () => setFilter(el.dataset.tier));
 setFilter('all');
 
@@ -292,7 +308,20 @@ function sizeDetail() {
 addEventListener('resize', () => detailOpen && sizeDetail());
 
 detail.addEventListener('click', (e) => e.target.closest('[data-close]') && closeDetail());
-addEventListener('keydown', (e) => e.key === 'Escape' && detailOpen && closeDetail());
+addEventListener('keydown', (e) => {
+  if (!detailOpen) return;
+  if (e.key === 'Escape') closeDetail();
+  else if (e.key === 'ArrowRight' && !e.target.closest('input, select')) stepDetail(1);
+  else if (e.key === 'ArrowLeft' && !e.target.closest('input, select')) stepDetail(-1);
+});
+
+// Vorherige/nächste Münze in der Detailansicht
+function stepDetail(dir) {
+  const i = COINS.indexOf(dData);
+  openDetail(COINS[(i + dir + COINS.length) % COINS.length], false);
+}
+document.getElementById('prev-btn').addEventListener('click', () => stepDetail(-1));
+document.getElementById('next-btn').addEventListener('click', () => stepDetail(1));
 
 document.getElementById('flip-btn').addEventListener('click', () => {
   const y = dCoin.spinner.rotation.y;

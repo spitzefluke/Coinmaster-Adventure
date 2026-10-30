@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roblox Studio · Coinmaster Adventure</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Export</p>
+    <h1>Nach Roblox Studio übertragen</h1>
+    <p class="lede">Münzen, Mutationen, Wetter und Eier als fertiges Paket für Roblox Studio: alle Daten, die Ziehen-Logik, 3D-Modelle mit Effekten und die Motive.</p>
+  </header>
+
+  <!-- Sperre -->
+  <section id="gate" class="gate" aria-labelledby="gate-title">
+    <div class="gate-lock" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="28" height="28"><path fill="currentColor" d="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4Zm2 0h4V5a2 2 0 1 0-4 0v2Z"/></svg>
+    </div>
+    <h2 id="gate-title">Nur mit Code</h2>
+    <p>Gib den Freischalt-Code ein, um den Export zu öffnen.</p>
+    <form id="gate-form" class="gate-form" autocomplete="off">
+      <label class="visually-hidden" for="code">Code</label>
+      <input id="code" name="code" type="password" inputmode="numeric" placeholder="Code" maxlength="20" required>
+      <button class="btn btn-primary" type="submit">Freischalten</button>
+    </form>
+    <p id="gate-msg" class="gate-msg" role="alert"></p>
+  </section>
+
+  <!-- Export -->
+  <main id="export" class="export" hidden>
+    <div class="unlocked-bar">
+      <p><span class="dot" aria-hidden="true"></span> Freigeschaltet</p>
+      <button id="lock-btn" class="btn" type="button">Wieder sperren</button>
+    </div>
+
+    <dl id="summary" class="summary"></dl>
+
+    <ol class="steps">
+      <li class="step">
+        <div class="step-head">
+          <span class="step-no">1</span>
+          <div>
+            <h2>Installer holen</h2>
+            <p>Ein einziges Skript, das in Studio alles anlegt. Es wird aus dem aktuellen Stand der Webseite erzeugt.</p>
+          </div>
+        </div>
+        <div class="step-actions">
+          <button id="copy-installer" class="btn btn-primary" type="button">Installer kopieren</button>
+          <button id="download-installer" class="btn" type="button">Als .lua herunterladen</button>
+          <span id="installer-size" class="muted-note"></span>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-head">
+          <span class="step-no">2</span>
+          <div>
+            <h2>In Roblox Studio einfügen</h2>
+            <p>Dein Spiel in Roblox Studio öffnen, dann:</p>
+          </div>
+        </div>
+        <ol class="howto">
+          <li>Oben auf <strong>Ansicht</strong> (View) klicken und <strong>Befehlsleiste</strong> (Command Bar) einschalten.</li>
+          <li>Den kopierten Installer in die Befehlsleiste einfügen und <kbd>Enter</kbd> drücken.</li>
+          <li>Im Ausgabe-Fenster erscheint „Coinmaster Adventure importiert“.</li>
+        </ol>
+        <div class="result">
+          <p class="result-title">Danach findest du in Studio:</p>
+          <ul>
+            <li><code>ReplicatedStorage › CoinmasterAdventure</code> mit allen Modulen und fertigen Modellen in <code>Coins</code> und <code>Eggs</code></li>
+            <li><code>Workspace › CoinmasterShowcase</code> mit allen Münzen und Eiern zum Ansehen</li>
+          </ul>
+          <p class="muted-note">Ein erneuter Import ersetzt beides. <kbd>Strg</kbd>+<kbd>Z</kbd> macht ihn rückgängig.</p>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-head">
+          <span class="step-no">3</span>
+          <div>
+            <h2>Motive hochladen <span class="optional">optional</span></h2>
+            <p>Roblox kann keine Bilder aus Skripten laden. Lade die 50 Motive als Decals hoch und trag die Asset-IDs in <code>CoinData</code> bei <code>DecalId</code> ein. Dann zeigen die Münzen ihr Motiv auf beiden Seiten.</p>
+          </div>
+        </div>
+        <div class="step-actions">
+          <button id="download-emblems" class="btn" type="button">Motive als ZIP herunterladen</button>
+          <span id="emblem-status" class="muted-note" aria-live="polite"></span>
+        </div>
+      </li>
+    </ol>
+
+    <section class="modules" aria-labelledby="modules-title">
+      <div class="modules-head">
+        <h2 id="modules-title">Enthaltene Module</h2>
+        <p>Lieber einzeln einfügen? Jedes Modul als eigenes ModuleScript in einen Ordner legen.</p>
+      </div>
+      <div id="module-tabs" class="module-tabs" role="tablist" aria-label="Module"></div>
+      <div class="code-wrap">
+        <button id="copy-module" class="btn code-copy" type="button">Kopieren</button>
+        <pre id="module-code" class="code" tabindex="0"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">Der Code-Schutz läuft im Browser und hält Neugierige ab, ist aber kein echter Zugriffsschutz.</footer>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

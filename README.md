@@ -8,6 +8,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
+| Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
 | Haustiere | – | geplant |
 
 ## Online stellen (GitHub Pages)
@@ -109,6 +110,21 @@ Platzhalter). Je seltener das Ei, desto mehr Stöße und desto größer die Expl
 etwa 5 s beim Normal Egg bis 11 s beim Release Egg. Mit `#debug` in der Adresse ist die
 Animation zum Testen als `window.hatch` erreichbar.
 
+## Nach Roblox Studio übertragen
+
+`roblox/` erzeugt aus den Daten der Webseite ein Paket für Roblox Studio. Die Seite ist mit
+einem Code gesperrt. Der Code steht nur als SHA-256-Hash in `roblox/js/main.js`. Das hält
+Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im Browser läuft.
+
+- **Installer** (`roblox/js/luau.js`): ein Skript für die Befehlsleiste von Studio. Es legt
+  `ReplicatedStorage › CoinmasterAdventure` mit 7 ModuleScripts an (CoinData, MutationData,
+  EggData, Gacha, CoinBuilder, MutationFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
+  und einen Showcase im Workspace mit allen Münzen und Eiern.
+- **Motive als ZIP**: die 50 Prägemotive als PNG zum Hochladen als Decal. Die Asset-IDs
+  kommen in `CoinData` bei `DecalId`.
+
+Ändern sich Münzen, Mutationen oder Eier auf der Webseite, einfach neu exportieren.
+
 ## Lokal starten
 
 ES-Module brauchen einen lokalen Server:
@@ -122,6 +138,8 @@ Dann <http://localhost:8000> öffnen.
 ## Aufbau
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
+- `js/nav.js` – gemeinsame Navigation und „Nach oben“-Knopf für alle Seiten
+- `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
 - `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggFactory.js` (Eier), `js/hatch.js` (Schlüpfen)

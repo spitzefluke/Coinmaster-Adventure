@@ -108,6 +108,34 @@ button:focus-visible, .card:focus-visible, .dropbar button:focus-visible {
 .chip[aria-pressed="true"] { border-color: var(--tier, var(--brass)); background: var(--velvet-2); }
 .chip[aria-pressed="false"] { opacity: 0.55; }
 
+/* ── Suche ── */
+.search-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  max-width: 420px;
+  padding: 0 14px;
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+  background: var(--velvet);
+  color: var(--muted);
+}
+.search:focus-within { border-color: var(--brass); color: var(--brass); }
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 500 var(--step-0)/1.2 var(--font-body);
+  outline: none;
+}
+.search-count { margin: 0; color: var(--muted); font: 400 var(--step--1)/1.2 var(--font-data); }
+.no-results { margin: 0; padding: 24px; border: 1px dashed var(--seam); border-radius: 14px; color: var(--muted); text-align: center; }
+
 /* ── Vitrine ── */
 .cabinet { display: grid; gap: 48px; }
 .tier-section { display: grid; gap: 16px; }
