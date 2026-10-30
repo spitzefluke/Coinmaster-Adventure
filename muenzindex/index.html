@@ -49,7 +49,16 @@
 
   <section class="tools" aria-labelledby="tools-title">
     <h2 id="tools-title">Animationen testen</h2>
-    <p>Spielt die Entdeckung einer zufälligen Münze der gewählten Stufe ab, ohne sie in den Index aufzunehmen.</p>
+    <p>Spielt die Entdeckung ab, ohne die Münze in den Index aufzunehmen.</p>
+    <div class="coin-picker">
+      <label for="test-coin">Einzelne Münze</label>
+      <div class="coin-picker-row">
+        <select id="test-coin"></select>
+        <button id="test-play" class="picker-btn picker-btn-main" type="button">Abspielen</button>
+        <button id="test-next" class="picker-btn" type="button">Nächste Münze →</button>
+      </div>
+    </div>
+    <p class="tools-sub">Zufällige Münze einer Stufe:</p>
     <div id="test-buttons" class="test-buttons"></div>
     <button id="reset-btn" class="reset-btn" type="button">Index zurücksetzen</button>
   </section>

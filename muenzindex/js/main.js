@@ -215,6 +215,24 @@ for (const t of TIERS) {
   testEl.append(b);
 }
 
+// Einzelne Münze: Auswahl nach Stufe gruppiert, „Nächste“ geht der Reihe nach durch alle 50
+const picker = document.getElementById('test-coin');
+for (const t of TIERS) {
+  const group = document.createElement('optgroup');
+  group.label = `${t.name} · ${fmtPct(t.chance)}`;
+  COINS.forEach((c, i) => {
+    if (c.tier !== t.id) return;
+    group.append(new Option(`#${String(i + 1).padStart(2, '0')} ${c.name}`, i));
+  });
+  picker.append(group);
+}
+document.getElementById('test-play').addEventListener('click', () => !busy && play(+picker.value, { preview: true }));
+document.getElementById('test-next').addEventListener('click', () => {
+  if (busy) return;
+  picker.value = String((+picker.value + 1) % COINS.length);
+  play(+picker.value, { preview: true });
+});
+
 const resetBtn = document.getElementById('reset-btn');
 let armed = null;
 resetBtn.addEventListener('click', () => {
