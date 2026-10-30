@@ -10,6 +10,7 @@
 // Metallfarben umgefärbt wird, damit es wie geprägt aussieht.
 
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { tierById } from './coins.js';
 
 const DEPTH = 0.12;
@@ -451,6 +452,25 @@ function wingShape() {
   s.bezierCurveTo(0.42, -0.4, 0.18, -0.36, 0.08, -0.18);
   s.lineTo(0, 0.3);
   return s;
+}
+
+// ── Bühne ─────────────────────────────────────────────────────────────────────
+export function makeEnvironment(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  pmrem.dispose();
+  return env;
+}
+
+export function makeScene(env) {
+  const scene = new THREE.Scene();
+  scene.environment = env;
+  const key = new THREE.DirectionalLight('#fff4e0', 2.2);
+  key.position.set(2.5, 3, 4);
+  const rim = new THREE.DirectionalLight('#9fb4ff', 1.2);
+  rim.position.set(-3, -1, -2);
+  scene.add(key, rim, new THREE.AmbientLight('#ffffff', 0.25));
+  return scene;
 }
 
 // ── Münze ────────────────────────────────────────────────────────────────────
