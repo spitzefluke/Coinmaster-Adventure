@@ -1,0 +1,45 @@
+// Linien-Icons (24er-Raster, Strich in currentColor) für HUD, Menüs und Skills.
+
+const P = {
+  coin: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="5"/><path d="M12 9.5v5"/>',
+  coins: '<ellipse cx="9" cy="8" rx="6" ry="3"/><path d="M3 8v4c0 1.7 2.7 3 6 3s6-1.3 6-3V8"/><path d="M9 15v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4c0-1.6-2.4-2.9-5.5-3"/>',
+  tree: '<circle cx="12" cy="5" r="2.2"/><circle cx="5.5" cy="18" r="2.2"/><circle cx="12" cy="18" r="2.2"/><circle cx="18.5" cy="18" r="2.2"/><path d="M12 7.2v8.6M12 10l-5.6 5.9M12 10l5.6 5.9"/>',
+  bag: '<path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  shop: '<path d="M4 9h16l-1.2 10.5a1.5 1.5 0 0 1-1.5 1.5H6.7a1.5 1.5 0 0 1-1.5-1.5L4 9Z"/><path d="M8 9l2-5M16 9l-2-5M4 9l1-3h14l1 3"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.5"/>',
+  book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 10.5h6"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  egg: '<path d="M12 3c3.8 0 7 6 7 10.5A7 7 0 0 1 5 13.5C5 9 8.2 3 12 3Z"/>',
+  robux: '<path d="M12 2.5 20.5 7.3v9.4L12 21.5 3.5 16.7V7.3L12 2.5Z"/><rect x="9" y="9" width="6" height="6" rx="0.5"/>',
+  sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4v-5Z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  music: '<path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  skip: '<path d="M5 6v12l8-6-8-6ZM13 6v12l8-6-8-6Z"/>',
+  numbers: '<path d="M4 8h3v10M4 18h6M13 8h5l-4 5a3 3 0 1 1-1.5 4.5"/>',
+  // Skills
+  boot: '<path d="M7 3h5v8l6.5 3.5A2.5 2.5 0 0 1 20 17v1H4V9.5L7 3Z"/><path d="M4 18v2h16v-2"/>',
+  magnet: '<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4H6Z"/><path d="M6 8h4M14 8h4"/>',
+  jump: '<path d="M12 21V8M7 12l5-5 5 5"/><path d="M5 3h14"/>',
+  radar: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/><circle cx="16" cy="14.5" r="1" fill="currentColor"/>',
+  compass: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>',
+  clover: '<path d="M12 12c-3-3-6.5-1.5-6.5 1S8 17 12 12Zm0 0c3-3 6.5-1.5 6.5 1S16 17 12 12Zm0 0c-3 3-1.5 6.5 1 6.5M12 12c-3-3-1.5-6.5 1-6.5S16 8 12 12Zm0 0c-3-3-6.5-4.5-6.5-1"/><path d="M12 12c1 4 2.5 6.5 5 8.5"/>',
+  gem: '<path d="M6.5 4h11L21 9l-9 11L3 9l3.5-5Z"/><path d="M3 9h18M9 4l3 16 3-16"/>',
+  double: '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>',
+  cloud: '<path d="M7 18h10a4 4 0 0 0 .4-8A5.5 5.5 0 0 0 6.6 9.2 4.4 4.4 0 0 0 7 18Z"/>',
+  hand: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5a6 6 0 0 1-4.6-2.2L3 16.5a1.5 1.5 0 0 1 2.2-2L8 17"/>',
+  tag: '<path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8" r="1.5"/>',
+  flame: '<path d="M12 21a6 6 0 0 0 6-6c0-4-3-6-4-10-2 2-2.5 4-2.5 5.5C10 9 9 8 8.5 6.5 7 8.5 6 11 6 15a6 6 0 0 0 6 6Z"/>',
+  paw: '<circle cx="7" cy="9" r="1.8"/><circle cx="10.5" cy="5.8" r="1.8"/><circle cx="14.5" cy="5.8" r="1.8"/><circle cx="18" cy="9" r="1.8"/><path d="M12.5 11c-3 0-5.5 3.5-5.5 6a2.5 2.5 0 0 0 3.2 2.4c1.5-.4 3.1-.4 4.6 0A2.5 2.5 0 0 0 18 17c0-2.5-2.5-6-5.5-6Z"/>',
+  eggs: '<path d="M9 5c2.5 0 4.5 4 4.5 7a4.5 4.5 0 0 1-9 0C4.5 9 6.5 5 9 5Z"/><path d="M15.5 9c2.2 0 4 3.4 4 6a4 4 0 0 1-6.6 3"/>',
+  nest: '<path d="M3 13c0 4 4 7 9 7s9-3 9-7"/><path d="M3 13h18M5 16h14"/><path d="M12 13c-2.5 0-3.5-2.5-3.5-4.5S10 4 12 4s3.5 2.5 3.5 4.5S14.5 13 12 13Z"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+  auto: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/><circle cx="12" cy="12" r="2.5"/>',
+  portal: '<ellipse cx="12" cy="12" rx="5.5" ry="8.5"/><path d="M12 7.5c2 1.5 2 7.5 0 9"/><path d="M3 12h3M18 12h3"/>',
+};
+
+export const icon = (name, size = 20) =>
+  `<svg class="ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || P.coin}</svg>`;

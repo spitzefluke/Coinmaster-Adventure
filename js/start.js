@@ -1,6 +1,7 @@
 // Startseite: Bereichs-Kacheln und eine drehende Zufallsmünze aus dem Münzkabinett.
 
 import * as THREE from 'three';
+import { pixelRatio } from './settings.js';
 import { BEREICHE } from './bereiche.js';
 import { COINS, tierById } from '../muenzen/js/coins.js';
 import { createCoin, makeEnvironment, makeScene } from '../muenzen/js/coinFactory.js';
@@ -30,7 +31,7 @@ await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) 
 
 const canvas = document.getElementById('hero-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(pixelRatio());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 const scene = makeScene(makeEnvironment(renderer));

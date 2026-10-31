@@ -26,16 +26,25 @@ export const BEREICHE = [
     eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
   },
   {
+    titel: 'Haustiere',
+    text: '49 Haustiere, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Sie schlüpfen jetzt auch in der Eierhalle.',
+    href: 'haustiere/',
+    status: 'vorschau',
+    eckdaten: ['49 Tiere', '14 episch', 'Export für Blender'],
+  },
+  {
+    titel: 'Spiel-Oberfläche',
+    text: 'HUD, Skilltree mit vier Ästen, Inventar, Shop und Einstellungen. Mit simulierten Funden zum Ausprobieren der Skills.',
+    href: 'spiel/',
+    status: 'vorschau',
+    eckdaten: ['21 Skills', 'HUD', '4 Fenster'],
+  },
+  {
     titel: 'Nach Roblox Studio übertragen',
     text: 'Münzen, Mutationen, Wetter und Eier als fertiges Paket für Roblox Studio: Daten, Ziehen-Logik, 3D-Modelle und Motive.',
     href: 'roblox/',
     status: 'code',
     eckdaten: ['Installer-Skript', 'ModuleScripts', 'Motive als PNG'],
   },
-  {
-    titel: 'Haustiere',
-    text: 'Die Wesen, die aus den Eiern schlüpfen.',
-    status: 'geplant',
-    eckdaten: [],
-  },
+
 ];

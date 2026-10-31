@@ -5,6 +5,7 @@
 // Münzen werden erst gebaut, wenn ihre Karte in die Nähe des sichtbaren Bereichs kommt.
 
 import * as THREE from 'three';
+import { pixelRatio } from '../../js/settings.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TIERS, COINS, tierById, rollCoin } from './coins.js';
 import { createCoin, makeEnvironment, makeScene } from './coinFactory.js';
@@ -120,7 +121,7 @@ setFilter('all');
 
 const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ canvas: stage, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(pixelRatio());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.setClearColor(0x000000, 0);
@@ -218,7 +219,7 @@ let flipTarget = null;
 
 function initDetail() {
   dRenderer = new THREE.WebGLRenderer({ canvas: detailCanvas, antialias: true, alpha: true });
-  dRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  dRenderer.setPixelRatio(pixelRatio());
   dRenderer.toneMapping = THREE.ACESFilmicToneMapping;
   dRenderer.toneMappingExposure = 1.05;
   dCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
