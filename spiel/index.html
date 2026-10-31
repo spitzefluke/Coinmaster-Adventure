@@ -24,9 +24,9 @@
     <div class="masthead-text">
       <p class="eyebrow">Spielvorschau</p>
       <h1>Spiel-Oberfläche</h1>
-      <p class="lede">HUD, Skilltree, Inventar, Shop und Einstellungen, so wie sie im Spiel aussehen sollen. Mit „Münze suchen“ simulierst du einen Fund in der Welt, damit du die Skills ausprobieren kannst.</p>
+      <p class="lede">HUD, Welten, Skilltree, Inventar, Shop und Einstellungen, so wie sie im Spiel aussehen sollen. Mit „Münze suchen“ simulierst du einen Fund in der Welt, damit du die Skills ausprobieren kannst.</p>
     </div>
-    <p class="keys" aria-label="Tastenkürzel"><kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
+    <p class="keys" aria-label="Tastenkürzel"><kbd>W</kbd> Welten <kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
   </header>
 
   <section id="game" class="game" aria-label="Spielansicht">
@@ -38,6 +38,7 @@
       <div class="hill hill-front"></div>
       <div class="glints"></div>
       <div class="weather-fx"></div>
+      <div id="tp-flash" class="tp-flash"></div>
     </div>
 
     <div class="hud">
@@ -53,7 +54,7 @@
         </div>
       </div>
 
-      <p id="world-name" class="world-name">Welt 1 · Pilzwald</p>
+      <p id="world-name" class="world-name"></p>
 
       <div class="hud-right">
         <p class="taler" aria-live="polite"><span class="taler-coin" aria-hidden="true"></span><span id="taler">0</span> <span class="taler-label">Taler</span></p>
@@ -62,6 +63,7 @@
       </div>
 
       <nav class="hud-menu" aria-label="Spielmenü">
+        <button class="menu-btn" type="button" data-panel="welten"><span class="menu-ico"></span><span class="menu-label">Welten</span><span class="menu-badge" hidden></span></button>
         <button class="menu-btn" type="button" data-panel="skills"><span class="menu-ico"></span><span class="menu-label">Skills</span><span class="menu-badge" hidden></span></button>
         <button class="menu-btn" type="button" data-panel="inventar"><span class="menu-ico"></span><span class="menu-label">Inventar</span><span class="menu-badge" hidden></span></button>
         <button class="menu-btn" type="button" data-panel="shop"><span class="menu-ico"></span><span class="menu-label">Shop</span><span class="menu-badge" hidden></span></button>
@@ -71,7 +73,7 @@
 
       <div class="hud-bottom">
         <button id="find-btn" class="find-btn" type="button"><span class="find-ico" aria-hidden="true"></span>Münze suchen</button>
-        <p class="find-hint">Simuliert einen Fund in der Welt</p>
+        <p id="find-hint" class="find-hint">Simuliert einen Fund in der Welt</p>
       </div>
 
       <ol id="feed" class="feed" aria-live="polite" aria-label="Letzte Funde"></ol>
@@ -104,6 +106,7 @@
   <section class="notes" aria-labelledby="notes-title">
     <h2 id="notes-title">So hängt alles zusammen</h2>
     <ul>
+      <li><strong>Welten:</strong> Im Menü „Welten“ kaufst du neue Welten und teleportierst dich. Jede Welt macht seltene Münzen wahrscheinlicher und alle Münzen mehr wert. Portale zu neuen Planeten brauchen Wiedergeburten.</li>
       <li><strong>Level:</strong> Jeder Fund gibt Erfahrung, seltene Münzen viel mehr. Jedes Level bringt einen Skillpunkt, jedes fünfte zwei.</li>
       <li><strong>Skills:</strong> Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer Beutel wirken hier schon. Die Erkundungs-Skills wirken später beim Suchen in den Welten.</li>
       <li><strong>Inventar:</strong> Gefundene Münzen landen hier. Verkaufen bringt Taler, im Shop gibt es dafür Eier und Boosts.</li>

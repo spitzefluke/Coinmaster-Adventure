@@ -9,6 +9,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
+| Welten | `welten/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
 
@@ -125,12 +126,39 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %) mit eig
 
 In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfchance.
 
+## Welten
+
+`welten/` zeigt die Weltkarte: vier Planeten mit ihren Welten, jede als drehbare 3D-Insel mit
+eigener Landschaft, Himmel und Partikeln (Pollen, Glühwürmchen, Schnee, Glut, Streusel, Sterne,
+Sturm, Blasen …).
+
+| Planet | Welten | Weg dorthin |
+|---|---|---|
+| Planet 1 · Heimatplanet | Normal, Wald, Stadt, Eis, Lava, Höhle, Candy | Startplanet |
+| Planet 2 · Weltraum | Mond, Neptun, Mars, Saturn, Alien, Sonne | Rakete: Candy + 1 Wiedergeburt |
+| Planet 3 · Tiefsee | Korallenriff, Muschelland, Atlantis, Coming soon | Tiefsee-Portal: Sonne + 3 Wiedergeburten |
+| Planet 4 | Coming soon | später |
+
+- In jeder Welt findet man **alle Münzen**. Spätere Welten erhöhen die Chance auf seltene Stufen
+  (`luck`) und den Münzwert (`value`).
+- Welten kauft man pro Planet der Reihe nach mit **Talern**.
+- **Wiedergeburt:** kostet Taler (1 Mio., danach jeweils ×4), setzt die Taler auf 0 und macht
+  jede Münze dauerhaft 50 % mehr wert. Welten, Münzen, Level und Skills bleiben.
+- `welten/js/worlds.js` – Daten (Preise, Boni, Portale, Wiedergeburt), `js/worldFactory.js` –
+  baut die 3D-Inseln, `js/thumbs.js` – Vorschaubilder.
+
+In der Spiel-Oberfläche gibt es dazu das Fenster **Welten** (Taste W) zum Kaufen, Teleportieren,
+Öffnen von Portalen und für die Wiedergeburt. Die aktuelle Welt läuft dort als 3D-Hintergrund.
+Der Knopf „+ Test-Taler“ gibt es nur in der Vorschau, damit man spätere Welten ausprobieren kann.
+
 ## Spiel-Oberfläche
 
 `spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
 
-- **HUD:** Level mit EP-Balken, freie Skillpunkte, Taler, Wetter mit Countdown, aktive Boosts,
-  Menü (Skills, Inventar, Shop, Index, Optionen) und „Münze suchen“, das einen Fund in der Welt simuliert.
+- **HUD:** aktuelle Welt als 3D-Hintergrund, Level mit EP-Balken, freie Skillpunkte, Taler, Wetter
+  mit Countdown, aktive Boosts, Menü (Welten, Skills, Inventar, Shop, Index, Optionen) und
+  „Münze suchen“, das einen Fund in der aktuellen Welt simuliert.
+- **Welten:** Teleport-Menü je Planet, Portale und Wiedergeburt (siehe oben).
 - **Skilltree** (`spiel/js/skills.js`): Kern plus vier Äste mit je fünf Skills (Erkundung,
   Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
   jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer
@@ -152,13 +180,16 @@ einem Code gesperrt. Der Code steht nur als SHA-256-Hash in `roblox/js/main.js`.
 Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im Browser läuft.
 
 - **Installer** (`roblox/js/luau.js`): ein Skript für die Befehlsleiste von Studio. Es legt
-  `ReplicatedStorage › CoinmasterAdventure` mit 7 ModuleScripts an (CoinData, MutationData,
-  EggData, Gacha, CoinBuilder, MutationFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
+  `ReplicatedStorage › CoinmasterAdventure` mit 8 ModuleScripts an (CoinData, MutationData,
+  EggData, WorldData, Gacha, CoinBuilder, MutationFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
   und einen Showcase im Workspace mit allen Münzen und Eiern.
 - **Motive als ZIP**: die 50 Prägemotive als PNG zum Hochladen als Decal. Die Asset-IDs
   kommen in `CoinData` bei `DecalId`.
 
-Ändern sich Münzen, Mutationen oder Eier auf der Webseite, einfach neu exportieren.
+`WorldData` enthält Planeten, Welten (Preis, Glück, Münzwert), Portale und die Wiedergeburt.
+Die 3D-Inseln selbst werden in Studio gebaut; die Daten dafür kommen aus diesem Modul.
+
+Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 
 ## Lokal starten
 
@@ -175,6 +206,7 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
+- `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)

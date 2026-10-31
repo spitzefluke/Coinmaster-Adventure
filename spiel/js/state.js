@@ -5,6 +5,7 @@
 import { COINS, TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, rollMutation, weatherAt } from '../../muenzen/js/mutations.js';
 import { SKILLS, skillById } from './skills.js';
+import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier } from '../../welten/js/worlds.js';
 
 export { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../../js/settings.js';
 
@@ -44,6 +45,10 @@ function sampleState() {
     eggs: { normal: 2, wald: 1 },
     boosts: {},
     autoSell: [],
+    world: 'normal',
+    worlds: ['normal', 'wald'],
+    portals: ['p1'],
+    rebirths: 0,
     sample: true,
   };
 }
@@ -81,6 +86,52 @@ export function canLearn(s, id) {
 export const slots = (s) => BASE_SLOTS + effect(s, 'beutel');
 export const eggPrice = (s, base) => Math.round(base * (1 - effect(s, 'feilscher') / 100));
 
+// ── Welten, Portale, Wiedergeburt ────────────────────────────────────────────
+
+export const currentWorld = (s) => worldById[s.world] || worldById.normal;
+export const ownsWorld = (s, id) => s.worlds.includes(id);
+export const portalOpen = (s, planetId) => s.portals.includes(planetId);
+
+// Gibt einen Grund zurück, wenn die Welt (noch) nicht gekauft werden kann
+export function canBuyWorld(s, id) {
+  const w = worldById[id];
+  if (w.soon) return 'Coming soon';
+  if (ownsWorld(s, id)) return 'Schon gekauft';
+  if (!portalOpen(s, w.planet)) return `Erst das Portal öffnen`;
+  const list = playable(w.planet), i = list.indexOf(w);
+  if (i > 0 && !ownsWorld(s, list[i - 1].id)) return `Erst „${list[i - 1].name}“ kaufen`;
+  if (s.taler < w.price) return 'Zu wenig Taler';
+  return null;
+}
+
+// Bedingungen für ein Portal: [Text, erfüllt?]
+export function portalChecks(s, planetId) {
+  const p = planetById[planetId];
+  if (!p.portal) return [];
+  const prev = PLANETS[PLANETS.indexOf(p) - 1];
+  const last = playable(prev.id).at(-1);
+  const n = p.portal.rebirths;
+  return [
+    [`„${last.name}“ auf ${prev.name} gekauft`, ownsWorld(s, last.id)],
+    [`${n} Wiedergeburt${n > 1 ? 'en' : ''} (du hast ${s.rebirths})`, s.rebirths >= n],
+  ];
+}
+export function canOpenPortal(s, planetId) {
+  const p = planetById[planetId];
+  if (p.soon) return 'Kommt mit einem späteren Update';
+  if (portalOpen(s, planetId)) return 'Schon offen';
+  const miss = portalChecks(s, planetId).find(([, ok]) => !ok);
+  return miss ? `Fehlt: ${miss[0]}` : null;
+}
+
+export const rebirthCost = (s) => REBIRTH.cost(s.rebirths);
+export const canRebirth = (s) => (s.taler >= rebirthCost(s) ? null : 'Zu wenig Taler');
+export function rebirth(s) {
+  s.taler = 0;
+  s.rebirths++;
+}
+export { rebirthMultiplier };
+
 // ── Boosts ───────────────────────────────────────────────────────────────────
 
 export const BOOSTS = [
@@ -103,7 +154,7 @@ export function coinValue(entry) {
 
 function rollTier(s, random) {
   // Glück verschiebt Chance von „Normal“ zu den seltenen Stufen
-  const luck = effect(s, 'glueckspilz') / 100 + (boostActive(s, 'glueck') ? 1 : 0);
+  const luck = effect(s, 'glueckspilz') / 100 + (boostActive(s, 'glueck') ? 1 : 0) + currentWorld(s).luck;
   const weights = TIERS.map((t, i) => (i === 0 ? t.chance : t.chance * (1 + luck)));
   const total = weights.reduce((a, b) => a + b, 0);
   let r = random() * total;
@@ -125,7 +176,9 @@ export function findCoin(s, random = Math.random) {
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
   const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
   const xp = (5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1);
-  return { id, mutation: mutation?.id || null, count, xp, upgraded, bonus: 1 + effect(s, 'wert') / 100 };
+  // Wert: Skill „Wertvoller Fund“ × Welt × Wiedergeburten
+  const value = (1 + effect(s, 'wert') / 100) * currentWorld(s).value * rebirthMultiplier(s.rebirths);
+  return { id, mutation: mutation?.id || null, count, xp, upgraded, bonus: Math.round(value * 1000) / 1000 };
 }
 
 // Erfahrung gutschreiben; gibt die Zahl der neuen Level zurück

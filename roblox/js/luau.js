@@ -1,4 +1,4 @@
-// Erzeugt aus den Daten der Webseite (Münzen, Stufen, Mutationen, Wetter, Eier) Luau-Code
+// Erzeugt aus den Daten der Webseite (Münzen, Stufen, Mutationen, Wetter, Eier, Welten) Luau-Code
 // für Roblox Studio: einzelne ModuleScripts und ein Installer-Skript für die Befehlsleiste.
 //
 // Alles ist reiner Text – keine Abhängigkeit vom Browser, damit es auch in Node prüfbar ist.
@@ -606,12 +606,91 @@ end
 return EggBuilder
 `;
 
+export function worldDataSource({ PLANETS, WORLDS, REBIRTH }) {
+  const planets = PLANETS.map((p) =>
+    fields({
+      Id: str(p.id),
+      Name: str(p.name),
+      Title: str(p.title),
+      Color: color(p.color),
+      Portal: p.portal ? `{ Name = ${str(p.portal.name)}, Rebirths = ${num(p.portal.rebirths)} }` : 'nil',
+      ComingSoon: p.soon ? 'true' : undefined,
+    }),
+  );
+  const worlds = WORLDS.map((w) =>
+    w.soon
+      ? fields({ Id: str(w.id), Planet: str(w.planet), Name: str(w.name), ComingSoon: 'true' })
+      : fields({
+          Id: str(w.id),
+          Planet: str(w.planet),
+          Name: str(w.name),
+          Price: num(w.price),
+          Luck: num(w.luck),
+          Value: num(w.value),
+          Ground: color(w.ground),
+          Accent: color(w.accent),
+          Text: str(w.text),
+        }),
+  );
+  return `${HEADER('Planeten, Welten, Wiedergeburt')}
+-- Welten kauft man pro Planet der Reihe nach mit Talern. Ein Portal zum nächsten Planeten öffnet
+-- sich, wenn die letzte Welt des vorigen Planeten gekauft ist und genug Wiedergeburten da sind.
+-- Luck wirkt wie der Skill „Glückspilz“ (0.5 = +50 % auf alle Stufen außer Normal),
+-- Value multipliziert den Münzwert.
+
+local WorldData = {}
+
+WorldData.Planets = ${list(planets)}
+
+WorldData.Worlds = ${list(worlds)}
+
+WorldData.ById = {}
+for _, world in ipairs(WorldData.Worlds) do
+	WorldData.ById[world.Id] = world
+end
+WorldData.PlanetById = {}
+for _, planet in ipairs(WorldData.Planets) do
+	WorldData.PlanetById[planet.Id] = planet
+end
+
+-- Spielbare Welten eines Planeten in Kaufreihenfolge
+function WorldData.OfPlanet(planetId)
+	local result = {}
+	for _, world in ipairs(WorldData.Worlds) do
+		if world.Planet == planetId and not world.ComingSoon then
+			table.insert(result, world)
+		end
+	end
+	return result
+end
+
+WorldData.Rebirth = {
+	BaseCost = ${num(REBIRTH.cost(0))},
+	CostFactor = ${num(REBIRTH.cost(1) / REBIRTH.cost(0))},
+	Bonus = ${num(REBIRTH.bonus)},
+}
+
+-- Kosten der nächsten Wiedergeburt, wenn man schon n hat
+function WorldData.RebirthCost(n)
+	return WorldData.Rebirth.BaseCost * WorldData.Rebirth.CostFactor ^ n
+end
+
+-- Münzwert-Faktor bei n Wiedergeburten
+function WorldData.RebirthMultiplier(n)
+	return 1 + WorldData.Rebirth.Bonus * n
+end
+
+return WorldData
+`;
+}
+
 // Alle ModuleScripts in der Reihenfolge, in der sie im Ordner liegen
 export function moduleSources(data) {
   return [
     { name: 'CoinData', source: coinDataSource(data) },
     { name: 'MutationData', source: mutationDataSource(data) },
     { name: 'EggData', source: eggDataSource(data) },
+    { name: 'WorldData', source: worldDataSource(data) },
     { name: 'Gacha', source: GACHA },
     { name: 'CoinBuilder', source: COIN_BUILDER },
     { name: 'MutationFx', source: MUTATION_FX },

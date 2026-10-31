@@ -1,0 +1,250 @@
+// Weltkarte: Planeten wählen, Welten als Karten mit Vorschaubild, große drehbare 3D-Ansicht.
+
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
+import { buildWorld } from './worldFactory.js';
+import { worldThumb } from './thumbs.js';
+import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
+
+const $ = (id) => document.getElementById(id);
+let planet = 'p1';
+let current = WORLDS[0];
+
+// ── 3D-Ansicht ──────────────────────────────────────────────────────────────
+
+const canvas = $('viewer');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = loadSettings().quality !== 'niedrig';
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(pixelRatio());
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300);
+camera.position.set(12, 7.5, 14);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 8;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.62;
+controls.target.set(0, 0.6, 0);
+controls.autoRotate = !skipAnimations();
+controls.autoRotateSpeed = 0.6;
+let idleTimer;
+controls.addEventListener('start', () => {
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+});
+controls.addEventListener('end', () => {
+  idleTimer = setTimeout(() => (controls.autoRotate = !skipAnimations()), 4000);
+});
+
+let built = null;
+function showWorld(w) {
+  current = w;
+  $('soon-cover').hidden = !w.soon;
+  if (built) {
+    built.dispose();
+    built = null;
+  }
+  if (!w.soon) {
+    const fewer = loadSettings().fewerParticles;
+    built = buildWorld(w, { particles: fewer ? 0.4 : 1, shadows: renderer.shadowMap.enabled });
+  }
+  canvas.classList.remove('is-in');
+  void canvas.offsetWidth;
+  canvas.classList.add('is-in');
+  renderInfo();
+  renderStrip();
+  history.replaceState(null, '', `#${w.id}`);
+}
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (canvas.width !== Math.round(w * renderer.getPixelRatio()) || canvas.height !== Math.round(h * renderer.getPixelRatio())) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    // Abstand so wählen, dass die ganze Insel auch in schmale Ansichten passt
+    const fit = 7.6 / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
+    const off = camera.position.clone().sub(controls.target);
+    off.setLength(Math.min(30, Math.max(17, fit)));
+    camera.position.copy(controls.target).add(off);
+  }
+}
+
+// nur zeichnen, wenn die Ansicht zu sehen ist
+let visible = true;
+new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(canvas);
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta(), t = clock.elapsedTime;
+  if (!visible || !built) return;
+  resize();
+  controls.update();
+  built.update(t, dt);
+  renderer.render(built.scene, camera);
+});
+
+// ── Planeten ────────────────────────────────────────────────────────────────
+
+function renderPlanets() {
+  $('planets').innerHTML = PLANETS.map((p, i) => {
+    const n = worldsOf(p.id).filter((w) => !w.soon).length;
+    const sub = p.soon ? 'Coming soon' : `${n} Welt${n === 1 ? '' : 'en'}${p.portal ? ` · ${p.portal.name}` : ''}`;
+    return `${i ? '<span class="orbit" aria-hidden="true"></span>' : ''}
+      <button type="button" class="planet${p.soon ? ' is-soon' : ''}" data-planet="${p.id}" aria-pressed="${p.id === planet}"
+        style="--c:${p.color};--g:${p.glow};--s1:${p.surface[0]};--s2:${p.surface[1]};--s3:${p.surface[2]}">
+        <span class="planet-ball" aria-hidden="true"></span>
+        <span class="planet-name">${p.name}</span>
+        <span class="planet-title">${p.title}</span>
+        <span class="planet-sub">${sub}</span>
+      </button>`;
+  }).join('');
+  // gewählten Planeten in der (auf dem Handy scrollbaren) Leiste sichtbar machen
+  const bar = $('planets'), sel = bar.querySelector('[aria-pressed="true"]');
+  if (sel && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = sel.offsetLeft - (bar.clientWidth - sel.offsetWidth) / 2;
+  $('planets').querySelectorAll('[data-planet]').forEach((b) =>
+    b.addEventListener('click', () => {
+      planet = b.dataset.planet;
+      renderPlanets();
+      showWorld(worldsOf(planet)[0]);
+    }),
+  );
+}
+
+// ── Info ────────────────────────────────────────────────────────────────────
+
+function unlockText(w) {
+  const p = planetById[w.planet];
+  const list = worldsOf(w.planet);
+  const i = list.indexOf(w);
+  if (w.soon) return 'Kommt mit einem späteren Update';
+  const parts = [];
+  if (i === 0 && p.portal) parts.push(`${p.portal.name}: ${p.portal.rebirths} Wiedergeburt${p.portal.rebirths > 1 ? 'en' : ''}`);
+  if (i > 0) parts.push(`nach „${list[i - 1].name}“`);
+  if (w.price) parts.push(`${fmtPrice(w.price)} Taler`);
+  return parts.length ? parts.join(' · ') : 'Startwelt, von Anfang an offen';
+}
+
+function renderInfo() {
+  const w = current, p = planetById[w.planet];
+  const info = $('info');
+  info.style.setProperty('--c', w.soon ? p.color : w.accent);
+  if (w.soon) {
+    info.innerHTML = `
+      <p class="info-eyebrow">${p.name} · ${p.title}</p>
+      <h2>Coming soon</h2>
+      <p class="info-text">Hier entsteht eine neue Welt. Was sie bringt, bleibt noch ein Geheimnis.</p>
+      <dl class="facts"><div><dt>Freischalten</dt><dd>${unlockText(w)}</dd></div></dl>`;
+    return;
+  }
+  const n = worldsOf(w.planet).indexOf(w) + 1;
+  info.innerHTML = `
+    <p class="info-eyebrow">${p.name} · Welt ${n}</p>
+    <h2>${w.name}</h2>
+    <p class="info-text">${w.text}</p>
+    <dl class="facts">
+      <div><dt>Preis</dt><dd>${w.price ? `${fmtPrice(w.price)} Taler` : 'Gratis'}</dd></div>
+      <div><dt>Glück</dt><dd>${fmtLuck(w)}</dd></div>
+      <div><dt>Münzwert</dt><dd>${fmtValue(w)}</dd></div>
+      <div><dt>Münzen</dt><dd>alle 50</dd></div>
+      <div class="wide"><dt>Freischalten</dt><dd>${unlockText(w)}</dd></div>
+    </dl>
+    <div class="info-nav">
+      <button type="button" class="btn" data-step="-1" aria-label="Vorige Welt">← Vorige</button>
+      <button type="button" class="btn" data-step="1" aria-label="Nächste Welt">Nächste →</button>
+    </div>`;
+  info.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => step(+b.dataset.step)));
+}
+
+function step(d) {
+  const all = WORLDS;
+  const i = (all.indexOf(current) + d + all.length) % all.length;
+  const w = all[i];
+  if (w.planet !== planet) {
+    planet = w.planet;
+    renderPlanets();
+  }
+  showWorld(w);
+}
+
+// ── Kartenleiste ────────────────────────────────────────────────────────────
+
+function renderStrip() {
+  const p = planetById[planet];
+  $('strip-title').innerHTML = `${p.name} <span>· ${p.title}</span>`;
+  const list = worldsOf(planet);
+  const strip = $('strip');
+  strip.style.setProperty('--c', p.color);
+  strip.innerHTML = list
+    .map((w, i) => `
+      <li>
+        <button type="button" class="card${w.soon ? ' is-soon' : ''}" data-world="${w.id}" aria-pressed="${w === current}" style="--c:${w.accent || p.color}">
+          <span class="card-img">${w.soon ? '<span class="card-q">?</span>' : `<img alt="" data-thumb="${w.id}">`}</span>
+          <span class="card-num">${w.soon ? '···' : `Welt ${i + 1}`}</span>
+          <span class="card-name">${w.name}</span>
+          <span class="card-price">${w.soon ? 'Bald' : w.price ? `${fmtPrice(w.price)} Taler` : 'Startwelt'}</span>
+        </button>
+      </li>`)
+    .join('');
+  strip.querySelectorAll('[data-world]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.world;
+      showWorld(worldById[id]);
+      strip.querySelector(`[data-world="${id}"]`)?.focus({ preventScroll: true });
+      // 3D-Ansicht ins Bild holen, falls sie weggescrollt ist
+      const r = canvas.getBoundingClientRect();
+      if (r.top < 0) canvas.closest('.stage').scrollIntoView({ behavior: skipAnimations() ? 'auto' : 'smooth', block: 'start' });
+    }),
+  );
+  strip.querySelectorAll('img[data-thumb]').forEach(async (img) => {
+    const url = await worldThumb(worldById[img.dataset.thumb]);
+    if (url) img.src = url;
+  });
+}
+
+// ── Erklärungen ─────────────────────────────────────────────────────────────
+
+$('rebirth-text').textContent = `Für ${fmtPrice(REBIRTH.cost(0))} Taler (danach jeweils viermal so viel) wirst du wiedergeboren: Deine Taler sind weg, aber jede Münze ist für immer ${Math.round(REBIRTH.bonus * 100)} % mehr wert. Welten, Münzen, Level und Skills bleiben.`;
+$('portal-text').textContent = PLANETS.filter((p) => p.portal && !p.soon)
+  .map((p) => `${p.name} (${p.title}): ${p.portal.name}, braucht die letzte Welt des vorigen Planeten und ${p.portal.rebirths} Wiedergeburt${p.portal.rebirths > 1 ? 'en' : ''}.`)
+  .join(' ') + ' Planet 4 kommt mit einem späteren Update.';
+$('rebirth-table').innerHTML = `
+  <caption>Wiedergeburten</caption>
+  <thead><tr><th scope="col">Nr.</th><th scope="col">Kosten</th><th scope="col">Münzwert danach</th><th scope="col">Öffnet</th></tr></thead>
+  <tbody>${[0, 1, 2, 3, 4, 5]
+    .map((n) => {
+      const opens = PLANETS.filter((p) => p.portal?.rebirths === n + 1).map((p) => `${p.portal.name} → ${p.name}`).join(', ');
+      return `<tr><td>${n + 1}</td><td>${fmtPrice(REBIRTH.cost(n))} Taler</td><td>×${rebirthMultiplier(n + 1).toLocaleString('de-DE')}</td><td>${opens || '–'}</td></tr>`;
+    })
+    .join('')}</tbody>`;
+
+// ── Start ───────────────────────────────────────────────────────────────────
+
+const fromHash = worldById[location.hash.slice(1)];
+if (fromHash) {
+  current = fromHash;
+  planet = fromHash.planet;
+}
+renderPlanets();
+showWorld(current);
+addEventListener('hashchange', () => {
+  const w = worldById[location.hash.slice(1)];
+  if (!w || w === current) return;
+  planet = w.planet;
+  renderPlanets();
+  showWorld(w);
+});
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowRight') step(1);
+  if (e.key === 'ArrowLeft') step(-1);
+});
+// Vorschaubilder der anderen Planeten schon im Hintergrund vorbereiten
+setTimeout(() => WORLDS.filter((w) => !w.soon).forEach((w) => worldThumb(w)), 1500);

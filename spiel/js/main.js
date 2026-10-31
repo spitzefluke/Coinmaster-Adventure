@@ -3,21 +3,24 @@
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, weatherAt, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber } from './state.js';
+import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld } from './state.js';
+import { planetById, worldById } from '../../welten/js/worlds.js';
+import { createWorldBg } from './worldBg.js';
 import { coinThumb } from './thumbs.js';
 import { icon } from './icons.js';
 import { skillPanel } from './panels/skilltree.js';
 import { inventarPanel } from './panels/inventar.js';
 import { shopPanel } from './panels/shop.js';
 import { settingsPanel } from './panels/einstellungen.js';
+import { weltenPanel } from './panels/welten.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
 const state = loadState();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-const PANELS = { skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel };
-const MENU_ICONS = { skills: 'tree', inventar: 'bag', shop: 'shop', einstellungen: 'gear' };
+const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel };
+const MENU_ICONS = { welten: 'globe', skills: 'tree', inventar: 'bag', shop: 'shop', einstellungen: 'gear' };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -113,8 +116,11 @@ const ctx = {
   applySettings: () => {
     settings = loadSettings();
     applyWorldSettings();
+    worldBg.refresh(currentWorld(state));
     renderHud();
   },
+  teleport,
+  flash,
 };
 
 function renderPanel() {
@@ -145,7 +151,7 @@ function openPanel(id) {
   if (openId === id) return closePanel();
   lastFocus = document.activeElement;
   openId = id;
-  openTab = PANELS[id].tabs?.[0].id ?? null;
+  openTab = PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
   $('panel-layer').hidden = false;
   $('panel').dataset.panel = id;
   document.querySelectorAll('.menu-btn[data-panel]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.panel === id)));
@@ -172,7 +178,7 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'escape' && openId) return closePanel();
-  const map = { k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen' };
+  const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen' };
   if (map[key]) {
     e.preventDefault();
     openPanel(map[key]);
@@ -274,8 +280,48 @@ function applyWorldSettings() {
   $('world').classList.toggle('calm', settings.fewerParticles);
 }
 
+const worldBg = createWorldBg($('world'));
+
+function renderWorldName() {
+  const w = currentWorld(state), p = planetById[w.planet];
+  $('world-name').innerHTML = `<span>${p.name}</span> ${w.name}`;
+  $('world-name').style.setProperty('--c', w.accent);
+  $('find-hint').textContent = `Simuliert einen Fund in „${w.name}“`;
+  $('world').dataset.world = w.id;
+}
+
+// Kurzes Aufleuchten über der Welt (Teleport, Portal, Wiedergeburt)
+function flash(color = '#ffffff') {
+  if (settings.skipAnimations) return;
+  const el = $('tp-flash');
+  el.style.setProperty('--c', color);
+  el.classList.remove('is-on');
+  void el.offsetWidth;
+  el.classList.add('is-on');
+}
+
+function teleport(id) {
+  const w = worldById[id];
+  if (!w || !ownsWorld(state, id)) return;
+  state.world = id;
+  save();
+  closePanel();
+  flash(w.accent);
+  // Welt mitten im Aufleuchten tauschen
+  setTimeout(() => {
+    worldBg.set(w);
+    renderWorldName();
+  }, settings.skipAnimations ? 0 : 260);
+  sound(0.8);
+  toast(`Teleportiert nach ${w.name}`, w.accent);
+}
+
 applyWorldSettings();
+worldBg.set(currentWorld(state));
+renderWorldName();
 renderHud();
+// Link von der Weltkarte: spiel/#welten öffnet das Teleport-Menü
+if (location.hash === '#welten') openPanel('welten');
 renderWeather();
 setInterval(() => {
   renderWeather();

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Welten · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Weltkarte</p>
+      <h1>Welten</h1>
+      <p class="lede">Vier Planeten, sechzehn Welten. Jede ist eine schwebende Insel mit eigener Landschaft und eigenem Wetter. Gefunden werden überall alle Münzen, aber je weiter du reist, desto seltener und wertvoller sind sie.</p>
+    </div>
+    <a class="btn btn-primary" href="../spiel/#welten">Im Spiel teleportieren</a>
+  </header>
+
+  <nav id="planets" class="planets" aria-label="Planeten"></nav>
+
+  <section class="stage" aria-live="polite">
+    <div class="viewer">
+      <canvas id="viewer" aria-label="3D-Ansicht der Welt"></canvas>
+      <p class="viewer-hint">Ziehen zum Drehen · Mausrad zum Zoomen</p>
+      <div id="soon-cover" class="soon-cover" hidden><span>?</span><p>Coming soon</p></div>
+    </div>
+    <article id="info" class="info"></article>
+  </section>
+
+  <section class="strip-wrap" aria-labelledby="strip-title">
+    <h2 id="strip-title" class="strip-title"></h2>
+    <ol id="strip" class="strip"></ol>
+  </section>
+
+  <section class="notes" aria-labelledby="notes-title">
+    <h2 id="notes-title">So kommst du weiter</h2>
+    <div class="notes-grid">
+      <div class="note"><h3>Welten kaufen</h3><p>Innerhalb eines Planeten kaufst du die Welten der Reihe nach mit Talern. Jede neue Welt erhöht die Chance auf seltene Münzen und macht jede Münze mehr wert.</p></div>
+      <div class="note"><h3>Wiedergeburt</h3><p id="rebirth-text"></p></div>
+      <div class="note"><h3>Portale</h3><p id="portal-text"></p></div>
+    </div>
+    <table class="rebirth-table" id="rebirth-table"></table>
+    <p class="muted">Preise, Boni und die Zahl der Wiedergeburten sind Vorschläge und lassen sich in <code>welten/js/worlds.js</code> anpassen.</p>
+  </section>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>
