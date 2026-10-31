@@ -159,6 +159,58 @@ ${COINS.map((c, i) => `${String(i + 1).padStart(2, '0')}  ${c.name}`).join('\n')
   btn.disabled = false;
 });
 
+// Welten als Roblox-Modelle (.rbxmx) in einem ZIP
+document.getElementById('download-worlds').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const status = document.getElementById('world-status');
+  btn.disabled = true;
+  try {
+    status.textContent = 'Lade 3D-Bausteine …';
+    const [{ worldToParts }, { worldModel, rbxmxFile }] = await Promise.all([import('./worldParts.js'), import('./rbxmx.js')]);
+    const list = WORLDS.filter((w) => !w.soon);
+    const files = [], all = [];
+    let total = 0;
+    for (const [i, w] of list.entries()) {
+      status.textContent = `Baue ${w.name} (${i + 1} von ${list.length}) …`;
+      await new Promise((r) => setTimeout(r, 0));
+      const parts = worldToParts(w);
+      total += parts.parts.length;
+      const nr = String(i + 1).padStart(2, '0');
+      files.push({ name: `welten/${nr}-${w.name.replace(/\s+/g, '').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')}.rbxmx`, data: new TextEncoder().encode(rbxmxFile([worldModel(parts)])) });
+      all.push(worldModel(parts, [i * 700, 0, 0]));
+    }
+    files.push({ name: 'welten/AlleWelten.rbxmx', data: new TextEncoder().encode(rbxmxFile(all)) });
+    files.push({
+      name: 'welten/LIESMICH.txt',
+      data: new TextEncoder().encode(`Coinmaster Adventure · Welten für Roblox Studio
+
+Einfügen: Im Explorer Rechtsklick auf Workspace > Insert from File... und eine .rbxmx-Datei wählen.
+Oder die Datei direkt in das 3D-Fenster ziehen.
+
+Jede Welt ist ein Model (alle Teile verankert) mit diesen Ordnern:
+  Insel        Boden als Säulen, Erdschicht und Felsen darunter
+  Deko         Bäume, Gebäude, Kristalle, Pflanzen ...
+  Muenzen      Teile namens "CoinSpawn": hier setzt das Spiel echte Münzen ein
+  Teleport     Teil "TeleportPad": Ankunftsort in dieser Welt
+  Himmel       Planeten und Sonne im Hintergrund (nur Weltraum-Welten)
+  Effekte      Lichter und ein ParticleEmitter mit den Partikeln der Welt
+  Einstellungen  WeltId, Planet, Preis, Glueck, Muenzwert, HimmelOben, HimmelUnten, Akzent
+
+Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 96 Studs breit.
+Animationen (UFO, Fische, Wasser) sind in Studio noch nicht dabei, die Teile stehen in ihrer Grundhaltung.
+
+${list.map((w, i) => `${String(i + 1).padStart(2, '0')}  ${w.name}`).join('\n')}
+`),
+    });
+    download(makeZip(files), 'CoinmasterAdventure-Welten.zip');
+    status.textContent = `${list.length} Welten, ${total.toLocaleString('de-DE')} Teile`;
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Export fehlgeschlagen';
+  }
+  btn.disabled = false;
+});
+
 // ── Helfer ───────────────────────────────────────────────────────────────────
 
 function download(blob, name) {

@@ -6,6 +6,8 @@ import { PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMulti
 import { buildWorld } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
+import { worldToParts } from '../../roblox/js/worldParts.js';
+import { partsGroup } from '../../roblox/js/partsPreview.js';
 
 const $ = (id) => document.getElementById(id);
 let planet = 'p1';
@@ -43,6 +45,23 @@ controls.addEventListener('end', () => {
 });
 
 let built = null;
+let robloxView = false;
+
+// Roblox-Ansicht: Insel und Himmelskörper durch die Roblox-Teile ersetzen, Licht, Himmel und
+// Partikel bleiben
+function toRobloxView(b, w) {
+  for (const o of [...b.scene.children]) if (o.isMesh || o.isGroup || o.isSprite) b.scene.remove(o);
+  const parts = partsGroup(worldToParts(w));
+  parts.scale.setScalar(1);
+  b.scene.add(parts);
+  const dispose = b.dispose;
+  b.dispose = () => {
+    parts.userData.dispose();
+    dispose();
+  };
+  return parts.children.length;
+}
+
 function showWorld(w) {
   current = w;
   $('soon-cover').hidden = !w.soon;
@@ -53,7 +72,9 @@ function showWorld(w) {
   if (!w.soon) {
     const fewer = loadSettings().fewerParticles;
     built = buildWorld(w, { particles: fewer ? 0.4 : 1, shadows: renderer.shadowMap.enabled });
+    if (robloxView) $('rbx-count').textContent = `${toRobloxView(built, w).toLocaleString('de-DE')} Roblox-Teile`;
   }
+  $('rbx-count').hidden = !robloxView || w.soon;
   canvas.classList.remove('is-in');
   void canvas.offsetWidth;
   canvas.classList.add('is-in');
@@ -89,6 +110,12 @@ renderer.setAnimationLoop(() => {
   controls.update();
   built.update(t, dt);
   renderer.render(built.scene, camera);
+});
+
+$('rbx-toggle').addEventListener('click', (e) => {
+  robloxView = !robloxView;
+  e.currentTarget.setAttribute('aria-pressed', String(robloxView));
+  showWorld(current);
 });
 
 // ── Planeten ────────────────────────────────────────────────────────────────
