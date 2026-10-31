@@ -154,7 +154,7 @@ function convertMesh(out, mesh, world) {
 
 // Boden als Säulen-Raster entlang der Hügel
 function groundColumns(out, built, world) {
-  const R = built.radius, cell = 0.6, material = GROUND[world.id] || 'SmoothPlastic';
+  const R = built.radius, cell = 0.8, material = GROUND[world.id] || 'SmoothPlastic';
   const base = -0.25;
   const light = '#' + new THREE.Color(world.ground).offsetHSL(0, 0, 0.03).getHexString();
   for (let x = -R + cell / 2; x < R; x += cell)
@@ -174,7 +174,7 @@ function groundColumns(out, built, world) {
 
 // Unterseite: gestufte Zylinder, die nach unten schmaler werden
 function underside(out, world, R) {
-  const material = ROCK[world.id] || 'Slate', layers = 6, depth = 5.5;
+  const material = ROCK[world.id] || 'Slate', layers = 7, depth = 5.5 * (R / 6);
   // Erdschicht direkt unter dem Boden
   out.push({
     shape: 'Cylinder', name: 'Fels',
@@ -210,7 +210,7 @@ function emitterFor(world, R) {
     direction: fall ? 'Bottom' : 'Top',
     colors: cfg.colors,
     particleSize: cfg.size * STUDS * 1.2,
-    rate: Math.round(cfg.count / 3),
+    rate: Math.round((cfg.count * (R / 6) ** 2) / 3),
     speed: fall || rise ? [speed * 0.7, speed * 1.2] : [speed * 0.2, speed * 0.5],
     lifetime: fall || rise ? [spanY / (speed * 1.2), spanY / (speed * 0.7)] : [3, 6],
     spread: fall || rise ? [12, 12] : [180, 180],

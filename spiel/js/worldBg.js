@@ -53,8 +53,8 @@ export function createWorldBg(host) {
     }
     if (!skipAnimations()) angle += dt * 0.05;
     // schmale Bildschirme: weiter weg, damit die Insel ganz zu sehen ist
-    const dist = Math.min(34, Math.max(15.5, 7.2 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
-    camera.position.set(Math.cos(angle) * dist, 6.5, Math.sin(angle) * dist);
+    const dist = Math.min(56, Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
+    camera.position.set(Math.cos(angle) * dist, 10.5, Math.sin(angle) * dist);
     camera.lookAt(0, camera.aspect < 1 ? -1.2 : 0.4, 0);
     built.update(t, dt);
     renderer.render(built.scene, camera);

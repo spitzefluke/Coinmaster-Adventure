@@ -198,7 +198,7 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
   Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
   („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
-  Maßstab: 1 Einheit = 8 Studs. Animationen fehlen in Studio noch.
+  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 160 Studs breit. Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 

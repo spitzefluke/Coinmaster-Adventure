@@ -32,7 +32,7 @@ export function worldThumb(world, w = 360, h = 240) {
             const built = buildWorld(world, { particles: 0.6 });
             built.update(1.3, 0.016);
             const cam = new THREE.PerspectiveCamera(36, w / h, 0.1, 200);
-            cam.position.set(11, 7.5, 13);
+            cam.position.set(17.5, 12, 21);
             cam.lookAt(0, 0.2, 0);
             r.render(built.scene, cam);
             const url = r.domElement.toDataURL('image/webp', 0.85);
