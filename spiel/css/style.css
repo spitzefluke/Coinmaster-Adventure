@@ -335,11 +335,20 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 
 /* ── Skilltree ── */
 .skilltree { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; min-height: 100%; }
-.tree-wrap { min-width: 0; border: 1px solid var(--seam); border-radius: 16px; background: radial-gradient(circle at 50% 50%, #2a253588, transparent 70%), #0f0d14; overflow: auto; }
-.tree-svg { display: block; width: 100%; height: auto; min-width: 560px; }
-/* breit: ganzer Baum passt ins Fenster; schmal: Baum scrollt, startet am Kern */
-@media (min-width: 861px) { .tree-svg { height: 520px; min-width: 0; } }
-@media (max-width: 860px) { .tree-wrap { max-height: 60vh; } }
+.tree-box { position: relative; min-width: 0; height: 520px; border: 1px solid var(--seam); border-radius: 16px; overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, #2a253588, transparent 70%), #0f0d14; }
+@media (max-width: 860px) { .tree-box { height: min(60vh, 520px); } }
+/* Ziehen zum Verschieben, Mausrad und zwei Finger zum Zoomen */
+.tree-wrap { width: 100%; height: 100%; overflow: auto; touch-action: none; cursor: grab; scrollbar-width: thin; scrollbar-color: #3a3446 transparent; }
+.tree-wrap.is-dragging { cursor: grabbing; user-select: none; }
+.tree-svg { display: block; width: 100%; height: 100%; }
+.zoom-ctl { position: absolute; top: 10px; right: 10px; display: grid; justify-items: center; gap: 4px; padding: 4px; border: 1px solid var(--seam); border-radius: 14px; background: #18151fe6; backdrop-filter: blur(4px); }
+.zoom-ctl button { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font: 700 1.25rem/1 var(--font-body); cursor: pointer; }
+.zoom-ctl button:hover:not(:disabled) { background: #2e2938; color: var(--brass); }
+.zoom-ctl button:disabled { opacity: 0.35; cursor: default; }
+.zoom-val { font: 600 0.6875rem/1 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.fog-note { position: absolute; left: 12px; bottom: 10px; display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 999px; background: #18151fe6; color: var(--muted); font: 600 0.75rem/1 var(--font-data); pointer-events: none; }
+.fog-note .ico { width: 14px; height: 14px; }
 .edge { stroke: #2e2938; stroke-width: 4; stroke-linecap: round; }
 .edge.is-open { stroke: color-mix(in srgb, var(--c) 35%, #2e2938); stroke-dasharray: 6 8; }
 .edge.is-on { stroke: var(--c); filter: drop-shadow(0 0 6px var(--c)); }
@@ -361,6 +370,10 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 @keyframes node-pulse { 50% { opacity: 0.38; } }
 .node:hover .node-core, .node:focus-visible .node-core { stroke: #fff; }
 .node.is-selected .node-core { stroke: #fff; stroke-width: 3; }
+.node.just-revealed { animation: reveal 0.7s cubic-bezier(.2,1.4,.4,1) both; transform-box: fill-box; transform-origin: center; }
+.edge.just-revealed { animation: reveal-edge 0.6s ease both; }
+@keyframes reveal { from { opacity: 0; scale: 0.3; } }
+@keyframes reveal-edge { from { opacity: 0; } }
 .node.just-learned .node-core { animation: learned 0.6s ease; }
 @keyframes learned { 30% { fill: #fff; } }
 
@@ -489,5 +502,5 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 .notes p { margin: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .glints, .weather-fx, .points-chip, .node.is-learnable .node-glow, .feed-item, .panel, .levelup.is-in { animation: none !important; }
+  .glints, .weather-fx, .points-chip, .node.is-learnable .node-glow, .node.just-revealed, .edge.just-revealed, .feed-item, .panel, .levelup.is-in { animation: none !important; }
 }
