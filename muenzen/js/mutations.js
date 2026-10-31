@@ -57,9 +57,22 @@ export const weatherById = Object.fromEntries(WEATHER.map((w) => [w.id, w]));
 export const mutationForWeather = (weatherId) => MUTATIONS.find((m) => m.weather === weatherId) || null;
 
 // Würfelt beim Ziehen, ob die Münze mutiert. Gibt die Mutation oder null zurück.
-export function rollMutation(weatherId, random = Math.random) {
+// bonus: zusätzliche Prozentpunkte, z. B. aus dem Skill „Wettergespür“
+export function rollMutation(weatherId, random = Math.random, bonus = 0) {
   const m = mutationForWeather(weatherId);
-  return m && random() * 100 < m.chance ? m : null;
+  return m && random() * 100 < m.chance + bonus ? m : null;
+}
+
+// Das Wetter wechselt jede Minute. Es ergibt sich aus der Uhrzeit, damit es überall
+// (Münzindex, Spiel-HUD, nach einem Neuladen) gleich ist.
+export const WEATHER_MS = 60000;
+const totalWeight = WEATHER.reduce((s, w) => s + w.weight, 0);
+export function weatherAt(now = Date.now()) {
+  const slot = Math.floor(now / WEATHER_MS);
+  const x = Math.sin(slot * 12.9898) * 43758.5453;
+  let roll = (x - Math.floor(x)) * totalWeight;
+  const w = WEATHER.find((w) => (roll -= w.weight) < 0) || WEATHER[0];
+  return { w, ends: (slot + 1) * WEATHER_MS };
 }
 
 // Nennwert mit Multiplikator. '∞' bleibt unendlich.

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spiel-Oberfläche · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div class="masthead-text">
+      <p class="eyebrow">Spielvorschau</p>
+      <h1>Spiel-Oberfläche</h1>
+      <p class="lede">HUD, Skilltree, Inventar, Shop und Einstellungen, so wie sie im Spiel aussehen sollen. Mit „Münze suchen“ simulierst du einen Fund in der Welt, damit du die Skills ausprobieren kannst.</p>
+    </div>
+    <p class="keys" aria-label="Tastenkürzel"><kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
+  </header>
+
+  <section id="game" class="game" aria-label="Spielansicht">
+    <div id="world" class="world" aria-hidden="true">
+      <div class="sky"></div>
+      <div class="sun"></div>
+      <div class="hill hill-back"></div>
+      <div class="hill hill-mid"></div>
+      <div class="hill hill-front"></div>
+      <div class="glints"></div>
+      <div class="weather-fx"></div>
+    </div>
+
+    <div class="hud">
+      <div class="hud-player">
+        <button id="avatar" class="avatar" type="button" aria-label="Skilltree öffnen">
+          <span class="avatar-coin" aria-hidden="true"></span>
+          <span id="level" class="level-badge">1</span>
+        </button>
+        <div class="player-info">
+          <p class="player-name">Abenteurer <span id="points-chip" class="points-chip" hidden></span></p>
+          <div class="xp-bar" role="progressbar" aria-label="Erfahrung bis zum nächsten Level" aria-valuemin="0" id="xp-bar"><span id="xp-fill"></span></div>
+          <p id="xp-text" class="xp-text"></p>
+        </div>
+      </div>
+
+      <p id="world-name" class="world-name">Welt 1 · Pilzwald</p>
+
+      <div class="hud-right">
+        <p class="taler" aria-live="polite"><span class="taler-coin" aria-hidden="true"></span><span id="taler">0</span> <span class="taler-label">Taler</span></p>
+        <p id="weather" class="weather-pill"></p>
+        <div id="boosts" class="boosts"></div>
+      </div>
+
+      <nav class="hud-menu" aria-label="Spielmenü">
+        <button class="menu-btn" type="button" data-panel="skills"><span class="menu-ico"></span><span class="menu-label">Skills</span><span class="menu-badge" hidden></span></button>
+        <button class="menu-btn" type="button" data-panel="inventar"><span class="menu-ico"></span><span class="menu-label">Inventar</span><span class="menu-badge" hidden></span></button>
+        <button class="menu-btn" type="button" data-panel="shop"><span class="menu-ico"></span><span class="menu-label">Shop</span><span class="menu-badge" hidden></span></button>
+        <a class="menu-btn" href="../muenzindex/"><span class="menu-ico"></span><span class="menu-label">Index</span></a>
+        <button class="menu-btn" type="button" data-panel="einstellungen"><span class="menu-ico"></span><span class="menu-label">Optionen</span><span class="menu-badge" hidden></span></button>
+      </nav>
+
+      <div class="hud-bottom">
+        <button id="find-btn" class="find-btn" type="button"><span class="find-ico" aria-hidden="true"></span>Münze suchen</button>
+        <p class="find-hint">Simuliert einen Fund in der Welt</p>
+      </div>
+
+      <ol id="feed" class="feed" aria-live="polite" aria-label="Letzte Funde"></ol>
+    </div>
+
+    <div id="levelup" class="levelup" hidden>
+      <p class="levelup-eyebrow">Level aufgestiegen</p>
+      <p id="levelup-level" class="levelup-level">Level 5</p>
+      <p id="levelup-points" class="levelup-points"></p>
+      <button id="levelup-go" class="btn btn-primary" type="button">Zum Skilltree</button>
+    </div>
+
+    <div id="panel-layer" class="panel-layer" hidden>
+      <section id="panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+        <header class="panel-head">
+          <span id="panel-ico" class="panel-ico" aria-hidden="true"></span>
+          <div class="panel-titles">
+            <h2 id="panel-title"></h2>
+            <p id="panel-sub"></p>
+          </div>
+          <div id="panel-tools" class="panel-tools"></div>
+          <button id="panel-close" class="panel-close" type="button" aria-label="Schließen"></button>
+        </header>
+        <div id="panel-tabs" class="panel-tabs" role="tablist" hidden></div>
+        <div id="panel-body" class="panel-body"></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="notes" aria-labelledby="notes-title">
+    <h2 id="notes-title">So hängt alles zusammen</h2>
+    <ul>
+      <li><strong>Level:</strong> Jeder Fund gibt Erfahrung, seltene Münzen viel mehr. Jedes Level bringt einen Skillpunkt, jedes fünfte zwei.</li>
+      <li><strong>Skills:</strong> Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer Beutel wirken hier schon. Die Erkundungs-Skills wirken später beim Suchen in den Welten.</li>
+      <li><strong>Inventar:</strong> Gefundene Münzen landen hier. Verkaufen bringt Taler, im Shop gibt es dafür Eier und Boosts.</li>
+      <li><strong>Wetter:</strong> dasselbe wie im Münzindex. Während eines Wetters können Funde mutieren.</li>
+    </ul>
+    <p class="muted">Der Spielstand wird nur in diesem Browser gespeichert. Er startet mit einem Beispiel-Spielstand.</p>
+  </section>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

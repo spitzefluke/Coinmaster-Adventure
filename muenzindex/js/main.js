@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { TIERS, COINS, tierById, rollCoin } from '../../muenzen/js/coins.js';
 import { createCoin, makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
-import { MUTATIONS, WEATHER, weatherById, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { MUTATIONS, WEATHER, WEATHER_MS, weatherById, weatherAt, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { Discovery } from './discovery.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -170,17 +170,11 @@ renderProgress();
 // Das Wetter wechselt jede Minute. Welches Wetter gerade herrscht, ergibt sich aus der Uhrzeit,
 // damit es nach einem Neuladen gleich bleibt. Über die Test-Knöpfe lässt es sich festlegen.
 
-const WEATHER_MS = 60000;
 let manualWeather = null;
-const totalWeight = WEATHER.reduce((s, w) => s + w.weight, 0);
 
 function weatherNow(now = Date.now()) {
   if (manualWeather && now < manualWeather.until) return { w: weatherById[manualWeather.id], ends: manualWeather.until };
-  const slot = Math.floor(now / WEATHER_MS);
-  const x = Math.sin(slot * 12.9898) * 43758.5453;
-  let roll = (x - Math.floor(x)) * totalWeight;
-  const w = WEATHER.find((w) => (roll -= w.weight) < 0) || WEATHER[0];
-  return { w, ends: (slot + 1) * WEATHER_MS };
+  return weatherAt(now);
 }
 
 const weatherEl = document.getElementById('weather');

@@ -11,6 +11,7 @@
 // rank (0–6) steuert Anzahl der Stöße, Länge des Aufladens und Größe der Explosion.
 
 import * as THREE from 'three';
+import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { makeEnvironment, makeScene, glowSprite, raysTexture } from '../../muenzen/js/coinFactory.js';
 import { Sparks, Warp, ringTexture, beamTexture } from '../../muenzindex/js/discovery.js';
 import { createEgg, EGG_H } from './eggFactory.js';
@@ -149,9 +150,10 @@ export class Hatch {
       done: el.querySelector('.hatch-done'),
       hint: el.querySelector('.hatch-hint'),
     };
-    this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // wird bei jedem Abspielen neu gelesen, damit die Einstellung sofort wirkt
+    this.reducedMotion = skipAnimations();
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas: this.ui.canvas, antialias: true, alpha: true }));
-    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r.setPixelRatio(pixelRatio());
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     this.scene = makeScene(makeEnvironment(r));
@@ -221,6 +223,7 @@ export class Hatch {
   }
 
   play(egg) {
+    this.reducedMotion = skipAnimations();
     const r = egg.rank;
     this.data = egg;
     this.r = r;

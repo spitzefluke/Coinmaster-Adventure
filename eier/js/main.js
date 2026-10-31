@@ -2,6 +2,7 @@
 // Wie im Münzkabinett rendert ein einziges WebGL-Canvas alle Karten per Scissor-Test.
 
 import * as THREE from 'three';
+import { pixelRatio } from '../../js/settings.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
 import { EGGS, fmtPrice } from './eggs.js';
@@ -55,7 +56,7 @@ const cards = EGGS.map((egg) => {
 
 const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ canvas: stage, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(pixelRatio());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.setClearColor(0x000000, 0);
@@ -138,7 +139,7 @@ let dRenderer, dCamera, dControls, dScene, dEgg, dData;
 function openDetail(egg) {
   if (!dRenderer) {
     dRenderer = new THREE.WebGLRenderer({ canvas: detailCanvas, antialias: true, alpha: true });
-    dRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    dRenderer.setPixelRatio(pixelRatio());
     dRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     dCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
     dControls = new OrbitControls(dCamera, detailCanvas);

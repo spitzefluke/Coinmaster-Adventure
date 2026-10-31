@@ -8,6 +8,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
+| Spiel-Oberfläche | `spiel/` | Vorschau |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
 | Haustiere | – | geplant |
 
@@ -110,6 +111,23 @@ Platzhalter). Je seltener das Ei, desto mehr Stöße und desto größer die Expl
 etwa 5 s beim Normal Egg bis 11 s beim Release Egg. Mit `#debug` in der Adresse ist die
 Animation zum Testen als `window.hatch` erreichbar.
 
+## Spiel-Oberfläche
+
+`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
+
+- **HUD:** Level mit EP-Balken, freie Skillpunkte, Taler, Wetter mit Countdown, aktive Boosts,
+  Menü (Skills, Inventar, Shop, Index, Optionen) und „Münze suchen“, das einen Fund in der Welt simuliert.
+- **Skilltree** (`spiel/js/skills.js`): Kern plus vier Äste mit je fünf Skills (Erkundung,
+  Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
+  jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer
+  Beutel wirken in der Vorschau schon; die Erkundungs-Skills gelten später in den Welten.
+- **Inventar:** Münzen sortieren, filtern, verkaufen; Eier; Haustiere folgen.
+- **Shop:** Eier und Boosts für Taler, Robux-Angebote nur angedeutet.
+- **Einstellungen** (`js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
+  3D-Ansichten und „Animationen überspringen“ für Entdeckung und Schlüpfen.
+
+Tastenkürzel: K Skills, I Inventar, B Shop, O Einstellungen, F Münze suchen, Esc schließt.
+
 ## Nach Roblox Studio übertragen
 
 `roblox/` erzeugt aus den Daten der Webseite ein Paket für Roblox Studio. Die Seite ist mit
@@ -138,6 +156,8 @@ Dann <http://localhost:8000> öffnen.
 ## Aufbau
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
+- `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
+- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite

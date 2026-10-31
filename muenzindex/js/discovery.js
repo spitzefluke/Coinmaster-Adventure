@@ -13,6 +13,7 @@
 //   Galaktisch Sternen-Warp · Unerreichbar Regenbogen-Glitch
 
 import * as THREE from 'three';
+import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, mutatedValue, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { createCoin, makeEnvironment, makeScene, glowSprite, raysTexture, sparkTexture } from '../../muenzen/js/coinFactory.js';
@@ -264,10 +265,11 @@ export class Discovery {
       hint: el.querySelector('.reveal-hint'),
       done: el.querySelector('.reveal-continue'),
     };
-    this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // wird bei jedem Abspielen neu gelesen, damit die Einstellung sofort wirkt
+    this.reducedMotion = skipAnimations();
 
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas: this.ui.canvas, antialias: true, alpha: true }));
-    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r.setPixelRatio(pixelRatio());
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     this.scene = makeScene(makeEnvironment(r));
@@ -350,6 +352,7 @@ export class Discovery {
 
   // Spielt die Animation. Gibt ein Promise zurück, das beim Schließen erfüllt wird.
   play(coin, { number, total, chance, eyebrow = 'Neue Münze entdeckt', mutation = null }) {
+    this.reducedMotion = skipAnimations();
     const tier = tierById[coin.tier];
     const k = tier.index;
     this.k = k;
