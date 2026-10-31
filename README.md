@@ -135,6 +135,9 @@ In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfcha
   Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
   jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer
   Beutel wirken in der Vorschau schon; die Erkundungs-Skills gelten später in den Welten.
+  Sichtbar sind nur Skills, deren Vorgänger man gelernt hat; der Rest bleibt verborgen und
+  taucht mit einer Animation auf. Zoomen per +/−-Knöpfen, Mausrad, Tasten + − 0 oder zwei
+  Fingern, verschieben durch Ziehen.
 - **Inventar:** Münzen sortieren, filtern, verkaufen; Eier; Haustiere folgen.
 - **Shop:** Eier und Boosts für Taler, Robux-Angebote nur angedeutet.
 - **Einstellungen** (`js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
