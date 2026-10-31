@@ -144,6 +144,10 @@ Sturm, Blasen …).
 - Welten kauft man pro Planet der Reihe nach mit **Talern**.
 - **Wiedergeburt:** kostet Taler (1 Mio., danach jeweils ×4), setzt die Taler auf 0 und macht
   jede Münze dauerhaft 50 % mehr wert. Welten, Münzen, Level und Skills bleiben.
+- Jede Insel hat eine Teleport-Plattform (Ankunftsort) und Details wie Brücke, Häuschen, Brunnen,
+  Lore auf Schienen, Cupcakes, Geysire, Schatztruhe, Sandburg oder Statuen.
+- **Roblox-Ansicht** (Knopf in der 3D-Ansicht): zeigt die Insel so, wie sie nach dem Export in
+  Roblox Studio aus Teilen aufgebaut ist.
 - `welten/js/worlds.js` – Daten (Preise, Boni, Portale, Wiedergeburt), `js/worldFactory.js` –
   baut die 3D-Inseln, `js/thumbs.js` – Vorschaubilder.
 
@@ -187,7 +191,14 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   kommen in `CoinData` bei `DecalId`.
 
 `WorldData` enthält Planeten, Welten (Preis, Glück, Münzwert), Portale und die Wiedergeburt.
-Die 3D-Inseln selbst werden in Studio gebaut; die Daten dafür kommen aus diesem Modul.
+
+- **Welten als Modelle** (`roblox/js/worldParts.js`, `roblox/js/rbxmx.js`): Schritt 4 auf der
+  Seite lädt ein ZIP mit allen 16 Inseln als `.rbxmx`-Dateien (in Studio: Rechtsklick auf
+  Workspace → *Insert from File…*). Jede Form wird auf Roblox-Grundformen zurückgeführt (Block,
+  Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
+  Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
+  („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
+  Maßstab: 1 Einheit = 8 Studs. Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 
