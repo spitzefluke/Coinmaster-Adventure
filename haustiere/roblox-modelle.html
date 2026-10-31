@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roblox-Modelle · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/modelle.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="./">← Haustiere</a> · Roblox-Modelle</p>
+    <h1>Roblox-Modelle</h1>
+    <p class="lede">Die Haustiere als fertige 3D-Modelle, erzeugt mit Hyper3D Rodin. Rund 16 000 Dreiecke und 1024er-Texturen: passt als MeshPart in Roblox Studio.</p>
+  </header>
+
+  <section class="viewer-wrap">
+    <div class="viewer"><canvas id="viewer"></canvas><p id="viewer-status" class="viewer-status"></p></div>
+    <div class="viewer-info">
+      <p id="info-egg" class="tier-pill"></p>
+      <h2 id="info-name"></h2>
+      <p id="info-text" class="detail-text"></p>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen.</p>
+      <a id="info-download" class="ghost-btn" download>Modell laden (.glb)</a>
+    </div>
+  </section>
+
+  <main id="model-grid" class="model-grid"></main>
+  <footer class="foot">Import in Roblox Studio: Avatar › 3D-Importer, .glb auswählen.</footer>
+</div>
+<script type="module" src="js/modelle.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

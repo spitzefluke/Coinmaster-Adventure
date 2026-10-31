@@ -23,7 +23,9 @@ const LINKS = [
   { href: 'roblox/', label: 'Roblox Studio', locked: true },
 ].map((l) => ({ ...l, url: new URL(l.href, root) }));
 
-const active = Math.max(0, LINKS.findIndex((l) => l.url.pathname === here));
+// Exakter Treffer, sonst der Bereich, in dessen Ordner die Seite liegt (z. B. haustiere/roblox-modelle.html)
+const exact = LINKS.findIndex((l) => l.url.pathname === here);
+const active = exact >= 0 ? exact : Math.max(0, LINKS.findIndex((l, i) => i > 0 && here.startsWith(l.url.pathname)));
 
 const LOCK =
   '<svg class="nav-lock" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4Zm2 0h4V5a2 2 0 1 0-4 0v2Z"/></svg>';
