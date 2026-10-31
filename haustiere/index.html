@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Haustiere · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../eier/">← Eierhalle</a> · Haustiere</p>
+    <h1>Haustiere</h1>
+    <p class="lede">49 Haustiere, sieben pro Ei. Fünf davon schlüpfen oft, zwei sind episch und selten. Dreh sie, schau sie dir genau an.</p>
+    <button id="export-all" class="export-btn" type="button">Alle 49 für Blender laden (.glb)</button>
+  </header>
+
+  <nav id="filters" class="filters" aria-label="Nach Ei filtern"></nav>
+
+  <main id="sections" class="sections"></main>
+
+  <footer class="foot">Schlupfchancen sind Vorschläge und gelten innerhalb des jeweiligen Eis.</footer>
+</div>
+
+<canvas id="stage" class="stage" aria-hidden="true"></canvas>
+
+<div id="detail" class="detail" hidden>
+  <div class="detail-backdrop" data-close></div>
+  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-name">
+    <button class="detail-close" type="button" data-close aria-label="Schließen">×</button>
+    <div class="detail-view"><canvas id="detail-canvas"></canvas></div>
+    <div class="detail-info">
+      <p id="detail-tier" class="tier-pill"></p>
+      <h2 id="detail-name"></h2>
+      <p id="detail-text" class="detail-text"></p>
+      <dl class="facts">
+        <div><dt>Chance</dt><dd id="detail-chance"></dd></div>
+        <div><dt>Ei</dt><dd id="detail-egg"></dd></div>
+      </dl>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen.</p>
+      <button id="export-one" class="ghost-btn" type="button">Für Blender laden (.glb)</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

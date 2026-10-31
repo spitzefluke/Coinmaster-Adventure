@@ -8,9 +8,9 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
+| Haustiere | `haustiere/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
-| Haustiere | – | geplant |
 
 ## Online stellen (GitHub Pages)
 
@@ -111,6 +111,20 @@ Platzhalter). Je seltener das Ei, desto mehr Stöße und desto größer die Expl
 etwa 5 s beim Normal Egg bis 11 s beim Release Egg. Mit `#debug` in der Adresse ist die
 Animation zum Testen als `window.hatch` erreichbar.
 
+## Haustiere
+
+`haustiere/` zeigt alle 49 Haustiere aus dem Claude-Design-Projekt „Haustiere“, sieben pro Ei:
+fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %) mit eigenen Effekten
+(Strahlen, Runenkreis, Lichtsäule, Kraftschub mit Blitzen, Themen-Partikel, kreisende Objekte).
+
+- `haustiere/js/pets.js` – Daten, Schlupfchancen, `rollPet(eggId)`
+- `haustiere/js/kit.js`, `templates.js` – 3D-Bausteine (Fell, Augen, Vierbeiner, Echse, Flügel …)
+- `haustiere/js/builders-a/b/c.js` – je ein Bauplan pro Tier
+- `haustiere/js/petFactory.js` – baut ein Tier samt Sockel und Effekten
+- `haustiere/js/exportGlb.js` – Export als .glb für Blender (einzeln oder alle 49)
+
+In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfchance.
+
 ## Spiel-Oberfläche
 
 `spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
@@ -157,6 +171,7 @@ Dann <http://localhost:8000> öffnen.
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
+- `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)

@@ -212,7 +212,7 @@ body::before {
 .is-open .nav-panel { grid-template-rows: 1fr; }
 .is-open .nav-panel li { opacity: 1; transform: none; transition-delay: var(--d); }
 
-@media (max-width: 759px) {
+@media (max-width: 1099px) {
   .nav-tray { display: none; }
   .nav-toggle { display: inline-flex; }
   .nav-panel { display: grid; }

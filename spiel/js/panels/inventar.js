@@ -142,7 +142,7 @@ export const inventarPanel = {
   render(body, ctx, tab) {
     if (tab === 'eier') return eggsTab(body, ctx);
     if (tab === 'tiere') {
-      body.innerHTML = `<p class="empty">Die Haustiere bauen wir als Nächstes. Dann erscheinen sie hier mit ihrem Bonus.</p>`;
+      body.innerHTML = `<p class="empty">Hier erscheinen deine geschlüpften Haustiere mit ihrem Bonus, sobald das Schlüpfen im Spiel läuft. Alle 49 kannst du dir schon unter <a href="../haustiere/">Haustiere</a> ansehen.</p>`;
       return;
     }
     coinsTab(body, ctx);

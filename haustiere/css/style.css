@@ -1,0 +1,134 @@
+/* Haustiere – baut auf ../../css/theme.css auf. Gestaltung aus dem Claude-Design-Projekt „Haustiere“:
+   Galerie im Stil der Eierhalle, je Ei fünf normale Karten und zwei breite epische Karten. */
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
+  display: grid;
+  gap: 36px;
+}
+.masthead { max-width: 64ch; }
+.eyebrow { margin: 0 0 4px; font: 600 var(--step--1)/1.2 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.back { color: inherit; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: balance; }
+.lede { margin: 12px 0 0; color: var(--muted); }
+.export-btn, .ghost-btn {
+  margin-top: 16px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font: 600 0.8125rem/1 var(--font-body);
+  cursor: pointer;
+}
+.export-btn { border: 1px solid var(--brass); background: transparent; color: var(--brass); }
+.export-btn:hover { background: #d9b26a22; }
+.ghost-btn { justify-self: start; margin-top: 0; border: 1px solid #3a3446; background: var(--velvet-2); color: var(--ink); }
+.ghost-btn:hover { border-color: var(--brass); }
+.export-btn:disabled, .ghost-btn:disabled { opacity: 0.7; cursor: wait; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 0.8125rem/1 var(--font-body);
+  cursor: pointer;
+}
+.filter span { width: 8px; height: 8px; border-radius: 50%; background: var(--glow); }
+.filter[aria-pressed="true"] { border-color: var(--glow); background: var(--velvet-2); }
+
+.sections { display: grid; gap: 36px; }
+.egg-section { display: grid; gap: 16px; }
+.egg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--seam); }
+.egg-head h2 { margin: 0; font: 700 clamp(2rem, 4vw, 2.6rem)/1 var(--font-display); }
+.rank-pill, .tier-pill { margin: 0; padding: 3px 9px; border-radius: 999px; font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.1em; text-transform: uppercase; justify-self: start; }
+.rank-pill { border: 1px solid var(--glow); color: var(--glow); }
+.egg-meta { margin: 0; color: var(--muted); font: 500 0.8125rem/1.2 var(--font-data); }
+
+.pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 16px; }
+.epic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+
+.pet-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: radial-gradient(110% 60% at 50% 22%, var(--tint), transparent 70%), var(--velvet);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.pet-card:hover { border-color: var(--glow); transform: translateY(-2px); }
+.pet-view { display: block; width: 100%; max-width: 100%; aspect-ratio: 4 / 5; border: 0; padding: 0; background: none; cursor: zoom-in; border-radius: 16px 16px 0 0; }
+.pet-body { display: grid; align-content: start; gap: 8px; padding: 0 16px 16px; min-width: 0; }
+.pet-body h3 { margin: 0; font: 700 1.75rem/1 var(--font-display); overflow-wrap: anywhere; }
+.pet-text { margin: 0; color: var(--muted); font-size: 0.8125rem; line-height: 1.5; text-wrap: pretty; }
+.tier-pill.is-normal { border: 1px solid #3a3446; color: var(--muted); }
+.tier-pill.is-epic { background: var(--glow); color: #0d0b12; font-weight: 700; letter-spacing: 0.12em; }
+
+.pet-card.is-epic {
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 18px;
+  background: radial-gradient(70% 80% at 28% 45%, var(--tint), transparent 72%), var(--velvet);
+  box-shadow: 0 30px 80px -40px var(--glow);
+}
+.is-epic .pet-view { flex: 1 1 260px; min-width: 0; aspect-ratio: 1 / 1; border-radius: 18px 0 0 18px; }
+.is-epic .pet-body { flex: 1 1 200px; align-content: center; gap: 10px; padding: 24px 22px; }
+.is-epic .pet-body h3 { font-size: clamp(2rem, 3.4vw, 2.6rem); color: #fff; text-shadow: 0 0 24px var(--glow); }
+.is-epic .pet-text { font-size: 0.875rem; }
+.glow-text { color: var(--glow); }
+.look-btn {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--glow);
+  color: #0d0b12;
+  font: 700 0.8125rem/1 var(--font-body);
+  cursor: pointer;
+  box-shadow: 0 8px 24px -10px var(--glow);
+}
+.look-btn:hover { filter: brightness(1.08); }
+
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 0; }
+.facts div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--velvet-2); min-width: 0; }
+.facts dt { font: 500 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font: 600 0.8125rem/1.3 var(--font-data); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.foot { color: var(--muted); font-size: var(--step--1); }
+.stage { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+/* ── Detail ── */
+.detail { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.detail-backdrop { position: absolute; inset: 0; background: #07060acc; backdrop-filter: blur(6px); }
+.detail-panel {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  width: min(1000px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border: 1px solid var(--seam);
+  border-radius: 20px;
+  background: radial-gradient(80% 70% at 28% 45%, var(--tint), transparent 70%), var(--velvet);
+  box-shadow: 0 40px 120px -30px #000;
+}
+.detail-close { position: absolute; top: 10px; right: 10px; z-index: 1; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--velvet-2); color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer; }
+.detail-view { flex: 1.1 1 340px; aspect-ratio: 4 / 5; max-height: 80vh; min-width: 0; touch-action: none; }
+.detail-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.detail-info { flex: 1 1 280px; display: grid; align-content: center; gap: 12px; padding: 32px; min-width: 0; }
+.detail-info .tier-pill { border: 1px solid var(--glow); color: var(--glow); }
+.detail-info h2 { margin: 0; font: 700 clamp(2rem, 4vw, 3rem)/1 var(--font-display); text-wrap: balance; }
+.detail-text { margin: 0; color: var(--muted); max-width: 42ch; }
+.detail-hint { margin: 0; font-size: 0.75rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .pet-card { transition: none; } }

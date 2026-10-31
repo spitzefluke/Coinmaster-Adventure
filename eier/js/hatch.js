@@ -6,7 +6,7 @@
 //   3. Aufladen  – das Ei hebt ab, dreht sich, Licht bricht aus den Rissen,
 //                  Teilchen werden angesaugt, eispezifischer Effekt baut sich auf
 //   4. Explosion – Blitz, die Schale zerspringt in echte Scherben, Schockwellen
-//   5. Schlüpfen – das Haustier erscheint (vorerst ein Platzhalter-Wesen)
+//   5. Schlüpfen – ein Haustier aus dem Ei erscheint, gewürfelt nach Schlupfchance
 //
 // rank (0–6) steuert Anzahl der Stöße, Länge des Aufladens und Größe der Explosion.
 
@@ -15,6 +15,8 @@ import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { makeEnvironment, makeScene, glowSprite, raysTexture } from '../../muenzen/js/coinFactory.js';
 import { Sparks, Warp, ringTexture, beamTexture } from '../../muenzindex/js/discovery.js';
 import { createEgg, EGG_H } from './eggFactory.js';
+import { createPet } from '../../haustiere/js/petFactory.js';
+import { rollPet, fmtChance } from '../../haustiere/js/pets.js';
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -105,38 +107,6 @@ class Cracks {
   }
 }
 
-// Platzhalter-Haustier, bis die echten Haustiere gebaut sind
-function createCritter(color) {
-  const g = new THREE.Group();
-  const c = new THREE.Color(color);
-  const body = new THREE.Mesh(
-    new THREE.SphereGeometry(0.62, 40, 28),
-    new THREE.MeshPhysicalMaterial({ color: c.clone().lerp(new THREE.Color('#ffffff'), 0.12), emissive: c, emissiveIntensity: 0.18, roughness: 0.35, clearcoat: 1, sheen: 1 }),
-  );
-  body.scale.set(1, 0.9, 0.95);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.4, 32, 20), new THREE.MeshStandardMaterial({ color: '#fff6e8', roughness: 0.6 }));
-  belly.position.set(0, -0.15, 0.3);
-  belly.scale.set(1, 0.85, 0.6);
-  const eyes = [];
-  for (const s of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 14), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.2 }));
-    eye.position.set(s * 0.2, 0.1, 0.5);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), new THREE.MeshStandardMaterial({ color: '#141018', roughness: 0.1 }));
-    pupil.position.set(0, 0, 0.08);
-    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
-    shine.position.set(0.03, 0.04, 0.14);
-    eye.add(pupil, shine);
-    eyes.push(eye);
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 20), body.material);
-    ear.position.set(s * 0.33, 0.55, 0);
-    ear.rotation.z = -s * 0.45;
-    g.add(eye, ear);
-  }
-  g.add(body, belly);
-  g.userData.eyes = eyes;
-  return g;
-}
-
 export class Hatch {
   constructor(el) {
     this.el = el;
@@ -145,6 +115,8 @@ export class Hatch {
       flash: el.querySelector('.hatch-flash'),
       stage: el.querySelector('.hatch-stage'),
       text: el.querySelector('.hatch-text'),
+      eyebrow: el.querySelector('.hatch-eyebrow'),
+      note: el.querySelector('.hatch-note'),
       name: el.querySelector('.hatch-name'),
       from: el.querySelector('.hatch-from'),
       done: el.querySelector('.hatch-done'),
@@ -262,13 +234,15 @@ export class Hatch {
     this.scene.add(this.egg.root);
     this.egg.spinner.position.y = 6;
 
-    if (this.critter) {
-      this.scene.remove(this.critter);
-      this.critter.traverse((o) => (o.geometry?.dispose(), o.material?.dispose()));
+    // Haustier würfeln und bauen; es steht auf dem Sockel des Eis
+    if (this.petObj) {
+      this.scene.remove(this.petObj.root);
+      this.petObj.dispose();
     }
-    this.critter = createCritter(egg.glow);
-    this.critter.visible = false;
-    this.scene.add(this.critter);
+    this.pet = rollPet(egg.id);
+    this.petObj = createPet(this.pet, { pedestal: false });
+    this.petObj.root.visible = false;
+    this.scene.add(this.petObj.root);
 
     // Effekte zurücksetzen
     this.rings.forEach((m) => ((m.userData.t = m.userData.dur), (m.material.opacity = 0)));
@@ -280,8 +254,11 @@ export class Hatch {
     const u = this.ui;
     this.el.style.setProperty('--egg', egg.glow);
     this.el.dataset.egg = egg.id;
-    u.name.textContent = '???';
+    u.name.textContent = this.pet.name;
     u.from.textContent = `aus dem ${egg.name}`;
+    u.eyebrow.textContent = this.pet.epic ? 'Episch geschlüpft!' : 'Geschlüpft!';
+    u.note.textContent = `${this.pet.epic ? 'Episch' : 'Normal'} · ${fmtChance(this.pet.chance)} Schlupfchance`;
+    this.el.dataset.epic = this.pet.epic ? '1' : '';
     u.text.classList.remove('is-shown');
     u.done.hidden = true;
     u.hint.hidden = false;
@@ -359,7 +336,7 @@ export class Hatch {
     if (r >= 5) this.extraFlashes = [this.time + 0.4, this.time + 0.8];
     this.ui.stage.classList.remove('is-shown');
     this.ui.hint.hidden = true;
-    this.critter.visible = true;
+    this.petObj.root.visible = true;
     setTimeout(() => this.ui.text.classList.add('is-shown'), 350);
   }
 
@@ -461,12 +438,10 @@ export class Hatch {
       if (this.data.id === 'galaxie') this.warp.intensity = Math.max(0, 0.6 - since * 0.5);
 
       const pop = outBack(clamp01((since - 0.15) / 0.7));
-      const c = this.critter;
-      c.scale.setScalar(Math.max(0.001, pop));
-      c.position.y = -EGG_H + 0.62 + Math.abs(Math.sin(since * 2.6)) * 0.18;
-      c.rotation.y = Math.sin(since * 0.9) * 0.4;
-      const blink = (since % 3.2) > 3.05 ? 0.15 : 1;
-      c.userData.eyes.forEach((eye) => (eye.scale.y = blink));
+      const pet = this.petObj;
+      pet.root.scale.setScalar(Math.max(0.001, pop));
+      pet.spinner.rotation.y = Math.sin(since * 0.9) * 0.5;
+      pet.update(since);
       if (since < 3 && Math.random() < dt * 14) this.rise.emit(1, this.data.glow, { speed: 0.4, up: 1, origin: [0, -0.3, 0], spread: [1.6, 0.3, 1], life: 1.6 });
       if (t >= tl.ready && this.ui.done.hidden) this.ui.done.hidden = false;
     }
