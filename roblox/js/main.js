@@ -8,6 +8,7 @@ import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { MUTATIONS, WEATHER } from '../../muenzen/js/mutations.js';
 import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
+import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { moduleSources, installerSource } from './luau.js';
 import { makeZip } from './zip.js';
 
@@ -76,7 +77,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, EGGS };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, EGGS, PLANETS, WORLDS, REBIRTH };
 let built = null;
 
 function unlock() {
@@ -96,6 +97,7 @@ function build() {
     ['Mutationen', MUTATIONS.length],
     ['Wetter', WEATHER.length],
     ['Eier', EGGS.length],
+    ['Welten', WORLDS.filter((w) => !w.soon).length],
     ['Module', modules.length],
   ]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)

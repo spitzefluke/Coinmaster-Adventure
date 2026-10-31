@@ -18,6 +18,7 @@ const LINKS = [
   { href: 'muenzindex/', label: 'Münzindex' },
   { href: 'eier/', label: 'Eierhalle' },
   { href: 'haustiere/', label: 'Haustiere' },
+  { href: 'welten/', label: 'Welten' },
   { href: 'spiel/', label: 'Spiel' },
   { href: 'roblox/', label: 'Roblox Studio', locked: true },
 ].map((l) => ({ ...l, url: new URL(l.href, root) }));
