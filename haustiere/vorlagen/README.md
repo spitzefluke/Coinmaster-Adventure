@@ -94,3 +94,11 @@ Hyper3D-Konto, die übrigen 26 im zweiten. Links funktionieren nur im jeweiligen
 | Champagner-Qualle | `qualle` | Konto 2 | https://hyper3d.ai/workspace/rodin/059bb321-2f4f-4515-9351-691ac834d345 |
 | Launch-Day-Roboter | `roboter` | Konto 2 | https://hyper3d.ai/workspace/rodin/0bfee81b-a27e-4d59-afc4-41c6c0470999 |
 | Feuerwerk-Phönix | `phoenix` | Konto 2 | https://hyper3d.ai/workspace/rodin/b9334c36-da11-4920-9caa-f96d15c5630e |
+
+## Modelle im Repo
+
+Die 26 Modelle aus Konto 2 liegen in `haustiere/modelle/<id>.glb` und sind auf
+`haustiere/roblox-modelle.html` zu sehen. Gegenüber dem Hyper3D-Download sind die Texturen auf
+1024 px verkleinert und als JPEG gespeichert (Roblox nutzt höchstens 1024 px): rund 600 KB statt 8 MB
+je Modell. Geometrie unverändert, etwa 16 000 Dreiecke. Neue Modelle: Datei ablegen und die ID in
+`MODELLE` in `haustiere/js/modelle.js` ergänzen.

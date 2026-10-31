@@ -8,7 +8,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
-| Haustiere | `haustiere/` | Vorschau |
+| Haustiere | `haustiere/` | Vorschau, dazu Roblox-Modelle (`haustiere/roblox-modelle.html`) |
 | Welten | `welten/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |

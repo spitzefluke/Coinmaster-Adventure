@@ -10,7 +10,8 @@ import { EGGS, PETS, petById } from './pets.js';
 export const MODELLE = [
   'adler', 'engelsfuchs', 'engel', 'gott', 'loewe',
   'galaxiewolf', 'singularity', 'sternbild', 'hamster', 'komet', 'ringgleiter', 'nebelwelpe',
-  'glitchhund', 'banhammer',
+  'glitchhund', 'banhammer', 'lagschwein', 'uivogel', 'dateikatze', 'codedrache', 'serverchamaeleon',
+  'dackel', 'konfetti', 'ballonschwein', 'wunderkerze', 'qualle', 'roboter', 'phoenix',
 ];
 const vorhanden = new Set(MODELLE);
 const url = (id) => `modelle/${id}.glb`;
