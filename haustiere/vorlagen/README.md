@@ -40,8 +40,8 @@ Prompts in `prompts.json`: je Pet eine eigene Beschreibung plus der gemeinsame S
 (animierter Cartoon-Filmstil, große ausdrucksstarke Augen, lebendige Action-Pose).
 Gen-2.5-Medium, Quad, 8 000 Polygone, `.glb`. Generation-IDs in `ergebnisse.tsv`.
 
-Die ersten 23 liegen im ersten Hyper3D-Konto, die Engels-Pets ab Adler in einem zweiten.
-Links funktionieren nur im jeweiligen Konto.
+Alle 49 gestartet. Die ersten 23 (Normal, Wald, Eis, Engelshund, Engelskatze) liegen im ersten
+Hyper3D-Konto, die übrigen 26 im zweiten. Links funktionieren nur im jeweiligen Konto.
 
 | Pet | ID | Konto | Ergebnis |
 |---|---|---|---|
@@ -73,24 +73,24 @@ Links funktionieren nur im jeweiligen Konto.
 | Engel | `engel` | Konto 2 | https://hyper3d.ai/workspace/rodin/f20d1334-2a9f-4868-90ec-129775f96e80 |
 | Gott | `gott` | Konto 2 | https://hyper3d.ai/workspace/rodin/6cb8a2c1-ccf9-4831-9e34-b6649c61568f |
 | Löwe | `loewe` | Konto 2 | https://hyper3d.ai/workspace/rodin/d48a62be-5b10-4030-b5d7-69ae4ba9417b |
-| Galaktischer Wolf | `galaxiewolf` |  | offen |
-| Singularity Beetle | `singularity` |  | offen |
-| Sternbild-Kätzchen | `sternbild` |  | offen |
-| Gravitations-Hamster | `hamster` |  | offen |
-| Kometen-Echse | `komet` |  | offen |
-| Ring-Gleiter | `ringgleiter` |  | offen |
-| Nebel-Welpe | `nebelwelpe` |  | offen |
-| Glitch-Hund | `glitchhund` |  | offen |
-| Ban-Hammer-Krokodil | `banhammer` |  | offen |
-| Lag-Schwein | `lagschwein` |  | offen |
-| UI-Vogel | `uivogel` |  | offen |
-| Schwebendes Datei-Kätzchen | `dateikatze` |  | offen |
-| Fliegender Quellcode-Drache | `codedrache` |  | offen |
-| Server-Raum-Chamäleon | `serverchamaeleon` |  | offen |
-| Partyhut-Dackel | `dackel` |  | offen |
-| Konfetti-Chamäleon | `konfetti` |  | offen |
-| Luftballon-Schweinchen | `ballonschwein` |  | offen |
-| Wunderkerzen-Fuchs | `wunderkerze` |  | offen |
-| Champagner-Qualle | `qualle` |  | offen |
-| Launch-Day-Roboter | `roboter` |  | offen |
-| Feuerwerk-Phönix | `phoenix` |  | offen |
+| Galaktischer Wolf | `galaxiewolf` | Konto 2 | https://hyper3d.ai/workspace/rodin/5b97f00e-111a-4e25-a7ca-3165aac00bb3 |
+| Singularity Beetle | `singularity` | Konto 2 | https://hyper3d.ai/workspace/rodin/e2a0c1bd-4c09-413b-a4c3-df350bde4809 |
+| Sternbild-Kätzchen | `sternbild` | Konto 2 | https://hyper3d.ai/workspace/rodin/d8469e30-22fb-49ca-9f82-1fa637710a0a |
+| Gravitations-Hamster | `hamster` | Konto 2 | https://hyper3d.ai/workspace/rodin/18849a2e-1685-42d5-9cf0-5ee316954d36 |
+| Kometen-Echse | `komet` | Konto 2 | https://hyper3d.ai/workspace/rodin/82c04ce4-1de8-44aa-9a18-164199104291 |
+| Ring-Gleiter | `ringgleiter` | Konto 2 | https://hyper3d.ai/workspace/rodin/ad0d835e-477c-4125-b907-5c1ce5e7f213 |
+| Nebel-Welpe | `nebelwelpe` | Konto 2 | https://hyper3d.ai/workspace/rodin/a2cc82a8-4008-4eb4-90b3-839177a7f426 |
+| Glitch-Hund | `glitchhund` | Konto 2 | https://hyper3d.ai/workspace/rodin/4f5d4824-c354-44a9-a573-e97aa348be7d |
+| Ban-Hammer-Krokodil | `banhammer` | Konto 2 | https://hyper3d.ai/workspace/rodin/3e0bcc76-3210-4881-9ae8-3620854d3546 |
+| Lag-Schwein | `lagschwein` | Konto 2 | https://hyper3d.ai/workspace/rodin/2f83dea6-0112-4253-8e25-03a90b209eda |
+| UI-Vogel | `uivogel` | Konto 2 | https://hyper3d.ai/workspace/rodin/6386211a-336a-4820-b9b3-d276140df94c |
+| Schwebendes Datei-Kätzchen | `dateikatze` | Konto 2 | https://hyper3d.ai/workspace/rodin/5694b0c3-cbc8-4bce-adf3-5e9e157c43e0 |
+| Fliegender Quellcode-Drache | `codedrache` | Konto 2 | https://hyper3d.ai/workspace/rodin/672bece8-5194-4f2c-b053-8f7cf94190a9 |
+| Server-Raum-Chamäleon | `serverchamaeleon` | Konto 2 | https://hyper3d.ai/workspace/rodin/34a8d8d6-ce68-4371-93c9-c8fb1835d32f |
+| Partyhut-Dackel | `dackel` | Konto 2 | https://hyper3d.ai/workspace/rodin/9f50efa6-e46b-424a-bb4c-f21847bdc045 |
+| Konfetti-Chamäleon | `konfetti` | Konto 2 | https://hyper3d.ai/workspace/rodin/036d7498-28e5-4cae-8813-fe97ab5fc566 |
+| Luftballon-Schweinchen | `ballonschwein` | Konto 2 | https://hyper3d.ai/workspace/rodin/16576d88-be39-4f00-a83e-a9d1ed006df2 |
+| Wunderkerzen-Fuchs | `wunderkerze` | Konto 2 | https://hyper3d.ai/workspace/rodin/17f356c2-bb32-422a-b119-3940aa4ff681 |
+| Champagner-Qualle | `qualle` | Konto 2 | https://hyper3d.ai/workspace/rodin/059bb321-2f4f-4515-9351-691ac834d345 |
+| Launch-Day-Roboter | `roboter` | Konto 2 | https://hyper3d.ai/workspace/rodin/0bfee81b-a27e-4d59-afc4-41c6c0470999 |
+| Feuerwerk-Phönix | `phoenix` | Konto 2 | https://hyper3d.ai/workspace/rodin/b9334c36-da11-4920-9caa-f96d15c5630e |
