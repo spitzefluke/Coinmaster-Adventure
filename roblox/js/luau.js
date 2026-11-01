@@ -3,6 +3,8 @@
 //
 // Alles ist reiner Text – keine Abhängigkeit vom Browser, damit es auch in Node prüfbar ist.
 
+import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
+
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
 const str = (s) => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
@@ -1066,6 +1068,7 @@ export function moduleSources(data) {
     { name: 'MutationFx', source: MUTATION_FX },
     { name: 'WeatherFx', source: WEATHER_FX },
     { name: 'EggBuilder', source: EGG_BUILDER },
+    ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
   ];
 }
 
@@ -1090,7 +1093,11 @@ export function installerSource(data) {
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
 --   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier zum Ansehen
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
---   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
+--   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel${data.AURAS ? `
+--   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
+--   ServerScriptService > CoinmasterAuras     Auras kaufen und anlegen (RemoteFunction AuraRemote)
+--   StarterPlayerScripts > CoinmasterAuraClient   zeichnet die Aura jedes Spielers
+--   Test in Studio: Play drücken und im Chat „/aura krone“ schreiben` : ''}
 --
 -- Ein erneuter Import ersetzt beides. Strg+Z macht den Import rückgängig.
 
@@ -1187,7 +1194,7 @@ for i, egg in ipairs(EggData.Eggs) do
 end
 
 showcase.Parent = workspace
-
+${data.AURAS ? AURA_SHOWCASE : ''}
 -- Wetter: Server-Skript und Client-Skript (alte Fassungen ersetzen)
 local function addScript(className, parent, name, source)
 	local old = parent:FindFirstChild(name)
@@ -1202,7 +1209,9 @@ local function addScript(className, parent, name, source)
 end
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
-
+${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterAuraClient", ${longString(AURA_CLIENT)})
+` : ''}
 pcall(function()
 	ChangeHistoryService:SetWaypoint("Coinmaster Adventure importiert")
 end)

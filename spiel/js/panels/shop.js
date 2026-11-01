@@ -1,8 +1,9 @@
-// Shop-Fenster: Eier und Boosts für Taler, Robux-Angebote (in der Vorschau nur angedeutet).
+// Shop-Fenster: Eier, Boosts und Auras für Taler, Robux-Angebote (in der Vorschau nur angedeutet).
 
 import { EGGS } from '../../../eier/js/eggs.js';
 import { BOOSTS, boostActive, eggPrice, fmtNumber, effect } from '../state.js';
 import { icon } from '../icons.js';
+import { renderAuras } from './auras.js';
 
 const ROBUX = [
   { id: 'taler-s', name: 'Beutel Taler', text: '5.000 Taler', robux: 49 },
@@ -31,11 +32,13 @@ export const shopPanel = {
   tabs: [
     { id: 'eier', label: 'Eier' },
     { id: 'boosts', label: 'Boosts' },
+    { id: 'auras', label: 'Auras' },
     { id: 'robux', label: 'Robux' },
   ],
   sub: (ctx) => `${fmtNumber(ctx.state.taler, ctx.settings.shortNumbers)} Taler verfügbar`,
   render(body, ctx, tab) {
     const short = ctx.settings.shortNumbers;
+    if (tab === 'auras') return renderAuras(body, ctx, buy);
     if (tab === 'boosts') {
       body.innerHTML = `<ul class="shop-grid">${BOOSTS.map((b) => {
         const active = boostActive(ctx.state, b.id);

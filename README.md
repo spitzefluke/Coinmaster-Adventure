@@ -9,6 +9,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
+| Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
 | Wetter | `wetter/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
@@ -212,6 +213,27 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
 - **Roblox:** Modul `WeatherFx` (Licht, Nebel, Partikel, Blitze, Ansage) und zwei Skripte, die der
   Installer anlegt: `CoinmasterWeather` (Server) und `CoinmasterWeatherClient`.
 
+## Auras
+
+`auren/` zeigt 50 Auras, die um die Spielerfigur leuchten, als Galerie mit Filtern nach Thema und
+Seltenheit und einer drehbaren Detailansicht (`auren/js/auras.js` für die Daten, `auren/js/auraFactory.js`
+für die 3D-Effekte).
+
+- **Themen:** Elemente, Münzen & Schätze, Weltraum & Magie, Lustig & Glitch (je 12 bis 13 Auras).
+- **Seltenheit, Preis und Bonus:** Gewöhnlich (ab 1.000 Taler, +1 bis 3 %) bis Göttlich (bis 1 Mrd. Taler,
+  +18 bis 25 %). Jede Aura verbessert genau eine Sache: Glück, Münzwert, Erfahrung oder Tempo.
+- **Effekte:** aufsteigende und fallende Teilchen, Wirbel, Feuerwerk, kreisende Dinge (Münzen, Edelsteine,
+  Planeten, Katzen …), Bodenkreise mit Runen, Heiligenschein, Krone, Flügel, Lichtsäule, Hülle,
+  Lichtbänder, Blitze und Glitch-Doppelgänger. Was eine Aura zeigt, steht in ihrem `look`.
+- **Spiel:** Shop-Reiter „Auras“ mit 3D-Vorschau. Kaufen legt die Aura gleich an; man trägt immer eine.
+  Glück, Münzwert und Erfahrung wirken schon beim simulierten Fund, Tempo erst im Roblox-Spiel.
+- **Roblox:** Module `AuraData` und `AuraFx`, das Skript `CoinmasterAuras` (Server, prüft Kaufen und
+  Anlegen über die RemoteFunction `AuraRemote`, Taler aus `leaderstats.Taler`) und `CoinmasterAuraClient`
+  (zeichnet die Aura jedes Spielers aus ParticleEmittern, Beams, Neon-Teilen und Licht). Dazu
+  `Workspace › CoinmasterAuraShowcase` mit allen 50 Auras an Figuren. Zum Testen in Studio Play drücken
+  und im Chat `/aura krone` schreiben. Gekaufte Auras werden noch nicht gespeichert (DataStore fehlt).
+  Eigene Teilchenbilder (Münze, Herz, Note …) als Decal-IDs in `AuraData.Textures` eintragen.
+
 ## Spiel-Oberfläche
 
 `spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
@@ -228,7 +250,7 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
   taucht mit einer Animation auf. Zoomen per +/−-Knöpfen, Mausrad, Tasten + − 0 oder zwei
   Fingern, verschieben durch Ziehen.
 - **Inventar:** Münzen sortieren, filtern, verkaufen; Eier; Haustiere folgen.
-- **Shop:** Eier und Boosts für Taler, Robux-Angebote nur angedeutet.
+- **Shop:** Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
 - **Einstellungen** (`js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
   3D-Ansichten und „Animationen überspringen“ für Entdeckung und Schlüpfen.
 
@@ -241,9 +263,9 @@ einem Code gesperrt. Der Code steht nur als SHA-256-Hash in `roblox/js/main.js`.
 Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im Browser läuft.
 
 - **Installer** (`roblox/js/luau.js`): ein Skript für die Befehlsleiste von Studio. Es legt
-  `ReplicatedStorage › CoinmasterAdventure` mit 9 ModuleScripts an (CoinData, MutationData,
-  EggData, WorldData, Gacha, CoinBuilder, MutationFx, WeatherFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
-  und einen Showcase im Workspace mit allen Münzen und Eiern.
+  `ReplicatedStorage › CoinmasterAdventure` mit 11 ModuleScripts an (CoinData, MutationData,
+  EggData, WorldData, Gacha, CoinBuilder, MutationFx, WeatherFx, EggBuilder, AuraData, AuraFx), fertige
+  Modelle in `Coins` und `Eggs`, einen Showcase im Workspace mit allen Münzen und Eiern und einen mit allen Auras.
 - **Motive als ZIP**: die 50 Prägemotive als PNG zum Hochladen als Decal. Die Asset-IDs
   kommen in `CoinData` bei `DecalId`.
 
@@ -274,10 +296,11 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
+- `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni), `js/auraFactory.js` (Figur und 3D-Effekte), `js/main.js` (Galerie)
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
-- `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
+- `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
 - `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggFactory.js` (Eier), `js/hatch.js` (Schlüpfen)

@@ -9,6 +9,7 @@ import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
+import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { moduleSources, installerSource } from './luau.js';
 import { makeZip } from './zip.js';
 
@@ -77,7 +78,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES };
 let built = null;
 
 function unlock() {
@@ -97,6 +98,7 @@ function build() {
     ['Mutationen', MUTATIONS.length],
     ['Wetter', WEATHER.length],
     ['Eier', EGGS.length],
+    ['Auras', AURAS.length],
     ['Welten', WORLDS.filter((w) => !w.soon && !w.hub).length],
     ['Module', modules.length],
   ]

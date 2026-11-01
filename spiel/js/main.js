@@ -414,6 +414,8 @@ renderWorldName();
 renderHud();
 // Link von der Weltkarte: spiel/#welten öffnet das Teleport-Menü
 if (location.hash === '#welten') openPanel('welten');
+// Link aus der Aura-Galerie: spiel/#shop-auras
+if (location.hash === '#shop-auras') openPanel('shop', 'auras');
 renderWeather();
 setInterval(() => {
   renderWeather();

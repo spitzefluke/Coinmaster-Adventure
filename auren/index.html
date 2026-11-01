@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Auras · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Aura-Galerie</p>
+    <h1>Auras</h1>
+    <p class="lede">50 Auras, die um deine Figur leuchten. Du kaufst sie im Shop mit Talern und legst eine davon an. Die angelegte Aura gibt einen kleinen Bonus, und je seltener sie ist, desto mehr.</p>
+  </header>
+
+  <div class="filter-bar">
+    <nav id="themes" class="filters" aria-label="Nach Thema filtern"></nav>
+    <nav id="rarities" class="filters" aria-label="Nach Seltenheit filtern"></nav>
+  </div>
+  <p id="count" class="count" aria-live="polite"></p>
+
+  <main id="grid" class="grid"></main>
+
+  <footer class="foot">Preise und Boni sind Vorschläge und stehen in <code>auren/js/auras.js</code>. Im Spiel gibt es sie im Shop unter „Auras“.</footer>
+</div>
+
+<canvas id="stage" class="stage" aria-hidden="true"></canvas>
+
+<div id="detail" class="detail" hidden>
+  <div class="detail-backdrop" data-close></div>
+  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-name">
+    <button class="detail-close" type="button" data-close aria-label="Schließen">×</button>
+    <div class="detail-view"><canvas id="detail-canvas"></canvas></div>
+    <div class="detail-info">
+      <p id="detail-rarity" class="pill"></p>
+      <h2 id="detail-name"></h2>
+      <p id="detail-text" class="detail-text"></p>
+      <dl class="facts">
+        <div><dt>Preis</dt><dd id="detail-price"></dd></div>
+        <div><dt>Bonus</dt><dd id="detail-bonus"></dd></div>
+        <div><dt>Thema</dt><dd id="detail-theme"></dd></div>
+        <div><dt>Effekte</dt><dd id="detail-parts"></dd></div>
+      </dl>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen.</p>
+      <a class="shop-link" href="../spiel/#shop-auras">Im Spiel-Shop ansehen</a>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>
