@@ -5,6 +5,7 @@
 import { COINS, TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, rollMutation, weatherAt } from '../../muenzen/js/mutations.js';
 import { SKILLS, skillById } from './skills.js';
+import { auraById } from '../../auren/js/auras.js';
 import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier } from '../../welten/js/worlds.js';
 
 export { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../../js/settings.js';
@@ -49,6 +50,8 @@ function sampleState() {
     worlds: ['normal', 'wald'],
     portals: ['p1'],
     rebirths: 0,
+    auras: [],
+    aura: null, // angelegte Aura
     sample: true,
   };
 }
@@ -142,6 +145,15 @@ export const BOOSTS = [
 ];
 export const boostActive = (s, id) => (s.boosts[id] || 0) > Date.now();
 
+// ── Auras ────────────────────────────────────────────────────────────────────
+// Die angelegte Aura gibt einen kleinen Bonus (Prozent) auf genau eine Sache.
+
+export const equippedAura = (s) => (s.aura && s.auras.includes(s.aura) ? auraById[s.aura] : null);
+export function auraBonus(s, type) {
+  const a = equippedAura(s);
+  return a && a.bonus.type === type ? a.bonus.value : 0;
+}
+
 // ── Münze finden ─────────────────────────────────────────────────────────────
 // Simuliert einen Fund in der Welt, mit allen Skill- und Boost-Effekten.
 
@@ -155,7 +167,7 @@ export function coinValue(entry) {
 
 function rollTier(s, random) {
   // Glück verschiebt Chance von „Normal“ zu den seltenen Stufen
-  const luck = effect(s, 'glueckspilz') / 100 + (boostActive(s, 'glueck') ? 1 : 0) + currentWorld(s).luck;
+  const luck = effect(s, 'glueckspilz') / 100 + auraBonus(s, 'glueck') / 100 + (boostActive(s, 'glueck') ? 1 : 0) + currentWorld(s).luck;
   const weights = TIERS.map((t, i) => (i === 0 ? t.chance : t.chance * (1 + luck)));
   const total = weights.reduce((a, b) => a + b, 0);
   let r = random() * total;
@@ -176,9 +188,9 @@ export function findCoin(s, random = Math.random, weatherId = weatherAt().w.id) 
   const mutation = rollMutation(weatherId, random, bonus);
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
   const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
-  const xp = (5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1);
-  // Wert: Skill „Wertvoller Fund“ × Welt × Wiedergeburten
-  const value = (1 + effect(s, 'wert') / 100) * currentWorld(s).value * rebirthMultiplier(s.rebirths);
+  const xp = Math.round((5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
+  // Wert: Skill „Wertvoller Fund“ × Aura × Welt × Wiedergeburten
+  const value = (1 + effect(s, 'wert') / 100) * (1 + auraBonus(s, 'wert') / 100) * currentWorld(s).value * rebirthMultiplier(s.rebirths);
   return { id, mutation: mutation?.id || null, count, xp, upgraded, bonus: Math.round(value * 1000) / 1000 };
 }
 

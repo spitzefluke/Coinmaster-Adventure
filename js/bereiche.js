@@ -33,6 +33,13 @@ export const BEREICHE = [
     eckdaten: ['49 Tiere', '14 episch', 'Export für Blender'],
   },
   {
+    titel: 'Auras',
+    text: '50 Auras, die um den Spieler leuchten: Elemente, Münzen und Schätze, Weltraum und Magie, dazu Lustiges und Glitches. Jede Aura kostet Taler und gibt einen kleinen Bonus.',
+    href: 'auren/',
+    status: 'vorschau',
+    eckdaten: ['50 Auras', '6 Seltenheiten', 'Bonus'],
+  },
+  {
     titel: 'Welten',
     text: 'Ein Spawn mit Shops, Portalen und Ranglisten, dazu vier Planeten mit sechzehn Welten, vom grünen Startgebiet über Mond und Sonne bis nach Atlantis. Jede Welt als drehbare 3D-Insel, dazu Portale und Wiedergeburten.',
     href: 'welten/',

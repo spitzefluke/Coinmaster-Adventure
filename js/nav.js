@@ -18,6 +18,7 @@ const LINKS = [
   { href: 'muenzindex/', label: 'Münzindex' },
   { href: 'eier/', label: 'Eierhalle' },
   { href: 'haustiere/', label: 'Haustiere' },
+  { href: 'auren/', label: 'Auras' },
   { href: 'welten/', label: 'Welten' },
   { href: 'wetter/', label: 'Wetter' },
   { href: 'spiel/', label: 'Spiel' },

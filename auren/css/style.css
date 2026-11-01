@@ -1,0 +1,50 @@
+/* Auras – baut auf ../../css/theme.css auf. */
+.page { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 56px; display: grid; gap: 22px; }
+.masthead { max-width: 66ch; }
+.eyebrow { margin: 0 0 4px; font: 600 var(--step--1)/1.2 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); }
+.lede { margin: 12px 0 0; color: var(--muted); text-wrap: pretty; }
+
+.filter-bar { display: grid; gap: 10px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--seam); border-radius: 999px; background: transparent; color: var(--ink); font: 600 0.8125rem/1 var(--font-body); cursor: pointer; }
+.filter span { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.filter:hover { border-color: var(--c); }
+.filter[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--velvet-2)); }
+.count { margin: 0; color: var(--muted); font: 500 var(--step--1)/1 var(--font-data); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.card { position: relative; display: grid; grid-template-rows: auto 1fr; border: 1px solid color-mix(in srgb, var(--r) 40%, var(--seam)); border-radius: 18px; background: radial-gradient(90% 60% at 50% 30%, color-mix(in srgb, var(--a) 18%, transparent), transparent 70%), var(--velvet); overflow: hidden; cursor: pointer; transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s; }
+.card:hover, .card:focus-within { transform: translateY(-3px); border-color: var(--r); box-shadow: 0 18px 40px -24px var(--a); }
+.card button { all: unset; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.card button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.view { aspect-ratio: 4 / 4.4; }
+.card-info { display: grid; gap: 4px; padding: 10px 14px 14px; }
+.card-info p, .card-info h2 { margin: 0; }
+.card-info h2 { font: 700 1.5rem/1 var(--font-display); }
+.pill { justify-self: start; padding: 3px 9px; border: 1px solid var(--r); border-radius: 999px; color: var(--r); font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.1em; text-transform: uppercase; }
+.meta { display: flex; justify-content: space-between; gap: 8px; font: 600 0.8125rem/1.2 var(--font-data); font-variant-numeric: tabular-nums; }
+.price { color: var(--brass); }
+.bonus { color: #9fe3b5; }
+.empty { grid-column: 1 / -1; color: var(--muted); }
+
+.foot { color: var(--muted); font-size: var(--step--1); }
+.stage { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+.detail { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.detail-backdrop { position: absolute; inset: 0; background: #07060acc; backdrop-filter: blur(6px); }
+.detail-panel { position: relative; display: flex; flex-wrap: wrap; width: min(1000px, 100%); max-height: 100%; overflow: auto; border: 1px solid var(--seam); border-radius: 20px; background: radial-gradient(80% 70% at 28% 45%, color-mix(in srgb, var(--a) 20%, transparent), transparent 70%), var(--velvet); box-shadow: 0 40px 120px -30px #000; }
+.detail-close { position: absolute; top: 10px; right: 10px; z-index: 1; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--velvet-2); color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer; }
+.detail-view { flex: 1.1 1 340px; aspect-ratio: 4 / 5; max-height: 80vh; min-width: 0; touch-action: none; }
+.detail-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.detail-info { flex: 1 1 280px; display: grid; align-content: center; gap: 12px; padding: 32px; min-width: 0; }
+.detail-info h2 { margin: 0; font: 700 clamp(2rem, 4vw, 3rem)/1 var(--font-display); text-wrap: balance; }
+.detail-text { margin: 0; color: var(--muted); max-width: 42ch; }
+.detail-hint { margin: 0; font-size: 0.75rem; color: var(--muted); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.facts div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--velvet-2); min-width: 0; }
+.facts dt { font: 500 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font: 600 0.8125rem/1.3 var(--font-data); overflow-wrap: anywhere; }
+.shop-link { justify-self: start; padding: 10px 16px; border: 1px solid var(--brass); border-radius: 999px; color: var(--brass); font: 600 0.8125rem/1 var(--font-body); text-decoration: none; }
+.shop-link:hover { background: #d9b26a22; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
