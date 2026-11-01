@@ -294,7 +294,9 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     return null;
   };
   const reserve = (x, z, d) => taken.push([x, z, d]);
+  const placed = []; // alles, was per put() auf der Insel steht (für die Lichtung um die Figur)
   const put = (obj, x, z, { sink = 0.05, rot = true } = {}) => {
+    placed.push([obj, x, z]);
     obj.position.set(x, height(x, z) - sink, z);
     if (rot) obj.rotation.y = rand() * Math.PI * 2;
     obj.traverse((o) => {
@@ -324,20 +326,40 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.
   let figureSpot = null;
   {
-    const p = spot(0.9, R - 2.4, R - 1.1);
+    // im dichten Wald gibt es keinen freien Platz mehr: dann wird am Rand eine Lichtung geschlagen
+    const p = spot(0.9, R - 2.4, R - 1.1) ?? [Math.cos(0.7) * (R - 1.6), Math.sin(0.7) * (R - 1.6)];
     if (p) {
+      for (const [obj, x, z] of placed)
+        if (Math.hypot(x - p[0], z - p[1]) < 1.3) {
+          root.remove(obj);
+          obj.traverse((o) => o.geometry?.dispose());
+        }
       const pad = teleportPad(world.accent || '#ffd76a', anims);
       put(pad, p[0], p[1], { rot: false });
       pad.lookAt(0, pad.position.y, 0);
       const a0 = Math.atan2(p[1], p[0]), r0 = Math.hypot(p[0], p[1]);
-      for (const da of [0.13, -0.13, 0.2, -0.2, 0.28, -0.28]) {
+      for (const da of [0.13, -0.13, 0.2, -0.2, 0.28, -0.28, 0.36, -0.36, 0.45, -0.45]) {
         const r = Math.min(r0, R - 0.9), x = Math.cos(a0 + da) * r, z = Math.sin(a0 + da) * r;
-        if (free(x, z, 0.5)) {
+        // auch nach außen (Richtung Kamera beim Vergleich) muss frei sein
+        const ox = Math.cos(a0 + da), oz = Math.sin(a0 + da);
+        if (free(x, z, 0.5) && free(x + ox * 0.7, z + oz * 0.7, 0.35)) {
           reserve(x, z, 0.5);
           figureSpot = new THREE.Vector3(x, height(x, z), z);
           break;
         }
       }
+      // Lichtung: Bäume und Deko direkt um die Figur weglassen, damit man sie sieht
+      if (!figureSpot) {
+        const r = Math.min(r0, R - 0.9);
+        figureSpot = new THREE.Vector3(Math.cos(a0 + 0.2) * r, 0, Math.sin(a0 + 0.2) * r);
+        figureSpot.y = height(figureSpot.x, figureSpot.z);
+        reserve(figureSpot.x, figureSpot.z, 0.5);
+      }
+      for (const [obj, x, z] of placed)
+        if (obj !== pad && Math.hypot(x - figureSpot.x, z - figureSpot.z) < 1.6) {
+          root.remove(obj);
+          obj.traverse((o) => o.geometry?.dispose());
+        }
     }
   }
 

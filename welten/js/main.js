@@ -82,6 +82,33 @@ function figureSpot(b) {
   return new THREE.Vector3(x, b.height(x, z), z);
 }
 
+// Kamerarichtung mit freier Sicht auf die Figur: zuerst von außen, dann seitlich und von oben
+function clearView(b, look, skip) {
+  const out = new THREE.Vector3(look.x, 0, look.z).normalize();
+  const ray = new THREE.Raycaster();
+  const meshes = [];
+  b.scene.traverse((o) => {
+    if (!o.isMesh || !o.visible || o.material.transparent || o.material.blending === THREE.AdditiveBlending) return;
+    for (let p = o; p; p = p.parent) if (p === skip) return;
+    meshes.push(o);
+  });
+  b.scene.updateMatrixWorld(true);
+  for (const up of [0.42, 0.75, 1.3, 2.2])
+    for (const yaw of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) {
+      const dir = out.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(new THREE.Vector3(0, up, 0)).normalize();
+      const cam = look.clone().addScaledVector(dir, 4.6);
+      // Füße, Mitte und Kopf müssen alle zu sehen sein
+      const blocked = [-0.38, -0.1, 0.2].some((dy) => {
+        const from = look.clone().add(new THREE.Vector3(0, dy, 0)), to = cam.clone().sub(from);
+        ray.set(from, to.clone().normalize());
+        ray.far = to.length();
+        return ray.intersectObjects(meshes, false).length > 0;
+      });
+      if (!blocked) return dir;
+    }
+  return new THREE.Vector3(0, 1, 0.3);
+}
+
 function flyTo(target, dist, minDist, from) {
   controls.autoRotate = false;
   controls.minDistance = minDist;
@@ -119,8 +146,8 @@ function showWorld(w) {
       $('size-info').innerHTML = `<strong>Figur</strong> ${FIGURE_STUDS.toLocaleString('de-DE')} Studs hoch · <strong>Insel</strong> ${wide} Studs breit ≈ ${Math.round(wide / 4)} Figuren nebeneinander`;
       // von außen (über dem Abgrund, dort steht nichts im Weg) auf die Figur schauen;
       // dahinter ragt die Welt auf
-      const outward = new THREE.Vector3(spot.x, 0, spot.z).normalize();
-      flyTo(spot.clone().add(new THREE.Vector3(0, 0.45, 0)), 4.6, 1.6, outward.add(new THREE.Vector3(0, 0.32, 0)));
+      const look = spot.clone().add(new THREE.Vector3(0, 0.45, 0));
+      flyTo(look, 4.6, 1.6, clearView(built, look, figure));
     }
   }
   $('size-info').hidden = !compare || w.soon;
