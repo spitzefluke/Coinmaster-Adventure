@@ -109,10 +109,10 @@ export const weltenPanel = {
   title: 'Welten',
   icon: 'globe',
   tabs: [...PLANETS.map((p) => ({ id: p.id, label: p.name })), { id: 'wiedergeburt', label: 'Wiedergeburt' }],
-  defaultTab: (ctx) => currentWorld(ctx.state).planet,
+  defaultTab: (ctx) => (currentWorld(ctx.state).hub ? 'p1' : currentWorld(ctx.state).planet),
   sub: (ctx) => {
     const w = currentWorld(ctx.state);
-    return `${planetById[w.planet].name} · ${w.name} · ${fmtNumber(ctx.state.taler, ctx.settings.shortNumbers)} Taler`;
+    return `${w.hub ? 'Spawn' : `${planetById[w.planet].name} · ${w.name}`} · ${fmtNumber(ctx.state.taler, ctx.settings.shortNumbers)} Taler`;
   },
   tools: (ctx) => {
     // nur für die Vorschau: Taler verzehnfachen, um spätere Welten auszuprobieren
@@ -127,7 +127,15 @@ export const weltenPanel = {
       ctx.toast(`Test: ${fmtNumber(ctx.state.taler, true)} Taler`, '#9fd0ff');
       ctx.rerender();
     });
-    return [b];
+    // Zurück zum Treffpunkt
+    const home = document.createElement('button');
+    home.type = 'button';
+    home.className = 'btn tool-btn';
+    home.textContent = ctx.state.world === 'spawn' ? 'Im Spawn' : 'Zum Spawn';
+    home.disabled = ctx.state.world === 'spawn';
+    home.title = 'Teleport zum Treffpunkt mit Shops, Portalen und Ranglisten';
+    home.addEventListener('click', () => ctx.teleport('spawn'));
+    return [home, b];
   },
   render(body, ctx, tab) {
     if (tab === 'wiedergeburt') return renderRebirth(body, ctx);

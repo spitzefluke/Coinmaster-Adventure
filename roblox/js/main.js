@@ -97,7 +97,7 @@ function build() {
     ['Mutationen', MUTATIONS.length],
     ['Wetter', WEATHER.length],
     ['Eier', EGGS.length],
-    ['Welten', WORLDS.filter((w) => !w.soon).length],
+    ['Welten', WORLDS.filter((w) => !w.soon && !w.hub).length],
     ['Module', modules.length],
   ]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
@@ -175,7 +175,7 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
       await new Promise((r) => setTimeout(r, 0));
       const parts = worldToParts(w);
       total += parts.parts.length;
-      const nr = String(i + 1).padStart(2, '0');
+      const nr = String(list[0].hub ? i : i + 1).padStart(2, '0'); // Spawn = 00
       files.push({ name: `welten/${nr}-${w.name.replace(/\s+/g, '').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')}.rbxmx`, data: new TextEncoder().encode(rbxmxFile([worldModel(parts)])) });
       all.push(worldModel(parts, [i * 1500, 0, 0]));
     }
@@ -186,6 +186,10 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
 
 Einfügen: Im Explorer Rechtsklick auf Workspace > Insert from File... und eine .rbxmx-Datei wählen.
 Oder die Datei direkt in das 3D-Fenster ziehen.
+
+00-Spawn ist der Treffpunkt: SpawnLocation, ein Portal pro Welt (Teile „Portal_<WeltId>“ im Ordner
+Portale), Ranglisten-Tafeln, Shops, Belohnungstruhe, Wiedergeburts-Altar und Code-Terminal. Die Schilder
+haben echten Text (SurfaceGui). Ranglisten und Portale verbindet das Spielskript mit Leben.
 
 Jede Welt ist ein Model (alle Teile verankert) mit diesen Ordnern:
   Insel        Boden als Säulen, Erdschicht und Felsen darunter

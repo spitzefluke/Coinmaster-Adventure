@@ -207,6 +207,10 @@ function pushFeed(li) {
 }
 
 function find() {
+  if (currentWorld(state).hub) {
+    toast('Im Spawn gibt es keine Münzen. Öffne „Welten“ und reise durch ein Portal.', '#ffd76a');
+    return;
+  }
   if (state.inventory.length >= slots(state)) {
     toast('Inventar voll. Verkaufe Münzen oder lerne „Großer Beutel“.', '#ff8a96');
     return;
@@ -284,9 +288,9 @@ const worldBg = createWorldBg($('world'));
 
 function renderWorldName() {
   const w = currentWorld(state), p = planetById[w.planet];
-  $('world-name').innerHTML = `<span>${p.name}</span> ${w.name}`;
+  $('world-name').innerHTML = w.hub ? `<span>Treffpunkt</span> Spawn` : `<span>${p.name}</span> ${w.name}`;
   $('world-name').style.setProperty('--c', w.accent);
-  $('find-hint').textContent = `Simuliert einen Fund in „${w.name}“`;
+  $('find-hint').textContent = w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“`;
   $('world').dataset.world = w.id;
 }
 

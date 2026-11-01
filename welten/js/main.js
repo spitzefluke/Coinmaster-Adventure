@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
+import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
 import { buildWorld, ISLAND_RADIUS } from './worldFactory.js';
 
 // Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10)
@@ -14,7 +14,7 @@ import { partsGroup } from '../../roblox/js/partsPreview.js';
 import { makeCharacter, STUDS, FIGURE_STUDS } from './character.js';
 
 const $ = (id) => document.getElementById(id);
-let planet = 'p1';
+let planet = 'hub'; // Start im Spawn
 let current = WORLDS[0];
 
 // ── 3D-Ansicht ──────────────────────────────────────────────────────────────
@@ -120,7 +120,13 @@ function flyTo(target, dist, minDist, from) {
   fly = { t: 0, fromT: controls.target.clone(), toT: target.clone(), fromP: camera.position.clone(), toP: target.clone().add(off) };
 }
 
+let focused = false; // Kamera steht gerade bei einem Spawn-Bereich
+
 function showWorld(w) {
+  if (focused && w !== current) {
+    focused = false;
+    if (!compare) flyTo(HOME.target, HOME.dist, 12 * CS);
+  }
   current = w;
   $('soon-cover').hidden = !w.soon;
   if (built) {
@@ -216,9 +222,9 @@ $('rbx-toggle').addEventListener('click', (e) => {
 // ── Planeten ────────────────────────────────────────────────────────────────
 
 function renderPlanets() {
-  $('planets').innerHTML = PLANETS.map((p, i) => {
+  $('planets').innerHTML = [HUB, ...PLANETS].map((p, i) => {
     const n = worldsOf(p.id).filter((w) => !w.soon).length;
-    const sub = p.soon ? 'Coming soon' : `${n} Welt${n === 1 ? '' : 'en'}${p.portal ? ` · ${p.portal.name}` : ''}`;
+    const sub = p.id === 'hub' ? 'Shops · Portale · Ranglisten' : p.soon ? 'Coming soon' : `${n} Welt${n === 1 ? '' : 'en'}${p.portal ? ` · ${p.portal.name}` : ''}`;
     return `${i ? '<span class="orbit" aria-hidden="true"></span>' : ''}
       <button type="button" class="planet${p.soon ? ' is-soon' : ''}" data-planet="${p.id}" aria-pressed="${p.id === planet}"
         style="--c:${p.color};--g:${p.glow};--s1:${p.surface[0]};--s2:${p.surface[1]};--s3:${p.surface[2]}">
@@ -258,6 +264,39 @@ function renderInfo() {
   const w = current, p = planetById[w.planet];
   const info = $('info');
   info.style.setProperty('--c', w.soon ? p.color : w.accent);
+  if (w.hub) {
+    // Spawn: Bereiche zum Anfliegen
+    const areas = built?.areas ?? [];
+    const portals = WORLDS.filter((x) => !x.hub).length;
+    info.innerHTML = `
+      <p class="info-eyebrow">Treffpunkt</p>
+      <h2>${w.name}</h2>
+      <p class="info-text">${HUB.text}</p>
+      <dl class="facts">
+        <div><dt>Portale</dt><dd>${portals}, eins pro Welt</dd></div>
+        <div><dt>Münzen</dt><dd>keine, nur in den Welten</dd></div>
+      </dl>
+      <p class="area-title">Bereiche ansehen</p>
+      <div class="area-list">${areas.map((a, i) => `<button type="button" class="area-btn" data-area="${i}">${a.name}</button>`).join('')}</div>
+      <div class="info-nav">
+        <button type="button" class="btn" data-step="-1" aria-label="Vorige Welt">← Vorige</button>
+        <button type="button" class="btn" data-step="1" aria-label="Nächste Welt">Nächste →</button>
+      </div>`;
+    info.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => step(+b.dataset.step)));
+    info.querySelectorAll('[data-area]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const a = areas[+b.dataset.area];
+        info.querySelectorAll('[data-area]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        // von der Inselmitte her auf den Bereich schauen (alle Bauten schauen zur Mitte)
+        const from = new THREE.Vector3(-a.pos.x, 0, -a.pos.z);
+        if (from.lengthSq() < 0.01) from.set(1, 0, 1);
+        from.normalize().add(new THREE.Vector3(0, 0.55, 0));
+        focused = true;
+        flyTo(a.pos.clone().add(new THREE.Vector3(0, 1.4, 0)), a.id === 'portale' ? 9 : 7.5, 3, from);
+      }),
+    );
+    return;
+  }
   if (w.soon) {
     info.innerHTML = `
       <p class="info-eyebrow">${p.name} · ${p.title}</p>

@@ -74,8 +74,11 @@ function cylLocal(a, b, r) {
 
 function convertMesh(out, mesh, world) {
   const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
-  const name = mesh.userData.rbx?.name;
-  const ex = name ? { name } : {};
+  const r = mesh.userData.rbx || {};
+  const ex = {};
+  if (r.name) ex.name = r.name;
+  if (r.className) ex.className = r.className; // z. B. SpawnLocation
+  if (r.text) Object.assign(ex, { text: r.text, textColor: r.textColor || '#ffffff' }); // Schild mit SurfaceGui
   switch (type) {
     case 'BoxGeometry':
       return emit(out, mesh, 'Block', S(P.width, P.height, P.depth), lk, ex);

@@ -52,6 +52,7 @@ const prop = {
       })
       .join('')}</ColorSequence>`;
   },
+  udim2: (name, [xs, xo, ys, yo]) => `<UDim2 name="${name}"><XS>${f(xs)}</XS><XO>${xo | 0}</XO><YS>${f(ys)}</YS><YO>${yo | 0}</YO></UDim2>`,
   content: (name, url) => `<Content name="${name}"><url>${esc(url)}</url></Content>`,
 };
 
@@ -60,9 +61,22 @@ const item = (cls, props, children = '') => `<Item class="${cls}" referent="${re
 function part(p, offset = [0, 0, 0], extraChildren = '') {
   const size = p.size.map((v) => Math.max(0.05, v));
   const isEllipsoid = p.shape === 'Ellipsoid';
-  const children = (isEllipsoid ? item('SpecialMesh', [prop.string('Name', 'Mesh'), prop.token('MeshType', 3), prop.vec3('Scale', [1, 1, 1])]) : '') + extraChildren;
+  let children = (isEllipsoid ? item('SpecialMesh', [prop.string('Name', 'Mesh'), prop.token('MeshType', 3), prop.vec3('Scale', [1, 1, 1])]) : '') + extraChildren;
+  if (p.text) {
+    // Schrift auf der Vorderseite (+z der Webseite = Back in Roblox)
+    const label = item('TextLabel', [
+      prop.string('Name', 'Text'),
+      prop.udim2('Size', [1, 0, 1, 0]),
+      prop.float('BackgroundTransparency', 1),
+      prop.string('Text', p.text),
+      prop.bool('TextScaled', true),
+      prop.color3('TextColor3', p.textColor),
+      prop.float('TextStrokeTransparency', 0.6),
+    ]);
+    children += item('SurfaceGui', [prop.string('Name', 'Schild'), prop.token('Face', NORMAL_ID.Back), prop.float('LightInfluence', 0.2)], label);
+  }
   return item(
-    'Part',
+    p.className || 'Part',
     [
       prop.string('Name', p.name || (isEllipsoid ? 'Kugel' : p.shape === 'Cylinder' ? 'Zylinder' : 'Block')),
       prop.bool('Anchored', true),
@@ -91,9 +105,12 @@ const ID = { x: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
 // Eine Welt als Model; offset verschiebt alles (für mehrere Welten in einer Datei)
 export function worldModel(w, offset = [0, 0, 0]) {
   const { world, parts, sky, lights, emitter } = w;
-  const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [] };
+  const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
   for (const p of parts) {
-    if (p.name === 'CoinSpawn') byFolder.Muenzen.push(p);
+    if (p.name === 'SpawnLocation') byFolder.Spawn.push(p);
+    else if (p.name?.startsWith('Portal')) byFolder.Portale.push(p);
+    else if (p.name === 'Rangliste') byFolder.Ranglisten.push(p);
+    else if (p.name === 'CoinSpawn') byFolder.Muenzen.push(p);
     else if (p.name === 'TeleportPad') byFolder.Teleport.push(p);
     else if (p.name === 'Boden' || p.name === 'Fels' || p.name === 'Rand') byFolder.Insel.push(p);
     else byFolder.Deko.push(p);
@@ -153,6 +170,9 @@ export function worldModel(w, offset = [0, 0, 0]) {
       folder('Deko', list(byFolder.Deko)) +
       folder('Muenzen', list(byFolder.Muenzen)) +
       folder('Teleport', list(byFolder.Teleport)) +
+      (byFolder.Spawn.length ? folder('Spawn', list(byFolder.Spawn)) : '') +
+      (byFolder.Portale.length ? folder('Portale', list(byFolder.Portale)) : '') +
+      (byFolder.Ranglisten.length ? folder('Ranglisten', list(byFolder.Ranglisten)) : '') +
       folder('Himmel', list(sky)) +
       folder('Effekte', lightParts + fx),
   );
