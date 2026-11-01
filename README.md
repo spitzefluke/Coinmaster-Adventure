@@ -153,6 +153,10 @@ Sturm, Blasen …).
   Lore auf Schienen, Cupcakes, Geysire, Schatztruhe, Sandburg oder Statuen.
 - **Roblox-Ansicht** (Knopf in der 3D-Ansicht): zeigt die Insel so, wie sie nach dem Export in
   Roblox Studio aus Teilen aufgebaut ist.
+- **Größenvergleich** (Knopf in der 3D-Ansicht): stellt eine normal große Roblox-Figur (gut
+  5 Studs, klassische Block-Proportionen) neben die Teleport-Plattform und fährt die Kamera hin.
+  Eine Insel ist rund 160 Studs breit, also etwa 40 Figuren nebeneinander
+  (`welten/js/character.js`).
 - `welten/js/worlds.js` – Daten (Preise, Boni, Portale, Wiedergeburt), `js/worldFactory.js` –
   baut die 3D-Inseln, `js/thumbs.js` – Vorschaubilder.
 

@@ -320,13 +320,24 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
 
-  // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub
+  // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
+  // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.
+  let figureSpot = null;
   {
     const p = spot(0.9, R - 2.4, R - 1.1);
     if (p) {
       const pad = teleportPad(world.accent || '#ffd76a', anims);
       put(pad, p[0], p[1], { rot: false });
       pad.lookAt(0, pad.position.y, 0);
+      const a0 = Math.atan2(p[1], p[0]), r0 = Math.hypot(p[0], p[1]);
+      for (const da of [0.13, -0.13, 0.2, -0.2, 0.28, -0.28]) {
+        const r = Math.min(r0, R - 0.9), x = Math.cos(a0 + da) * r, z = Math.sin(a0 + da) * r;
+        if (free(x, z, 0.5)) {
+          reserve(x, z, 0.5);
+          figureSpot = new THREE.Vector3(x, height(x, z), z);
+          break;
+        }
+      }
     }
   }
 
@@ -385,6 +396,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     target: new THREE.Vector3(0, 0.6, 0),
     height,
     radius: R,
+    figureSpot,
     update(t, dt) {
       for (const a of anims) a(t, dt);
       for (const f of fxs) f.update(t, Math.min(dt, 0.05));

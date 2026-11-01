@@ -69,6 +69,8 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); }
 .view-toggle:hover { border-color: var(--brass); }
 .view-toggle[aria-pressed="true"] { background: #00a2ff; border-color: #00a2ff; color: #fff; }
 .rbx-count { padding: 4px 8px; border-radius: 999px; background: #0f0d14b0; color: #cfe8ff; font: 500 0.6875rem/1 var(--font-data); }
+.size-info { position: absolute; left: 12px; right: 12px; bottom: 40px; margin: 0; justify-self: start; width: fit-content; max-width: calc(100% - 24px); padding: 8px 12px; border: 1px solid #00a2ff; border-radius: 12px; background: #0f0d14d0; color: #e6f4ff; font: 500 0.8125rem/1.35 var(--font-body); pointer-events: none; }
+.size-info strong { color: #6cc8ff; }
 .soon-cover { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px; background: radial-gradient(circle at 50% 45%, #2a2535, #0b0a10 70%); }
 .soon-cover span { font: 700 7rem/1 var(--font-display); color: #3a3446; text-shadow: 0 0 40px #8f879b55; animation: pulse 2.4s ease-in-out infinite; }
 .soon-cover p { margin: 0; font: 600 0.875rem/1 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }

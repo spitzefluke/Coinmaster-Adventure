@@ -8,6 +8,7 @@ import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
 import { partsGroup } from '../../roblox/js/partsPreview.js';
+import { makeCharacter, STUDS, FIGURE_STUDS } from './character.js';
 
 const $ = (id) => document.getElementById(id);
 let planet = 'p1';
@@ -38,6 +39,7 @@ controls.autoRotateSpeed = 0.6;
 let idleTimer;
 controls.addEventListener('start', () => {
   controls.autoRotate = false;
+  fly = null; // Ziehen unterbricht die Kamerafahrt
   clearTimeout(idleTimer);
 });
 controls.addEventListener('end', () => {
@@ -62,6 +64,32 @@ function toRobloxView(b, w) {
   return parts.children.length;
 }
 
+// ── Größenvergleich mit einer normal großen Roblox-Figur ──
+let compare = false, figure = null, fly = null;
+const HOME = { target: new THREE.Vector3(0, 0.6, 0), dist: 30 };
+
+// Platz neben der Teleport-Plattform (Ankunftsort), sonst am Inselrand
+function figureSpot(b) {
+  if (b.figureSpot) return b.figureSpot.clone();
+  let pad = null;
+  b.scene.traverse((o) => o.userData.rbx?.name === 'TeleportPad' && (pad = o.getWorldPosition(new THREE.Vector3())));
+  const p = pad ?? new THREE.Vector3(b.radius - 2, 0, 0);
+  // seitlich neben die Plattform, gleicher Abstand zum Rand
+  const out = new THREE.Vector3(p.x, 0, p.z).normalize(), side = new THREE.Vector3(-out.z, 0, out.x);
+  let x = p.x + side.x * 1.3, z = p.z + side.z * 1.3;
+  const r = Math.hypot(x, z), max = b.radius - 0.9;
+  if (r > max) (x *= max / r), (z *= max / r);
+  return new THREE.Vector3(x, b.height(x, z), z);
+}
+
+function flyTo(target, dist, minDist, from) {
+  controls.autoRotate = false;
+  controls.minDistance = minDist;
+  // from: Richtung, aus der die Kamera schaut (sonst die aktuelle)
+  const off = (from ? from.clone() : camera.position.clone().sub(controls.target)).setLength(dist);
+  fly = { t: 0, fromT: controls.target.clone(), toT: target.clone(), fromP: camera.position.clone(), toP: target.clone().add(off) };
+}
+
 function showWorld(w) {
   current = w;
   $('soon-cover').hidden = !w.soon;
@@ -72,8 +100,30 @@ function showWorld(w) {
   if (!w.soon) {
     const fewer = loadSettings().fewerParticles;
     built = buildWorld(w, { particles: fewer ? 0.4 : 1, shadows: renderer.shadowMap.enabled });
+    const spot = figureSpot(built);
     if (robloxView) $('rbx-count').textContent = `${toRobloxView(built, w).toLocaleString('de-DE')} Roblox-Teile`;
+    figure = null;
+    if (compare) {
+      figure = makeCharacter();
+      figure.position.copy(spot);
+      // Figur schaut nach außen, zur Kamera
+      figure.lookAt(spot.x * 2, spot.y, spot.z * 2);
+      built.scene.add(figure);
+      const d = built.dispose;
+      const fig = figure;
+      built.dispose = () => {
+        fig.userData.dispose();
+        d();
+      };
+      const wide = Math.round(built.radius * 2 * STUDS);
+      $('size-info').innerHTML = `<strong>Figur</strong> ${FIGURE_STUDS.toLocaleString('de-DE')} Studs hoch · <strong>Insel</strong> ${wide} Studs breit ≈ ${Math.round(wide / 4)} Figuren nebeneinander`;
+      // von außen (über dem Abgrund, dort steht nichts im Weg) auf die Figur schauen;
+      // dahinter ragt die Welt auf
+      const outward = new THREE.Vector3(spot.x, 0, spot.z).normalize();
+      flyTo(spot.clone().add(new THREE.Vector3(0, 0.45, 0)), 4.6, 1.6, outward.add(new THREE.Vector3(0, 0.32, 0)));
+    }
   }
+  $('size-info').hidden = !compare || w.soon;
   $('rbx-count').hidden = !robloxView || w.soon;
   canvas.classList.remove('is-in');
   void canvas.offsetWidth;
@@ -107,9 +157,24 @@ renderer.setAnimationLoop(() => {
   const dt = clock.getDelta(), t = clock.elapsedTime;
   if (!visible || !built) return;
   resize();
+  if (fly) {
+    fly.t = Math.min(1, fly.t + dt / 1.4);
+    const k = fly.t < 0.5 ? 2 * fly.t * fly.t : 1 - Math.pow(-2 * fly.t + 2, 2) / 2;
+    controls.target.lerpVectors(fly.fromT, fly.toT, k);
+    camera.position.lerpVectors(fly.fromP, fly.toP, k);
+    if (fly.t >= 1) fly = null;
+  }
   controls.update();
   built.update(t, dt);
+  figure?.userData.update(t);
   renderer.render(built.scene, camera);
+});
+
+$('size-toggle').addEventListener('click', (e) => {
+  compare = !compare;
+  e.currentTarget.setAttribute('aria-pressed', String(compare));
+  if (!compare) flyTo(HOME.target, HOME.dist, 12);
+  showWorld(current);
 });
 
 $('rbx-toggle').addEventListener('click', (e) => {
