@@ -25,12 +25,12 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(pixelRatio());
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300);
-camera.position.set(12, 7.5, 14);
+camera.position.set(19, 12, 22);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.enablePan = false;
-controls.minDistance = 8;
-controls.maxDistance = 30;
+controls.minDistance = 12;
+controls.maxDistance = 50;
 controls.maxPolarAngle = Math.PI * 0.62;
 controls.target.set(0, 0.6, 0);
 controls.autoRotate = !skipAnimations();
@@ -91,9 +91,9 @@ function resize() {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     // Abstand so wählen, dass die ganze Insel auch in schmale Ansichten passt
-    const fit = 7.6 / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
+    const fit = 12.4 / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
     const off = camera.position.clone().sub(controls.target);
-    off.setLength(Math.min(30, Math.max(17, fit)));
+    off.setLength(Math.min(48, Math.max(27, fit)));
     camera.position.copy(controls.target).add(off);
   }
 }

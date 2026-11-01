@@ -7,7 +7,9 @@
 
 import * as THREE from 'three';
 
-const R = 6; // Radius der Insel
+const R = 10; // Radius der Insel
+const K = R / 6; // Vergrößerung gegenüber der ersten Fassung (Radius 6)
+const AREA = K * K; // so viel mehr Fläche: Streu-Gegenstände, Münzen und Partikel wachsen mit
 
 // ── Zufall mit festem Startwert, damit jede Welt immer gleich aussieht ──
 function seeded(str) {
@@ -196,7 +198,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const anims = []; // (t, dt) => void
 
   scene.background = skyTex(world.sky);
-  scene.fog = new THREE.Fog(world.water ? world.sky[1] : world.sky[1], world.water ? 16 : 26, world.water ? 46 : 70);
+  scene.fog = new THREE.Fog(world.sky[1], (world.water ? 16 : 26) * K, (world.water ? 46 : 70) * K);
 
   // Licht
   const space = world.planet === 'p2';
@@ -207,7 +209,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   if (shadows) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
-    Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 });
+    Object.assign(sun.shadow.camera, { left: -R * 1.4, right: R * 1.4, top: R * 1.4, bottom: -R * 1.4, near: 1, far: 70 });
     sun.shadow.bias = -0.0015;
     sun.shadow.normalBias = 0.03;
   }
@@ -255,19 +257,20 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const skirt = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.96, 1, 56, 1, true), M(world.side, { side: THREE.DoubleSide }));
   skirt.position.y = -0.5 + 0.0;
   root.add(skirt);
-  const under = jitter(new THREE.ConeGeometry(R * 0.96, 5.5, 20, 4), rand, 0.7, (x, y) => y > 2.7);
+  const depth = 5.5 * K;
+  const under = jitter(new THREE.ConeGeometry(R * 0.96, depth, 24, 5), rand, 0.9, (x, y) => y > depth / 2 - 0.05);
   under.rotateX(Math.PI);
   const rock = new THREE.Mesh(under, M(world.rock));
   rock.userData.rbx = { kind: 'underside' };
   skirt.userData.rbx = { name: 'Rand' };
-  rock.position.y = -1 - 2.75;
+  rock.position.y = -1 - depth / 2;
   root.add(rock);
   // kleine schwebende Brocken
-  for (let i = 0; i < 4; i++) {
-    const s = rr(0.3, 0.7);
+  for (let i = 0; i < 7; i++) {
+    const s = rr(0.3, 0.9);
     const b = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.4), M(world.rock));
     const a = rr(0, Math.PI * 2), r = rr(R + 0.8, R + 2.2);
-    b.position.set(Math.cos(a) * r, rr(-3, -0.5), Math.sin(a) * r);
+    b.position.set(Math.cos(a) * r, rr(-4, -0.5), Math.sin(a) * r);
     root.add(b);
     const y0 = b.position.y, ph = rr(0, 6);
     anims.push((t) => {
@@ -304,6 +307,8 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     return obj;
   };
   const scatter = (n, make, d, rMin, rMax, opts) => {
+    // Streut über die ganze (größere) Insel: Anzahl mit der Fläche wachsen lassen
+    if ((rMax ?? R) >= R - 2.5) n = Math.round(n * AREA);
     for (let i = 0; i < n; i++) {
       const p = spot(d, rMin, rMax);
       if (p) put(make(i), p[0], p[1], opts);
@@ -311,7 +316,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
 
   const shared = {};
-  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, scatter, height, M, E, shared };
+  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared };
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
 
@@ -329,7 +334,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.07, 28);
   const coinMat = new THREE.MeshStandardMaterial({ color: '#ffcf4a', metalness: 0.7, roughness: 0.28, emissive: '#b8860b', emissiveIntensity: 0.55 });
   const glowMat = new THREE.SpriteMaterial({ map: dotTex(), color: world.accent || '#ffd76a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < Math.round(5 * AREA); i++) {
     const p = spot(0.5, 0.5, R - 0.7);
     if (!p) continue;
     const g = new THREE.Group();
@@ -355,7 +360,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const fxs = [];
   if (pScale > 0 && FX[world.fx]) {
     const cfg = { ...FX[world.fx] };
-    cfg.count = Math.max(8, Math.round(cfg.count * pScale));
+    cfg.count = Math.max(8, Math.round(cfg.count * pScale * AREA));
     const p = particles(cfg, rand);
     scene.add(p.object);
     fxs.push(p);
@@ -364,7 +369,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   if (space) {
     const n = 900, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const u = rand() * 2 - 1, a = rand() * Math.PI * 2, r = 80;
+      const u = rand() * 2 - 1, a = rand() * Math.PI * 2, r = 80 * K;
       const s = Math.sqrt(1 - u * u);
       pos.set([Math.cos(a) * s * r, u * r, Math.sin(a) * s * r], i * 3);
     }
@@ -611,7 +616,8 @@ function planetBackdrop(scene, { color, bands, ring, size = 9, pos = [-22, 10, -
   const mat = emissive ? new THREE.MeshBasicMaterial({ map: tex, fog: false }) : new THREE.MeshStandardMaterial({ map: tex, roughness: 1, fog: false });
   const p = new THREE.Mesh(new THREE.SphereGeometry(size, 40, 24), mat);
   p.userData.rbx = { color, name: 'Himmelskoerper', sky: true, neon: !!emissive };
-  p.position.set(...pos);
+  p.position.set(pos[0] * K, pos[1] * K, pos[2] * K);
+  p.scale.setScalar(K);
   p.rotation.z = 0.3;
   scene.add(p);
   if (ring) {
@@ -627,12 +633,13 @@ function planetBackdrop(scene, { color, bands, ring, size = 9, pos = [-22, 10, -
     const rm = new THREE.Mesh(new THREE.RingGeometry(size * 1.3, size * 2.1, 64), new THREE.MeshBasicMaterial({ map: rt, transparent: true, side: THREE.DoubleSide, fog: false, depthWrite: false }));
     rm.userData.rbx = { color: `rgb(${ring})`, transparency: 0.4, sky: true };
     rm.position.copy(p.position);
+    rm.scale.setScalar(K);
     rm.rotation.set(1.2, 0.2, 0.3);
     scene.add(rm);
   }
   if (glow) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex(), color: glow, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-    s.scale.setScalar(size * 4.5);
+    s.scale.setScalar(size * 4.5 * K);
     s.position.copy(p.position);
     scene.add(s);
   }
@@ -735,7 +742,7 @@ function fishSchool(root, anims, rand, colors, n = 7) {
     tail.rotation.z = Math.PI / 2;
     const f = group(body, tail);
     root.add(f);
-    const r = 3 + rand() * 4, y = 1 + rand() * 3, sp = (0.25 + rand() * 0.25) * (rand() < 0.5 ? 1 : -1), ph = rand() * 6;
+    const r = (3 + rand() * 4) * K, y = 1 + rand() * 3, sp = (0.25 + rand() * 0.25) * (rand() < 0.5 ? 1 : -1), ph = rand() * 6;
     anims.push((t) => {
       const a = t * sp + ph;
       f.position.set(Math.cos(a) * r, y + Math.sin(t * 1.5 + ph) * 0.2, Math.sin(a) * r);
@@ -761,9 +768,9 @@ function lightRays(scene, anims, color, rand) {
     g.fillRect(0, 0, w, h);
   });
   const mat = new THREE.MeshBasicMaterial({ color, map, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 22), mat);
-    m.position.set((rand() - 0.5) * 12, 8, (rand() - 0.5) * 12);
+    m.position.set((rand() - 0.5) * 2 * R, 8, (rand() - 0.5) * 2 * R);
     m.rotation.set(0, rand() * 3, 0.25);
     scene.add(m);
     const ph = rand() * 6, x0 = m.position.x;
@@ -1190,7 +1197,7 @@ const BUILDERS = {
     scatter(6, () => bush(rr(0.25, 0.4), '#2f7a3a', rand), 0.3);
   },
 
-  stadt({ put, root, scatter, rand, rr, reserve }) {
+  stadt({ put, root, scatter, rand, rr, reserve, free }) {
     // Straßenkreuz
     const road = M('#3a3842', { roughness: 0.95 });
     for (const rot of [0, Math.PI / 2]) {
@@ -1198,29 +1205,33 @@ const BUILDERS = {
       r.rotation.y = rot;
       r.position.y = 0.14;
       root.add(r);
-      for (let i = -5; i <= 5; i++) {
+      for (let i = -(R - 1); i <= R - 1; i++) {
         const line = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.06), M('#ffe25f'));
         line.position.set(rot ? 0 : i, 0.15, rot ? i : 0);
         line.rotation.y = rot;
         root.add(line);
       }
     }
-    for (let i = -6; i <= 6; i++) {
+    for (let i = -2 * R; i <= 2 * R; i++) {
       reserve(i * 0.5, 0, 0.6);
       reserve(0, i * 0.5, 0.6);
     }
     const colors = ['#c9c4d6', '#8fa8c8', '#d6b89a', '#a8b8a0', '#e0d4c0', '#7a8aa8'];
     for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
       const n = 2 + Math.floor(rand() * 2);
-      for (let i = 0; i < n; i++) {
-        const x = sx * rr(1.4, 3.8), z = sz * rr(1.4, 3.8);
+      for (let i = 0; i < n + 4; i++) {
+        // innen Hochhäuser, außen niedrigere
+        const outer = i >= n, lo = outer ? 4.4 : 1.4, hi = outer ? R - 1.6 : 3.8;
+        const x = sx * rr(lo, hi), z = sz * rr(lo, hi);
         if (Math.hypot(x, z) > R - 1.2) continue;
-        const b = building(rr(0.9, 1.4), rr(1.4, 4.2), rr(0.9, 1.3), colors[Math.floor(rand() * colors.length)]);
+        if (!free(x, z, 0.9)) continue;
+        const b = building(rr(0.9, 1.4), outer ? rr(1, 2.4) : rr(1.4, 4.2), rr(0.9, 1.3), colors[Math.floor(rand() * colors.length)]);
         reserve(x, z, 0.9);
         put(b, x, z, { rot: false });
       }
     }
-    for (const [x, z] of [[0.8, 2.4], [-0.8, -2.6], [2.6, -0.8], [-2.4, 0.8], [0.8, -4.2], [4.2, 0.8]]) put(lamp(), x, z, { rot: false });
+    for (let d = 2.4; d < R - 0.8; d += 1.8)
+      for (const [x, z] of [[0.8, d], [-0.8, -d], [d, -0.8], [-d, 0.8]]) put(lamp(), x, z, { rot: false });
     const c1 = put(car('#e0433a'), 2, -0.25, { rot: false });
     const c2 = put(car('#3a8fd1'), -0.25, -2.5, { rot: false });
     c2.rotation.y = Math.PI / 2;
@@ -1266,7 +1277,7 @@ const BUILDERS = {
     const flow = new THREE.Mesh(new THREE.TubeGeometry(path, 30, 0.18, 6), E('#ff5000', 1));
     vol.add(flow);
     put(vol, -0.8, -0.6, { rot: false });
-    const glow = new THREE.PointLight('#ff6a1a', 25, 9, 2);
+    const glow = new THREE.PointLight('#ff6a1a', 25, 9 * K, 2);
     glow.position.set(-0.8, 3.4, -0.6);
     root.add(glow);
     const pools = [];
@@ -1314,7 +1325,7 @@ const BUILDERS = {
       return group(s);
     }, 0.35);
     scatter(4, () => mushroom(rr(0.35, 0.6), '#6ae8ff', rand, true), 0.3);
-    const light = new THREE.PointLight('#b07bff', 20, 12, 2);
+    const light = new THREE.PointLight('#b07bff', 20, 12 * K, 2);
     light.position.set(0, 2.5, 0);
     root.add(light);
     anims.push((t) => (light.intensity = 18 + Math.sin(t * 1.5) * 5));
@@ -1461,7 +1472,7 @@ const BUILDERS = {
     });
     scatter(10, () => rockMesh(rr(0.25, 0.6), '#a02a08', rand, E('#c83a08', 0.6)), 0.45);
     scatter(6, () => crystal(rr(0.8, 1.4), '#ffc83a', rand, 1.4), 0.5);
-    const glow = new THREE.PointLight('#ffb02e', 30, 14, 2);
+    const glow = new THREE.PointLight('#ffb02e', 30, 14 * K, 2);
     glow.position.set(0, 3, 0);
     root.add(glow);
   },

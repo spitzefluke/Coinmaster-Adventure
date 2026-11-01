@@ -27,7 +27,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Haustiere',
-    text: '49 Haustiere, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Sie schlüpfen jetzt auch in der Eierhalle.',
+    text: '49 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
     href: 'haustiere/',
     status: 'vorschau',
     eckdaten: ['49 Tiere', '14 episch', 'Export für Blender'],

@@ -14,7 +14,7 @@ function petNode(pet) {
   const model = obj.model;
   obj.spinner.remove(model);
   const drop = [];
-  model.traverse((o) => (o.isSprite || o.isPoints || o.isLine) && drop.push(o));
+  model.traverse((o) => (o.isSprite || o.isPoints || o.isLine || o.userData.outline) && drop.push(o));
   drop.forEach((o) => o.parent.remove(o));
   model.name = pet.name;
   // Sockel-Höhe herausrechnen: Füße auf y = 0

@@ -118,6 +118,21 @@ async function runExport(btn, fn) {
 document.getElementById('export-all').addEventListener('click', (e) => runExport(e.currentTarget, (m) => m.exportAll()));
 document.getElementById('export-one').addEventListener('click', (e) => current && runExport(e.currentTarget, (m) => m.exportPet(current)));
 
+// ── Stil: Roblox (Standard) oder Original ──
+const STYLE_KEY = 'coinmaster.haustiere.stil';
+function setStyle(id) {
+  gallery.setStyle(id);
+  document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === id)));
+  try {
+    localStorage.setItem(STYLE_KEY, id);
+  } catch {}
+}
+document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
+try {
+  const saved = localStorage.getItem(STYLE_KEY);
+  if (saved === 'orig' || saved === 'rbx') setStyle(saved);
+} catch {}
+
 // Direkt zu einem Ei springen, z. B. haustiere/#galaxie
 const fromHash = location.hash.slice(1);
 if (EGGS.some((e) => e.id === fromHash)) filter = fromHash;

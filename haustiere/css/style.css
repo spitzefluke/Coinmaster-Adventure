@@ -16,6 +16,12 @@
 .back:hover { text-decoration: underline; }
 h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: balance; }
 .lede { margin: 12px 0 0; color: var(--muted); }
+.head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.head-tools .export-btn { margin-top: 0; }
+.style-switch { display: flex; gap: 2px; padding: 4px; border: 1px solid var(--seam); border-radius: 999px; background: #18151fcc; }
+.style-switch button { padding: 9px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 600 0.8125rem/1 var(--font-body); cursor: pointer; }
+.style-switch button:hover { color: var(--ink); }
+.style-switch button[aria-pressed="true"] { background: linear-gradient(180deg, #f3d48c, #d9b26a 55%, #a87c2e); color: #1a1408; }
 .export-btn, .ghost-btn {
   margin-top: 16px;
   padding: 10px 16px;

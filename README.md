@@ -114,10 +114,15 @@ Animation zum Testen als `window.hatch` erreichbar.
 
 ## Haustiere
 
-`haustiere/` zeigt alle 49 Haustiere aus dem Claude-Design-Projekt „Haustiere“, sieben pro Ei:
+`haustiere/` zeigt alle 49 Haustiere aus den Claude-Design-Projekten „Haustiere“ und „Haustiere Roblox“, sieben pro Ei:
 fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %) mit eigenen Effekten
 (Strahlen, Runenkreis, Lichtsäule, Kraftschub mit Blitzen, Themen-Partikel, kreisende Objekte).
 
+- **Roblox-Stil** (Standard): glatte Kunststoff-Blöcke mit runden Kanten, große Köpfe, Knopfaugen,
+  Comic-Kontur und achteckiger Sockel. Der Knopf „Original“ schaltet auf die erste Fassung um
+  (Wahl wird gemerkt). Auch beim Schlüpfen in der Eierhalle erscheint der Roblox-Stil.
+- `haustiere/js/rbx-kit.js` – Roblox-Bausteine (Blöcke, Gesicht, Vierbeiner, Echse, Vogel, Zubehör),
+  `rbx-a/b/c.js` – je ein Roblox-Bauplan pro Tier
 - `haustiere/js/pets.js` – Daten, Schlupfchancen, `rollPet(eggId)`
 - `haustiere/js/kit.js`, `templates.js` – 3D-Bausteine (Fell, Augen, Vierbeiner, Echse, Flügel …)
 - `haustiere/js/builders-a/b/c.js` – je ein Bauplan pro Tier
@@ -198,7 +203,7 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
   Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
   („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
-  Maßstab: 1 Einheit = 8 Studs. Animationen fehlen in Studio noch.
+  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 160 Studs breit. Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 

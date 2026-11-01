@@ -10,8 +10,14 @@ import { swarm } from './templates.js';
 import { BUILDERS as A } from './builders-a.js';
 import { BUILDERS as B } from './builders-b.js';
 import { BUILDERS as C } from './builders-c.js';
+import { BUILDERS as RA } from './rbx-a.js';
+import { BUILDERS as RB } from './rbx-b.js';
+import { BUILDERS as RC } from './rbx-c.js';
 
 const ALL = { ...A, ...B, ...C };
+// Roblox-Stil (rbx-*.js); fehlt ein Bauplan, wird der alte genommen
+const RBX = { ...RA, ...RB, ...RC };
+export const STYLE = { current: 'rbx' };
 export const PED_TOP = -1.33;
 
 function fit(model, H, W) {
@@ -340,13 +346,13 @@ function epicPlus(b, fx, spinner, pet, glow, fp) {
   });
 }
 
-export function createPet(pet, { pedestal = true } = {}) {
+export function createPet(pet, { pedestal = true, style = STYLE.current } = {}) {
   const root = new THREE.Group(), spinner = new THREE.Group(), model = new THREE.Group(), fx = new THREE.Group();
   spinner.add(model);
   root.add(fx, spinner);
   const b = new Builder(seeded(hashStr(pet.id) + 99), model, fx);
   b.pet = pet;
-  const build = ALL[pet.id];
+  const build = (style === 'rbx' && RBX[pet.id]) || ALL[pet.id];
   if (build) build(b);
   else b.ball(model, b.mat(pet.glow, { rough: 0.4 }), [0, 0.5, 0], 0.5);
   const fp = fit(model, pet.epic ? 2.7 : 2.3, pet.epic ? 3.0 : 2.55);
@@ -375,7 +381,46 @@ export function createPet(pet, { pedestal = true } = {}) {
 
   const accent = new THREE.Color(pet.glow);
   let pedestalGroup = null;
-  if (pedestal) {
+  if (pedestal && style === 'rbx') {
+    // Roblox-Sockel: achteckige Stufen, Neonkanten in Eifarbe, Noppen
+    pedestalGroup = new THREE.Group();
+    const oct = (rt, rb, h, y, m) => {
+      const o = new THREE.Mesh(b.track(new THREE.CylinderGeometry(rt, rb, h, 8)), m);
+      o.position.y = y;
+      o.rotation.y = Math.PI / 8;
+      pedestalGroup.add(o);
+      return o;
+    };
+    const stoneM = b.mat('#262130', { rough: 0.5, metal: 0.3, coat: 0.4 });
+    const topM = b.mat('#352e42', { rough: 0.3, metal: 0.6, coat: 0.8 });
+    oct(1.32, 1.44, 0.3, -0.07, stoneM);
+    oct(1.14, 1.2, 0.16, 0.16, topM);
+    const rimMat = b.track(new THREE.MeshBasicMaterial({ color: accent }));
+    const ring = (R, y, m, t = 0.028) => {
+      const r = new THREE.Mesh(b.track(new THREE.TorusGeometry(R, t, 4, 8)), m);
+      r.rotation.set(Math.PI / 2, 0, Math.PI / 8);
+      r.position.y = y;
+      pedestalGroup.add(r);
+      return r;
+    };
+    ring(1.15, 0.24, rimMat);
+    ring(1.33, 0.08, rimMat, 0.018);
+    const studM = pet.epic ? b.mat('#f2c14e', { metal: 1, rough: 0.22, coat: 0.6 }) : b.mat('#4a4258', { rough: 0.35, metal: 0.4, coat: 0.6 });
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU;
+      const s = new THREE.Mesh(b.track(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 16)), studM);
+      s.position.set(Math.cos(a) * 1.25, 0.1, Math.sin(a) * 1.25);
+      pedestalGroup.add(s);
+    }
+    if (pet.epic) {
+      const gm = b.mat('#d9b26a', { metal: 1, rough: 0.25 });
+      ring(1.44, -0.21, gm, 0.035);
+      oct(1.5, 1.56, 0.1, -0.27, stoneM);
+    }
+    pedestalGroup.position.y = PED_TOP - 0.24;
+    root.add(pedestalGroup);
+    b.on((t) => rimMat.color.copy(accent).multiplyScalar(0.8 + Math.sin(t * 2) * 0.3));
+  } else if (pedestal) {
     pedestalGroup = new THREE.Group();
     const stone = new THREE.Mesh(b.track(new THREE.CylinderGeometry(1.25, 1.45, 0.34, 64)), b.track(new THREE.MeshStandardMaterial({ color: '#2a2532', metalness: 0.5, roughness: 0.45 })));
     const top = new THREE.Mesh(b.track(new THREE.CylinderGeometry(1.12, 1.18, 0.08, 64)), b.track(new THREE.MeshStandardMaterial({ color: '#3a3346', metalness: 0.8, roughness: 0.3 })));

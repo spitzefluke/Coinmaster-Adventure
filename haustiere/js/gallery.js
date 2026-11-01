@@ -1,7 +1,7 @@
 // Haustier-Galerie: ein WebGL-Canvas rendert alle Karten per Scissor-Test (wie die Eierhalle),
 // dazu eine Detailansicht mit eigenem Renderer zum Drehen und Zoomen.
 import { THREE, makeEnvironment, makeScene } from './kit.js';
-import { createPet } from './petFactory.js';
+import { createPet, STYLE } from './petFactory.js';
 import { petById } from './pets.js';
 import { pixelRatio } from '../../js/settings.js';
 
@@ -177,5 +177,18 @@ export function createGallery(stage) {
     }
   });
 
-  return { scan, openDetail, closeDetail, settings };
+  // Stil wechseln: alle Tiere neu bauen
+  function setStyle(s) {
+    if (STYLE.current === s) return;
+    STYLE.current = s;
+    for (const en of entries.values()) {
+      if (en.obj) en.obj.dispose();
+      en.obj = null;
+      en.scene = null;
+      en.building = false;
+    }
+    if (overlay && d && d.obj) openDetail(d.obj.pet, d.canvas);
+  }
+
+  return { scan, openDetail, closeDetail, settings, setStyle };
 }
