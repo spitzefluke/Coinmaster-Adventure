@@ -74,11 +74,11 @@ return CoinData
 `;
 }
 
-export function mutationDataSource({ MUTATIONS, WEATHER }) {
+export function mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS = 180000 }) {
   const muts = MUTATIONS.map((m) =>
     fields({ Id: str(m.id), Name: str(m.name), Multiplier: num(m.multiplier), Color: color(m.color), Weather: str(m.weather), Chance: num(m.chance), Effect: str(m.effect) }),
   );
-  const weather = WEATHER.map((w) => fields({ Id: str(w.id), Name: str(w.name), Weight: num(w.weight), Color: color(w.color), Text: str(w.text) }));
+  const weather = WEATHER.map((w) => fields({ Id: str(w.id), Name: str(w.name), Weight: num(w.weight), Color: color(w.color), Text: str(w.text), Sky: w.sky ? color(w.sky) : undefined, Light: w.light != null ? num(w.light) : undefined }));
   return `${HEADER('Mutationen und Wetter')}
 local MutationData = {}
 
@@ -86,10 +86,11 @@ local MutationData = {}
 MutationData.Mutations = ${list(muts)}
 
 -- Weight: wie häufig das Wetter im Vergleich vorkommt
+-- Sky/Light: Farbe und Helligkeit, die WeatherFx in Lighting setzt
 MutationData.Weather = ${list(weather)}
 
 -- Sekunden, die ein Wetter anhält
-MutationData.WeatherDuration = 60
+MutationData.WeatherDuration = ${num(WEATHER_MS / 1000)}
 
 MutationData.ById = {}
 for _, m in ipairs(MutationData.Mutations) do
@@ -509,6 +510,76 @@ function EFFECTS.hacked(model, body)
 	end)
 end
 
+function EFFECTS.gefroren(model, body)
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Color = p.Color:Lerp(Color3.fromRGB(191, 234, 255), 0.4)
+			p.Reflectance = math.min(1, p.Reflectance + 0.15)
+		end
+	end
+	local rng = Random.new(11)
+	for i = 0, 7 do
+		local a = math.rad(i * 45 + rng:NextNumber(-8, 8))
+		local h = rng:NextNumber(0.7, 1.3)
+		part("Part", { Name = "Eiskristall", Size = Vector3.new(0.25, h, 0.25), Color = Color3.fromRGB(191, 244, 255), Material = Enum.Material.Ice, Transparency = 0.2, CFrame = body.CFrame * CFrame.new(0, math.sin(a) * (body.Size.Y / 2 + h * 0.3), math.cos(a) * (body.Size.Z / 2 + h * 0.3)) * CFrame.Angles(a, 0, 0) }, model)
+	end
+	emitter(attachment(body, Vector3.new(0, body.Size.Y / 2 + 1, 0)), { Rate = 6, Lifetime = NumberRange.new(1.5, 2.2), Speed = NumberRange.new(1, 2), EmissionDirection = Enum.NormalId.Bottom, Size = NumberSequence.new(0.2), Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)), SpreadAngle = Vector2.new(40, 40), LightEmission = 0.3 })
+end
+
+-- Blitze ruhig: höchstens zehn Wechsel pro Sekunde, Licht pulsiert weich
+function EFFECTS.elektrisch(model, body)
+	local yellow = Color3.fromRGB(255, 233, 74)
+	local l = light(body, yellow, 2, 12)
+	local sparks = emitter(attachment(body, Vector3.zero), { Rate = 25, Lifetime = NumberRange.new(0.15, 0.3), Speed = NumberRange.new(6, 10), Size = NumberSequence.new(0.18, 0), Color = ColorSequence.new(yellow), SpreadAngle = Vector2.new(180, 180) })
+	local bolts = {}
+	for i = 1, 3 do
+		table.insert(bolts, part("Part", { Name = "Blitz", Size = Vector3.new(0.12, 1.4, 0.12), Color = Color3.fromRGB(255, 247, 176), Material = Enum.Material.Neon, Transparency = 1, CFrame = body.CFrame }, model))
+	end
+	loop(model, 0.1, function(t)
+		l.Brightness = 1.6 + math.sin(t * 3) * 0.8
+		for _, b in ipairs(bolts) do
+			if math.random() < 0.35 then
+				local a = math.random() * math.pi * 2
+				b.CFrame = body.CFrame * CFrame.new(0, math.sin(a) * body.Size.Y * 0.6, math.cos(a) * body.Size.Z * 0.6) * CFrame.Angles(a, 0, 0)
+				b.Transparency = 0.1
+			else
+				b.Transparency = 1
+			end
+		end
+		sparks.Rate = 15 + math.sin(t * 3) * 10
+	end)
+end
+
+function EFFECTS.golden(model, body)
+	local gold = Color3.fromRGB(255, 201, 58)
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Color = gold
+			p.Material = Enum.Material.Foil
+			p.Reflectance = 0.25
+		end
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(255, 246, 192)
+	sparkles.Parent = body
+	light(body, gold, 2.5, 14)
+	emitter(attachment(body, Vector3.new(0, -body.Size.Y / 2, 0)), { Rate = 4, Lifetime = NumberRange.new(0.6, 0.9), Speed = NumberRange.new(0), Acceleration = Vector3.new(0, -25, 0), Size = NumberSequence.new(0.22, 0.12), Color = ColorSequence.new(gold), LightEmission = 0.6 })
+end
+
+function EFFECTS.kosmisch(model, body)
+	local purple = Color3.fromRGB(176, 123, 255)
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Color = p.Color:Lerp(Color3.fromRGB(42, 20, 90), 0.6)
+		end
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = purple
+	sparkles.Parent = body
+	light(body, purple, 3, 16)
+	emitter(attachment(body, Vector3.zero), { Rate = 18, Lifetime = NumberRange.new(1.5, 2.5), Speed = NumberRange.new(0.5, 1.5), Size = NumberSequence.new(0.15, 0), Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), purple), SpreadAngle = Vector2.new(180, 180), RotSpeed = NumberRange.new(-90, 90) })
+end
+
 function MutationFx.Apply(model, mutationId)
 	local fx = EFFECTS[mutationId]
 	if not fx then
@@ -684,6 +755,305 @@ return WorldData
 `;
 }
 
+const WEATHER_FX = `${HEADER('Wetter-Effekte')}
+-- Läuft auf dem Client (LocalScript): WeatherFx.Apply(weatherId) stellt Himmel, Licht, Nebel
+-- und Partikel für das Wetter ein, WeatherFx.Announce(...) zeigt die Ansage beim Wechsel.
+-- Bewusst ruhig: Blitze höchstens alle 2,5 Sekunden, Farben wechseln langsam.
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local MutationData = require(script.Parent.MutationData)
+
+local WeatherFx = {}
+
+local base = nil -- Lighting vor dem ersten Wetter
+local current = nil -- { parts, connections }
+local SLOW = TweenInfo.new(3)
+
+local function remember()
+	if base then
+		return
+	end
+	base = {
+		Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient, Brightness = Lighting.Brightness,
+		ClockTime = Lighting.ClockTime, FogColor = Lighting.FogColor, FogEnd = Lighting.FogEnd, ColorShift_Top = Lighting.ColorShift_Top,
+	}
+end
+
+local function clear()
+	if not current then
+		return
+	end
+	for _, c in ipairs(current.connections) do
+		c:Disconnect()
+	end
+	for _, p in ipairs(current.parts) do
+		p:Destroy()
+	end
+	current = nil
+end
+
+-- Eine unsichtbare Platte über der Kamera, aus der die Partikel fallen
+local function cloudPart(height)
+	local p = Instance.new("Part")
+	p.Name = "Wetterwolke"
+	p.Anchored = true
+	p.CanCollide = false
+	p.Transparency = 1
+	p.Size = Vector3.new(160, 1, 160)
+	p.Parent = workspace
+	table.insert(current.parts, p)
+	table.insert(current.connections, RunService.RenderStepped:Connect(function()
+		local cam = workspace.CurrentCamera
+		if cam then
+			p.CFrame = CFrame.new(cam.CFrame.Position + Vector3.new(0, height, 0))
+		end
+	end))
+	return p
+end
+
+local function particles(parent, props)
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.EmissionDirection = Enum.NormalId.Bottom
+	e.SpreadAngle = Vector2.new(8, 8)
+	e.LightEmission = 0.2
+	for key, value in pairs(props) do
+		e[key] = value
+	end
+	e.Parent = parent
+	return e
+end
+
+local function lightning(cloud)
+	local last = 0
+	table.insert(current.connections, RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now - last < 2.5 + math.random() * 3 then
+			return
+		end
+		last = now
+		local cam = workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		local pos = cam.CFrame.Position + Vector3.new(math.random(-60, 60), 0, math.random(-60, 60))
+		local bolt = Instance.new("Part")
+		bolt.Name = "Blitz"
+		bolt.Anchored = true
+		bolt.CanCollide = false
+		bolt.Material = Enum.Material.Neon
+		bolt.Color = Color3.fromRGB(255, 247, 192)
+		bolt.Size = Vector3.new(0.6, 70, 0.6)
+		bolt.CFrame = CFrame.new(pos + Vector3.new(0, 30, 0)) * CFrame.Angles(0, 0, math.rad(math.random(-8, 8)))
+		bolt.Parent = workspace
+		Lighting.Brightness = 5
+		TweenService:Create(Lighting, TweenInfo.new(0.6), { Brightness = base.Brightness * 0.5 }):Play()
+		TweenService:Create(bolt, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+		task.delay(0.6, function()
+			bolt:Destroy()
+		end)
+	end))
+end
+
+local SETUPS = {}
+
+function SETUPS.regen(cloud)
+	particles(cloud, { Rate = 400, Lifetime = NumberRange.new(1.2, 1.5), Speed = NumberRange.new(70, 80), Size = NumberSequence.new(0.12), Color = ColorSequence.new(Color3.fromRGB(207, 232, 255)), LightEmission = 0 })
+end
+
+function SETUPS.gewitter(cloud)
+	SETUPS.regen(cloud)
+	lightning(cloud)
+end
+
+function SETUPS.erdbeben(cloud)
+	particles(cloud, { Rate = 25, Lifetime = NumberRange.new(2, 3), Speed = NumberRange.new(20, 30), Size = NumberSequence.new(0.8), Color = ColorSequence.new(Color3.fromRGB(125, 113, 102)), LightEmission = 0 })
+	-- sanftes Wackeln der Kamera über den Humanoid
+	table.insert(current.connections, RunService.RenderStepped:Connect(function()
+		local char = Players.LocalPlayer and Players.LocalPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			local t = os.clock()
+			hum.CameraOffset = Vector3.new(math.sin(t * 23) * 0.25, math.sin(t * 31) * 0.15, 0)
+		end
+	end))
+	table.insert(current.connections, { Disconnect = function()
+		local char = Players.LocalPlayer and Players.LocalPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.CameraOffset = Vector3.zero
+		end
+	end })
+end
+
+function SETUPS.schneesturm(cloud)
+	particles(cloud, { Rate = 300, Lifetime = NumberRange.new(4, 6), Speed = NumberRange.new(10, 16), Acceleration = Vector3.new(12, 0, 4), Size = NumberSequence.new(0.35), Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)), SpreadAngle = Vector2.new(30, 30) })
+end
+
+function SETUPS.disconacht(cloud)
+	local colors = { Color3.fromRGB(255, 61, 242), Color3.fromRGB(61, 232, 255), Color3.fromRGB(255, 226, 61), Color3.fromRGB(122, 92, 255) }
+	local e = particles(cloud, { Rate = 60, Lifetime = NumberRange.new(4, 6), Speed = NumberRange.new(4, 8), Size = NumberSequence.new(0.6), Color = ColorSequence.new(colors[1], colors[2]), LightEmission = 1, SpreadAngle = Vector2.new(60, 60) })
+	local i = 0
+	local last = 0
+	table.insert(current.connections, RunService.Heartbeat:Connect(function()
+		if os.clock() - last < 1.5 then
+			return
+		end
+		last = os.clock()
+		i = i % #colors + 1
+		TweenService:Create(Lighting, TweenInfo.new(1.4), { Ambient = colors[i]:Lerp(Color3.new(0, 0, 0), 0.6) }):Play()
+		e.Color = ColorSequence.new(colors[i], colors[i % #colors + 1])
+	end))
+end
+
+function SETUPS.blutmond(cloud)
+	particles(cloud, { Rate = 40, Lifetime = NumberRange.new(5, 7), Speed = NumberRange.new(2, 4), Size = NumberSequence.new(0.3), Color = ColorSequence.new(Color3.fromRGB(255, 58, 16), Color3.fromRGB(255, 26, 26)), LightEmission = 1, EmissionDirection = Enum.NormalId.Top })
+end
+
+function SETUPS.neonsturm(cloud)
+	local e = particles(cloud, { Rate = 80, Lifetime = NumberRange.new(3, 5), Speed = NumberRange.new(6, 12), Size = NumberSequence.new(0.5), Color = ColorSequence.new(Color3.fromRGB(198, 255, 0)), LightEmission = 1, SpreadAngle = Vector2.new(70, 70) })
+	table.insert(current.connections, RunService.Heartbeat:Connect(function()
+		local h = (os.clock() * 0.05) % 1
+		Lighting.Ambient = Color3.fromHSV(h, 0.8, 0.45)
+		e.Color = ColorSequence.new(Color3.fromHSV(h, 1, 1), Color3.fromHSV((h + 0.5) % 1, 1, 1))
+	end))
+end
+
+function SETUPS.goldregen(cloud)
+	particles(cloud, { Rate = 180, Lifetime = NumberRange.new(2, 3), Speed = NumberRange.new(30, 40), Size = NumberSequence.new(0.3), Color = ColorSequence.new(Color3.fromRGB(255, 210, 58), Color3.fromRGB(255, 176, 32)), LightEmission = 0.8 })
+end
+
+function SETUPS.datensturm(cloud)
+	particles(cloud, { Rate = 120, Lifetime = NumberRange.new(3, 4), Speed = NumberRange.new(12, 18), Size = NumberSequence.new(0.35), Color = ColorSequence.new(Color3.fromRGB(61, 255, 122)), LightEmission = 1, SpreadAngle = Vector2.new(2, 2) })
+end
+
+function SETUPS.sternschnuppen(cloud)
+	particles(cloud, { Rate = 3, Lifetime = NumberRange.new(1, 1.5), Speed = NumberRange.new(80, 110), Acceleration = Vector3.new(60, 0, 20), Size = NumberSequence.new(0.6, 0), Color = ColorSequence.new(Color3.fromRGB(255, 246, 224)), LightEmission = 1, SpreadAngle = Vector2.new(20, 20) })
+	particles(cloud, { Rate = 30, Lifetime = NumberRange.new(4, 6), Speed = NumberRange.new(1, 3), Size = NumberSequence.new(0.2), Color = ColorSequence.new(Color3.fromRGB(224, 200, 255)), LightEmission = 1, SpreadAngle = Vector2.new(80, 80) })
+end
+
+-- Nachts spielen diese Wetter
+local NIGHT = { disconacht = true, blutmond = true, datensturm = true, sternschnuppen = true }
+
+function WeatherFx.Apply(weatherId)
+	remember()
+	clear()
+	current = { parts = {}, connections = {} }
+	local w = MutationData.WeatherById[weatherId]
+	if not w or weatherId == "klar" then
+		TweenService:Create(Lighting, SLOW, base):Play()
+		return
+	end
+	local sky = w.Sky or base.FogColor
+	local light = w.Light or 1
+	TweenService:Create(Lighting, SLOW, {
+		Ambient = base.Ambient:Lerp(sky, 0.6),
+		OutdoorAmbient = base.OutdoorAmbient:Lerp(sky, 0.6),
+		Brightness = base.Brightness * light,
+		FogColor = sky,
+		FogEnd = math.min(base.FogEnd, light < 0.7 and 350 or 700),
+		ColorShift_Top = w.Color,
+		ClockTime = NIGHT[weatherId] and 0 or base.ClockTime,
+	}):Play()
+	local cloud = cloudPart(45)
+	local setup = SETUPS[weatherId]
+	if setup then
+		setup(cloud)
+	end
+end
+
+-- Große Ansage oben in der Mitte, verschwindet nach ein paar Sekunden
+function WeatherFx.Announce(weatherId, playerGui)
+	local w = MutationData.WeatherById[weatherId]
+	if not w or not playerGui then
+		return
+	end
+	local m = MutationData.ForWeather(weatherId)
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "Wetteransage"
+	gui.ResetOnSpawn = false
+	local frame = Instance.new("Frame")
+	frame.AnchorPoint = Vector2.new(0.5, 0)
+	frame.Position = UDim2.new(0.5, 0, 0.12, 0)
+	frame.Size = UDim2.fromOffset(420, 120)
+	frame.BackgroundColor3 = Color3.fromRGB(18, 15, 24)
+	frame.BackgroundTransparency = 0.1
+	frame.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 18)
+	corner.Parent = frame
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = w.Color
+	stroke.Thickness = 3
+	stroke.Parent = frame
+	local title = Instance.new("TextLabel")
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.new(1, 0, 0.55, 0)
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.TextColor3 = w.Color
+	title.Text = w.Name
+	title.Parent = frame
+	local sub = Instance.new("TextLabel")
+	sub.BackgroundTransparency = 1
+	sub.Position = UDim2.new(0, 0, 0.58, 0)
+	sub.Size = UDim2.new(1, 0, 0.32, 0)
+	sub.Font = Enum.Font.Gotham
+	sub.TextScaled = true
+	sub.TextColor3 = Color3.fromRGB(239, 232, 219)
+	sub.Text = m and ("%d %% Chance auf %s · Wert ×%s"):format(m.Chance, m.Name, tostring(m.Multiplier)) or w.Text
+	sub.Parent = frame
+	gui.Parent = playerGui
+	task.delay(4.5, function()
+		gui:Destroy()
+	end)
+end
+
+return WeatherFx
+`;
+
+// Server: setzt das Wetter als Attribut an ReplicatedStorage (alle Server gleich, aus der Uhrzeit)
+const WEATHER_SERVER = `-- Coinmaster Adventure · Wetter (Server)
+-- Setzt alle paar Minuten das Wetter. Clients lesen ReplicatedStorage:GetAttribute("Weather").
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
+local Gacha = require(root:WaitForChild("Gacha"))
+
+while true do
+	local w, left = Gacha.CurrentWeather()
+	ReplicatedStorage:SetAttribute("Weather", w.Id)
+	ReplicatedStorage:SetAttribute("WeatherEnds", os.time() + left)
+	task.wait(math.max(1, left))
+end
+`;
+
+// Client: wendet das Wetter an und zeigt die Ansage
+const WEATHER_CLIENT = `-- Coinmaster Adventure · Wetter (Client)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
+local WeatherFx = require(root:WaitForChild("WeatherFx"))
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local last = nil
+local function update()
+	local id = ReplicatedStorage:GetAttribute("Weather")
+	if not id or id == last then
+		return
+	end
+	WeatherFx.Apply(id)
+	if last then
+		WeatherFx.Announce(id, playerGui)
+	end
+	last = id
+end
+ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(update)
+update()
+`;
+
 // Alle ModuleScripts in der Reihenfolge, in der sie im Ordner liegen
 export function moduleSources(data) {
   return [
@@ -694,6 +1064,7 @@ export function moduleSources(data) {
     { name: 'Gacha', source: GACHA },
     { name: 'CoinBuilder', source: COIN_BUILDER },
     { name: 'MutationFx', source: MUTATION_FX },
+    { name: 'WeatherFx', source: WEATHER_FX },
     { name: 'EggBuilder', source: EGG_BUILDER },
   ];
 }
@@ -718,6 +1089,8 @@ export function installerSource(data) {
 --   ReplicatedStorage > CoinmasterAdventure   alle Daten und Module (${modules.length} ModuleScripts)
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
 --   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier zum Ansehen
+--   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
+--   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --
 -- Ein erneuter Import ersetzt beides. Strg+Z macht den Import rückgängig.
 
@@ -814,6 +1187,22 @@ for i, egg in ipairs(EggData.Eggs) do
 end
 
 showcase.Parent = workspace
+
+-- Wetter: Server-Skript und Client-Skript (alte Fassungen ersetzen)
+local function addScript(className, parent, name, source)
+	local old = parent:FindFirstChild(name)
+	if old then
+		old:Destroy()
+	end
+	local s = Instance.new(className)
+	s.Name = name
+	s.Source = source
+	s.Parent = parent
+	return s
+end
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
+
 pcall(function()
 	ChangeHistoryService:SetWaypoint("Coinmaster Adventure importiert")
 end)

@@ -5,7 +5,7 @@
 // alles, was sie anzeigt, steckt auch in ihren Dateien. Für echten Schutz bräuchte es einen Server.
 
 import { TIERS, COINS } from '../../muenzen/js/coins.js';
-import { MUTATIONS, WEATHER } from '../../muenzen/js/mutations.js';
+import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
@@ -77,7 +77,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, EGGS, PLANETS, WORLDS, REBIRTH };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH };
 let built = null;
 
 function unlock() {

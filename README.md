@@ -10,6 +10,7 @@ Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 | Eierhalle | `eier/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
 | Welten | `welten/` | Vorschau |
+| Wetter | `wetter/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
 
@@ -182,6 +183,35 @@ In der Spiel-Oberfläche gibt es dazu das Fenster **Welten** (Taste W) zum Kaufe
 Öffnen von Portalen und für die Wiedergeburt. Die aktuelle Welt läuft dort als 3D-Hintergrund.
 Der Knopf „+ Test-Taler“ gibt es nur in der Vorschau, damit man spätere Welten ausprobieren kann.
 
+## Wetter
+
+`wetter/` zeigt alle Wetter: was gerade herrscht, jedes Wetter in 3D auf einer wählbaren Welt, eine Münze
+mit der passenden Mutation, eine Vorhersage und eine Übersicht. Das Wetter wechselt alle drei Minuten und
+ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`).
+
+| Wetter | Anteil | Mutation | Chance | Wert |
+|---|---|---|---|---|
+| Klar | 34 % | – | – | – |
+| Regen | 14 % | Nass | 25 % | ×1,1 |
+| Gewitter | 10 % | Elektrisch | 10 % | ×1,75 |
+| Erdbeben | 9 % | Gestein | 18 % | ×1,25 |
+| Schneesturm | 9 % | Gefroren | 20 % | ×1,3 |
+| Disconacht | 8 % | Disco | 12 % | ×1,5 |
+| Blutmond | 5 % | Dämonisch | 8 % | ×2 |
+| Neonsturm | 4 % | Augenkrebs | 5 % | ×2,5 |
+| Goldregen | 3 % | Golden | 4 % | ×4 |
+| Datensturm | 3 % | Hacked | 3 % | ×3 |
+| Sternschnuppen | 2 % | Kosmisch | 2 % | ×5 |
+
+- **3D-Wetter** (`welten/js/weatherFx.js`): Regen mit Pfützen, Gewitter mit Wolken und Blitzen (höchstens
+  alle 2,5 Sekunden), Erdbeben mit Beben, Rissen und fallenden Steinen, Schneesturm mit weißem Boden,
+  Disco-Kugel mit Lichtkegeln, Blutmond, Neon-Ringe, Goldregen, Code-Regen und Sternschnuppen.
+  Läuft in der Weltkarte (Auswahl „Wetter“), auf der Wetter-Seite und als Spiel-Hintergrund.
+- **Spiel:** Ansage beim Wetterwechsel, Fenster „Wetter“ (Taste V oder Wetter-Anzeige antippen) mit
+  Vorhersage und allen Wettern.
+- **Roblox:** Modul `WeatherFx` (Licht, Nebel, Partikel, Blitze, Ansage) und zwei Skripte, die der
+  Installer anlegt: `CoinmasterWeather` (Server) und `CoinmasterWeatherClient`.
+
 ## Spiel-Oberfläche
 
 `spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
@@ -211,8 +241,8 @@ einem Code gesperrt. Der Code steht nur als SHA-256-Hash in `roblox/js/main.js`.
 Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im Browser läuft.
 
 - **Installer** (`roblox/js/luau.js`): ein Skript für die Befehlsleiste von Studio. Es legt
-  `ReplicatedStorage › CoinmasterAdventure` mit 8 ModuleScripts an (CoinData, MutationData,
-  EggData, WorldData, Gacha, CoinBuilder, MutationFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
+  `ReplicatedStorage › CoinmasterAdventure` mit 9 ModuleScripts an (CoinData, MutationData,
+  EggData, WorldData, Gacha, CoinBuilder, MutationFx, WeatherFx, EggBuilder), fertige Modelle in `Coins` und `Eggs`
   und einen Showcase im Workspace mit allen Münzen und Eiern.
 - **Motive als ZIP**: die 50 Prägemotive als PNG zum Hochladen als Decal. Die Asset-IDs
   kommen in `CoinData` bei `DecalId`.

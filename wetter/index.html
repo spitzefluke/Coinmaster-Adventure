@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wetter · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Wetterstation</p>
+      <h1>Wetter</h1>
+      <p class="lede">Alle drei Minuten wechselt das Wetter, für alle Spieler gleich. Zehn Wetter lösen Mutationen aus: Wer während eines Wetters eine Münze findet, hat die Chance auf ihre Mutation und damit auf mehr Wert.</p>
+    </div>
+    <div id="now" class="now"></div>
+  </header>
+
+  <section class="stage" aria-label="Vorschau">
+    <div class="viewer">
+      <canvas id="world-canvas" aria-label="3D-Welt mit dem gewählten Wetter"></canvas>
+      <label class="world-pick"><span class="visually-hidden">Welt</span><select id="world-pick"></select></label>
+      <p class="viewer-hint">Ziehen zum Drehen · Mausrad zum Zoomen</p>
+    </div>
+    <aside id="info" class="info">
+      <div class="coin-box"><canvas id="coin-canvas" aria-label="Münze mit der Mutation"></canvas></div>
+      <div id="info-text"></div>
+    </aside>
+  </section>
+
+  <nav id="chips" class="chips" aria-label="Wetter wählen"></nav>
+
+  <section aria-labelledby="fc-title" class="block">
+    <h2 id="fc-title">Vorhersage</h2>
+    <ol id="forecast" class="forecast"></ol>
+  </section>
+
+  <section aria-labelledby="tab-title" class="block">
+    <h2 id="tab-title">Alle Wetter und Mutationen</h2>
+    <div class="table-wrap">
+      <table class="wx-table">
+        <thead><tr><th scope="col">Wetter</th><th scope="col">Anteil</th><th scope="col">Mutation</th><th scope="col">Chance</th><th scope="col">Wert</th><th scope="col">So sieht die Münze aus</th></tr></thead>
+        <tbody id="table"></tbody>
+      </table>
+    </div>
+    <p class="muted">Der Skill „Wettergespür“ erhöht jede Mutationschance, die Boost „Wetterglocke“ verdoppelt diesen Bonus. Werte stehen in <code>muenzen/js/mutations.js</code>.</p>
+  </section>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

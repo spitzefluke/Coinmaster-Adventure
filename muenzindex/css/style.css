@@ -82,6 +82,10 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .weather[data-weather="blutmond"]::before { background: radial-gradient(circle at 88% 30%, #ff2a2a88 0 26px, #ff2a2a22 27px, transparent 140px); }
 .weather[data-weather="neonsturm"]::before { background: linear-gradient(90deg, #c6ff0033, #ff00e633, #00e5ff33, #c6ff0033); background-size: 300% 100%; animation: slide-bg 6s linear infinite; }
 .weather[data-weather="datensturm"]::before { background: repeating-linear-gradient(0deg, #3dff7a14 0 2px, transparent 2px 5px); animation: scan 3s linear infinite; }
+.weather[data-weather="gewitter"]::before { background: radial-gradient(circle at 80% 0%, #ffe94a33, transparent 55%), linear-gradient(180deg, #2a304066, transparent); }
+.weather[data-weather="schneesturm"]::before { background: radial-gradient(#ffffff55 1px, transparent 1.5px) 0 0 / 18px 18px; animation: rain 3s linear infinite; }
+.weather[data-weather="goldregen"]::before { background: repeating-linear-gradient(100deg, transparent 0 16px, #ffd23a33 16px 17px); background-size: 200% 200%; animation: rain 1.6s linear infinite; }
+.weather[data-weather="sternschnuppen"]::before { background: radial-gradient(#ffffff88 1px, transparent 1.5px) 0 0 / 34px 34px, radial-gradient(circle at 85% 30%, #b07bff44, transparent 60%); }
 @keyframes rain { to { background-position: -60px 120px; } }
 @keyframes quake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } }
 @keyframes spin-bg { to { filter: hue-rotate(360deg); } }

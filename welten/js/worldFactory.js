@@ -438,6 +438,9 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     target: new THREE.Vector3(0, 0.6, 0),
     height,
     radius: R,
+    world,
+    root,
+    lights: { hemi, sun }, // für das Wetter (welten/js/weatherFx.js)
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     update(t, dt) {

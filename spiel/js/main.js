@@ -2,7 +2,7 @@
 // Einstellungen. „Münze suchen“ simuliert einen Fund in der Welt mit allen Skill-Effekten.
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, weatherAt, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { mutationById, weatherAt, weatherById, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld } from './state.js';
 import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
@@ -14,13 +14,14 @@ import { shopPanel } from './panels/shop.js';
 import { settingsPanel } from './panels/einstellungen.js';
 import { weltenPanel } from './panels/welten.js';
 import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
+import { wetterPanel } from './panels/wetter.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
 const state = loadState();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel };
+const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
 const MENU_ICONS = { welten: 'globe', skills: 'tree', inventar: 'bag', shop: 'shop', einstellungen: 'gear' };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
@@ -81,15 +82,44 @@ function setBadge(panel, value) {
   b.textContent = value;
 }
 
+// Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
+let testWeather = null;
+function currentWeather() {
+  if (testWeather && Date.now() < testWeather.until) return { w: weatherById[testWeather.id], ends: testWeather.until };
+  return weatherAt();
+}
 function renderWeather() {
-  const { w, ends } = weatherAt();
+  const { w, ends } = currentWeather();
   const m = mutationForWeather(w.id);
   const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
   const el = $('weather');
   el.style.setProperty('--weather', w.color);
   el.innerHTML = `${icon('cloud', 14)} <strong>${w.name}</strong>${m ? ` · ${m.name}-Chance ${m.chance} %` : ''} <span>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span>`;
   $('world').dataset.weather = w.id;
+  worldBg.setWeather(w.id);
+  if (lastWeather && lastWeather !== w.id) announceWeather(w, m);
+  lastWeather = w.id;
 }
+
+// Große Ansage beim Wetterwechsel
+let lastWeather = null;
+function announceWeather(w, m) {
+  const el = $('weather-alert');
+  el.style.setProperty('--weather', w.color);
+  $('wa-name').textContent = w.name;
+  $('wa-text').textContent = w.text;
+  $('wa-mut').innerHTML = m ? `${m.chance} % Chance auf <strong>${m.name}</strong> · Wert ${fmtMultiplier(m)}` : 'Keine Mutationen';
+  el.hidden = false;
+  el.classList.remove('is-in');
+  void el.offsetWidth;
+  el.classList.add('is-in');
+  // kleine Fanfare: drei Töne
+  [0, 140, 280].forEach((d, i) => setTimeout(() => sound(0.8 + i * 0.25), d));
+  clearTimeout(announceWeather.t);
+  announceWeather.t = setTimeout(() => (el.hidden = true), 4500);
+  if (openId === 'wetter') renderPanel();
+}
+$('weather').addEventListener('click', () => openPanel('wetter'));
 
 // Menü-Icons einsetzen
 document.querySelectorAll('.menu-btn').forEach((b) => {
@@ -122,6 +152,10 @@ const ctx = {
   },
   teleport,
   flash,
+  testWeather(id) {
+    testWeather = { id, until: Date.now() + 60000 };
+    renderWeather();
+  },
 };
 
 function renderPanel() {
@@ -179,7 +213,7 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'escape' && openId) return closePanel();
-  const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen' };
+  const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen', v: 'wetter' };
   if (map[key]) {
     e.preventDefault();
     openPanel(map[key]);
@@ -216,7 +250,7 @@ function find() {
     toast('Inventar voll. Verkaufe Münzen oder lerne „Großer Beutel“.', '#ff8a96');
     return;
   }
-  const r = findCoin(state);
+  const r = findCoin(state, Math.random, currentWeather().w.id);
   const coin = COINS[r.id], tier = tierById[coin.tier], m = r.mutation && mutationById[r.mutation];
   const space = slots(state) - state.inventory.length;
   const n = Math.min(r.count, space);

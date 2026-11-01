@@ -26,7 +26,7 @@
       <h1>Spiel-Oberfläche</h1>
       <p class="lede">HUD, Welten, Skilltree, Inventar, Shop und Einstellungen, so wie sie im Spiel aussehen sollen. Mit „Münze suchen“ simulierst du einen Fund in der Welt, damit du die Skills ausprobieren kannst.</p>
     </div>
-    <p class="keys" aria-label="Tastenkürzel"><kbd>W</kbd> Welten <kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
+    <p class="keys" aria-label="Tastenkürzel"><kbd>W</kbd> Welten <kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>V</kbd> Wetter <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
   </header>
 
   <section id="game" class="game" aria-label="Spielansicht">
@@ -58,7 +58,7 @@
 
       <div class="hud-right">
         <p class="taler" aria-live="polite"><span class="taler-coin" aria-hidden="true"></span><span id="taler">0</span> <span class="taler-label">Taler</span></p>
-        <p id="weather" class="weather-pill"></p>
+        <button id="weather" class="weather-pill" type="button" title="Wettervorhersage öffnen"></button>
         <div id="boosts" class="boosts"></div>
       </div>
 
@@ -85,6 +85,13 @@
         <button type="button" data-spawn="codes"><span class="sb-ico" data-ico="key"></span> Codes</button>
       </nav>
       <p id="area-tip" class="area-tip" hidden></p>
+    </div>
+
+    <div id="weather-alert" class="weather-alert" hidden aria-live="polite">
+      <p class="wa-eyebrow">Wetterwechsel</p>
+      <p id="wa-name" class="wa-name"></p>
+      <p id="wa-text" class="wa-text"></p>
+      <p id="wa-mut" class="wa-mut"></p>
     </div>
 
     <div id="levelup" class="levelup" hidden>
