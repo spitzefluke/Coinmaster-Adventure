@@ -23,8 +23,13 @@
   <header class="masthead">
     <p class="eyebrow">Aura-Galerie</p>
     <h1>Auras</h1>
-    <p class="lede">50 Auras, die um deine Figur leuchten. Du kaufst sie im Shop mit Talern und legst eine davon an. Die angelegte Aura gibt einen kleinen Bonus, und je seltener sie ist, desto mehr.</p>
+    <p class="lede">50 Auras, die um deine Figur leuchten. Du kaufst sie im Shop mit Talern und legst eine davon an. Die angelegte Aura gibt einen kleinen Bonus, und je seltener sie ist, desto mehr. Jede Seltenheit bringt außerdem ein eigenes Grundpaket an Effekten mit, so erkennt man die Stufe sofort.</p>
   </header>
+
+  <section class="tiers" aria-labelledby="tiers-title">
+    <h2 id="tiers-title" class="tiers-title">Grundpaket je Seltenheit (gilt auch für alle höheren)</h2>
+    <ol id="tiers" class="tier-list"></ol>
+  </section>
 
   <div class="filter-bar">
     <nav id="themes" class="filters" aria-label="Nach Thema filtern"></nav>
@@ -54,6 +59,8 @@
         <div><dt>Thema</dt><dd id="detail-theme"></dd></div>
         <div><dt>Effekte</dt><dd id="detail-parts"></dd></div>
       </dl>
+      <p class="list-title">Stufen-Effekte</p>
+      <ul id="detail-tiers" class="detail-tiers"></ul>
       <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen.</p>
       <a class="shop-link" href="../spiel/#shop-auras">Im Spiel-Shop ansehen</a>
     </div>

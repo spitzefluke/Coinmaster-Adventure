@@ -5,6 +5,18 @@
 h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); }
 .lede { margin: 12px 0 0; color: var(--muted); text-wrap: pretty; }
 
+.tiers { display: grid; gap: 10px; }
+.tiers-title, .list-title { margin: 0; font: 600 0.75rem/1.2 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.tier-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tier-list li { display: grid; gap: 6px; align-content: start; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--r) 40%, var(--seam)); border-radius: 14px; background: var(--velvet); }
+.tier-list p { margin: 0; }
+.tier-name { display: flex; align-items: center; gap: 8px; font: 600 0.75rem/1.2 var(--font-data); letter-spacing: 0.1em; text-transform: uppercase; color: var(--r); }
+.tier-name span { width: 9px; height: 9px; border-radius: 50%; background: var(--r); box-shadow: 0 0 8px var(--r); }
+.tier-add { font-size: 0.875rem; line-height: 1.35; }
+.tier-rbx { font: 500 0.6875rem/1.3 var(--font-data); color: var(--muted); }
+.detail-tiers { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.detail-tiers li { display: flex; gap: 8px; align-items: baseline; padding: 6px 10px; border-radius: 10px; background: var(--velvet-2); font-size: 0.8125rem; line-height: 1.35; }
+.detail-tiers b { flex: none; color: var(--r); font: 600 0.6875rem/1.2 var(--font-data); text-transform: uppercase; letter-spacing: 0.06em; }
 .filter-bar { display: grid; gap: 10px; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--seam); border-radius: 999px; background: transparent; color: var(--ink); font: 600 0.8125rem/1 var(--font-body); cursor: pointer; }

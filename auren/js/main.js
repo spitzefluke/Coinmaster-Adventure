@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { AURAS, THEMES, RARITIES, auraById, rarityById, themeById, bonusText, fmtPrice } from './auras.js';
-import { createAura, setPointScale } from './auraFactory.js';
+import { createAura, setPointScale, TIER_FX, tierOf } from './auraFactory.js';
 import { makeEnvironment, makeScene } from '../../haustiere/js/kit.js';
 import { pixelRatio, loadSettings } from '../../js/settings.js';
 
@@ -171,6 +171,8 @@ function openDetail(a) {
   $('detail-bonus').textContent = bonusText(a);
   $('detail-theme').textContent = themeById[a.theme].name;
   $('detail-parts').textContent = partsOf(a);
+  $('detail-tiers').innerHTML = TIER_FX.slice(0, tierOf(a) + 1)
+    .map((t, i) => `<li style="--r:${RARITIES[i].color}"><b>${RARITIES[i].name}</b>${t.add}</li>`).join('');
   if (d.obj) {
     d.scene.remove(d.obj.root);
     d.obj.dispose();
@@ -212,6 +214,10 @@ renderer.setAnimationLoop(() => {
   }
 });
 
+$('tiers').innerHTML = TIER_FX.map((t, i) => `<li style="--r:${RARITIES[i].color}">
+  <p class="tier-name"><span></span>${RARITIES[i].name}</p>
+  <p class="tier-add">${i ? '+ ' : ''}${t.add}</p>
+  <p class="tier-rbx">Roblox: ${t.rbx}</p></li>`).join('');
 renderFilters();
 renderGrid();
 if (auraById[location.hash.slice(1)]) openDetail(auraById[location.hash.slice(1)]);

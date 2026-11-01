@@ -141,7 +141,49 @@ local function newPart(handle, props, offset)
 	p.Parent = handle.Model
 	table.insert(handle.Parts, p)
 	table.insert(handle.Offsets, offset or CFrame.new(0, 0, 0))
-	return p
+	return p, #handle.Parts
+end
+
+-- Lichtschweif an einem Teil (zwei Attachments, Trail dazwischen)
+local function addTrail(part, color, width, lifetime)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, width / 2, 0)
+	a0.Parent = part
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -width / 2, 0)
+	a1.Parent = part
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(color)
+	trail.LightEmission = 1
+	trail.LightInfluence = 0
+	trail.FaceCamera = true
+	trail.Lifetime = lifetime or 0.35
+	trail.Transparency = NumberSequence.new(0.2, 1)
+	trail.Parent = part
+	return trail
+end
+
+-- Ring aus kurzen Neon-Stücken (Roblox hat keinen Torus); placeRing setzt Lage, Radius und Sichtbarkeit
+local function segmentRing(handle, n, color, name)
+	local list = {}
+	for i = 1, n do
+		local _, index = newPart(handle, { Name = name, Size = Vector3.new(0.15, 0.08, 1), Color = color }, CFrame.new(0, 0, 0))
+		table.insert(list, index)
+	end
+	return list
+end
+local function placeRing(handle, list, center, radius, transparency, thick)
+	local n = #list
+	local length = 2 * math.pi * radius / n * 1.08
+	for i, index in ipairs(list) do
+		local a = (i - 1) / n * math.pi * 2
+		handle.Offsets[index] = center * CFrame.new(math.cos(a) * radius, 0, math.sin(a) * radius) * CFrame.Angles(0, -a, 0)
+		local p = handle.Parts[index]
+		p.Size = Vector3.new(thick or 0.15, thick or 0.08, length)
+		p.Transparency = transparency
+	end
 end
 
 -- Unsichtbarer Träger für Teilchen; Größe bestimmt die Fläche, aus der sie kommen
@@ -203,15 +245,19 @@ function AuraFx.Build(aura, parent, options)
 	local function col(i)
 		return colors[((i - 1) % #colors) + 1]
 	end
-	local handle = { Aura = aura, Parts = {}, Offsets = {}, Movers = {}, Beams = {}, Bursts = {}, Glitch = nil, Model = Instance.new("Model") }
+	local handle = { Aura = aura, Parts = {}, Offsets = {}, Movers = {}, Updaters = {}, Beams = {}, Bursts = {}, Glitch = nil, Model = Instance.new("Model") }
+	local rarity = AuraData.RarityById[aura.Rarity]
+	local tier = rarity.Index - 1 -- 0 = Gewöhnlich … 5 = Göttlich
+	local rc = rarity.Color
+	handle.Tier = tier
 	handle.Model.Name = "Aura_" .. aura.Id
 
 	-- Kern mit Licht
 	local core = newPart(handle, { Name = "Core", Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1 }, CFrame.new(0, 0, 0))
 	local light = Instance.new("PointLight")
 	light.Color = colors[1]
-	light.Brightness = 1 + AuraData.RarityById[aura.Rarity].Index * 0.3
-	light.Range = 8 + AuraData.RarityById[aura.Rarity].Index
+	light.Brightness = 1 + tier * 0.4
+	light.Range = 8 + tier * 1.5
 	light.Parent = core
 
 	if look.Rise then
@@ -257,6 +303,9 @@ function AuraFx.Build(aura, parent, options)
 		for i = 1, n do
 			local p = orbitPart(handle, kind, col(i), CFrame.new(0, 0, 0))
 			local index = #handle.Parts
+			if not single and kind ~= "cat" then
+				addTrail(p, kind == "coin" and Color3.fromHex("#ffcf4a") or col(i), 0.5, 0.4)
+			end
 			local phase = (i - 1) / n * math.pi * 2
 			local radius = kind == "cat" and 3 or (single and 3.5 or 2.6)
 			local y = kind == "cat" and FEET + 0.5 or (single and 2.5 or 0.5)
@@ -373,15 +422,121 @@ function AuraFx.Build(aura, parent, options)
 			table.insert(handle.Beams, b)
 		end
 	end
-	if look.Glitch and options.Character then
+	-- ═══ Grundpaket je Seltenheit (addiert sich nach oben) ═══
+	-- 0 · Bodenleuchten in Aura-Farbe (Licht steckt schon im Kern)
+	local groundSize = 5 + tier * 0.8
+	local _, groundIndex = newPart(handle, { Name = "Ground", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.05, groundSize, groundSize), Color = colors[1], Transparency = 0.75 - tier * 0.05 }, CFrame.new(0, FEET + 0.03, 0) * CFrame.Angles(0, 0, math.rad(90)))
+	table.insert(handle.Updaters, function(t)
+		handle.Parts[groundIndex].Transparency = 0.75 - tier * 0.05 + math.sin(t * 1.7) * 0.05
+	end)
+	-- 1 · Umriss in Seltenheitsfarbe; 5 · dazu ein Leuchtkörper (Füllung). Auch der Glitch nutzt ihn.
+	-- Roblox zeigt höchstens 31 Highlights gleichzeitig.
+	if (tier >= 1 or look.Glitch) and options.Character then
 		local h = Instance.new("Highlight")
-		h.FillColor = colors[1]
-		h.OutlineColor = colors[2] or colors[1]
-		h.FillTransparency = 0.6
-		h.Enabled = false
+		h.OutlineColor = tier >= 1 and rc or colors[1]
+		h.FillColor = tier >= 5 and Color3.fromHex("#fff2a0") or colors[1]
+		h.FillTransparency = tier >= 5 and 0.75 or 1
+		h.Enabled = tier >= 1
 		h.Adornee = options.Character
 		h.Parent = handle.Model
-		handle.Glitch = { Highlight = h, Rng = Random.new(7) }
+		handle.Highlight = h
+		if look.Glitch then
+			handle.Glitch = { Rng = Random.new(7) }
+		end
+	end
+	-- 2 · zwei Pulswellen am Boden und Glimmer
+	if tier >= 2 then
+		local waves = { segmentRing(handle, 20, rc, "Wave"), segmentRing(handle, 20, rc, "Wave") }
+		table.insert(handle.Updaters, function(t)
+			for k, list in ipairs(waves) do
+				local u = (t / 2.4 + (k - 1) * 0.5) % 1
+				placeRing(handle, list, CFrame.new(0, FEET + 0.08, 0), 0.95 * (1 + u * 3.4), 1 - (1 - u) * (1 - u) * 0.9)
+			end
+		end)
+		local e = carrier(handle, Vector3.new(5, 6.5, 5), CFrame.new(0, FEET + 3.5, 0))
+		emitter(e, { Colors = { rc, Color3.new(1, 1, 1) }, Texture = "star" }, {
+			Rate = 6 + tier * 2, Lifetime = NumberRange.new(2, 3), Speed = NumberRange.new(0.3, 0.8),
+			Size = NumberSequence.new(0.25, 0), Shape = Enum.ParticleEmitterShape.Cylinder,
+		})
+	end
+	-- 3 · drei Lichtstrahlen und Funkelsterne am Kopf
+	if tier >= 3 then
+		for i = 1, 3 do
+			local b = beam(i == 1 and rc or colors[1], 0.35, 1)
+			b.Beam.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0.55), NumberSequenceKeypoint.new(1, 1) })
+			b.Update = function(t)
+				local a = (i - 1) / 3 * math.pi * 2 + t * 0.25
+				b.A0.Position = Vector3.new(math.cos(a) * 1.25, FEET, math.sin(a) * 1.25)
+				b.A1.Position = Vector3.new(math.cos(a) * 1.25, FEET + 10, math.sin(a) * 1.25)
+			end
+			table.insert(handle.Beams, b)
+		end
+		local e = carrier(handle, Vector3.new(2.4, 2, 2.4), CFrame.new(0, 1.5, 0))
+		emitter(e, { Colors = { rc, Color3.new(1, 1, 1) }, Texture = "star" }, {
+			Rate = 3, Lifetime = NumberRange.new(0.6, 1), Speed = NumberRange.new(0),
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 1.2), NumberSequenceKeypoint.new(1, 0) }),
+			RotSpeed = NumberRange.new(60, 120),
+		})
+	end
+	-- 4 · zwei schräge Energieringe mit Lichtläufern (Neon-Kugeln mit Trail)
+	if tier >= 4 then
+		for k = 1, 2 do
+			local ringColor = k == 2 and rc or colors[1]
+			local tilt = k == 1 and CFrame.Angles(-1.0, 0, -0.4) or CFrame.Angles(1.1, 0, 0.35)
+			local ring = segmentRing(handle, 24, ringColor, "EnergyRing")
+			local runners = {}
+			for i = 1, 3 do
+				local p, index = newPart(handle, { Name = "Runner", Shape = Enum.PartType.Ball, Size = Vector3.new(0.35, 0.35, 0.35), Color = ringColor }, CFrame.new(0, 0, 0))
+				addTrail(p, ringColor, 0.3, 0.45)
+				table.insert(runners, index)
+			end
+			table.insert(handle.Updaters, function(t)
+				local center = CFrame.new(0, FEET + 2.8, 0) * CFrame.Angles(0, t * (k == 2 and 0.4 or -0.3), 0) * tilt
+				placeRing(handle, ring, center, 2.9, 0.5, 0.08)
+				for i, index in ipairs(runners) do
+					local a = (i - 1) / 3 * math.pi * 2 + t * (k == 2 and 1.6 or -1.3)
+					handle.Offsets[index] = center * CFrame.new(math.cos(a) * 2.9, 0, math.sin(a) * 2.9)
+				end
+			end)
+		end
+	end
+	-- 5 · Strahlenkranz (BillboardGui aus Strahlen-Frames) und Schockwelle
+	if tier >= 5 then
+		local gui = Instance.new("BillboardGui")
+		gui.Size = UDim2.fromScale(11, 11)
+		gui.StudsOffset = Vector3.new(0, 0.4, 0)
+		gui.LightInfluence = 0
+		gui.Parent = core
+		local rays = {}
+		-- Jeder Frame ist ein Strahl durch die Mitte (Roblox dreht Frames um ihre Mitte), hell in der Mitte
+		for i = 1, 10 do
+			local f = Instance.new("Frame")
+			f.AnchorPoint = Vector2.new(0.5, 0.5)
+			f.Position = UDim2.fromScale(0.5, 0.5)
+			f.Size = UDim2.fromScale(i % 2 == 0 and 0.012 or 0.022, i % 2 == 0 and 0.68 or 0.98)
+			f.BackgroundColor3 = i % 3 == 0 and colors[1] or Color3.fromHex("#fff2a0")
+			f.BackgroundTransparency = 0.55
+			f.BorderSizePixel = 0
+			f.Parent = gui
+			local grad = Instance.new("UIGradient")
+			grad.Rotation = 90
+			grad.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) })
+			grad.Parent = f
+			table.insert(rays, f)
+		end
+		local shock = segmentRing(handle, 28, Color3.fromHex("#fff6d0"), "Shock")
+		table.insert(handle.Updaters, function(t)
+			for i, f in ipairs(rays) do
+				f.Rotation = (i - 1) / #rays * 180 + t * 9
+			end
+			local u = (t / 4) % 1
+			if u < 0.25 then
+				local k = u / 0.25
+				placeRing(handle, shock, CFrame.new(0, FEET + 2.6, 0), 0.9 * (1 + k * 7), 0.1 + k * 0.9)
+			else
+				placeRing(handle, shock, CFrame.new(0, FEET + 2.6, 0), 0.9, 1)
+			end
+		end)
 	end
 
 	handle.Model.Parent = parent
@@ -393,6 +548,9 @@ end
 
 -- Alle Teile an die Figur setzen und Bewegungen weiterrechnen
 function AuraFx.Step(handle, rootCFrame, t)
+	for _, update in ipairs(handle.Updaters) do
+		update(t)
+	end
 	for _, mover in ipairs(handle.Movers) do
 		local part, offset = mover(t)
 		for i, p in ipairs(handle.Parts) do
@@ -417,8 +575,10 @@ function AuraFx.Step(handle, rootCFrame, t)
 		end
 	end
 	if handle.Glitch then
-		local g = handle.Glitch
-		g.Highlight.Enabled = g.Rng:NextNumber() < 0.3
+		-- Glitch: Umriss flackert, Füllung blitzt kurz auf
+		local on = handle.Glitch.Rng:NextNumber() < 0.3
+		handle.Highlight.Enabled = on or handle.Aura.Rarity ~= "gewoehnlich"
+		handle.Highlight.FillTransparency = on and 0.5 or (handle.Tier >= 5 and 0.75 or 1)
 	end
 end
 
