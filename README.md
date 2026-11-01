@@ -149,6 +149,10 @@ Sturm, Blasen …).
 - Welten kauft man pro Planet der Reihe nach mit **Talern**.
 - **Wiedergeburt:** kostet Taler (1 Mio., danach jeweils ×4), setzt die Taler auf 0 und macht
   jede Münze dauerhaft 50 % mehr wert. Welten, Münzen, Level und Skills bleiben.
+- **Planet 3 (Tiefsee)** hat Lichtmuster auf dem Meeresboden, Quallen, Schildkröten, einen Mantarochen,
+  Anemonen mit Clownfischen, Kelp und Seeigel. Wahrzeichen: Schiffswrack und Korallenbogen
+  (Korallenriff), Muschelhaus, Perlenbrunnen, Krabben und Seepferdchen (Muschelland), Palast mit
+  Kristallkuppel, vier Türmen, Runenkreis und Säulenallee (Atlantis).
 - Jede Insel hat eine Teleport-Plattform (Ankunftsort) und Details wie Brücke, Häuschen, Brunnen,
   Lore auf Schienen, Cupcakes, Geysire, Schatztruhe, Sandburg oder Statuen.
 - **Roblox-Ansicht** (Knopf in der 3D-Ansicht): zeigt die Insel so, wie sie nach dem Export in

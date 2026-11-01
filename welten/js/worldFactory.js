@@ -248,10 +248,22 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    // Texturkoordinaten von oben (für die Lichtmuster unter Wasser)
+    const uv = [];
+    for (let i = 0; i < verts.length; i += 3) uv.push(verts[i] / (2 * R) + 0.5, verts[i + 2] / (2 * R) + 0.5);
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
     const top = new THREE.Mesh(g.toNonIndexed(), M(world.ground, { roughness: world.id === 'eis' ? 0.4 : 0.9 }));
     top.userData.rbx = { kind: 'ground' };
+    if (world.water) {
+      // tanzende Lichtmuster der Wasseroberfläche auf dem Meeresboden
+      const ca = causticsTex();
+      top.material.emissive = new THREE.Color('#bff6ff');
+      top.material.emissiveMap = ca;
+      top.material.emissiveIntensity = 0.8;
+      anims.push((t) => ca.offset.set(Math.sin(t * 0.15) * 0.2 + t * 0.012, Math.cos(t * 0.12) * 0.2));
+    }
     top.geometry.computeVertexNormals();
     top.receiveShadow = true;
     root.add(top);
@@ -322,6 +334,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
 
   const shared = {};
   const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared };
+  LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
 
@@ -1105,6 +1118,384 @@ function steam(anims, rand) {
   return g;
 }
 
+
+// ── Tiefsee (Planet 3) ──────────────────────────────────────────────────────
+
+function causticsTex() {
+  const t = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#ffffff';
+    g.lineCap = 'round';
+    // Netz aus geschwungenen Lichtlinien, nahtlos kachelbar
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 70; i++) {
+      const x = rnd() * w, y = rnd() * h, r = 14 + rnd() * 26;
+      g.lineWidth = 1.5 + rnd() * 2.5;
+      g.globalAlpha = 0.35 + rnd() * 0.5;
+      for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) {
+        g.beginPath();
+        g.ellipse(x + dx, y + dy, r, r * (0.6 + rnd() * 0.5), rnd() * 3, 0, Math.PI * 2);
+        g.stroke();
+      }
+    }
+  }, { repeat: [10, 10] });
+  return t;
+}
+
+function jellyfish(c, rand, anims, R0) {
+  const g = new THREE.Group();
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), E(c, 0.6, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.2 }));
+  bell.scale.y = 0.8;
+  g.add(bell);
+  const tents = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const t = at(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.008, 0.7, 4), E(c, 0.4, { transparent: true, opacity: 0.55 })), Math.cos(a) * 0.18, -0.35, Math.sin(a) * 0.18);
+    g.add(t);
+    tents.push(t);
+  }
+  const r = (3 + rand() * (R0 - 4)), a0 = rand() * 6, y0 = 2.2 + rand() * 3, sp = 0.04 + rand() * 0.05, ph = rand() * 6;
+  anims.push((t) => {
+    const p = Math.sin(t * 2.2 + ph);
+    bell.scale.set(1 + p * 0.12, 0.8 - p * 0.12, 1 + p * 0.12);
+    g.position.set(Math.cos(a0 + t * sp) * r, y0 + Math.sin(t * 0.6 + ph) * 0.5, Math.sin(a0 + t * sp) * r);
+    tents.forEach((m, i) => (m.rotation.x = Math.sin(t * 2.2 + ph + i) * 0.25));
+  });
+  return g;
+}
+
+function turtle(rand, anims, R0) {
+  const g = new THREE.Group();
+  const shell = at(new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 8), M('#4f8a4a', { roughness: 0.6 })), 0, 0, 0);
+  shell.scale.set(1, 0.42, 1.25);
+  const belly = at(new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 6), M('#e8d8a0')), 0, -0.08, 0);
+  belly.scale.set(1, 0.25, 1.2);
+  const head = at(new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), M('#8ab86a')), 0, 0.02, 0.78);
+  g.add(shell, belly, head);
+  for (const sx of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), M('#141018')), sx * 0.09, 0.08, 0.9));
+  const fl = [];
+  for (const [x, z, s] of [[0.55, 0.35, 1], [-0.55, 0.35, 1], [0.45, -0.5, 0.7], [-0.45, -0.5, 0.7]]) {
+    const f = new THREE.Group();
+    f.position.set(x, -0.04, z);
+    const m = at(new THREE.Mesh(new THREE.BoxGeometry(0.55 * s, 0.05, 0.22 * s), M('#8ab86a')), Math.sign(x) * 0.25 * s, 0, 0);
+    f.add(m);
+    g.add(f);
+    fl.push([f, Math.sign(x)]);
+  }
+  const r = 5 + rand() * (R0 - 6), y = 2.5 + rand() * 2, sp = (0.05 + rand() * 0.04) * (rand() < 0.5 ? 1 : -1), ph = rand() * 6;
+  anims.push((t) => {
+    const a = t * sp + ph;
+    g.position.set(Math.cos(a) * r, y + Math.sin(t * 0.5 + ph) * 0.3, Math.sin(a) * r);
+    g.rotation.y = -a + (sp > 0 ? Math.PI : 0);
+    fl.forEach(([f, sx], i) => (f.rotation.z = sx * Math.sin(t * 2 + i * 0.5) * 0.45));
+  });
+  return g;
+}
+
+function manta(rand, anims, R0) {
+  const g = new THREE.Group();
+  const body = at(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), M('#2a4a6a', { roughness: 0.5 })), 0, 0, 0);
+  body.scale.set(1.5, 0.12, 0.9);
+  const bellyM = at(new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 6), M('#e8f0f4')), 0, -0.04, 0);
+  bellyM.scale.set(1.3, 0.08, 0.8);
+  const tail = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.01, 1.4, 5), M('#2a4a6a')), 0, 0, -1.4);
+  tail.rotation.x = Math.PI / 2;
+  g.add(body, bellyM, tail);
+  const r = R0 * 0.55, y = 5.5, sp = 0.06, ph = rand() * 6;
+  anims.push((t) => {
+    const a = t * sp + ph;
+    g.position.set(Math.cos(a) * r, y + Math.sin(t * 0.4) * 0.4, Math.sin(a) * r);
+    g.rotation.y = -a;
+    body.scale.y = 0.12 + Math.sin(t * 1.6) * 0.03;
+    g.rotation.z = Math.sin(t * 1.6) * 0.12;
+  });
+  return g;
+}
+
+function anemone(c, rand, anims) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.25, 10), M(darkenHex(c, 0.35))), 0, 0.12, 0));
+  const ts = [];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, r = 0.08 + (i % 2) * 0.08;
+    const p = new THREE.Group();
+    p.position.set(Math.cos(a) * r, 0.24, Math.sin(a) * r);
+    p.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.45, 5), E(c, 0.35)), 0, 0.22, 0));
+    p.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), E(c, 0.9)), 0, 0.46, 0));
+    g.add(p);
+    ts.push([p, a]);
+  }
+  const ph = rand() * 6;
+  anims.push((t) => ts.forEach(([p, a], i) => {
+    p.rotation.x = Math.cos(a) * 0.3 + Math.sin(t * 1.6 + ph + i * 0.4) * 0.15;
+    p.rotation.z = -Math.sin(a) * 0.3;
+  }));
+  return g;
+}
+const darkenHex = (c, k) => '#' + new THREE.Color(c).multiplyScalar(1 - k).getHexString();
+
+function clownfish(anims, rand, center) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), M('#ff7a1a', { emissive: '#ff5a00', emissiveIntensity: 0.2 }));
+  body.scale.set(1.6, 1, 0.6);
+  g.add(body);
+  for (const x of [-0.06, 0.08]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.13), M('#ffffff')), x, 0, 0));
+  const ph = rand() * 6;
+  anims.push((t) => {
+    const a = t * 0.9 + ph;
+    g.position.set(center[0] + Math.cos(a) * 0.45, center[1] + 0.7 + Math.sin(t * 2 + ph) * 0.08, center[2] + Math.sin(a) * 0.45);
+    g.rotation.y = -a - Math.PI / 2;
+  });
+  return g;
+}
+
+function urchin(rand) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), M('#3a1a4a')), 0, 0.15, 0));
+  for (let i = 0; i < 10; i++) {
+    const a = rand() * Math.PI * 2, e = 0.3 + rand() * 1.2;
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.32, 4), M('#5a2a6a'));
+    const d = new THREE.Vector3(Math.cos(a) * Math.sin(e), Math.cos(e), Math.sin(a) * Math.sin(e));
+    sp.position.copy(d.clone().multiplyScalar(0.3)).add(new THREE.Vector3(0, 0.15, 0));
+    sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+    g.add(sp);
+  }
+  return g;
+}
+
+function kelp(c, rand, anims) {
+  const g = new THREE.Group();
+  const n = 10 + Math.floor(rand() * 6), mat = M(c, { side: THREE.DoubleSide });
+  let parent = g;
+  const js = [];
+  for (let i = 0; i < n; i++) {
+    const j = new THREE.Group();
+    j.position.y = i ? 0.42 : 0;
+    j.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.44, 0.06), mat), 0, 0.21, 0));
+    if (i % 2) j.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 4), mat), 0.12, 0.25, 0)).children.at(-1).scale.set(1, 0.25, 0.5);
+    parent.add(j);
+    parent = j;
+    js.push(j);
+  }
+  const ph = rand() * 6;
+  anims.push((t) => js.forEach((j, i) => (j.rotation.z = Math.sin(t * 0.9 + ph + i * 0.35) * 0.07)));
+  return g;
+}
+
+function shipwreck(anims) {
+  const g = new THREE.Group();
+  const wood = M('#6b4a2e'), dark = M('#4a3220'), sail = M('#d8ccb0', { side: THREE.DoubleSide });
+  const hull = at(new THREE.Mesh(new THREE.BoxGeometry(5, 1.4, 1.8), wood), 0, 0.5, 0);
+  g.add(hull);
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.12, 1.9), dark), 0, 1.2, 0));
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.6, 4), wood);
+  bow.rotation.set(0, Math.PI / 4, -Math.PI / 2);
+  bow.scale.set(1, 1, 0.8);
+  bow.position.set(3.2, 0.55, 0);
+  g.add(bow);
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1.6), dark), -1.9, 1.6, 0)); // Achterdeck
+  for (let i = 0; i < 4; i++) {
+    const ph = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 12), M('#c8a040', { metalness: 0.7 }));
+    ph.position.set(-1.2 + i * 0.9, 0.6, 0.91);
+    g.add(ph);
+  }
+  const mast = at(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.6, 8), dark), 0.3, 2.9, 0);
+  mast.rotation.z = 0.25;
+  g.add(mast);
+  const yard = at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6), dark), -0.3, 4.2, 0);
+  yard.rotation.set(0, 0, Math.PI / 2 + 0.25);
+  g.add(yard);
+  const s = at(new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.4, 4, 3), sail), -0.05, 3.4, 0.05);
+  s.rotation.z = 0.25;
+  g.add(s);
+  anims.push((t) => (s.rotation.y = Math.sin(t * 0.8) * 0.15));
+  // Flagge mit Totenkopf-Münze
+  const flag = at(new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), M('#1a1a22', { side: THREE.DoubleSide })), 0.95, 4.7, 0);
+  flag.rotation.z = 0.25;
+  g.add(flag);
+  g.rotation.set(0.12, 0, -0.18); // liegt schief im Sand
+  return g;
+}
+
+function coralArch(cols) {
+  const g = new THREE.Group();
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.45, 8, 18, Math.PI), M(cols[0], { emissive: cols[0], emissiveIntensity: 0.12 }));
+  g.add(arch);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 8) * Math.PI;
+    const b = at(new THREE.Mesh(new THREE.SphereGeometry(0.32 + (i % 3) * 0.1, 8, 6), M(cols[(i % (cols.length - 1)) + 1])), Math.cos(a) * 2.4, Math.sin(a) * 2.4 + 0.3, (i % 2 ? 0.35 : -0.35));
+    g.add(b);
+  }
+  return g;
+}
+
+function crab(rand, anims) {
+  const g = new THREE.Group();
+  const shell = at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 6), M('#e0402e')), 0, 0.16, 0);
+  shell.scale.set(1.4, 0.55, 1);
+  g.add(shell);
+  for (const sx of [-1, 1]) {
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), M('#141018')), sx * 0.08, 0.3, 0.12));
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), M('#ff5a3a')), sx * 0.32, 0.2, 0.18));
+    for (let i = 0; i < 3; i++) {
+      const l = at(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.03), M('#c8302a')), sx * 0.28, 0.1, -0.08 + i * 0.08);
+      l.rotation.z = sx * 0.6;
+      g.add(l);
+    }
+  }
+  const ph = rand() * 6;
+  const base = new THREE.Group();
+  base.add(g);
+  anims.push((t) => (g.position.x = Math.sin(t * 0.7 + ph) * 0.6));
+  return base;
+}
+
+function seahorse(c, rand, anims) {
+  const g = new THREE.Group();
+  const path = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.12, 0.35, 0), new THREE.Vector3(0, 0.7, 0), new THREE.Vector3(-0.08, 0.95, 0)]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(path, 10, 0.08, 6), M(c, { emissive: c, emissiveIntensity: 0.15 })));
+  const head = at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M(c)), -0.06, 1.0, 0);
+  const snout = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.18, 6), M(c)), 0.05, 0.98, 0);
+  snout.rotation.z = Math.PI / 2;
+  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.03, 5, 10, Math.PI * 1.5), M(c));
+  tail.position.set(-0.05, -0.04, 0);
+  g.add(head, snout, tail);
+  const ph = rand() * 6, base = new THREE.Group();
+  base.add(g);
+  g.position.y = 0.6;
+  anims.push((t) => (g.position.y = 0.6 + Math.sin(t * 1.2 + ph) * 0.15));
+  return base;
+}
+
+function pearlFountain(anims) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 0.35, 20), M('#f2d8c8')), 0, 0.17, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.05, 20), M('#7ae0ff', { roughness: 0.1, emissive: '#3ab0d8', emissiveIntensity: 0.4 })), 0, 0.33, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 1.1, 10), M('#f2d8c8')), 0, 0.85, 0));
+  const pearl = at(new THREE.Mesh(new THREE.SphereGeometry(0.32, 18, 14), new THREE.MeshStandardMaterial({ color: '#fff8f0', roughness: 0.12, metalness: 0.3, emissive: '#ffe0f0', emissiveIntensity: 0.55 })), 0, 1.7, 0);
+  g.add(pearl);
+  anims.push((t) => (pearl.position.y = 1.7 + Math.sin(t * 1.4) * 0.12));
+  return g;
+}
+
+function atlantisPalace(anims) {
+  const g = new THREE.Group();
+  const marble = M('#e8eef2'), marble2 = M('#d8e4ea'), gold = M('#e8c060', { metalness: 0.7, roughness: 0.3 });
+  // Stufen
+  for (let i = 0; i < 3; i++) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.6 - i * 0.45, 3.7 - i * 0.45, 0.25, 32), i % 2 ? marble2 : marble), 0, 0.12 + i * 0.25, 0));
+  // Säulenring
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    g.add(at(column(2.2, '#f2f6f8'), Math.cos(a) * 2.5, 0.75, Math.sin(a) * 2.5));
+  }
+  g.add(at(new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.16, 6, 36), marble2), 0, 3.25, 0)).children.at(-1).rotation.x = Math.PI / 2;
+  // Hauptkuppel
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.8, 1.6, 24), marble), 0, 1.55, 0));
+  const dm = new THREE.Mesh(new THREE.SphereGeometry(1.75, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M('#9ff3f0', { transparent: true, opacity: 0.55, roughness: 0.05, emissive: '#2ab8c8', emissiveIntensity: 0.35 }));
+  dm.position.y = 2.35;
+  g.add(dm);
+  g.add(at(new THREE.Mesh(new THREE.TorusGeometry(1.76, 0.1, 6, 32), gold), 0, 2.35, 0)).children.at(-1).rotation.x = Math.PI / 2;
+  // Kristall in der Kuppel
+  const cr = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), E('#7affee', 1.2, { transparent: true, opacity: 0.9 })), 0, 3.0, 0);
+  cr.scale.set(0.7, 1.4, 0.7);
+  g.add(cr);
+  // Türme mit Leuchtspitzen
+  const tops = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const x = Math.cos(a) * 3.3, z = Math.sin(a) * 3.3;
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 4.2, 12), marble), x, 2.1 + 0.6, z));
+    g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.2, 12), M('#3ab0c8')), x, 5.4, z));
+    const t = at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), E('#ffd76a', 1.4)), x, 6.15, z);
+    g.add(t);
+    tops.push(t);
+  }
+  // Dreizack über der Kuppel
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), gold), 0, 5.0, 0));
+  for (const dx of [-0.3, 0, 0.3]) g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 6), gold), dx, 6.3, 0));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), gold), 0, 6.05, 0));
+  anims.push((t) => {
+    cr.rotation.y = t * 0.6;
+    cr.material.emissiveIntensity = 1 + Math.sin(t * 2) * 0.4;
+    tops.forEach((m, i) => (m.material.emissiveIntensity = 1.1 + Math.sin(t * 2 + i) * 0.5));
+  });
+  return g;
+}
+
+function archway() {
+  const g = new THREE.Group();
+  g.add(at(column(1.8, '#e8eef2'), -0.9, 0, 0), at(column(1.8, '#e8eef2'), 0.9, 0, 0));
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.16, 6, 14, Math.PI), M('#dfe7ec'));
+  arc.position.y = 2.06;
+  g.add(arc);
+  return g;
+}
+
+function runeCircle(anims, r = 2.2) {
+  const g = new THREE.Group();
+  const mat = E('#7affee', 0.9);
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const b = at(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.08 + (i % 3) * 0.06), mat), Math.cos(a) * r, 0.04, Math.sin(a) * r);
+    b.rotation.y = -a;
+    g.add(b);
+  }
+  anims.push((t) => {
+    g.rotation.y = t * 0.15;
+    mat.emissiveIntensity = 0.7 + Math.sin(t * 1.8) * 0.4;
+  });
+  return g;
+}
+
+// Gemeinsames Leben für alle Tiefsee-Welten
+function underwaterLife({ scatter, rand, root, anims }, cols) {
+  scatter(4, (i) => anemone(cols[i % cols.length], rand, anims), 0.45);
+  scatter(1.5, () => kelp(rand() < 0.5 ? '#2f7a4a' : '#3f9a5a', rand, anims), 0.35);
+  scatter(2, () => urchin(rand), 0.35);
+  const n = Math.round(4 * K);
+  for (let i = 0; i < n; i++) root.add(jellyfish(['#ff9ad5', '#b07bff', '#7ae0ff'][i % 3], rand, anims, R));
+  for (let i = 0; i < 2; i++) root.add(turtle(rand, anims, R));
+  root.add(manta(rand, anims, R));
+}
+
+// Große Wahrzeichen, vor allem anderen gesetzt
+const LANDMARKS = {
+  korallenriff({ put, spot, anims }) {
+    const w = spot(3.4, 4, 8);
+    if (w) put(shipwreck(anims), w[0], w[1]);
+    const c = spot(2.8, 5, 11);
+    if (c) put(coralArch(['#ff7a8a', '#ffb05a', '#b07bff', '#ffe25f']), c[0], c[1]);
+  },
+  muschelland({ put, spot, anims, rand }) {
+    const h = spot(2.4, 4, 9);
+    if (h) {
+      const house = conch('#ffc8a0', rand);
+      house.scale.setScalar(4);
+      house.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.04), M('#8a5a3a')), 0.25, 0.12, 0.25));
+      put(house, h[0], h[1]);
+    }
+    const f = spot(1.6, 5, 11);
+    if (f) put(pearlFountain(anims), f[0], f[1]);
+  },
+  atlantis({ put, spot, anims, reserve }) {
+    // Palast mit Kristallkuppel, Säulenring und vier Türmen
+    const pal = spot(4.4, 6, 9);
+    if (!pal) return;
+    put(atlantisPalace(anims), pal[0], pal[1], { rot: false });
+    put(runeCircle(anims, 4.6), pal[0], pal[1], { rot: false, sink: -0.02 });
+    // Säulenallee Richtung Inselmitte
+    const dir = new THREE.Vector2(-pal[0], -pal[1]).normalize();
+    for (let i = 1; i <= 4; i++)
+      for (const side of [-1, 1]) {
+        const x = pal[0] + dir.x * (4.5 + i * 1.1) - dir.y * side * 1.1, z = pal[1] + dir.y * (4.5 + i * 1.1) + dir.x * side * 1.1;
+        reserve(x, z, 0.4);
+        put(column(1.6, '#f2f6f8'), x, z, { rot: false });
+      }
+  },
+};
+
 // Zusätzliche Details je Welt (nach dem Grundbau)
 const EXTRAS = {
   normal({ put, scatter, rand, rr, shared, spot, reserve, height }) {
@@ -1181,15 +1572,36 @@ const EXTRAS = {
   sonne({ scatter, rand, anims }) {
     scatter(3, () => steam(anims, rand), 0.3);
   },
-  korallenriff({ put, spot, anims }) {
+  korallenriff(ctx) {
+    const { put, spot, anims, root, rand } = ctx;
     const p = spot(0.8, 0.5, 3.5);
     if (p) put(chest(anims), p[0], p[1]);
+    // Anemonen mit Clownfischen
+    for (let i = 0; i < 3; i++) {
+      const s = spot(0.5);
+      if (!s) continue;
+      const an = put(anemone('#ff5fb0', rand, anims), s[0], s[1]);
+      root.add(clownfish(anims, rand, [s[0], an.position.y, s[1]]));
+    }
+    underwaterLife(ctx, ['#ff5fb0', '#ffb05a', '#7ae0ff']);
   },
-  muschelland({ put, spot }) {
+  muschelland(ctx) {
+    const { put, spot, anims, scatter, rand } = ctx;
     const p = spot(1.1, 1, 3.8);
     if (p) put(sandcastle(), p[0], p[1]);
+    scatter(4, () => crab(rand, anims), 0.5);
+    scatter(3, (i) => seahorse(['#ffb02e', '#ff8ac8', '#7ae0ff'][i % 3], rand, anims), 0.35);
+    scatter(5, () => {
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 16), M('#f2e0c0'));
+      d.position.y = 0.02;
+      return group(d);
+    }, 0.25);
+    underwaterLife(ctx, ['#ff8ac8', '#ffd0e8', '#bff0ff']);
   },
-  atlantis({ scatter, put, spot }) {
+  atlantis(ctx) {
+    const { scatter, put, spot, anims, reserve, rand } = ctx;
+    scatter(3, () => archway(), 1.1);
+    underwaterLife(ctx, ['#7affee', '#ffd76a', '#9ff3f0']);
     for (let i = 0; i < 2; i++) {
       const p = spot(0.6, 2, R - 1.2);
       if (p) {
@@ -1519,7 +1931,7 @@ const BUILDERS = {
     const cols = ['#ff7a8a', '#ffb05a', '#ff5fb0', '#b07bff', '#ffe25f'];
     scatter(10, (i) => coral(cols[i % cols.length], rand), 0.6);
     scatter(6, (i) => brainCoral(['#ff9a7a', '#d87aff', '#7ad8a0'][i % 3], rand), 0.55);
-    scatter(10, () => seaweed(rand() < 0.5 ? '#2f8a5a' : '#4aa86a', rand, anims), 0.3);
+    scatter(5, () => seaweed(rand() < 0.5 ? '#2f8a5a' : '#4aa86a', rand, anims), 0.3);
     scatter(4, () => rockMesh(rr(0.3, 0.55), '#8a7050', rand), 0.4);
     fishSchool(root, anims, rand, ['#ffb02e', '#5fd3ff', '#ff5fb0', '#ffe25f'], 9);
   },
@@ -1530,7 +1942,7 @@ const BUILDERS = {
     scatter(4, (i) => scallop(['#ffd8b0', '#ffe8f0', '#e8d0ff'][i % 3], rr(0.45, 0.7)), 0.8);
     scatter(6, (i) => conch(['#ffb08a', '#f2d0b0', '#ffc8e0'][i % 3], rand), 0.55);
     scatter(8, (i) => starfish(['#ff7a4a', '#ff5f8a', '#ffb02e'][i % 3]), 0.4);
-    scatter(6, () => seaweed('#3a9a6a', rand, anims), 0.3);
+    scatter(3, () => seaweed('#3a9a6a', rand, anims), 0.3);
     fishSchool(root, anims, rand, ['#ffd0e8', '#bff0ff', '#ffe25f'], 6);
   },
 
@@ -1563,7 +1975,7 @@ const BUILDERS = {
       c.rotation.z = (rand() - 0.5) * 0.3;
       return c;
     }, 0.5);
-    scatter(5, () => seaweed('#2f8a6a', rand, anims), 0.3);
+    scatter(3, () => seaweed('#2f8a6a', rand, anims), 0.3);
     scatter(4, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5);
     fishSchool(root, anims, rand, ['#ffd76a', '#9ff3f0'], 6);
   },
