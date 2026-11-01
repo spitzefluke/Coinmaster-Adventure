@@ -86,8 +86,9 @@ function figureSpot(b) {
 }
 
 // Kamerarichtung mit freier Sicht auf die Figur: zuerst von außen, dann seitlich und von oben
-function clearView(b, look, skip) {
-  const out = new THREE.Vector3(look.x, 0, look.z).normalize();
+function clearView(b, look, skip, prefer = null, dist = 4.6, ups = [0.42, 0.75, 1.3, 2.2]) {
+  // prefer: bevorzugte Blickrichtung (sonst von außen)
+  const out = (prefer ? prefer.clone().setY(0) : new THREE.Vector3(look.x, 0, look.z)).normalize();
   const ray = new THREE.Raycaster();
   const meshes = [];
   b.scene.traverse((o) => {
@@ -96,10 +97,10 @@ function clearView(b, look, skip) {
     meshes.push(o);
   });
   b.scene.updateMatrixWorld(true);
-  for (const up of [0.42, 0.75, 1.3, 2.2])
+  for (const up of ups)
     for (const yaw of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) {
       const dir = out.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(new THREE.Vector3(0, up, 0)).normalize();
-      const cam = look.clone().addScaledVector(dir, 4.6);
+      const cam = look.clone().addScaledVector(dir, dist);
       // Füße, Mitte und Kopf müssen alle zu sehen sein
       const blocked = [-0.38, -0.1, 0.2].some((dy) => {
         const from = look.clone().add(new THREE.Vector3(0, dy, 0)), to = cam.clone().sub(from);
@@ -288,11 +289,15 @@ function renderInfo() {
         const a = areas[+b.dataset.area];
         info.querySelectorAll('[data-area]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
         // von der Inselmitte her auf den Bereich schauen (alle Bauten schauen zur Mitte)
-        const from = new THREE.Vector3(-a.pos.x, 0, -a.pos.z);
-        if (from.lengthSq() < 0.01) from.set(1, 0, 1);
-        from.normalize().add(new THREE.Vector3(0, 0.55, 0));
+        // bevorzugt von der Stadtmitte her (alle Bauten schauen dorthin), Sicht frei prüfen
+        const inward = new THREE.Vector3(-a.pos.x, 0, -a.pos.z);
+        if (inward.lengthSq() < 0.01) inward.set(0, 0, 1);
+        const look = a.pos.clone().add(new THREE.Vector3(0, 1.3, 0));
+        const dist = a.id.startsWith('portale') ? 8 : 6.5;
         focused = true;
-        flyTo(a.pos.clone().add(new THREE.Vector3(0, 1.4, 0)), a.id === 'portale' ? 9 : 7.5, 3, from);
+        // äußerer Ring: über die Läden hinweg schauen
+        const ups = a.pos.length() > 10 ? [0.95, 1.4, 2.2] : [0.42, 0.75, 1.3, 2.2];
+        flyTo(look, dist, 3, clearView(built, look, null, inward, dist, ups));
       }),
     );
     return;

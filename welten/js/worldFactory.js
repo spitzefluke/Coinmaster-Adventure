@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { WORLDS, planetById } from './worlds.js';
+import { buildSpawnTown } from './spawnTown.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -334,7 +335,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
 
   const shared = {};
-  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared };
+  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
@@ -1890,99 +1891,7 @@ function tradePlaza() {
 
 const BUILDERS = {
   spawn(ctx) {
-    const { put, reserve, root, anims, rand, rr, scatter, height, shared } = ctx;
-    const y0 = height(0, 0);
-    const areas = (shared.areas = []);
-    const plazaM = M('#d8d0c0'), pathM = M('#cfc6b4');
-    // Spawnplatz mit Münzstatue
-    const plaza = at(new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.08, 40), plazaM), 0, y0 + 0.04, 0);
-    root.add(plaza);
-    const pad = at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.12, 32), M('#3a3046')), 2.0, y0 + 0.1, 0);
-    pad.userData.rbx = { name: 'SpawnLocation', className: 'SpawnLocation' };
-    root.add(pad);
-    const padRing = at(new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.06, 6, 32), E('#ffd76a', 1.2)), 2.0, y0 + 0.17, 0);
-    padRing.rotation.x = Math.PI / 2;
-    root.add(padRing);
-    put(coinStatue(anims), 0, 0, { rot: false, sink: -0.08 });
-    reserve(0, 0, 3.6);
-    shared.figureSpot = new THREE.Vector3(2.0, y0 + 0.16, 1.4);
-    areas.push({ id: 'spawn', name: 'Spawnplatz', pos: new THREE.Vector3(1, y0, 0) });
-
-    // Wege: vier Achsen nach außen und ein Ring vor den Portalen
-    for (let k = 0; k < 4; k++) {
-      const a = (k / 4) * Math.PI * 2;
-      const len = 9.6, mid = 3.4 + len / 2;
-      const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 1.4), pathM);
-      road.position.set(Math.cos(a) * mid, y0 + 0.03, Math.sin(a) * mid);
-      road.rotation.y = -a;
-      root.add(road);
-      for (let d = 3.6; d < 13; d += 0.5) reserve(Math.cos(a) * d, Math.sin(a) * d, 0.75);
-      for (let d = 5; d < 13; d += 2.6)
-        for (const side of [-1, 1]) {
-          const x = Math.cos(a) * d - Math.sin(a) * side * 1.0, z = Math.sin(a) * d + Math.cos(a) * side * 1.0;
-          put(lamp(), x, z, { rot: false });
-        }
-    }
-    const ring = new THREE.Mesh(new THREE.RingGeometry(12.2, 13.6, 72), pathM);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = y0 + 0.035;
-    root.add(ring);
-    for (let i = 0; i < 72; i++) {
-      const a = (i / 72) * Math.PI * 2;
-      reserve(Math.cos(a) * 12.9, Math.sin(a) * 12.9, 0.8);
-    }
-
-    // Bauten im inneren Ring, je zwischen zwei Wegen; alle schauen zur Mitte
-    const place = (obj, angleDeg, r, id, name) => {
-      const a = (angleDeg * Math.PI) / 180, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      reserve(x, z, 1.7);
-      const o = put(obj, x, z, { rot: false });
-      o.lookAt(0, o.position.y, 0);
-      if (id) areas.push({ id, name, pos: new THREE.Vector3(x, y0, z) });
-      return o;
-    };
-    // Shops
-    place(shopStall('Eier-Shop', 'Eier für Haustiere', '#fbf3e4', '#e0a030', eggIcon('#ffd89a')), 22, 8, 'shops', 'Shops');
-    place(shopStall('Boosts', 'Glück, EP, Wetter', '#eef0ff', '#7a5ad8', potionIcon('#b07bff')), 45, 8.4);
-    place(shopStall('Robux-Shop', 'Angebote', '#e8fff0', '#2aa860', coinIcon()), 68, 8);
-    place(shopStall('Verkaufen', 'Münzen gegen Taler', '#fff4e0', '#c8701a', coinIcon()), 202, 8);
-    place(shopStall('Haustiere', 'Ausrüsten und pflegen', '#fff0f6', '#d84a8a', pawIcon()), 225, 8.4, 'haustiere', 'Haustier-Stand');
-    place(indexBook(), 248, 8, 'index', 'Münzindex');
-    // Ranglisten
-    place(leaderboard('Meiste Taler', '#ffd76a', rankRows('taler', rand)), 112, 8.2, 'ranglisten', 'Ranglisten');
-    place(leaderboard('Münzen gesammelt', '#7ad0ff', rankRows('coins', rand)), 135, 8.6);
-    place(leaderboard('Wiedergeburten', '#ff8ac8', rankRows('rebirths', rand)), 158, 8.2);
-    // Belohnung, Wiedergeburt, Codes, Handel
-    const ch = new THREE.Group();
-    ch.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.4, 8), M('#4a4458')), 0, 0.2, 0));
-    const chestObj = chest(anims);
-    chestObj.position.y = 0.4;
-    chestObj.scale.setScalar(1.4);
-    ch.add(chestObj);
-    const cs = signBoard('Tägliche Belohnung', { w: 2.6, h: 0.6, bg: '#e0a030', fg: '#ffffff', sub: 'Jeden Tag ein Geschenk' });
-    cs.position.set(0, 2.2, 0);
-    ch.add(cs);
-    place(ch, 292, 8, 'belohnung', 'Tägliche Belohnung');
-    place(rebirthAltar(anims), 315, 8.6, 'wiedergeburt', 'Wiedergeburt');
-    place(codesTerminal(anims), 338, 8, 'codes', 'Codes');
-    place(tradePlaza(), 270, 6.2, 'handel', 'Handel');
-
-    // Portalring: alle Welten, nach Planeten sortiert, schauen zur Mitte
-    const list = ctx.portals || [];
-    list.forEach(({ world: w, color }, i) => {
-      const deg = 100 + (i / list.length) * 360;
-      const a = (deg * Math.PI) / 180, x = Math.cos(a) * 14.4, z = Math.sin(a) * 14.4;
-      reserve(x, z, 1.6);
-      const o = put(portalArch(w, color, anims, rand), x, z, { rot: false });
-      o.lookAt(0, o.position.y, 0);
-      if (i === 0) areas.push({ id: 'portale', name: 'Portale', pos: new THREE.Vector3(x, y0, z) });
-    });
-
-    // Grün zwischen den Bereichen
-    scatter(8, () => roundTree(rr(1.4, 2.2), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 9.8, 12);
-    scatter(16, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 3.8, 12);
-    scatter(40, () => flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2, 3.8, 12);
-    scatter(1, () => roundTree(rr(1.6, 2.4), '#4f9a3f', rand), 0.9, 15.2, R - 0.6);
+    buildSpawnTown(ctx, KIT); // die Münzstadt steht in spawnTown.js
   },
 
   normal({ scatter, rand, rr, root, height, reserve, shared }) {
@@ -2349,4 +2258,10 @@ const BUILDERS = {
     scatter(4, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5);
     fishSchool(root, anims, rand, ['#ffd76a', '#9ff3f0'], 6);
   },
+};
+
+// Bausteine für spawnTown.js
+const KIT = {
+  M, E, at, group, canvasTex, dotTex, signBoard, column, lamp, chest, bench, roundTree, bush, flower, crystal,
+  portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, dome,
 };
