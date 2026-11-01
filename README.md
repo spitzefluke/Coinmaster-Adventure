@@ -155,7 +155,7 @@ Sturm, Blasen …).
   Roblox Studio aus Teilen aufgebaut ist.
 - **Größenvergleich** (Knopf in der 3D-Ansicht): stellt eine normal große Roblox-Figur (gut
   5 Studs, klassische Block-Proportionen) neben die Teleport-Plattform und fährt die Kamera hin.
-  Eine Insel ist rund 160 Studs breit, also etwa 40 Figuren nebeneinander
+  Eine Insel ist rund 256 Studs breit, also etwa 64 Figuren nebeneinander
   (`welten/js/character.js`).
 - `welten/js/worlds.js` – Daten (Preise, Boni, Portale, Wiedergeburt), `js/worldFactory.js` –
   baut die 3D-Inseln, `js/thumbs.js` – Vorschaubilder.
@@ -207,7 +207,7 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
   Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
   („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
-  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 160 Studs breit. Animationen fehlen in Studio noch.
+  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 256 Studs breit. Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 

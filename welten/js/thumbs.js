@@ -2,7 +2,7 @@
 // Ein eigener kleiner Renderer zeichnet jede Welt einmal; das Bild wird zwischengespeichert.
 
 import * as THREE from 'three';
-import { buildWorld } from './worldFactory.js';
+import { buildWorld, ISLAND_RADIUS } from './worldFactory.js';
 
 let renderer = null;
 const cache = new Map();
@@ -31,8 +31,9 @@ export function worldThumb(world, w = 360, h = 240) {
             r.setSize(w, h, false);
             const built = buildWorld(world, { particles: 0.6 });
             built.update(1.3, 0.016);
-            const cam = new THREE.PerspectiveCamera(36, w / h, 0.1, 200);
-            cam.position.set(17.5, 12, 21);
+            const cam = new THREE.PerspectiveCamera(36, w / h, 0.1, 500);
+            const k = ISLAND_RADIUS / 10;
+            cam.position.set(17.5 * k, 12 * k, 21 * k);
             cam.lookAt(0, 0.2, 0);
             r.render(built.scene, cam);
             const url = r.domElement.toDataURL('image/webp', 0.85);

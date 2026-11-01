@@ -154,8 +154,8 @@ function convertMesh(out, mesh, world) {
 
 // Boden als Säulen-Raster entlang der Hügel
 function groundColumns(out, built, world) {
-  const R = built.radius, cell = 0.8, material = GROUND[world.id] || 'SmoothPlastic';
-  const base = -0.25;
+  const R = built.radius, cell = 1.1, material = GROUND[world.id] || 'SmoothPlastic';
+  const base = -1.2; // unter dem tiefsten Tal, damit jede Säule bis zum Boden reicht
   const light = '#' + new THREE.Color(world.ground).offsetHSL(0, 0, 0.03).getHexString();
   for (let x = -R + cell / 2; x < R; x += cell)
     for (let z = -R + cell / 2; z < R; z += cell) {

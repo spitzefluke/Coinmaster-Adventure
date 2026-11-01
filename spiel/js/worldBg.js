@@ -2,7 +2,9 @@
 // Klappt WebGL nicht, bleibt der gezeichnete Hintergrund (Himmel und Hügel) stehen.
 
 import * as THREE from 'three';
-import { buildWorld } from '../../welten/js/worldFactory.js';
+import { buildWorld, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
+
+const CS = ISLAND_RADIUS / 10; // Kamerawerte unten gelten für Radius 10
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 
 export function createWorldBg(host) {
@@ -20,7 +22,7 @@ export function createWorldBg(host) {
   host.prepend(renderer.domElement);
   host.classList.add('has-3d');
 
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 300);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
   let built = null, worldId = null;
   let visible = true;
   new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(host);
@@ -53,8 +55,8 @@ export function createWorldBg(host) {
     }
     if (!skipAnimations()) angle += dt * 0.05;
     // schmale Bildschirme: weiter weg, damit die Insel ganz zu sehen ist
-    const dist = Math.min(56, Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
-    camera.position.set(Math.cos(angle) * dist, 10.5, Math.sin(angle) * dist);
+    const dist = CS * Math.min(56, Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
+    camera.position.set(Math.cos(angle) * dist, 10.5 * CS, Math.sin(angle) * dist);
     camera.lookAt(0, camera.aspect < 1 ? -1.2 : 0.4, 0);
     built.update(t, dt);
     renderer.render(built.scene, camera);
