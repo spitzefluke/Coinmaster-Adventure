@@ -64,7 +64,7 @@ function toRobloxView(b, w) {
     parts.userData.dispose();
     dispose();
   };
-  return parts.children.length;
+  return parts.userData.count;
 }
 
 // ── Größenvergleich mit einer normal großen Roblox-Figur ──
