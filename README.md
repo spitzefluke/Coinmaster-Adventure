@@ -217,11 +217,16 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
 
 `auren/` zeigt 50 Auras, die um die Spielerfigur leuchten, als Galerie mit Filtern nach Thema und
 Seltenheit und einer drehbaren Detailansicht (`auren/js/auras.js` für die Daten, `auren/js/auraFactory.js`
-für die 3D-Effekte).
+für die 3D-Effekte, überarbeitet nach dem Claude-Design-Projekt „Auras Vorher Nachher“; Bausteine und die
+erste Fassung in `auren/js/auraBase.js`).
 
 - **Themen:** Elemente, Münzen & Schätze, Weltraum & Magie, Lustig & Glitch (je 12 bis 13 Auras).
 - **Seltenheit, Preis und Bonus:** Gewöhnlich (ab 1.000 Taler, +1 bis 3 %) bis Göttlich (bis 1 Mrd. Taler,
   +18 bis 25 %). Jede Aura verbessert genau eine Sache: Glück, Münzwert, Erfahrung oder Tempo.
+- **Grundpaket je Seltenheit** (addiert sich nach oben, so erkennt man die Stufe sofort): Gewöhnlich
+  Bodenleuchten und Licht · Selten leuchtender Umriss · Episch Pulswellen und Glimmer · Legendär
+  Lichtstrahlen und Funkelsterne · Mythisch zwei Energieringe mit Lichtläufern · Göttlich Strahlenkranz,
+  Schockwelle und Leuchtkörper.
 - **Effekte:** aufsteigende und fallende Teilchen, Wirbel, Feuerwerk, kreisende Dinge (Münzen, Edelsteine,
   Planeten, Katzen …), Bodenkreise mit Runen, Heiligenschein, Krone, Flügel, Lichtsäule, Hülle,
   Lichtbänder, Blitze und Glitch-Doppelgänger. Was eine Aura zeigt, steht in ihrem `look`.
@@ -229,7 +234,9 @@ für die 3D-Effekte).
   Glück, Münzwert und Erfahrung wirken schon beim simulierten Fund, Tempo erst im Roblox-Spiel.
 - **Roblox:** Module `AuraData` und `AuraFx`, das Skript `CoinmasterAuras` (Server, prüft Kaufen und
   Anlegen über die RemoteFunction `AuraRemote`, Taler aus `leaderstats.Taler`) und `CoinmasterAuraClient`
-  (zeichnet die Aura jedes Spielers aus ParticleEmittern, Beams, Neon-Teilen und Licht). Dazu
+  (zeichnet die Aura jedes Spielers aus ParticleEmittern, Beams, Trails, Neon-Teilen, Highlight und Licht,
+  samt Grundpaket je Seltenheit). Roblox zeigt höchstens 31 Highlights gleichzeitig; im Showcase fehlen
+  Umriss und Glitch-Flackern deshalb. Dazu
   `Workspace › CoinmasterAuraShowcase` mit allen 50 Auras an Figuren. Zum Testen in Studio Play drücken
   und im Chat `/aura krone` schreiben. Gekaufte Auras werden noch nicht gespeichert (DataStore fehlt).
   Eigene Teilchenbilder (Münze, Herz, Note …) als Decal-IDs in `AuraData.Textures` eintragen.
@@ -296,7 +303,7 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
-- `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni), `js/auraFactory.js` (Figur und 3D-Effekte), `js/main.js` (Galerie)
+- `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni), `js/auraFactory.js` (3D-Effekte mit Grundpaket je Seltenheit), `js/auraBase.js` (Figur, Texturen, Bausteine), `js/main.js` (Galerie)
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
