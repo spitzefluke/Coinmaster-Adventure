@@ -133,6 +133,14 @@ In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfcha
 
 ## Welten
 
+**Spawn (Treffpunkt):** Hier starten neue Spieler. In der Mitte steht eine Münzstatue mit dem
+Spawnplatz. Dazu kommen Shops (Eier, Boosts, Robux, Verkaufen, Haustiere), ein Ring mit einem
+Portal pro Welt (Planetenfarbe, Name und Preis), drei Ranglisten (Taler, Münzen, Wiedergeburten;
+„Du“ aus dem eigenen Spielstand), die tägliche Belohnung, der Wiedergeburts-Altar, das Münzindex-Buch,
+ein Code-Terminal und ein Handelsplatz. Im Spawn gibt es keine Münzen. In der Weltkarte lassen sich
+die Bereiche anklicken. Im Roblox-Export ist `00-Spawn.rbxmx` dabei, mit echter `SpawnLocation`,
+Teilen `Portal_<WeltId>` und Schildern mit SurfaceGui-Text.
+
 `welten/` zeigt die Weltkarte: vier Planeten mit ihren Welten, jede als drehbare 3D-Insel mit
 eigener Landschaft, Himmel und Partikeln (Pollen, Glühwürmchen, Schnee, Glut, Streusel, Sterne,
 Sturm, Blasen …).

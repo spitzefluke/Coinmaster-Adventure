@@ -45,7 +45,7 @@ function sampleState() {
     eggs: { normal: 2, wald: 1 },
     boosts: {},
     autoSell: [],
-    world: 'normal',
+    world: 'spawn', // neue Spieler starten im Spawn
     worlds: ['normal', 'wald'],
     portals: ['p1'],
     rebirths: 0,
@@ -89,13 +89,14 @@ export const eggPrice = (s, base) => Math.round(base * (1 - effect(s, 'feilscher
 // ── Welten, Portale, Wiedergeburt ────────────────────────────────────────────
 
 export const currentWorld = (s) => worldById[s.world] || worldById.normal;
-export const ownsWorld = (s, id) => s.worlds.includes(id);
+export const ownsWorld = (s, id) => id === 'spawn' || s.worlds.includes(id); // der Spawn ist immer offen
 export const portalOpen = (s, planetId) => s.portals.includes(planetId);
 
 // Gibt einen Grund zurück, wenn die Welt (noch) nicht gekauft werden kann
 export function canBuyWorld(s, id) {
   const w = worldById[id];
   if (w.soon) return 'Coming soon';
+  if (w.hub) return 'Immer offen';
   if (ownsWorld(s, id)) return 'Schon gekauft';
   if (!portalOpen(s, w.planet)) return `Erst das Portal öffnen`;
   const list = playable(w.planet), i = list.indexOf(w);

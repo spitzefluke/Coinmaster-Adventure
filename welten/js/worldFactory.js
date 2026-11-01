@@ -6,6 +6,7 @@
 //   scene = w.scene; jedes Bild: w.update(t, dt); am Ende: w.dispose();
 
 import * as THREE from 'three';
+import { WORLDS, planetById } from './worlds.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -217,7 +218,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   scene.add(sun);
 
   // ── Insel ──
-  const flat = world.id === 'stadt' ? 0 : world.id === 'atlantis' ? 0.25 : 1; // Stadt eben, Atlantis fast eben
+  const flat = world.id === 'stadt' || world.hub ? 0 : world.id === 'atlantis' ? 0.25 : 1; // Stadt eben, Atlantis fast eben
   const s1 = rr(0, 6), s2 = rr(0, 6), s3 = rr(0, 6);
   const height = (x, z) => {
     const r = Math.hypot(x, z) / R;
@@ -334,14 +335,16 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
 
   const shared = {};
   const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared };
+  // Spawn: ein Portal pro Welt, Farbe des Planeten
+  if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
 
   // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.
-  let figureSpot = null;
-  {
+  let figureSpot = shared.figureSpot ?? null;
+  if (!world.hub) {
     // im dichten Wald gibt es keinen freien Platz mehr: dann wird am Rand eine Lichtung geschlagen
     const p = spot(0.9, R - 2.4, R - 1.1) ?? [Math.cos(0.7) * (R - 1.6), Math.sin(0.7) * (R - 1.6)];
     if (p) {
@@ -383,7 +386,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.07, 28);
   const coinMat = new THREE.MeshStandardMaterial({ color: '#ffcf4a', metalness: 0.7, roughness: 0.28, emissive: '#b8860b', emissiveIntensity: 0.55 });
   const glowMat = new THREE.SpriteMaterial({ map: dotTex(), color: world.accent || '#ffd76a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
-  for (let i = 0; i < Math.round(5 * AREA); i++) {
+  for (let i = 0; i < (world.hub ? 0 : Math.round(5 * AREA)); i++) {
     const p = spot(0.5, 0.5, R - 0.7);
     if (!p) continue;
     const g = new THREE.Group();
@@ -435,6 +438,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     height,
     radius: R,
     figureSpot,
+    areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     update(t, dt) {
       for (const a of anims) a(t, dt);
       for (const f of fxs) f.update(t, Math.min(dt, 0.05));
@@ -1614,7 +1618,373 @@ const EXTRAS = {
 
 // ── Welten ──────────────────────────────────────────────────────────────────
 
+
+// ── Spawn: Treffpunkt mit Shops, Portalen und Ranglisten ────────────────────
+
+// Schild mit Text auf der Vorderseite (+z). Im Roblox-Export wird daraus ein Teil mit SurfaceGui.
+function signBoard(text, { w = 2, h = 0.6, bg = '#2a2232', fg = '#ffe7a8', sub = '', font = 'Grenze Gotisch, Georgia, serif' } = {}) {
+  const px = 128;
+  const tex = canvasTex(Math.round(w * px), Math.round(h * px), (g, W, H) => {
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = fg;
+    g.globalAlpha = 0.5;
+    g.lineWidth = 6;
+    g.strokeRect(8, 8, W - 16, H - 16);
+    g.globalAlpha = 1;
+    g.fillStyle = fg;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const main = sub ? H * 0.42 : H * 0.55;
+    g.font = `700 ${Math.round(main)}px ${font}`;
+    g.fillText(text, W / 2, sub ? H * 0.4 : H / 2 + 2, W - 30);
+    if (sub) {
+      g.font = `600 ${Math.round(H * 0.24)}px Barlow, system-ui, sans-serif`;
+      g.globalAlpha = 0.85;
+      g.fillText(sub, W / 2, H * 0.76, W - 30);
+    }
+  });
+  const side = M(bg);
+  const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25 });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), [side, side, side, side, front, side]);
+  m.userData.rbx = { text: sub ? `${text}\n${sub}` : text, textColor: fg, color: bg };
+  return m;
+}
+
+function shopStall(name, sub, wall, awning, icon) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.7, 1.8), M(wall)), 0, 0.85, -0.2));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 2.0), M('#4a3a30')), 0, 1.76, -0.2));
+  // Theke
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 0.45), M('#a07a50')), 0, 0.35, 0.95));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 0.55), M('#c8a070')), 0, 0.73, 0.95));
+  // gestreiftes Vordach
+  for (let i = 0; i < 6; i++) {
+    const st = at(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.05, 1.0), M(i % 2 ? '#fff6e8' : awning)), -1.15 + i * 0.46, 1.62, 1.05);
+    st.rotation.x = 0.35;
+    g.add(st);
+  }
+  for (const x of [-1.25, 1.25]) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), M('#6b4a2e')), x, 0.75, 1.45));
+  const sign = signBoard(name, { w: 2.4, h: 0.7, bg: awning, fg: '#ffffff', sub });
+  sign.position.set(0, 2.25, 0.62);
+  g.add(sign);
+  if (icon) {
+    icon.position.y += 2.0;
+    icon.position.z -= 0.3;
+    g.add(icon);
+  }
+  return g;
+}
+
+function eggIcon(c) {
+  const e = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), M(c, { roughness: 0.35, emissive: c, emissiveIntensity: 0.15 }));
+  e.scale.set(0.85, 1.12, 0.85);
+  e.position.y = 0.45;
+  return group(e);
+}
+function potionIcon(c) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10), E(c, 0.6, { transparent: true, opacity: 0.85 })), 0, 0.38, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.3, 10), M('#cfe8ff', { transparent: true, opacity: 0.7 })), 0, 0.8, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 10), M('#8a5a3a')), 0, 0.98, 0));
+  return g;
+}
+function coinIcon(label = '') {
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 28), M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.4 }));
+  c.rotation.x = Math.PI / 2;
+  c.position.y = 0.5;
+  return group(c);
+}
+function pawIcon() {
+  const g = new THREE.Group();
+  const m = M('#ff8ac8');
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), m), 0, 0.35, 0));
+  for (const [x, y] of [[-0.3, 0.68], [-0.1, 0.8], [0.1, 0.8], [0.3, 0.68]]) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), m), x, y, 0));
+  return g;
+}
+
+function portalArch(world, planetColor, anims, rand) {
+  const g = new THREE.Group();
+  const stone = M('#4a4458'), trim = M(planetColor, { metalness: 0.4, roughness: 0.4 });
+  for (const x of [-1.15, 1.15]) {
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.4, 0.5), stone), x, 1.2, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.6), trim), x, 0.1, 0));
+  }
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.22, 6, 18, Math.PI), trim);
+  arc.position.y = 2.4;
+  g.add(arc);
+  const soon = !!world.soon;
+  const col = soon ? '#6b6478' : world.accent;
+  const disc = at(new THREE.Mesh(new THREE.CircleGeometry(1.0, 32), E(col, soon ? 0.2 : 0.9, { transparent: true, opacity: soon ? 0.5 : 0.75, side: THREE.DoubleSide })), 0, 1.55, 0);
+  disc.scale.y = 1.45;
+  disc.userData.rbx = { name: soon ? 'PortalGesperrt' : `Portal_${world.id}` };
+  g.add(disc);
+  const swirl = at(new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 24), E('#ffffff', soon ? 0.1 : 0.8, { transparent: true, opacity: 0.6 })), 0, 1.55, 0.02);
+  swirl.scale.y = 1.45;
+  swirl.userData.rbx = { skip: true };
+  g.add(swirl);
+  const price = soon ? 'Bald' : world.price ? `${fmtShort(world.price)} Taler` : 'Gratis';
+  const sign = signBoard(soon ? 'Coming soon' : world.name, { w: 2.2, h: 0.62, bg: '#1e1a26', fg: col, sub: price });
+  sign.position.set(0, 4.25, 0);
+  g.add(sign);
+  const ph = rand() * 6;
+  anims.push((t) => {
+    swirl.rotation.z = t * (soon ? 0.3 : 1.6) + ph;
+    disc.material.emissiveIntensity = soon ? 0.2 : 0.75 + Math.sin(t * 2 + ph) * 0.25;
+  });
+  return g;
+}
+const fmtShort = (n) => {
+  for (const [v, u] of [[1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']]) if (n >= v) return (n / v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + u;
+  return String(n);
+};
+
+// Rangliste mit Beispiel-Spielern; „Du“ kommt aus dem Spielstand dieses Browsers
+function leaderboard(title, color, rows) {
+  const g = new THREE.Group();
+  const W = 3.2, H = 2.6;
+  const tex = canvasTex(640, 520, (c, w, h) => {
+    c.fillStyle = '#16121e';
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = color;
+    c.fillRect(0, 0, w, 86);
+    c.fillStyle = '#16121e';
+    c.font = '700 54px Grenze Gotisch, Georgia, serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(title, w / 2, 46);
+    c.font = '600 30px Barlow, system-ui, sans-serif';
+    rows.slice(0, 10).forEach(([name, val, me], i) => {
+      const y = 116 + i * 40;
+      if (me) {
+        c.fillStyle = '#ffffff22';
+        c.fillRect(14, y - 19, w - 28, 38);
+      }
+      c.textAlign = 'left';
+      c.fillStyle = i < 3 ? ['#ffd76a', '#d8dde6', '#e0a070'][i] : '#a39cad';
+      c.fillText(`${i + 1}.`, 26, y);
+      c.fillStyle = me ? '#ffffff' : '#efe8db';
+      c.fillText(name, 84, y);
+      c.textAlign = 'right';
+      c.fillStyle = color;
+      c.fillText(val, w - 26, y);
+    });
+  });
+  const side = M('#2a2232');
+  const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.35 });
+  const board = at(new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.12), [side, side, side, side, front, side]), 0, 0.6 + H / 2, 0);
+  board.userData.rbx = { text: title, textColor: color, color: '#16121e', name: 'Rangliste' };
+  g.add(board);
+  for (const x of [-W / 2 + 0.15, W / 2 - 0.15]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), M('#4a4458')), x, 0.35, 0));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.14, 0.3), M(color, { metalness: 0.5 })), 0, 0.6 + H + 0.07, 0));
+  return g;
+}
+
+function playerStats() {
+  try {
+    const s = JSON.parse(localStorage.getItem('coinmaster.spiel.v1'));
+    if (s) return { taler: s.taler | 0, coins: (s.inventory || []).length, rebirths: s.rebirths | 0, level: s.level | 0 };
+  } catch {}
+  return null;
+}
+const RIVALS = ['MünzMax', 'GlitzerGrete', 'TalerTom', 'Schatzsucherin', 'KometenKai', 'PerlenPia', 'GoldGustav', 'DrachenDana', 'NebelNico', 'LavaLuis', 'EisElla', 'PixelPaul'];
+function rankRows(kind, rand) {
+  const me = playerStats();
+  const base = { taler: [9.8e9, 0.62], coins: [4800, 0.82], rebirths: [42, 0.86] }[kind];
+  const rows = RIVALS.slice(0, 10).map((n, i) => [n, Math.round(base[0] * Math.pow(base[1], i) * (0.9 + rand() * 0.2))]);
+  if (me) rows.push(['Du', kind === 'taler' ? me.taler : kind === 'coins' ? me.coins : me.rebirths, true]);
+  rows.sort((a, b) => b[1] - a[1]);
+  if (me && !rows.slice(0, 10).some((r) => r[2])) rows[9] = rows.find((r) => r[2]);
+  return rows.slice(0, 10).map(([n, v, m]) => [n, kind === 'taler' ? fmtShort(v) : v.toLocaleString('de-DE'), m]);
+}
+
+function coinStatue(anims) {
+  const g = new THREE.Group();
+  const marble = M('#e8e2d6');
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.25, 0.6, 8), marble), 0, 0.3, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.85, 1.6, 8), M('#d8d0c0')), 0, 1.4, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.75, 0.3, 8), marble), 0, 2.35, 0));
+  const spin = new THREE.Group();
+  spin.position.y = 4.0;
+  const coin = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.28, 40), M('#ffcf4a', { metalness: 0.75, roughness: 0.25, emissive: '#b8860b', emissiveIntensity: 0.45 }));
+  coin.rotation.x = Math.PI / 2;
+  spin.add(coin);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.1, 8, 40), M('#ffe08a', { metalness: 0.8, roughness: 0.2 }));
+  spin.add(rim);
+  g.add(spin);
+  anims.push((t) => {
+    spin.rotation.y = t * 0.6;
+    spin.position.y = 4.0 + Math.sin(t * 1.2) * 0.12;
+  });
+  return g;
+}
+
+function rebirthAltar(anims) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.45, 0.35, 8), M('#2a2232')), 0, 0.18, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.3, 8), M('#3a3046')), 0, 0.5, 0));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.07, 8, 32), E('#ffd76a', 1.2));
+  ring.position.y = 1.7;
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 8, 32), E('#ffb0ff', 1.1));
+  ring2.position.y = 1.7;
+  const cr = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), E('#ffe7a8', 1.3, { transparent: true, opacity: 0.9 })), 0, 1.7, 0);
+  cr.scale.y = 1.5;
+  g.add(ring, ring2, cr);
+  anims.push((t) => {
+    ring.rotation.set(t * 0.8, t * 0.5, 0);
+    ring2.rotation.set(-t * 0.6, 0, t * 0.9);
+    cr.rotation.y = t;
+  });
+  const sign = signBoard('Wiedergeburt', { w: 2.4, h: 0.6, bg: '#2a2232', fg: '#ffd76a', sub: 'Münzen für immer mehr wert' });
+  sign.position.set(0, 2.9, 0);
+  g.add(sign);
+  return g;
+}
+
+function indexBook() {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 1.2), M('#4a3a30')), 0, 0.4, 0));
+  for (const sx of [-1, 1]) {
+    const page = at(new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 1.1), M('#f6efe0')), sx * 0.42, 0.95, 0);
+    page.rotation.z = -sx * 0.18;
+    g.add(page);
+    const cover = at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 1.15), M('#8a1f2a')), sx * 0.44, 0.9, 0);
+    cover.rotation.z = -sx * 0.18;
+    g.add(cover);
+  }
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 20), M('#ffcf4a', { metalness: 0.7 })), 0.45, 1.04, 0));
+  const sign = signBoard('Münzindex', { w: 2, h: 0.55, bg: '#8a1f2a', fg: '#ffe7a8', sub: 'Alle 50 Münzen sammeln' });
+  sign.position.set(0, 1.9, -0.3);
+  g.add(sign);
+  return g;
+}
+
+function codesTerminal(anims) {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.6), M('#3a3f4a', { metalness: 0.4 })), 0, 0.55, 0));
+  const scr = signBoard('CODES', { w: 0.9, h: 0.65, bg: '#06121a', fg: '#38f0ff', sub: 'Code eingeben', font: 'JetBrains Mono, monospace' });
+  scr.position.set(0, 1.5, 0.05);
+  scr.rotation.x = -0.25;
+  g.add(scr);
+  const keys = at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.3), M('#1e2230')), 0, 1.13, 0.25);
+  keys.rotation.x = 0.3;
+  g.add(keys);
+  return g;
+}
+
+function tradePlaza() {
+  const g = new THREE.Group();
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.06, 28), M('#cfc6b4')), 0, 0.03, 0));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.7), M('#a07a50')), 0, 0.35, 0));
+  for (const z of [-1.0, 1.0]) {
+    const b = bench();
+    b.position.z = z;
+    b.rotation.y = z > 0 ? Math.PI : 0;
+    g.add(b);
+  }
+  const sign = signBoard('Handel', { w: 1.6, h: 0.5, bg: '#2a6a5a', fg: '#ffffff', sub: 'Haustiere tauschen' });
+  sign.position.set(0, 1.5, 0);
+  g.add(sign);
+  return g;
+}
+
 const BUILDERS = {
+  spawn(ctx) {
+    const { put, reserve, root, anims, rand, rr, scatter, height, shared } = ctx;
+    const y0 = height(0, 0);
+    const areas = (shared.areas = []);
+    const plazaM = M('#d8d0c0'), pathM = M('#cfc6b4');
+    // Spawnplatz mit Münzstatue
+    const plaza = at(new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.08, 40), plazaM), 0, y0 + 0.04, 0);
+    root.add(plaza);
+    const pad = at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.12, 32), M('#3a3046')), 2.0, y0 + 0.1, 0);
+    pad.userData.rbx = { name: 'SpawnLocation', className: 'SpawnLocation' };
+    root.add(pad);
+    const padRing = at(new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.06, 6, 32), E('#ffd76a', 1.2)), 2.0, y0 + 0.17, 0);
+    padRing.rotation.x = Math.PI / 2;
+    root.add(padRing);
+    put(coinStatue(anims), 0, 0, { rot: false, sink: -0.08 });
+    reserve(0, 0, 3.6);
+    shared.figureSpot = new THREE.Vector3(2.0, y0 + 0.16, 1.4);
+    areas.push({ id: 'spawn', name: 'Spawnplatz', pos: new THREE.Vector3(1, y0, 0) });
+
+    // Wege: vier Achsen nach außen und ein Ring vor den Portalen
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2;
+      const len = 9.6, mid = 3.4 + len / 2;
+      const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 1.4), pathM);
+      road.position.set(Math.cos(a) * mid, y0 + 0.03, Math.sin(a) * mid);
+      road.rotation.y = -a;
+      root.add(road);
+      for (let d = 3.6; d < 13; d += 0.5) reserve(Math.cos(a) * d, Math.sin(a) * d, 0.75);
+      for (let d = 5; d < 13; d += 2.6)
+        for (const side of [-1, 1]) {
+          const x = Math.cos(a) * d - Math.sin(a) * side * 1.0, z = Math.sin(a) * d + Math.cos(a) * side * 1.0;
+          put(lamp(), x, z, { rot: false });
+        }
+    }
+    const ring = new THREE.Mesh(new THREE.RingGeometry(12.2, 13.6, 72), pathM);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = y0 + 0.035;
+    root.add(ring);
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2;
+      reserve(Math.cos(a) * 12.9, Math.sin(a) * 12.9, 0.8);
+    }
+
+    // Bauten im inneren Ring, je zwischen zwei Wegen; alle schauen zur Mitte
+    const place = (obj, angleDeg, r, id, name) => {
+      const a = (angleDeg * Math.PI) / 180, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      reserve(x, z, 1.7);
+      const o = put(obj, x, z, { rot: false });
+      o.lookAt(0, o.position.y, 0);
+      if (id) areas.push({ id, name, pos: new THREE.Vector3(x, y0, z) });
+      return o;
+    };
+    // Shops
+    place(shopStall('Eier-Shop', 'Eier für Haustiere', '#fbf3e4', '#e0a030', eggIcon('#ffd89a')), 22, 8, 'shops', 'Shops');
+    place(shopStall('Boosts', 'Glück, EP, Wetter', '#eef0ff', '#7a5ad8', potionIcon('#b07bff')), 45, 8.4);
+    place(shopStall('Robux-Shop', 'Angebote', '#e8fff0', '#2aa860', coinIcon()), 68, 8);
+    place(shopStall('Verkaufen', 'Münzen gegen Taler', '#fff4e0', '#c8701a', coinIcon()), 202, 8);
+    place(shopStall('Haustiere', 'Ausrüsten und pflegen', '#fff0f6', '#d84a8a', pawIcon()), 225, 8.4, 'haustiere', 'Haustier-Stand');
+    place(indexBook(), 248, 8, 'index', 'Münzindex');
+    // Ranglisten
+    place(leaderboard('Meiste Taler', '#ffd76a', rankRows('taler', rand)), 112, 8.2, 'ranglisten', 'Ranglisten');
+    place(leaderboard('Münzen gesammelt', '#7ad0ff', rankRows('coins', rand)), 135, 8.6);
+    place(leaderboard('Wiedergeburten', '#ff8ac8', rankRows('rebirths', rand)), 158, 8.2);
+    // Belohnung, Wiedergeburt, Codes, Handel
+    const ch = new THREE.Group();
+    ch.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.4, 8), M('#4a4458')), 0, 0.2, 0));
+    const chestObj = chest(anims);
+    chestObj.position.y = 0.4;
+    chestObj.scale.setScalar(1.4);
+    ch.add(chestObj);
+    const cs = signBoard('Tägliche Belohnung', { w: 2.6, h: 0.6, bg: '#e0a030', fg: '#ffffff', sub: 'Jeden Tag ein Geschenk' });
+    cs.position.set(0, 2.2, 0);
+    ch.add(cs);
+    place(ch, 292, 8, 'belohnung', 'Tägliche Belohnung');
+    place(rebirthAltar(anims), 315, 8.6, 'wiedergeburt', 'Wiedergeburt');
+    place(codesTerminal(anims), 338, 8, 'codes', 'Codes');
+    place(tradePlaza(), 270, 6.2, 'handel', 'Handel');
+
+    // Portalring: alle Welten, nach Planeten sortiert, schauen zur Mitte
+    const list = ctx.portals || [];
+    list.forEach(({ world: w, color }, i) => {
+      const deg = 100 + (i / list.length) * 360;
+      const a = (deg * Math.PI) / 180, x = Math.cos(a) * 14.4, z = Math.sin(a) * 14.4;
+      reserve(x, z, 1.6);
+      const o = put(portalArch(w, color, anims, rand), x, z, { rot: false });
+      o.lookAt(0, o.position.y, 0);
+      if (i === 0) areas.push({ id: 'portale', name: 'Portale', pos: new THREE.Vector3(x, y0, z) });
+    });
+
+    // Grün zwischen den Bereichen
+    scatter(8, () => roundTree(rr(1.4, 2.2), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 9.8, 12);
+    scatter(16, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 3.8, 12);
+    scatter(40, () => flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2, 3.8, 12);
+    scatter(1, () => roundTree(rr(1.6, 2.4), '#4f9a3f', rand), 0.9, 15.2, R - 0.6);
+  },
+
   normal({ scatter, rand, rr, root, height, reserve, shared }) {
     // Bach quer über die Insel
     const pts = [];

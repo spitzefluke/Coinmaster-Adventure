@@ -34,10 +34,10 @@ export const BEREICHE = [
   },
   {
     titel: 'Welten',
-    text: 'Vier Planeten mit sechzehn Welten, vom grünen Startgebiet über Mond und Sonne bis nach Atlantis. Jede Welt als drehbare 3D-Insel, dazu Portale und Wiedergeburten.',
+    text: 'Ein Spawn mit Shops, Portalen und Ranglisten, dazu vier Planeten mit sechzehn Welten, vom grünen Startgebiet über Mond und Sonne bis nach Atlantis. Jede Welt als drehbare 3D-Insel, dazu Portale und Wiedergeburten.',
     href: 'welten/',
     status: 'vorschau',
-    eckdaten: ['4 Planeten', '16 Welten', '3D'],
+    eckdaten: ['Spawn', '4 Planeten', '16 Welten'],
   },
   {
     titel: 'Spiel-Oberfläche',

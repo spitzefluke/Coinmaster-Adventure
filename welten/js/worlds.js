@@ -36,8 +36,22 @@ export const PLANETS = [
   },
 ];
 
+// Der Spawn ist der Treffpunkt vor allen Planeten: Shops, Portale zu den Welten, Ranglisten.
+// Dort gibt es keine Münzen; er ist immer offen.
+export const HUB = {
+  id: 'hub', name: 'Spawn', title: 'Treffpunkt', color: '#d9b26a', glow: '#ffe7a8',
+  surface: ['#3f8a46', '#7fbf5a', '#d9b26a'],
+  text: 'Hier startet jeder: Shops, Portale zu allen Welten, Ranglisten, tägliche Belohnung und mehr.',
+  portal: null,
+};
+
 // theme: Farben für die 3D-Insel und den Himmel; fx: Partikel; props: was auf der Insel steht
 export const WORLDS = [
+  // ── Spawn ──
+  { id: 'spawn', planet: 'hub', name: 'Spawn', price: 0, luck: 0, value: 1, hub: true,
+    text: 'Der Treffpunkt aller Spieler. Von hier führen Portale in jede Welt.',
+    sky: ['#7ec8f0', '#fde8c8'], ground: '#7fbf5a', side: '#7a5a3a', rock: '#6b6478', accent: '#ffd76a', fx: 'pollen' },
+
   // ── Planet 1 ──
   { id: 'normal', planet: 'p1', name: 'Normal', price: 0, luck: 0, value: 1,
     text: 'Grüne Hügel, ein paar Bäume, ein Bach. Hier findest du deine ersten Münzen.',
@@ -97,7 +111,7 @@ export const WORLDS = [
   { id: 'p4-soon', planet: 'p4', name: 'Coming soon', soon: true },
 ];
 
-export const planetById = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
+export const planetById = Object.fromEntries([HUB, ...PLANETS].map((p) => [p.id, p]));
 export const worldById = Object.fromEntries(WORLDS.map((w) => [w.id, w]));
 export const worldsOf = (planetId) => WORLDS.filter((w) => w.planet === planetId);
 export const playable = (planetId) => worldsOf(planetId).filter((w) => !w.soon);
