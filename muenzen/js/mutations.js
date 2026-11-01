@@ -20,9 +20,19 @@ export const MUTATIONS = [
     effect: 'Felsbrocken am Rand, steinerner Belag, rieselnder Staub.',
   },
   {
+    id: 'gefroren', name: 'Gefroren', multiplier: 1.3, color: '#9fe8ff',
+    weather: 'schneesturm', chance: 20,
+    effect: 'Eiskristalle wachsen am Rand, eine Frostschicht glitzert blau.',
+  },
+  {
     id: 'disco', name: 'Disco', multiplier: 1.5, color: '#ff5fd2',
     weather: 'disconacht', chance: 12,
     effect: 'Bunte Discolichter kreisen um die Münze, Lichtpunkte tanzen.',
+  },
+  {
+    id: 'elektrisch', name: 'Elektrisch', multiplier: 1.75, color: '#ffe94a',
+    weather: 'gewitter', chance: 10,
+    effect: 'Kleine Blitzbögen knistern über die Münze, gelbes Leuchten.',
   },
   {
     id: 'daemonisch', name: 'Dämonisch', multiplier: 2, color: '#ff2a2a',
@@ -39,17 +49,32 @@ export const MUTATIONS = [
     weather: 'datensturm', chance: 3,
     effect: 'Grüner Code-Regen, Glitch-Zucken und ein HACKED-Schild.',
   },
+  {
+    id: 'golden', name: 'Golden', multiplier: 4, color: '#ffd23a',
+    weather: 'goldregen', chance: 4,
+    effect: 'Die ganze Münze wird massiv golden, Funkeln und Goldtropfen.',
+  },
+  {
+    id: 'kosmisch', name: 'Kosmisch', multiplier: 5, color: '#b07bff',
+    weather: 'sternschnuppen', chance: 2,
+    effect: 'Galaxie-Oberfläche mit ziehenden Sternen, ein Sternenring kreist.',
+  },
 ];
 
 // weight: wie oft das Wetter vorkommt (Anteil an allen Wetterphasen)
+// sky/light: Stimmung für die 3D-Welten (welten/js/weatherFx.js) und Roblox (Lighting)
 export const WEATHER = [
-  { id: 'klar', name: 'Klar', weight: 40, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
-  { id: 'regen', name: 'Regen', weight: 20, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.' },
-  { id: 'erdbeben', name: 'Erdbeben', weight: 12, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.' },
-  { id: 'disconacht', name: 'Disconacht', weight: 12, color: '#ff5fd2', text: 'Die Münzen tanzen mit.' },
-  { id: 'blutmond', name: 'Blutmond', weight: 7, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht.' },
-  { id: 'neonsturm', name: 'Neonsturm', weight: 5, color: '#c6ff00', text: 'Grelle Farben überall. Bitte nicht direkt hinsehen.' },
-  { id: 'datensturm', name: 'Datensturm', weight: 4, color: '#3dff7a', text: 'Das System ist kompromittiert.' },
+  { id: 'klar', name: 'Klar', weight: 34, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
+  { id: 'regen', name: 'Regen', weight: 14, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.', sky: '#5a7590', light: 0.65 },
+  { id: 'gewitter', name: 'Gewitter', weight: 10, color: '#ffe94a', text: 'Blitze schlagen ein und laden Münzen auf.', sky: '#2a3040', light: 0.45 },
+  { id: 'erdbeben', name: 'Erdbeben', weight: 9, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.', sky: '#9a7f60', light: 0.8 },
+  { id: 'schneesturm', name: 'Schneesturm', weight: 9, color: '#9fe8ff', text: 'Eisiger Wind friert Münzen ein.', sky: '#b8d0e4', light: 0.8 },
+  { id: 'disconacht', name: 'Disconacht', weight: 8, color: '#ff5fd2', text: 'Die Münzen tanzen mit.', sky: '#1d0f3a', light: 0.35 },
+  { id: 'blutmond', name: 'Blutmond', weight: 5, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht.', sky: '#2a0505', light: 0.35 },
+  { id: 'neonsturm', name: 'Neonsturm', weight: 3.5, color: '#c6ff00', text: 'Grelle Farben überall. Bitte nicht direkt hinsehen.', sky: '#0a2a1a', light: 0.5 },
+  { id: 'goldregen', name: 'Goldregen', weight: 3, color: '#ffd23a', text: 'Es regnet pures Gold. Münzen werden golden.', sky: '#e0b050', light: 1.0 },
+  { id: 'datensturm', name: 'Datensturm', weight: 2.5, color: '#3dff7a', text: 'Das System ist kompromittiert.', sky: '#031008', light: 0.35 },
+  { id: 'sternschnuppen', name: 'Sternschnuppen', weight: 2, color: '#b07bff', text: 'Sterne fallen vom Himmel und machen Münzen kosmisch.', sky: '#0a0820', light: 0.4 },
 ];
 
 export const mutationById = Object.fromEntries(MUTATIONS.map((m) => [m.id, m]));
@@ -63,16 +88,23 @@ export function rollMutation(weatherId, random = Math.random, bonus = 0) {
   return m && random() * 100 < m.chance + bonus ? m : null;
 }
 
-// Das Wetter wechselt jede Minute. Es ergibt sich aus der Uhrzeit, damit es überall
+// Das Wetter wechselt alle drei Minuten. Es ergibt sich aus der Uhrzeit, damit es überall
 // (Münzindex, Spiel-HUD, nach einem Neuladen) gleich ist.
-export const WEATHER_MS = 60000;
+export const WEATHER_MS = 180000;
 const totalWeight = WEATHER.reduce((s, w) => s + w.weight, 0);
 export function weatherAt(now = Date.now()) {
   const slot = Math.floor(now / WEATHER_MS);
   const x = Math.sin(slot * 12.9898) * 43758.5453;
   let roll = (x - Math.floor(x)) * totalWeight;
   const w = WEATHER.find((w) => (roll -= w.weight) < 0) || WEATHER[0];
-  return { w, ends: (slot + 1) * WEATHER_MS };
+  return { w, starts: slot * WEATHER_MS, ends: (slot + 1) * WEATHER_MS };
+}
+
+// Die nächsten n Wetterphasen ab jetzt (für die Vorhersage)
+export function forecast(n = 8, now = Date.now()) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(weatherAt(now + i * WEATHER_MS));
+  return out;
 }
 
 // Nennwert mit Multiplikator. '∞' bleibt unendlich.
@@ -130,6 +162,202 @@ function labelSprite(text, color, track) {
 const faceMats = (ctx) => [ctx.faces.front.material, ctx.faces.back.material];
 
 const EFFECTS = {
+
+  gefroren(ctx) {
+    const { spinner, fx, track, onUpdate, particles, bodyMat } = ctx;
+    bodyMat.color.lerp(new THREE.Color('#bfeaff'), 0.35);
+    bodyMat.roughness = 0.2;
+    faceMats(ctx).forEach((m) => m.color.lerp(new THREE.Color('#e8f8ff'), 0.3));
+    // Frostschicht: halbdurchsichtige Hülle
+    const frost = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(1.04, 1.04, 0.24, 48)),
+      track(new THREE.MeshPhysicalMaterial({ color: '#dff6ff', roughness: 0.15, transmission: 0.4, transparent: true, opacity: 0.35, clearcoat: 1, depthWrite: false })),
+    );
+    frost.rotation.x = Math.PI / 2;
+    spinner.add(frost);
+    // Eiskristalle am Rand
+    const iceMat = track(new THREE.MeshPhysicalMaterial({ color: '#bff4ff', roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: '#4fc8ff', emissiveIntensity: 0.35, flatShading: true }));
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU + rand(-0.15, 0.15);
+      const c = new THREE.Mesh(track(new THREE.OctahedronGeometry(1, 0)), iceMat);
+      const h = rand(0.18, 0.34);
+      c.scale.set(h * 0.32, h, h * 0.32);
+      c.position.set(Math.cos(a) * (1.02 + h * 0.4), Math.sin(a) * (1.02 + h * 0.4), rand(-0.06, 0.06));
+      c.rotation.z = a - Math.PI / 2;
+      spinner.add(c);
+    }
+    // Schneeflocken rieseln
+    const N = 36;
+    const snow = particles(N, '#ffffff', 0.09);
+    fx.add(snow);
+    const seeds = Array.from({ length: N }, () => [rand(-1.5, 1.5), rand(-0.6, 0.6), Math.random(), rand(0.4, 1)]);
+    onUpdate((t) => {
+      iceMat.emissiveIntensity = 0.3 + Math.sin(t * 2) * 0.12;
+      const p = snow.geometry.attributes.position, c = snow.geometry.attributes.color;
+      seeds.forEach(([x, z, off, sp], i) => {
+        const life = (t * 0.18 * sp + off) % 1;
+        p.setXYZ(i, x + Math.sin(t + i) * 0.1, 1.5 - life * 3, z);
+        const b = Math.sin(life * Math.PI) * 0.9;
+        c.setXYZ(i, b, b, b);
+      });
+      p.needsUpdate = c.needsUpdate = true;
+    });
+  },
+
+  elektrisch(ctx) {
+    const { fx, track, onUpdate, glowSprite, bodyMat } = ctx;
+    faceMats(ctx).forEach((m) => {
+      if (!m.emissiveMap) {
+        m.emissive = new THREE.Color('#ffe94a');
+        m.emissiveIntensity = 0.05;
+      }
+    });
+    bodyMat.color.lerp(new THREE.Color('#fff2a0'), 0.15);
+    const glow = glowSprite('#ffe94a', 3.2, 0.35);
+    fx.add(glow);
+    // Blitzbögen: zackige Linien zwischen Punkten am Rand, ständig neu
+    const boltMat = track(new THREE.MeshBasicMaterial({ color: '#fff7b0', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const bolts = Array.from({ length: 5 }, () => {
+      const m = new THREE.Mesh(track(new THREE.BufferGeometry()), boltMat);
+      fx.add(m);
+      return m;
+    });
+    const zap = (m) => {
+      const a0 = rand(0, TAU), a1 = a0 + rand(0.6, 1.8);
+      const A = new THREE.Vector3(Math.cos(a0) * 1.05, Math.sin(a0) * 1.05, rand(-0.2, 0.2));
+      const B = new THREE.Vector3(Math.cos(a1) * 1.05, Math.sin(a1) * 1.05, rand(-0.2, 0.2));
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const k = i / 9, p = A.clone().lerp(B, k);
+        p.setLength(p.length() + Math.sin(k * Math.PI) * 0.35);
+        if (i && i < 9) p.add(new THREE.Vector3(rand(-0.12, 0.12), rand(-0.12, 0.12), rand(-0.12, 0.12)));
+        pts.push(p);
+      }
+      m.geometry.dispose();
+      m.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0), 18, 0.018, 4);
+    };
+    let last = 0;
+    // höchstens zehn neue Blitze pro Sekunde und weiche Helligkeit, damit es nicht flackert
+    onUpdate((t) => {
+      if (t - last > 0.1) {
+        bolts.forEach((l) => Math.random() < 0.4 && zap(l));
+        last = t;
+      }
+      boltMat.opacity = 0.55 + Math.sin(t * 3) * 0.25;
+      glow.material.opacity = 0.28 + Math.sin(t * 3) * 0.08;
+    });
+  },
+
+  golden(ctx) {
+    const { spinner, fx, track, onUpdate, particles, glowSprite, bodyMat } = ctx;
+    // alles wird massives Gold
+    bodyMat.color.set('#ffc93a');
+    bodyMat.metalness = 1;
+    bodyMat.roughness = 0.15;
+    faceMats(ctx).forEach((m) => {
+      m.color.set('#fff0a0');
+      m.metalness = 0.85;
+      if (!m.emissiveMap) {
+        m.emissive = new THREE.Color('#c88a10');
+        m.emissiveIntensity = 0.35;
+      }
+    });
+    const glow = glowSprite('#ffd23a', 3.4, 0.4);
+    fx.add(glow);
+    // Funkeln auf der Oberfläche
+    const N = 40;
+    const sparks = particles(N, '#fff6c0', 0.16);
+    fx.add(sparks);
+    const seeds = Array.from({ length: N }, () => [rand(0, TAU), Math.sqrt(Math.random()) * 1.2, rand(-0.3, 0.3), rand(0, 6), rand(0.6, 1.4)]);
+    // Goldtropfen fallen nach unten
+    const dropGeo = track(new THREE.SphereGeometry(0.05, 10, 8));
+    const dropMat = track(new THREE.MeshStandardMaterial({ color: '#ffcf3a', metalness: 1, roughness: 0.15 }));
+    const drops = Array.from({ length: 5 }, (_, i) => {
+      const d = new THREE.Mesh(dropGeo, dropMat);
+      d.scale.y = 1.4;
+      fx.add(d);
+      return [d, rand(-0.6, 0.6), i / 5];
+    });
+    onUpdate((t) => {
+      glow.material.opacity = 0.34 + Math.sin(t * 1.6) * 0.08;
+      const p = sparks.geometry.attributes.position, c = sparks.geometry.attributes.color;
+      seeds.forEach(([a, r, z, ph, sp], i) => {
+        p.setXYZ(i, Math.cos(a) * r, Math.sin(a) * r, z);
+        const b = Math.pow(Math.max(0, Math.sin(t * sp * 2 + ph)), 6);
+        c.setXYZ(i, b, b * 0.9, b * 0.5);
+      });
+      p.needsUpdate = c.needsUpdate = true;
+      drops.forEach(([d, x, off]) => {
+        const life = (t * 0.35 + off) % 1;
+        d.position.set(x, -1.0 - life * life * 1.3, 0);
+        d.visible = life < 0.95;
+      });
+    });
+  },
+
+  kosmisch(ctx) {
+    const { fx, track, onUpdate, particles, glowSprite, bodyMat } = ctx;
+    // Galaxie-Textur: Nebel und Sterne
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 256;
+    const g = cv.getContext('2d');
+    const bg = g.createRadialGradient(128, 128, 10, 128, 128, 180);
+    bg.addColorStop(0, '#5a2a9a');
+    bg.addColorStop(0.5, '#1a0a4a');
+    bg.addColorStop(1, '#05030f');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 256, 256);
+    for (const [x, y, r, col] of [[80, 90, 70, '#ff6ad566'], [170, 160, 80, '#3ad0ff55'], [140, 70, 50, '#b07bff66']]) {
+      const n = g.createRadialGradient(x, y, 0, x, y, r);
+      n.addColorStop(0, col);
+      n.addColorStop(1, '#0000');
+      g.fillStyle = n;
+      g.fillRect(0, 0, 256, 256);
+    }
+    for (let i = 0; i < 160; i++) {
+      g.fillStyle = `rgba(255,255,255,${rand(0.3, 1)})`;
+      g.fillRect(rand(0, 256), rand(0, 256), rand(1, 2.5), rand(1, 2.5));
+    }
+    const tex = track(new THREE.CanvasTexture(cv));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    bodyMat.color.set('#ffffff');
+    bodyMat.map = tex;
+    bodyMat.emissive = new THREE.Color('#ffffff');
+    bodyMat.emissiveMap = tex;
+    bodyMat.emissiveIntensity = 0.5;
+    bodyMat.needsUpdate = true;
+    faceMats(ctx).forEach((m) => m.color.lerp(new THREE.Color('#c8b0ff'), 0.45));
+    // Galaxie-Schleier auf beiden Seiten, Prägung scheint durch
+    const veilMat = track(new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }));
+    for (const side of [1, -1]) {
+      const v = new THREE.Mesh(track(new THREE.CircleGeometry(0.98, 64)), veilMat);
+      v.position.z = side * (ctx.faceZ + 0.006);
+      if (side < 0) v.rotation.y = Math.PI;
+      ctx.spinner.add(v);
+    }
+    const glow = glowSprite('#b07bff', 3.6, 0.4);
+    fx.add(glow);
+    // Sternenring
+    const N = 70;
+    const ring = particles(N, '#ffffff', 0.12);
+    fx.add(ring);
+    const seeds = Array.from({ length: N }, () => [rand(0, TAU), rand(1.25, 1.55), rand(-0.05, 0.05), rand(0, 6)]);
+    onUpdate((t) => {
+      tex.offset.set(t * 0.01, t * 0.006);
+      glow.material.opacity = 0.34 + Math.sin(t * 1.2) * 0.08;
+      const p = ring.geometry.attributes.position, c = ring.geometry.attributes.color;
+      seeds.forEach(([a, r, y, ph], i) => {
+        const ang = a + t * 0.35;
+        // geneigter Ring
+        const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
+        p.setXYZ(i, x, y + z * 0.35, z);
+        const b = 0.5 + 0.5 * Math.sin(t * 2 + ph);
+        c.setXYZ(i, 0.8 * b + 0.2, 0.7 * b + 0.2, b);
+      });
+      p.needsUpdate = c.needsUpdate = true;
+    });
+  },
   nass(ctx) {
     const { spinner, fx, faceZ, track, onUpdate, particles, bodyMat } = ctx;
     bodyMat.roughness *= 0.45;

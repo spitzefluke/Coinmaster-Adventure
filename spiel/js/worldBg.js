@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { buildWorld, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
+import { createWeatherFx } from '../../welten/js/weatherFx.js';
 
 const CS = ISLAND_RADIUS / 10; // Kamerawerte unten gelten für Radius 10
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
@@ -33,11 +34,20 @@ export function createWorldBg(host) {
     renderer.shadowMap.enabled = shadows;
   }
 
+  let wfx = null, weatherId = 'klar';
   function build(world) {
+    wfx?.dispose();
+    wfx = null;
     built?.dispose();
     const s = loadSettings();
     built = buildWorld(world, { particles: s.fewerParticles ? 0.35 : 1, shadows: renderer.shadowMap.enabled });
     worldId = world.id;
+    applyWeather();
+  }
+  function applyWeather() {
+    if (!built) return;
+    wfx?.dispose();
+    wfx = createWeatherFx(built, weatherId, { amount: loadSettings().fewerParticles ? 0.35 : 0.8 });
   }
 
   const clock = new THREE.Clock();
@@ -59,6 +69,7 @@ export function createWorldBg(host) {
     camera.position.set(Math.cos(angle) * dist, 10.5 * CS, Math.sin(angle) * dist);
     camera.lookAt(0, camera.aspect < 1 ? -1.2 : 0.4, 0);
     built.update(t, dt);
+    wfx?.update(t, dt);
     renderer.render(built.scene, camera);
   });
 
@@ -83,6 +94,12 @@ export function createWorldBg(host) {
   applySettings();
   return {
     pick,
+    // Wetter der Welt (aus mutations.js weatherAt)
+    setWeather(id) {
+      if (id === weatherId) return;
+      weatherId = id;
+      applyWeather();
+    },
     set(world) {
       if (world.id !== worldId) build(world);
     },

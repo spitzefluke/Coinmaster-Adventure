@@ -40,6 +40,13 @@ export const BEREICHE = [
     eckdaten: ['Spawn', '4 Planeten', '16 Welten'],
   },
   {
+    titel: 'Wetter',
+    text: 'Zehn Wetter mit Mutationen, von Regen bis Sternschnuppen. Jedes Wetter in 3D auf jeder Welt, dazu die Münze mit ihrer Mutation und eine Vorhersage.',
+    href: 'wetter/',
+    status: 'vorschau',
+    eckdaten: ['10 Wetter', '10 Mutationen', 'Vorhersage'],
+  },
+  {
     titel: 'Spiel-Oberfläche',
     text: 'HUD über der aktuellen 3D-Welt, Teleport-Menü, Skilltree mit vier Ästen, Inventar, Shop und Einstellungen. Mit simulierten Funden zum Ausprobieren.',
     href: 'spiel/',

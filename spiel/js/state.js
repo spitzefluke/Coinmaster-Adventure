@@ -162,7 +162,7 @@ function rollTier(s, random) {
   return TIERS[weights.findIndex((w) => (r -= w) <= 0)] || TIERS[0];
 }
 
-export function findCoin(s, random = Math.random) {
+export function findCoin(s, random = Math.random, weatherId = weatherAt().w.id) {
   let tier = rollTier(s, random);
   // Goldene Hand: eine Stufe höher
   let upgraded = false;
@@ -173,7 +173,7 @@ export function findCoin(s, random = Math.random) {
   const pool = COINS.map((c, i) => [c, i]).filter(([c]) => c.tier === tier.id);
   const [, id] = pool[Math.floor(random() * pool.length)];
   const bonus = effect(s, 'wetter') * (boostActive(s, 'wetter') ? 2 : 1);
-  const mutation = rollMutation(weatherAt().w.id, random, bonus);
+  const mutation = rollMutation(weatherId, random, bonus);
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
   const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
   const xp = (5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1);

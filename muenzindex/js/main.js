@@ -167,7 +167,7 @@ COINS.forEach((_, i) => renderSlot(i));
 renderProgress();
 
 // ── Wetter ───────────────────────────────────────────────────────────────────
-// Das Wetter wechselt jede Minute. Welches Wetter gerade herrscht, ergibt sich aus der Uhrzeit,
+// Das Wetter wechselt alle drei Minuten. Welches Wetter gerade herrscht, ergibt sich aus der Uhrzeit,
 // damit es nach einem Neuladen gleich bleibt. Über die Test-Knöpfe lässt es sich festlegen.
 
 let manualWeather = null;

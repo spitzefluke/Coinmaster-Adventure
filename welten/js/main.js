@@ -12,6 +12,8 @@ import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
 import { partsGroup } from '../../roblox/js/partsPreview.js';
 import { makeCharacter, STUDS, FIGURE_STUDS } from './character.js';
+import { createWeatherFx } from './weatherFx.js';
+import { WEATHER, weatherAt } from '../../muenzen/js/mutations.js';
 
 const $ = (id) => document.getElementById(id);
 let planet = 'hub'; // Start im Spawn
@@ -139,6 +141,7 @@ function showWorld(w) {
     built = buildWorld(w, { particles: fewer ? 0.4 : 1, shadows: renderer.shadowMap.enabled });
     const spot = figureSpot(built);
     if (robloxView) $('rbx-count').textContent = `${toRobloxView(built, w).toLocaleString('de-DE')} Roblox-Teile`;
+    applyWeather();
     figure = null;
     if (compare) {
       figure = makeCharacter();
@@ -203,9 +206,42 @@ renderer.setAnimationLoop(() => {
   }
   controls.update();
   built.update(t, dt);
+  wfx?.update(t, dt);
   figure?.userData.update(t);
   renderer.render(built.scene, camera);
 });
+
+// ── Wetter ──
+// 'live' = das Wetter, das gerade im Spiel herrscht; sonst eine feste Auswahl
+let weatherMode = new URLSearchParams(location.search).get('wetter') || 'live', wfx = null, wfxId = null;
+const pick = $('weather-pick');
+pick.innerHTML = `<option value="live">Wetter: wie im Spiel</option>` + WEATHER.map((w) => `<option value="${w.id}">${w.name}</option>`).join('');
+pick.value = WEATHER.some((w) => w.id === weatherMode) ? weatherMode : 'live';
+weatherMode = pick.value;
+const wantedWeather = () => (weatherMode === 'live' ? weatherAt().w.id : weatherMode);
+function applyWeather() {
+  if (!built) return;
+  wfx?.dispose();
+  wfxId = wantedWeather();
+  wfx = createWeatherFx(built, wfxId, { amount: loadSettings().fewerParticles ? 0.4 : 1 });
+  const d = built.dispose, mine = wfx;
+  built.dispose = () => {
+    if (wfx === mine) {
+      wfx.dispose();
+      wfx = null;
+    }
+    d();
+  };
+  const w = WEATHER.find((x) => x.id === wfxId);
+  $('weather-live').hidden = weatherMode !== 'live';
+  $('weather-live').textContent = `Gerade: ${w.name}`;
+}
+pick.addEventListener('change', () => {
+  weatherMode = pick.value;
+  applyWeather();
+});
+// Live-Wetter wechselt: neu anwenden
+setInterval(() => weatherMode === 'live' && built && wantedWeather() !== wfxId && applyWeather(), 2000);
 
 $('size-toggle').addEventListener('click', (e) => {
   compare = !compare;
