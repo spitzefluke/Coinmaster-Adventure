@@ -3,7 +3,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
-import { buildWorld } from './worldFactory.js';
+import { buildWorld, ISLAND_RADIUS } from './worldFactory.js';
+
+// Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10)
+const CS = ISLAND_RADIUS / 10;
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
@@ -25,13 +28,13 @@ renderer.shadowMap.enabled = loadSettings().quality !== 'niedrig';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(pixelRatio());
 
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300);
-camera.position.set(19, 12, 22);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+camera.position.set(19 * CS, 12 * CS, 22 * CS);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.enablePan = false;
-controls.minDistance = 12;
-controls.maxDistance = 50;
+controls.minDistance = 12 * CS;
+controls.maxDistance = 50 * CS;
 controls.maxPolarAngle = Math.PI * 0.62;
 controls.target.set(0, 0.6, 0);
 controls.autoRotate = !skipAnimations();
@@ -66,7 +69,7 @@ function toRobloxView(b, w) {
 
 // ── Größenvergleich mit einer normal großen Roblox-Figur ──
 let compare = false, figure = null, fly = null;
-const HOME = { target: new THREE.Vector3(0, 0.6, 0), dist: 30 };
+const HOME = { target: new THREE.Vector3(0, 0.6, 0), dist: 30 * CS };
 
 // Platz neben der Teleport-Plattform (Ankunftsort), sonst am Inselrand
 function figureSpot(b) {
@@ -168,9 +171,9 @@ function resize() {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     // Abstand so wählen, dass die ganze Insel auch in schmale Ansichten passt
-    const fit = 12.4 / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
+    const fit = (12.4 * CS) / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
     const off = camera.position.clone().sub(controls.target);
-    off.setLength(Math.min(48, Math.max(27, fit)));
+    off.setLength(Math.min(48 * CS, Math.max(27 * CS, fit)));
     camera.position.copy(controls.target).add(off);
   }
 }
@@ -200,7 +203,7 @@ renderer.setAnimationLoop(() => {
 $('size-toggle').addEventListener('click', (e) => {
   compare = !compare;
   e.currentTarget.setAttribute('aria-pressed', String(compare));
-  if (!compare) flyTo(HOME.target, HOME.dist, 12);
+  if (!compare) flyTo(HOME.target, HOME.dist, 12 * CS);
   showWorld(current);
 });
 

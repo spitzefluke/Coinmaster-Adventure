@@ -7,7 +7,8 @@
 
 import * as THREE from 'three';
 
-const R = 10; // Radius der Insel
+const R = 16; // Radius der Insel
+export const ISLAND_RADIUS = R;
 const K = R / 6; // Vergrößerung gegenüber der ersten Fassung (Radius 6)
 const AREA = K * K; // so viel mehr Fläche: Streu-Gegenstände, Münzen und Partikel wachsen mit
 
@@ -208,7 +209,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   sun.position.set(7, 14, 6);
   if (shadows) {
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -R * 1.4, right: R * 1.4, top: R * 1.4, bottom: -R * 1.4, near: 1, far: 70 });
     sun.shadow.bias = -0.0015;
     sun.shadow.normalBias = 0.03;
@@ -216,12 +217,14 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   scene.add(sun);
 
   // ── Insel ──
-  const flat = ['stadt', 'atlantis'].includes(world.id) ? 0.25 : 1;
+  const flat = world.id === 'stadt' ? 0 : world.id === 'atlantis' ? 0.25 : 1; // Stadt eben, Atlantis fast eben
   const s1 = rr(0, 6), s2 = rr(0, 6), s3 = rr(0, 6);
   const height = (x, z) => {
     const r = Math.hypot(x, z) / R;
     const fall = r > 0.8 ? Math.max(0, 1 - (r - 0.8) / 0.2) : 1;
-    return (Math.sin(x * 0.7 + s1) * Math.cos(z * 0.6 + s2) * 0.35 + Math.sin(x * 1.3 + z * 0.9 + s3) * 0.14) * flat * fall + 0.12 * fall;
+    // weite, sanfte Hügel plus kleine Unebenheiten
+    const wide = Math.sin(x * 0.2 + s2) * Math.cos(z * 0.17 + s1) * 0.55 + Math.sin((x + z) * 0.11 + s3) * 0.3;
+    return ((wide + Math.sin(x * 0.7 + s1) * Math.cos(z * 0.6 + s2) * 0.14 + Math.sin(x * 1.3 + z * 0.9 + s3) * 0.05) * flat + 0.3) * fall;
   };
 
   // Oberfläche als Ringgitter
@@ -802,7 +805,7 @@ function lightRays(scene, anims, color, rand) {
     g.fillRect(0, 0, w, h);
   });
   const mat = new THREE.MeshBasicMaterial({ color, map, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < Math.round(6 * K); i++) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 22), mat);
     m.position.set((rand() - 0.5) * 2 * R, 8, (rand() - 0.5) * 2 * R);
     m.rotation.set(0, rand() * 3, 0.25);
@@ -1237,11 +1240,11 @@ const BUILDERS = {
     for (const rot of [0, Math.PI / 2]) {
       const r = new THREE.Mesh(new THREE.BoxGeometry(R * 2 - 0.4, 0.05, 1.1), road);
       r.rotation.y = rot;
-      r.position.y = 0.14;
+      r.position.y = 0.32; // ebener Stadtboden liegt bei 0,3
       root.add(r);
       for (let i = -(R - 1); i <= R - 1; i++) {
         const line = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.06), M('#ffe25f'));
-        line.position.set(rot ? 0 : i, 0.15, rot ? i : 0);
+        line.position.set(rot ? 0 : i, 0.33, rot ? i : 0);
         line.rotation.y = rot;
         root.add(line);
       }
@@ -1253,7 +1256,7 @@ const BUILDERS = {
     const colors = ['#c9c4d6', '#8fa8c8', '#d6b89a', '#a8b8a0', '#e0d4c0', '#7a8aa8'];
     for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
       const n = 2 + Math.floor(rand() * 2);
-      for (let i = 0; i < n + 4; i++) {
+      for (let i = 0; i < n + Math.round(1.5 * AREA); i++) {
         // innen Hochhäuser, außen niedrigere
         const outer = i >= n, lo = outer ? 4.4 : 1.4, hi = outer ? R - 1.6 : 3.8;
         const x = sx * rr(lo, hi), z = sz * rr(lo, hi);

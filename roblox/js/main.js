@@ -177,7 +177,7 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
       total += parts.parts.length;
       const nr = String(i + 1).padStart(2, '0');
       files.push({ name: `welten/${nr}-${w.name.replace(/\s+/g, '').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')}.rbxmx`, data: new TextEncoder().encode(rbxmxFile([worldModel(parts)])) });
-      all.push(worldModel(parts, [i * 1000, 0, 0]));
+      all.push(worldModel(parts, [i * 1500, 0, 0]));
     }
     files.push({ name: 'welten/AlleWelten.rbxmx', data: new TextEncoder().encode(rbxmxFile(all)) });
     files.push({
@@ -196,7 +196,7 @@ Jede Welt ist ein Model (alle Teile verankert) mit diesen Ordnern:
   Effekte      Lichter und ein ParticleEmitter mit den Partikeln der Welt
   Einstellungen  WeltId, Planet, Preis, Glueck, Muenzwert, HimmelOben, HimmelUnten, Akzent
 
-Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 160 Studs breit.
+Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 256 Studs breit.
 Animationen (UFO, Fische, Wasser) sind in Studio noch nicht dabei, die Teile stehen in ihrer Grundhaltung.
 
 ${list.map((w, i) => `${String(i + 1).padStart(2, '0')}  ${w.name}`).join('\n')}
