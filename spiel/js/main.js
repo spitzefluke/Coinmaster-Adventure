@@ -13,13 +13,14 @@ import { inventarPanel } from './panels/inventar.js';
 import { shopPanel } from './panels/shop.js';
 import { settingsPanel } from './panels/einstellungen.js';
 import { weltenPanel } from './panels/welten.js';
+import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
 const state = loadState();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel };
+const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel };
 const MENU_ICONS = { welten: 'globe', skills: 'tree', inventar: 'bag', shop: 'shop', einstellungen: 'gear' };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
@@ -147,11 +148,11 @@ function renderPanel() {
   body.scrollTop = scroll;
 }
 
-function openPanel(id) {
-  if (openId === id) return closePanel();
+function openPanel(id, tab = null) {
+  if (openId === id && !tab) return closePanel();
   lastFocus = document.activeElement;
   openId = id;
-  openTab = PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
+  openTab = tab ?? PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
   $('panel-layer').hidden = false;
   $('panel').dataset.panel = id;
   document.querySelectorAll('.menu-btn[data-panel]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.panel === id)));
@@ -286,12 +287,65 @@ function applyWorldSettings() {
 
 const worldBg = createWorldBg($('world'));
 
+// ── Spawn: Bereiche im 3D-Hintergrund antippen ──
+const AREA_ACTIONS = {
+  eier: () => openPanel('shop', 'eier'),
+  schluepfen: () => openPanel('inventar', 'eier'),
+  boosts: () => openPanel('shop', 'boosts'),
+  robux: () => openPanel('shop', 'robux'),
+  vip: () => openPanel('shop', 'robux'),
+  haustiere: () => openPanel('inventar', 'tiere'),
+  verkaufen: () => openPanel('inventar', 'muenzen'),
+  index: () => (location.href = '../muenzindex/'),
+  ranglisten: () => openPanel('ranglisten'),
+  belohnung: () => openPanel('belohnung', 'taeglich'),
+  gluecksrad: () => openPanel('belohnung', 'rad'),
+  gruppe: () => openPanel('belohnung', 'gruppe'),
+  codes: () => openPanel('codes'),
+  'portale-p1': () => openPanel('welten', 'p1'),
+  'portale-p2': () => openPanel('welten', 'p2'),
+  'portale-p3': () => openPanel('welten', 'p3'),
+  quests: () => toast('Quest-Brett: Tagesaufgaben kommen mit einem späteren Update.', '#ffe7a8'),
+  obby: () => toast('Obby-Turm: Im Roblox-Spiel springst du bis zur Spitze, oben wartet eine Truhe.', '#8cff7a'),
+};
+{
+  const tip = $('area-tip');
+  let last = 0;
+  $('world').addEventListener('pointermove', (e) => {
+    if (!currentWorld(state).hub || e.timeStamp - last < 60) return;
+    last = e.timeStamp;
+    const a = worldBg.pick(e.clientX, e.clientY);
+    const ok = a && AREA_ACTIONS[a.id];
+    $('world').style.cursor = ok ? 'pointer' : '';
+    tip.hidden = !ok;
+    if (ok) {
+      const r = $('game').getBoundingClientRect();
+      tip.textContent = a.name;
+      tip.style.left = `${e.clientX - r.left + 14}px`;
+      tip.style.top = `${e.clientY - r.top + 14}px`;
+    }
+  });
+  $('world').addEventListener('pointerleave', () => (tip.hidden = true));
+  $('world').addEventListener('click', (e) => {
+    if (!currentWorld(state).hub) return;
+    const a = worldBg.pick(e.clientX, e.clientY);
+    if (a && AREA_ACTIONS[a.id]) {
+      tip.hidden = true;
+      sound(1.1);
+      AREA_ACTIONS[a.id]();
+    }
+  });
+  document.querySelectorAll('[data-spawn]').forEach((b) => b.addEventListener('click', () => AREA_ACTIONS[b.dataset.spawn]()));
+  document.querySelectorAll('.sb-ico').forEach((el) => (el.innerHTML = icon(el.dataset.ico, 18)));
+}
+
 function renderWorldName() {
   const w = currentWorld(state), p = planetById[w.planet];
   $('world-name').innerHTML = w.hub ? `<span>Treffpunkt</span> Spawn` : `<span>${p.name}</span> ${w.name}`;
   $('world-name').style.setProperty('--c', w.accent);
   $('find-hint').textContent = w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“`;
   $('world').dataset.world = w.id;
+  $('spawn-bar').hidden = !w.hub;
 }
 
 // Kurzes Aufleuchten über der Welt (Teleport, Portal, Wiedergeburt)

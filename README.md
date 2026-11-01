@@ -133,13 +133,19 @@ In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfcha
 
 ## Welten
 
-**Spawn (Treffpunkt):** Hier starten neue Spieler. In der Mitte steht eine Münzstatue mit dem
-Spawnplatz. Dazu kommen Shops (Eier, Boosts, Robux, Verkaufen, Haustiere), ein Ring mit einem
-Portal pro Welt (Planetenfarbe, Name und Preis), drei Ranglisten (Taler, Münzen, Wiedergeburten;
-„Du“ aus dem eigenen Spielstand), die tägliche Belohnung, der Wiedergeburts-Altar, das Münzindex-Buch,
-ein Code-Terminal und ein Handelsplatz. Im Spawn gibt es keine Münzen. In der Weltkarte lassen sich
-die Bereiche anklicken. Im Roblox-Export ist `00-Spawn.rbxmx` dabei, mit echter `SpawnLocation`,
-Teilen `Portal_<WeltId>` und Schildern mit SurfaceGui-Text.
+**Spawn (Münzstadt, `welten/js/spawnTown.js`):** Hier starten neue Spieler.
+- **Marktplatz** mit Pflaster, Springbrunnen mit Fontänen und Münzstatue, Spawn-Pad
+- **Stadtmauer** mit acht Türmen, Fahnen und vier Torbögen; vier Hauptstraßen mit Laternen und Lichterketten, dazu eine Ringstraße
+- **Läden mit Innenraum:** Eier-Laden, Boost-Labor, Robux-Palast (goldene Kuppel), Haustier-Hof, Verkaufs-Kontor; jeweils mit Schaufenstern, Leuchtschrift, Theke, Regalen und Verkäufer
+- **Portal-Hallen:** Heimat-Tor (Planet 1), Raketenstartplatz mit Rakete (Planet 2), Tiefsee-Strudel (Planet 3 und 4)
+- **Spielbereiche:** Ei-Schlüpfplatz mit allen 7 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
+- **Leben:** Spaziergänger mit Haustieren, Münzregen, Feuerwerk, ein Tag-Nacht-Wechsel (90 Sekunden), bei dem nachts die Laternen heller leuchten
+
+In der Weltkarte lassen sich alle Bereiche anklicken. In der Spiel-Oberfläche kann man sie im 3D-Hintergrund
+antippen, und die Spawn-Leiste öffnet **Belohnungen** (sieben Tage Serie, Glücksrad einmal am Tag, Gruppe),
+**Ranglisten** (Taler, Münzen, Wiedergeburten, Level, mit deinem Platz) und **Codes** (`spiel/js/rewards.js`;
+Vorschau-Codes: COINMASTER, SPAWN, GLUECK, RELEASE, DANKE). Im Roblox-Export ist `00-Spawn.rbxmx` dabei,
+mit `SpawnLocation`, Teilen `Portal_<WeltId>` und Schildern mit SurfaceGui-Text.
 
 `welten/` zeigt die Weltkarte: vier Planeten mit ihren Welten, jede als drehbare 3D-Insel mit
 eigener Landschaft, Himmel und Partikeln (Pollen, Glühwürmchen, Schnee, Glut, Streusel, Sterne,

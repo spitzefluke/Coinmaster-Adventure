@@ -62,8 +62,27 @@ export function createWorldBg(host) {
     renderer.render(built.scene, camera);
   });
 
+  // Was liegt unter dem Mauszeiger? Liefert den Spawn-Bereich (userData.area) oder null.
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pick(clientX, clientY) {
+    if (!built?.areas?.length) return null;
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    for (const hit of ray.intersectObjects(built.scene.children, true)) {
+      if (!hit.object.isMesh || !hit.object.visible) continue;
+      for (let o = hit.object; o; o = o.parent) {
+        const id = o.userData.area;
+        if (id) return { id, name: built.areas.find((a) => a.id === id)?.name ?? id };
+      }
+      return null; // vorderstes Objekt gehört zu keinem Bereich
+    }
+    return null;
+  }
+
   applySettings();
   return {
+    pick,
     set(world) {
       if (world.id !== worldId) build(world);
     },
