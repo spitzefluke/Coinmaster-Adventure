@@ -6,8 +6,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { WEATHER, WEATHER_MS, weatherById, weatherAt, forecast, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { COINS } from '../../muenzen/js/coins.js';
 import { createCoin, makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
-import { buildWorld, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
-import { createWeatherFx } from '../../welten/js/weatherFx.js';
+import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
+import { buildRobloxWorld, showWeather, worldLua } from '../../welten/js/robloxWorld.js';
 import { WORLDS, worldById } from '../../welten/js/worlds.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 
@@ -25,26 +25,29 @@ let selected = weatherById[location.hash.slice(1)] ? location.hash.slice(1) : we
 if (selected === 'klar') selected = 'regen';
 let worldId = params.get('welt') && worldById[params.get('welt')] ? params.get('welt') : 'normal';
 
-// ── 3D-Welt ──
+// ── 3D-Welt, 1:1 wie in Roblox: Teile wie der Export, Wetter aus dem Roblox-Modul WeatherFx ──
 const canvas = $('world-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = loadSettings().quality !== 'niedrig';
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(pixelRatio());
-const CS = ISLAND_RADIUS / 10;
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+const CS = (ISLAND_RADIUS / 10) * 8;
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
 camera.position.set(19 * CS, 12 * CS, 22 * CS);
 const controls = new OrbitControls(camera, canvas);
 Object.assign(controls, { enableDamping: true, enablePan: false, minDistance: 10 * CS, maxDistance: 50 * CS, maxPolarAngle: Math.PI * 0.62, autoRotate: !skipAnimations(), autoRotateSpeed: 0.5 });
-controls.target.set(0, 0.6, 0);
-let built = null, wfx = null;
+controls.target.set(0, 0.6 * 8, 0);
+let built = null, lua = null;
+worldLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
 function buildScene() {
-  wfx?.dispose();
-  built?.dispose();
-  const amount = loadSettings().fewerParticles ? 0.4 : 1;
-  built = buildWorld(worldById[worldId], { particles: amount });
-  wfx = createWeatherFx(built, selected, { amount });
+  if (built) {
+    lua?.call('__weatherReset');
+    built.rw.dispose();
+  }
+  built = buildRobloxWorld(worldById[worldId], { shadows: renderer.shadowMap.enabled });
+  showWeather(built.rw, selected);
 }
 
 // ── Münze mit Mutation ──
@@ -77,9 +80,13 @@ renderer.setAnimationLoop(() => {
     camera.updateProjectionMatrix();
   }
   controls.update();
-  built.update(t, dt);
-  wfx.update(t, dt);
-  renderer.render(built.scene, camera);
+  camera.updateMatrixWorld();
+  if (lua) {
+    lua.setCamera(camera);
+    lua.frame(dt);
+  }
+  built.rw.update(dt);
+  built.rw.render(renderer, camera);
   if (coin) {
     const cw = coinCanvas.clientWidth, ch = coinCanvas.clientHeight;
     if (cw && ch && coinCanvas.width !== Math.round(cw * cr.getPixelRatio())) {
@@ -150,8 +157,7 @@ function select(id) {
   if (id === 'klar') return;
   selected = id;
   history.replaceState(null, '', `#${id}`);
-  wfx?.dispose();
-  wfx = createWeatherFx(built, selected, { amount: loadSettings().fewerParticles ? 0.4 : 1 });
+  showWeather(built.rw, selected);
   buildCoin();
   renderInfo();
   renderChips();

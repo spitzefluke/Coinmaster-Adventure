@@ -1,15 +1,14 @@
-// Aura-Galerie: Karten mit Filtern, ein WebGL-Canvas zeichnet alle sichtbaren Karten per Scissor-Test,
-// die Detailansicht hat einen eigenen Renderer zum Drehen und Zoomen.
+// Aura-Galerie: Karten mit Filtern. Jede Vorschau ist eine kleine Roblox-Welt, in der die Module
+// AuraData und AuraFx aus dem Installer laufen (auraRoblox.js). Ein WebGL-Canvas zeichnet alle
+// sichtbaren Karten per Scissor-Test, die Detailansicht hat einen eigenen Renderer zum Drehen und Zoomen.
 
 import * as THREE from 'three';
-import { AURAS, THEMES, RARITIES, auraById, rarityById, themeById, bonusText, fmtPrice } from './auras.js';
-import { createAura, setPointScale, TIER_FX, tierOf } from './auraFactory.js';
-import { makeEnvironment, makeScene } from '../../haustiere/js/kit.js';
-import { pixelRatio, loadSettings } from '../../js/settings.js';
+import { AURAS, THEMES, RARITIES, auraById, rarityById, themeById, bonusText, fmtPrice, TIER_FX, tierOf } from './auras.js';
+import { createAuraPreview, auraLua } from './auraRoblox.js';
+import { pixelRatio } from '../../js/settings.js';
 
 const $ = (id) => document.getElementById(id);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const amount = () => (loadSettings().fewerParticles ? 0.45 : 1);
 
 export const PARTS = {
   rise: 'Aufsteigende Teilchen', fall: 'Regen von oben', swirl: 'Wirbel', burst: 'Feuerwerk', orbit: 'Kreisende Dinge',
@@ -55,15 +54,24 @@ function renderGrid() {
 }
 
 // ── Galerie-Renderer ──
+function makeRenderer(canvas) {
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, stencil: true });
+  r.setPixelRatio(pixelRatio());
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  r.toneMapping = THREE.NoToneMapping;
+  r.shadowMap.enabled = true;
+  r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.setClearColor(0x000000, 0);
+  return r;
+}
+// Kamera kreist vor der Figur (Roblox-Figuren schauen nach −Z)
+function orbit(cam, yaw, pitch, dist) {
+  cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 3.6 + Math.sin(pitch) * dist, -Math.cos(yaw) * Math.cos(pitch) * dist);
+  cam.lookAt(0, 3.6, 0);
+}
 const stage = $('stage');
-const renderer = new THREE.WebGLRenderer({ canvas: stage, antialias: true, alpha: true });
-renderer.setPixelRatio(pixelRatio());
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.setClearColor(0x000000, 0);
-const env = makeEnvironment(renderer);
-const camera = new THREE.PerspectiveCamera(30, 0.9, 0.1, 60);
-camera.position.set(0, 0.9, 8.6);
-camera.lookAt(0, 0.35, 0);
+const renderer = makeRenderer(stage);
+const camera = new THREE.PerspectiveCamera(40, 0.9, 0.1, 2000);
 const resize = () => renderer.setSize(innerWidth, innerHeight, false);
 addEventListener('resize', resize);
 resize();
@@ -73,18 +81,19 @@ const entries = new Map();
 const io = new IntersectionObserver((list) => list.forEach((e) => {
   const en = entries.get(e.target);
   if (en) en.near = e.isIntersecting;
-}), { rootMargin: '400px 0px' });
+}), { rootMargin: '300px 0px' });
 function scan() {
   const els = new Set(document.querySelectorAll('[data-aura-view]'));
   for (const [el, en] of entries) {
     if (els.has(el)) continue;
     io.unobserve(el);
+    en.dead = true;
     en.obj?.dispose();
     entries.delete(el);
   }
   for (const el of els) {
     if (entries.has(el)) continue;
-    const en = { aura: auraById[el.dataset.auraView], view: el, obj: null, scene: null, near: false, hover: false, spin: 0 };
+    const en = { aura: auraById[el.dataset.auraView], view: el, obj: null, near: false, hover: false, spin: 0 };
     const card = el.closest('.card');
     card.addEventListener('pointerenter', () => (en.hover = true));
     card.addEventListener('pointerleave', () => (en.hover = false));
@@ -92,50 +101,54 @@ function scan() {
     io.observe(el);
   }
 }
-function build(en) {
-  en.scene = makeScene(env);
-  en.obj = createAura(en.aura, { amount: amount() });
-  en.scene.add(en.obj.root);
+// Vorschauen nacheinander bauen, damit das Scrollen flüssig bleibt
+let building = false;
+async function buildNext() {
+  if (building) return;
+  const en = [...entries.values()].find((e) => e.near && !e.obj && !e.failed);
+  if (!en) return;
+  building = true;
+  try {
+    const obj = await createAuraPreview(en.aura);
+    if (en.dead) obj.dispose();
+    else en.obj = obj;
+  } catch (err) {
+    en.failed = true;
+    console.error('Aura-Vorschau', en.aura.id, err);
+  }
+  building = false;
 }
 
 let overlay = false;
 const clock = new THREE.Clock();
-let builtThisFrame = 0;
 function renderGallery(t, dt) {
   renderer.setScissorTest(false);
   renderer.clear();
   if (overlay) return;
+  buildNext();
   renderer.setScissorTest(true);
   const H = stage.clientHeight;
-  builtThisFrame = 0;
   for (const en of entries.values()) {
-    if (!en.near) continue;
-    if (!en.obj) {
-      if (builtThisFrame++ > 2) continue;
-      build(en);
-    }
+    if (!en.near || !en.obj) continue;
     const r = en.view.getBoundingClientRect();
     const top = Math.max(r.top, navBottom());
     if (r.bottom <= top || r.top > H || r.width === 0) continue;
-    en.spin += dt * (en.hover ? 1.2 : 0.3);
-    en.obj.spinner.rotation.y = reducedMotion ? 0.4 : 0.4 + en.spin;
-    en.obj.update(reducedMotion ? 1 : t);
+    en.spin += reducedMotion ? 0 : dt * (en.hover ? 0.9 : 0.25);
+    en.obj.step(reducedMotion ? 1 : t, dt);
     camera.aspect = r.width / r.height;
     camera.updateProjectionMatrix();
-    setPointScale(r.height * renderer.getPixelRatio(), camera);
+    orbit(camera, -0.5 + en.spin, 0.12, 17);
     renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
     renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
-    renderer.render(en.scene, camera);
+    en.obj.world.render(renderer, camera);
   }
 }
 
 // ── Detailansicht ──
 const detail = $('detail');
 const dCanvas = $('detail-canvas');
-const dr = new THREE.WebGLRenderer({ canvas: dCanvas, antialias: true, alpha: true });
-dr.setPixelRatio(pixelRatio());
-dr.toneMapping = THREE.ACESFilmicToneMapping;
-const d = { camera: new THREE.PerspectiveCamera(30, 1, 0.1, 80), scene: makeScene(makeEnvironment(dr)), yaw: 0.4, pitch: 0.1, dist: 10.5, obj: null, drag: null };
+const dr = makeRenderer(dCanvas);
+const d = { camera: new THREE.PerspectiveCamera(40, 1, 0.1, 2000), yaw: -0.5, pitch: 0.12, dist: 16, obj: null, drag: null, token: 0 };
 dCanvas.addEventListener('pointerdown', (e) => {
   d.drag = { x: e.clientX, y: e.clientY };
   dCanvas.setPointerCapture(e.pointerId);
@@ -143,13 +156,13 @@ dCanvas.addEventListener('pointerdown', (e) => {
 dCanvas.addEventListener('pointermove', (e) => {
   if (!d.drag) return;
   d.yaw += (e.clientX - d.drag.x) * 0.01;
-  d.pitch = Math.max(-0.2, Math.min(1.1, d.pitch + (e.clientY - d.drag.y) * 0.006));
+  d.pitch = Math.max(-0.15, Math.min(1.2, d.pitch + (e.clientY - d.drag.y) * 0.006));
   d.drag = { x: e.clientX, y: e.clientY };
 });
 dCanvas.addEventListener('pointerup', () => (d.drag = null));
 dCanvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  d.dist = Math.max(5, Math.min(18, d.dist + e.deltaY * 0.01));
+  d.dist = Math.max(7, Math.min(32, d.dist + e.deltaY * 0.02));
 }, { passive: false });
 function sizeDetail() {
   const box = dCanvas.parentElement.getBoundingClientRect();
@@ -173,13 +186,14 @@ function openDetail(a) {
   $('detail-parts').textContent = partsOf(a);
   $('detail-tiers').innerHTML = TIER_FX.slice(0, tierOf(a) + 1)
     .map((t, i) => `<li style="--r:${RARITIES[i].color}"><b>${RARITIES[i].name}</b>${t.add}</li>`).join('');
-  if (d.obj) {
-    d.scene.remove(d.obj.root);
-    d.obj.dispose();
-  }
-  d.obj = createAura(a, { amount: amount() });
-  d.scene.add(d.obj.root);
-  Object.assign(d, { yaw: 0.4, pitch: 0.1, dist: 10.5 });
+  d.obj?.dispose();
+  d.obj = null;
+  const token = ++d.token;
+  createAuraPreview(a).then((obj) => {
+    if (token === d.token && overlay) d.obj = obj;
+    else obj.dispose();
+  });
+  Object.assign(d, { yaw: -0.5, pitch: 0.12, dist: 16 });
   detail.hidden = false;
   overlay = true;
   sizeDetail();
@@ -189,28 +203,26 @@ function openDetail(a) {
 function closeDetail() {
   detail.hidden = true;
   overlay = false;
-  if (d.obj) {
-    d.scene.remove(d.obj.root);
-    d.obj.dispose();
-    d.obj = null;
-  }
+  d.token++;
+  d.obj?.dispose();
+  d.obj = null;
   history.replaceState(null, '', location.pathname);
   lastFocus?.focus();
 }
 detail.addEventListener('click', (e) => e.target.closest('[data-close]') && closeDetail());
 addEventListener('keydown', (e) => e.key === 'Escape' && !detail.hidden && closeDetail());
 
+let lua = null;
+auraLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
+  lua?.frame(dt);
   renderGallery(t, dt);
   if (overlay && d.obj) {
-    if (!d.drag && !reducedMotion) d.yaw += dt * 0.3;
-    const c = d.camera;
-    c.position.set(Math.sin(d.yaw) * Math.cos(d.pitch) * d.dist, 0.35 + Math.sin(d.pitch) * d.dist, Math.cos(d.yaw) * Math.cos(d.pitch) * d.dist);
-    c.lookAt(0, 0.35, 0);
-    setPointScale(dCanvas.height, c);
-    d.obj.update(reducedMotion ? 1 : t);
-    dr.render(d.scene, c);
+    if (!d.drag && !reducedMotion) d.yaw += dt * 0.25;
+    orbit(d.camera, d.yaw, d.pitch, d.dist);
+    d.obj.step(reducedMotion ? 1 : t, dt);
+    d.obj.world.render(dr, d.camera);
   }
 });
 

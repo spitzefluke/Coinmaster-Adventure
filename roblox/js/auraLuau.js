@@ -582,6 +582,48 @@ function AuraFx.Step(handle, rootCFrame, t)
 	end
 end
 
+-- Figur wie ein Roblox-Avatar (R6) zum Ansehen: rootCFrame ist die Rumpfmitte, die Füße liegen 3 Studs tiefer.
+-- Gleiche Figur im Showcase und in der Vorschau auf der Webseite.
+function AuraFx.BuildDummy(rootCFrame, parent)
+	local model = Instance.new("Model")
+	model.Name = "Figur"
+	local skin, shirt, pants = Color3.fromHex("#f2c8a0"), Color3.fromHex("#3d4f78"), Color3.fromHex("#2a2f40")
+	local function block(name, size, offset, color)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Material = Enum.Material.SmoothPlastic
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Size = size
+		p.CFrame = rootCFrame * offset
+		p.Color = color
+		p.Parent = model
+		return p
+	end
+	block("Left Leg", Vector3.new(1, 2, 1), CFrame.new(-0.5, -2, 0), pants)
+	block("Right Leg", Vector3.new(1, 2, 1), CFrame.new(0.5, -2, 0), pants)
+	block("Torso", Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), shirt)
+	block("Left Arm", Vector3.new(1, 2, 1), CFrame.new(-1.5, 0, 0), skin)
+	block("Right Arm", Vector3.new(1, 2, 1), CFrame.new(1.5, 0, 0), skin)
+	local head = block("Head", Vector3.new(2, 1, 1), CFrame.new(0, 1.5, 0), skin)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = head
+	local face = Instance.new("Decal")
+	face.Name = "face"
+	face.Texture = "rbxasset://textures/face.png"
+	face.Face = Enum.NormalId.Front
+	face.Parent = head
+	local root = block("HumanoidRootPart", Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), shirt)
+	root.Transparency = 1
+	model.PrimaryPart = root
+	model.Parent = parent
+	return model
+end
+
 function AuraFx.Destroy(handle)
 	handle.Model:Destroy()
 end
@@ -784,40 +826,13 @@ auraFloor.Color = Color3.fromRGB(24, 21, 31)
 auraFloor.Material = Enum.Material.Slate
 auraFloor.Parent = auraShowcase
 
-local function dummy(x, z)
-	local model = Instance.new("Model")
-	model.Name = "Figur"
-	local function block(name, size, y, xo, c)
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Anchored = true
-		p.Size = size
-		p.CFrame = CFrame.new(x + xo, y, z)
-		p.Color = c
-		p.TopSurface = Enum.SurfaceType.Smooth
-		p.BottomSurface = Enum.SurfaceType.Smooth
-		p.Parent = model
-		return p
-	end
-	local skin, shirt, pants = Color3.fromHex("#f2c8a0"), Color3.fromHex("#3d4f78"), Color3.fromHex("#2a2f40")
-	block("Left Leg", Vector3.new(1, 2, 1), 1, -0.5, pants)
-	block("Right Leg", Vector3.new(1, 2, 1), 1, 0.5, pants)
-	local torso = block("Torso", Vector3.new(2, 2, 1), 3, 0, shirt)
-	block("Left Arm", Vector3.new(1, 2, 1), 3, -1.5, skin)
-	block("Right Arm", Vector3.new(1, 2, 1), 3, 1.5, skin)
-	block("Head", Vector3.new(2, 1, 1), 4.5, 0, skin)
-	model.PrimaryPart = torso
-	return model
-end
-
 for i, aura in ipairs(AuraData.Auras) do
 	local col = (i - 1) % 10
 	local row = math.floor((i - 1) / 10)
 	local x, z = 55 + col * 10, 15 - row * 10
-	local figure = dummy(x, z)
+	local figure = AuraFx.BuildDummy(CFrame.new(x, 3, z), auraShowcase)
 	figure.Name = aura.Name
 	nameTag(figure, aura.Name, AuraData.RarityById[aura.Rarity].Color)
-	figure.Parent = auraShowcase
 	AuraFx.Build(aura, figure, { Static = CFrame.new(x, 3, z) })
 end
 auraShowcase.Parent = workspace

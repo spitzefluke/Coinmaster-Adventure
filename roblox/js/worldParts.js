@@ -76,6 +76,11 @@ function convertMesh(out, mesh, world) {
   const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const r = mesh.userData.rbx || {};
   const ex = {};
+  // Spawn-Bereich (für Klicks im Spiel-Hintergrund)
+  for (let o = mesh; o; o = o.parent) if (o.userData.area) {
+    ex.area = o.userData.area;
+    break;
+  }
   if (r.name) ex.name = r.name;
   if (r.className) ex.className = r.className; // z. B. SpawnLocation
   if (r.text) Object.assign(ex, { text: r.text, textColor: r.textColor || '#ffffff' }); // Schild mit SurfaceGui
@@ -222,6 +227,40 @@ function emitterFor(world, R) {
   };
 }
 
+// Licht und Himmel einer Welt in Roblox: Lighting-Werte und eine Atmosphere, getönt mit den Himmelsfarben.
+// Der Export legt sie in den Ordner „Licht“, das Skript CoinmasterWorldLighting setzt sie im Spiel,
+// die Vorschau auf der Webseite nutzt genau dieselben Werte.
+export function worldLighting(world) {
+  const [top, horizon] = world.sky;
+  const c = new THREE.Color(top);
+  const lum = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b;
+  const night = lum < 0.2;
+  const dim = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
+  return {
+    ClockTime: night ? 0.5 : 14,
+    Brightness: night ? 1.2 : 2.6,
+    Ambient: night ? dim(horizon, 0.55) : '#585858',
+    OutdoorAmbient: night ? dim(horizon, 0.9) : '#8c8c8c',
+    FogColor: horizon,
+    FogStart: world.water ? 60 : 260,
+    FogEnd: world.water ? 520 : 1300,
+    atmosphere: { Density: world.water ? 0.42 : night ? 0.25 : 0.3, Offset: 0.2, Color: horizon, Decay: top, Glare: night ? 0 : 0.3, Haze: world.water ? 2.4 : 1 },
+  };
+}
+
+// Platz neben der Teleport-Plattform für die Vergleichsfigur (in Webseiten-Einheiten)
+function compareSpot(built) {
+  if (built.figureSpot) return built.figureSpot.clone();
+  let pad = null;
+  built.scene.traverse((o) => o.userData.rbx?.name === 'TeleportPad' && (pad = o.getWorldPosition(V(0, 0, 0))));
+  const p = pad ?? V(built.radius - 2, 0, 0);
+  const out = V(p.x, 0, p.z).normalize(), side = V(-out.z, 0, out.x);
+  let x = p.x + side.x * 1.3, z = p.z + side.z * 1.3;
+  const r = Math.hypot(x, z), max = built.radius - 0.9;
+  if (r > max) (x *= max / r), (z *= max / r);
+  return V(x, built.height(x, z), z);
+}
+
 export function worldToParts(world) {
   const built = buildWorld(world, { particles: 0 });
   built.update(1, 0.016); // Grundhaltung der Animationen
@@ -247,6 +286,13 @@ export function worldToParts(world) {
   groundColumns(parts, built, world);
   underside(parts, world, built.radius);
   const emitter = emitterFor(world, built.radius);
+  // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur
+  const spot = compareSpot(built).multiplyScalar(STUDS);
+  const meta = {
+    radius: built.radius * STUDS,
+    spot: [spot.x, spot.y, spot.z],
+    areas: (built.areas || []).map((a) => ({ id: a.id, name: a.name, pos: [a.pos.x * STUDS, a.pos.y * STUDS, a.pos.z * STUDS] })),
+  };
   built.dispose();
-  return { world, parts, sky, lights, emitter };
+  return { world, parts, sky, lights, emitter, meta, lighting: worldLighting(world) };
 }

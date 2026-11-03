@@ -103,8 +103,35 @@ const value = (cls, name, v) =>
 const ID = { x: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
 
 // Eine Welt als Model; offset verschiebt alles (für mehrere Welten in einer Datei)
+// Ordner „Licht“: Lighting-Werte und Atmosphere der Welt (worldLighting in worldParts.js)
+function lightFolder(L) {
+  const a = L.atmosphere;
+  const atmosphere = item('Atmosphere', [
+    prop.string('Name', 'Atmosphere'),
+    prop.float('Density', a.Density),
+    prop.float('Offset', a.Offset),
+    prop.color3('Color', a.Color),
+    prop.color3('Decay', a.Decay),
+    prop.float('Glare', a.Glare),
+    prop.float('Haze', a.Haze),
+  ]);
+  return folder(
+    'Licht',
+    atmosphere +
+      [
+        value('NumberValue', 'ClockTime', L.ClockTime),
+        value('NumberValue', 'Brightness', L.Brightness),
+        value('Color3Value', 'Ambient', L.Ambient),
+        value('Color3Value', 'OutdoorAmbient', L.OutdoorAmbient),
+        value('Color3Value', 'FogColor', L.FogColor),
+        value('NumberValue', 'FogStart', L.FogStart),
+        value('NumberValue', 'FogEnd', L.FogEnd),
+      ].join(''),
+  );
+}
+
 export function worldModel(w, offset = [0, 0, 0]) {
-  const { world, parts, sky, lights, emitter } = w;
+  const { world, parts, sky, lights, emitter, lighting } = w;
   const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
   for (const p of parts) {
     if (p.name === 'SpawnLocation') byFolder.Spawn.push(p);
@@ -174,7 +201,8 @@ export function worldModel(w, offset = [0, 0, 0]) {
       (byFolder.Portale.length ? folder('Portale', list(byFolder.Portale)) : '') +
       (byFolder.Ranglisten.length ? folder('Ranglisten', list(byFolder.Ranglisten)) : '') +
       folder('Himmel', list(sky)) +
-      folder('Effekte', lightParts + fx),
+      folder('Effekte', lightParts + fx) +
+      (lighting ? lightFolder(lighting) : ''),
   );
 }
 

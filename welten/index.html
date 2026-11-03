@@ -34,11 +34,10 @@
   <section class="stage" aria-live="polite">
     <div class="viewer">
       <canvas id="viewer" aria-label="3D-Ansicht der Welt"></canvas>
-      <p class="viewer-hint">Ziehen zum Drehen · Mausrad zum Zoomen</p>
+      <p class="viewer-hint">Roblox-Vorschau · Ziehen zum Drehen · Mausrad zum Zoomen</p>
       <p id="size-info" class="size-info" hidden></p>
       <div class="view-tools">
-        <button id="rbx-toggle" class="view-toggle" type="button" aria-pressed="false" title="Zeigt die Insel so, wie sie nach dem Export in Roblox Studio aus Teilen aufgebaut ist">Roblox-Ansicht</button>
-        <span id="rbx-count" class="rbx-count" hidden></span>
+        <span id="rbx-count" class="rbx-count" title="So sieht die Insel nach dem Import in Roblox aus: dieselben Teile, dasselbe Licht"></span>
         <button id="size-toggle" class="view-toggle" type="button" aria-pressed="false" title="Setzt eine normal große Roblox-Figur (rund 5 Studs) auf die Insel">Größenvergleich</button>
         <label class="weather-pick"><span class="visually-hidden">Wetter</span><select id="weather-pick"></select></label>
         <span id="weather-live" class="rbx-count" hidden></span>

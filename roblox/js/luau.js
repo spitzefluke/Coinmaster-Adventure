@@ -148,7 +148,7 @@ return EggData
 `;
 }
 
-const GACHA = `${HEADER('Ziehen, Mutationen, Wetter')}
+export const GACHA = `${HEADER('Ziehen, Mutationen, Wetter')}
 -- Wichtig: Im Spiel nur auf dem Server würfeln (z. B. in einem Script in
 -- ServerScriptService), nie auf dem Client – sonst lässt sich das Ergebnis fälschen.
 
@@ -757,7 +757,7 @@ return WorldData
 `;
 }
 
-const WEATHER_FX = `${HEADER('Wetter-Effekte')}
+export const WEATHER_FX = `${HEADER('Wetter-Effekte')}
 -- Läuft auf dem Client (LocalScript): WeatherFx.Apply(weatherId) stellt Himmel, Licht, Nebel
 -- und Partikel für das Wetter ein, WeatherFx.Announce(...) zeigt die Ansage beim Wechsel.
 -- Bewusst ruhig: Blitze höchstens alle 2,5 Sekunden, Farben wechseln langsam.
@@ -1056,6 +1056,76 @@ ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(update)
 update()
 `;
 
+// Client: setzt Licht und Atmosphere der Welt, in deren Nähe die Kamera ist (Ordner „Licht“ im Weltmodell)
+export const WORLD_LIGHT_CLIENT = `-- Coinmaster Adventure · Weltlicht (Client)
+-- Jede Welt aus den .rbxmx-Dateien hat einen Ordner „Licht“ mit einer Atmosphere und Lighting-Werten.
+-- Dieses Skript übernimmt sie für die Welt, die der Kamera am nächsten ist.
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+local folders = {}
+local function scan()
+	folders = {}
+	for _, f in ipairs(workspace:GetDescendants()) do
+		if f:IsA("Folder") and f.Name == "Licht" and f.Parent and f.Parent:IsA("Model") then
+			table.insert(folders, f)
+		end
+	end
+end
+
+local current = nil
+local function apply(folder)
+	for _, v in ipairs(folder:GetChildren()) do
+		if v:IsA("ValueBase") then
+			Lighting[v.Name] = v.Value
+		end
+	end
+	local source = folder:FindFirstChildOfClass("Atmosphere")
+	if source then
+		local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+		if not atm then
+			atm = Instance.new("Atmosphere")
+			atm.Parent = Lighting
+		end
+		for _, key in ipairs({ "Density", "Offset", "Color", "Decay", "Glare", "Haze" }) do
+			atm[key] = source[key]
+		end
+	end
+end
+
+local elapsed = 0
+local rescan = 0
+RunService.Heartbeat:Connect(function(dt)
+	elapsed = elapsed + dt
+	rescan = rescan - dt
+	if elapsed < 1 then
+		return
+	end
+	elapsed = 0
+	if rescan <= 0 then
+		scan()
+		rescan = 10
+	end
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	local best, bestDistance = nil, math.huge
+	for _, f in ipairs(folders) do
+		if f.Parent then
+			local d = (f.Parent:GetPivot().Position - cam.CFrame.Position).Magnitude
+			if d < bestDistance then
+				best, bestDistance = f, d
+			end
+		end
+	end
+	if best and best ~= current then
+		current = best
+		apply(best)
+	end
+end)
+`;
+
 // Alle ModuleScripts in der Reihenfolge, in der sie im Ordner liegen
 export function moduleSources(data) {
   return [
@@ -1093,7 +1163,8 @@ export function installerSource(data) {
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
 --   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier zum Ansehen
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
---   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel${data.AURAS ? `
+--   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
+--   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist${data.AURAS ? `
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
 --   ServerScriptService > CoinmasterAuras     Auras kaufen und anlegen (RemoteFunction AuraRemote)
 --   StarterPlayerScripts > CoinmasterAuraClient   zeichnet die Aura jedes Spielers
@@ -1209,6 +1280,7 @@ local function addScript(className, parent, name, source)
 end
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
 ${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterAuraClient", ${longString(AURA_CLIENT)})
 ` : ''}
