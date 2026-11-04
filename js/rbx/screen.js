@@ -367,7 +367,7 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
     }
     return null;
   }
-  const solid = (i) => isButton(i) || (i.props.BackgroundTransparency ?? 0) < 0.95 || i.ClassName === 'ScrollingFrame';
+  const solid = (i) => isClickable(i) || (i.props.BackgroundTransparency ?? 0) < 0.95 || i.ClassName === 'ScrollingFrame';
   // type: move, down, up, leave, wheel; gibt true zurück, wenn die UI den Zeiger hat
   function pointer(type, x, y, delta = 0) {
     if (type === 'leave') {

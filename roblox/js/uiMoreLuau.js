@@ -619,7 +619,7 @@ do
 		stepper(settingRow(list, 3, "🎵", "Musik", "Lautstärke der Hintergrundmusik"), "music", 60)
 		heading(list, 4, "Grafik")
 		segmented(settingRow(list, 5, "✨", "Qualität", "Niedrig schont schwache Geräte"), "quality", { "niedrig", "mittel", "hoch" })
-		toggle(settingRow(list, 6, "🌫️", "Weniger Partikel", "Ruhigere Spielwelt mit weniger Glitzern"), "fewerParticles")
+		toggle(settingRow(list, 6, "💨", "Weniger Partikel", "Ruhigere Spielwelt mit weniger Glitzern"), "fewerParticles")
 		heading(list, 7, "Spiel")
 		toggle(settingRow(list, 8, "⏩", "Animationen überspringen", "Entdecken und Schlüpfen in Kurzfassung"), "skipAnimations")
 		toggle(settingRow(list, 9, "🔢", "Kurze Zahlen", "Große Beträge als 12,5K statt 12.500"), "shortNumbers")
@@ -862,14 +862,15 @@ do
 		end
 		b = b or RewardData.Boards[1]
 		local data = query("board", b.Id) or { Rows = {}, Place = 1, Mine = 0 }
-		local list = new("Frame", { Name = "Liste", Size = UDim2.new(1, 0, 1, -40), BackgroundTransparency = 1, Parent = w.body }, {
-			new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }),
+		local list = scroller(w, w.body, "Liste", { Size = UDim2.new(1, 8, 1, 0) }, {
+			new("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }),
+			new("UIPadding", { PaddingRight = UDim.new(0, 14), PaddingBottom = UDim.new(0, 6) }),
 		})
 		local inTop = false
 		local function row(order, place, name, value, me)
-			local r = new("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = me and Color3.fromRGB(58, 48, 30) or C.bg2, BackgroundTransparency = me and 0 or (order % 2 == 0 and 0.3 or 0), LayoutOrder = order, Parent = list }, { corner(UDim.new(0, 10)) })
+			local r = new("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = me and Color3.fromRGB(58, 48, 30) or C.bg2, BackgroundTransparency = me and 0 or (order % 2 == 0 and 0.3 or 0), LayoutOrder = order, Parent = list }, { corner(UDim.new(0, 10)) })
 			if me then stroke(C.goldHi, 2).Parent = r end
-			new("TextLabel", { Size = UDim2.new(0, 40, 0, 26), Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = place <= 3 and b.Color or C.line, Text = GameUI.Format(place), Font = BODY, TextSize = 13, TextColor3 = place <= 3 and Color3.fromRGB(30, 22, 10) or C.ink, Parent = r }, { corner(UDim.new(1, 0)) })
+			new("TextLabel", { Size = UDim2.new(0, 40, 0, 22), Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = place <= 3 and b.Color or C.line, Text = GameUI.Format(place), Font = BODY, TextSize = 13, TextColor3 = place <= 3 and Color3.fromRGB(30, 22, 10) or C.ink, Parent = r }, { corner(UDim.new(1, 0)) })
 			label({ Size = UDim2.new(0.6, 0, 1, 0), Position = UDim2.new(0, 60, 0, 0), Text = name, Font = FONT, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left, Parent = r })
 			label({ Size = UDim2.new(0.35, 0, 1, 0), Position = UDim2.new(1, -14, 0, 0), AnchorPoint = Vector2.new(1, 0), Text = GameUI.Format(value), TextSize = 16, Font = Enum.Font.Code, TextColor3 = b.Color, TextXAlignment = Enum.TextXAlignment.Right, Parent = r })
 		end
@@ -882,9 +883,9 @@ do
 			row(51, data.Place or 0, "Du", data.Mine or 0, true)
 		end
 		local rows = data.Rows or {}
-		local note = inTop and ("Du bist auf Platz " .. data.Place .. ". Stark!") or (#rows >= 10 and ("Bis Platz 10 fehlen dir noch " .. GameUI.Format(math.max(0, rows[10].Value - (data.Mine or 0) + 1)) .. ".") or "")
+		local note = inTop and ("Du bist auf Platz " .. data.Place .. ". Stark!") or (#rows >= 10 and (("Bis Platz 10 fehlen dir noch " .. GameUI.Format(math.max(0, rows[10].Value - (data.Mine or 0) + 1)) .. "."):gsub("%.%.$", ".")) or "")
 		if options.DevTools then note = note .. " Die anderen Namen sind Beispiel-Spieler." end
-		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 1, -30), Text = note, TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 30), Text = note, TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, LayoutOrder = 60, Parent = list })
 	end
 
 	function buildMore(playerGui)
