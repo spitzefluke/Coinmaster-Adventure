@@ -8,6 +8,7 @@ import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
+import { ROLLS } from '../../rollen/js/rolls.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { PETS } from '../../haustiere/js/pets.js';
@@ -80,7 +81,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS, BOOSTS, ROBUX };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, ROLLS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS, BOOSTS, ROBUX };
 let built = null;
 
 function unlock() {
@@ -100,6 +101,7 @@ function build() {
     ['Mutationen', MUTATIONS.length],
     ['Wetter', WEATHER.length],
     ['Eier', EGGS.length],
+    ['Münzrollen', ROLLS.length],
     ['Auras', AURAS.length],
     ['Haustiere', PETS.length],
     ['Welten', WORLDS.filter((w) => !w.soon && !w.hub).length],

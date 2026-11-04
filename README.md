@@ -30,6 +30,7 @@ Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar und Welten. D
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
+| Münzrollen | `rollen/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
@@ -139,6 +140,30 @@ auf und platzt mit Lichtblitz, Funken und Druckwelle. Dann wächst das Tier hera
 Chance (BillboardGui); epische Tiere bekommen einen Lichtkranz. Das Tier wird nach Schlupfchance gewürfelt.
 Tippen spult vor. In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = … })`, am besten auf dem
 Client; das Tier zieht `PetData.Roll(eggId)`.
+
+## Münzrollen
+
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Münzen, wie frisch von der Bank. Beim Öffnen
+wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
+springen die Münzen einzeln heraus, die seltenste zuletzt. Seltene Münzen kommen mit Blitz und Druckwelle,
+vor einer sehr seltenen letzten Münze (ab Legendär) gibt es eine kurze Pause mit Lichtsog.
+
+| Rolle | Stufe | Münzen | Glück | Garantie (letzte Münze) | Preis (Vorschlag) |
+|---|---|---|---|---|---|
+| Kupferrolle | Normal | 3 | ×1 | – | 500 Taler |
+| Silberrolle | Selten | 4 | ×1,6 | ab Selten | 5.000 Taler |
+| Goldrolle | Episch | 5 | ×2,5 | ab Sehr selten | 40.000 Taler |
+| Juwelenrolle | Mystisch | 6 | ×4 | ab Episch | 250.000 Taler |
+| Sternenrolle (Robux-Rolle) | Limitiert | 8 | ×6 | ab Legendär | R$ 149 |
+
+- **Chancen:** Gewicht einer Stufe = Drop-Chance × Glück ^ (Stufe / 9). Normal bleibt gleich, die seltenste Stufe
+  bekommt den vollen Faktor (Unerreichbar: 0,1 % bei Kupfer, 0,43 % bei der Sternenrolle). Die Garantie greift nur,
+  wenn vorher keine so seltene Münze kam. Daten und Rechnung: `rollen/js/rolls.js`.
+- **Roblox:** `RollData` (Daten, `TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
+  `RollFx.Play(rollId, coinIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
+  `RollData.Open(rollId)` würfeln, auf dem Client mit den Münz-Ids `RollFx.Play` zeigen. Der Installer legt die
+  Modelle unter `CoinmasterAdventure > Rolls` ab und stellt die Rollen in den Showcase.
+- Noch nicht im Spiel-Shop (`spiel/`); dort fehlen Kauf, Inventar und Remote.
 
 ## Haustiere
 

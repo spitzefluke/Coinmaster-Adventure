@@ -26,6 +26,13 @@ export const BEREICHE = [
     eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
   },
   {
+    titel: 'Münzrollen',
+    text: 'Papierrollen voller Münzen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Mehr Münzen, mehr Glück und eine Garantie, je teurer die Rolle.',
+    href: 'rollen/',
+    status: 'vorschau',
+    eckdaten: ['5 Rollen', 'bis 8 Münzen', 'Öffnen-Animation'],
+  },
+  {
     titel: 'Haustiere',
     text: '49 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
     href: 'haustiere/',

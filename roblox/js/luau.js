@@ -6,6 +6,7 @@
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
+import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1224,6 +1225,7 @@ export function moduleSources(data) {
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
+    ...(data.ROLLS ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
     ...(data.BOOSTS && data.AURAS ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'GameUI', source: GAME_UI }] : []),
   ];
 }
@@ -1247,7 +1249,8 @@ export function installerSource(data) {
 -- Danach gibt es:
 --   ReplicatedStorage > CoinmasterAdventure   alle Daten und Module (${modules.length} ModuleScripts)
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
---   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier zum Ansehen
+--   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS ? `
+--   Münzrollen: auf dem Server RollData.Open(rollId) würfeln, auf dem Client RollFx.Play(rollId, ids) zeigen` : ''}
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
@@ -1362,7 +1365,20 @@ for i, egg in ipairs(EggData.Eggs) do
 	model.Parent = showcase
 end
 
-showcase.Parent = workspace
+${data.ROLLS ? `-- Münzrollen in einer Reihe vor den Eiern
+local RollData = require(root.RollData)
+local RollBuilder = require(root.RollBuilder)
+local rollFolder = Instance.new("Folder")
+rollFolder.Name = "Rolls"
+rollFolder.Parent = root
+for i, roll in ipairs(RollData.Rolls) do
+	local model = RollBuilder.Build(roll)
+	model:Clone().Parent = rollFolder
+	model:PivotTo(CFrame.new((i - (#RollData.Rolls + 1) / 2) * 7, 0, 32) * model:GetPivot().Rotation)
+	nameTag(model, roll.Name, roll.Glow)
+	model.Parent = showcase
+end
+` : ''}showcase.Parent = workspace
 ${data.AURAS ? AURA_SHOWCASE : ''}
 -- Wetter: Server-Skript und Client-Skript (alte Fassungen ersetzen)
 local function addScript(className, parent, name, source)
