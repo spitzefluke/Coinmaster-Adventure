@@ -1,16 +1,19 @@
 // Spiel-Oberfläche: HUD über einer Spielwelt, dazu die Fenster Skilltree, Inventar, Shop und
 // Einstellungen. „Münze suchen“ simuliert einen Fund in der Welt mit allen Skill-Effekten.
+// HUD, Menü, Hinweise und Shop sind die Roblox-Oberfläche GameUI (robloxUi.js); die übrigen Fenster
+// sind noch HTML und folgen in späteren Etappen.
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, weatherAt, weatherById, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld } from './state.js';
+import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect } from './state.js';
+import { createRobloxUi } from './robloxUi.js';
+import { EGGS } from '../../eier/js/eggs.js';
+import { auraById, bonusText } from '../../auren/js/auras.js';
 import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
-import { coinThumb } from './thumbs.js';
 import { icon } from './icons.js';
 import { skillPanel } from './panels/skilltree.js';
 import { inventarPanel } from './panels/inventar.js';
-import { shopPanel } from './panels/shop.js';
 import { settingsPanel } from './panels/einstellungen.js';
 import { weltenPanel } from './panels/welten.js';
 import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
@@ -21,8 +24,7 @@ await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) 
 const state = loadState();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, shop: shopPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
-const MENU_ICONS = { welten: 'globe', skills: 'tree', inventar: 'bag', shop: 'shop', einstellungen: 'gear' };
+const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -50,36 +52,25 @@ function sound(pitch = 1) {
 
 const save = () => saveState(state);
 
+// Spielstand als Attribute an den Spieler in der Roblox-Oberfläche (wie sie das Spielskript setzen würde)
 function renderHud() {
-  const short = settings.shortNumbers;
-  const need = xpForLevel(state.level);
-  $('level').textContent = state.level;
-  $('xp-fill').style.width = `${Math.min(100, (state.xp / need) * 100)}%`;
-  $('xp-bar').setAttribute('aria-valuemax', need);
-  $('xp-bar').setAttribute('aria-valuenow', Math.floor(state.xp));
-  $('xp-text').textContent = `${fmtNumber(Math.floor(state.xp), short)} / ${fmtNumber(need, short)} EP bis Level ${state.level + 1}`;
-  $('taler').textContent = fmtNumber(state.taler, short);
-  const pts = freePoints(state);
-  const chip = $('points-chip');
-  chip.hidden = pts <= 0;
-  chip.textContent = `+${pts} Skillpunkt${pts > 1 ? 'e' : ''}`;
-  setBadge('skills', pts > 0 ? pts : 0);
-  const full = state.inventory.length >= slots(state);
-  setBadge('inventar', full ? '!' : 0);
-
-  $('boosts').innerHTML = BOOSTS.filter((b) => boostActive(state, b.id))
-    .map((b) => {
-      const left = Math.max(0, Math.ceil((state.boosts[b.id] - Date.now()) / 1000));
-      return `<p class="boost" title="${b.name}">${icon(b.icon, 14)} ${b.name} <span>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span></p>`;
-    })
-    .join('');
-}
-
-function setBadge(panel, value) {
-  const b = document.querySelector(`.menu-btn[data-panel="${panel}"] .menu-badge`);
-  if (!b) return;
-  b.hidden = !value;
-  b.textContent = value;
+  if (!rui) return;
+  const w = currentWorld(state), p = planetById[w.planet];
+  const set = (k, v) => rui.setAttr(k, v);
+  set('Taler', Math.floor(state.taler));
+  set('Level', state.level);
+  set('XP', Math.floor(state.xp));
+  set('XPMax', xpForLevel(state.level));
+  set('Points', Math.max(0, freePoints(state)));
+  set('InventoryFull', state.inventory.length >= slots(state));
+  set('WorldName', w.hub ? 'Spawn' : w.name);
+  set('WorldPlanet', w.hub ? 'Treffpunkt' : p.name);
+  set('FindHint', w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“`);
+  set('Aura', state.aura || '');
+  set('OwnedAuras', (state.auras || []).join(','));
+  set('EggDiscount', effect(state, 'feilscher'));
+  for (const e of EGGS) set('Egg_' + e.id, state.eggs[e.id] || 0);
+  for (const b of BOOSTS) set('Boost_' + b.id, boostActive(state, b.id) ? Math.round(state.boosts[b.id] / 1000) : 0);
 }
 
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
@@ -91,42 +82,23 @@ function currentWeather() {
 function renderWeather() {
   const { w, ends } = currentWeather();
   const m = mutationForWeather(w.id);
-  const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
-  const el = $('weather');
-  el.style.setProperty('--weather', w.color);
-  el.innerHTML = `${icon('cloud', 14)} <strong>${w.name}</strong>${m ? ` · ${m.name}-Chance ${m.chance} %` : ''} <span>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span>`;
+  rui?.setWeather(w.id, ends);
   $('world').dataset.weather = w.id;
   worldBg.setWeather(w.id);
-  if (lastWeather && lastWeather !== w.id) announceWeather(w, m);
+  if (lastWeather && lastWeather !== w.id) announceWeather(w);
+  void m;
   lastWeather = w.id;
 }
 
-// Große Ansage beim Wetterwechsel
+// Große Ansage beim Wetterwechsel: WeatherFx.Announce wie im Spiel
 let lastWeather = null;
-function announceWeather(w, m) {
-  const el = $('weather-alert');
-  el.style.setProperty('--weather', w.color);
-  $('wa-name').textContent = w.name;
-  $('wa-text').textContent = w.text;
-  $('wa-mut').innerHTML = m ? `${m.chance} % Chance auf <strong>${m.name}</strong> · Wert ${fmtMultiplier(m)}` : 'Keine Mutationen';
-  el.hidden = false;
-  el.classList.remove('is-in');
-  void el.offsetWidth;
-  el.classList.add('is-in');
+function announceWeather(w) {
+  rui?.announce(w.id);
   // kleine Fanfare: drei Töne
   [0, 140, 280].forEach((d, i) => setTimeout(() => sound(0.8 + i * 0.25), d));
-  clearTimeout(announceWeather.t);
-  announceWeather.t = setTimeout(() => (el.hidden = true), 4500);
   if (openId === 'wetter') renderPanel();
 }
-$('weather').addEventListener('click', () => openPanel('wetter'));
-
-// Menü-Icons einsetzen
-document.querySelectorAll('.menu-btn').forEach((b) => {
-  b.querySelector('.menu-ico').innerHTML = icon(MENU_ICONS[b.dataset.panel] || 'book', 22);
-});
 $('panel-close').innerHTML = icon('close', 20);
-document.querySelector('.find-ico').innerHTML = icon('search', 20);
 
 // ── Fenster ──────────────────────────────────────────────────────────────────
 
@@ -183,13 +155,19 @@ function renderPanel() {
 }
 
 function openPanel(id, tab = null) {
+  if (id === 'shop') {
+    closePanel();
+    rui?.openShop(tab);
+    sound(0.95);
+    return;
+  }
   if (openId === id && !tab) return closePanel();
   lastFocus = document.activeElement;
   openId = id;
   openTab = tab ?? PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
   $('panel-layer').hidden = false;
   $('panel').dataset.panel = id;
-  document.querySelectorAll('.menu-btn[data-panel]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.panel === id)));
+  rui?.closeShop();
   renderPanel();
   $('panel-body').scrollTop = 0;
   $('panel-close').focus();
@@ -199,13 +177,9 @@ function openPanel(id, tab = null) {
 function closePanel() {
   openId = null;
   $('panel-layer').hidden = true;
-  document.querySelectorAll('.menu-btn[data-panel]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
   lastFocus?.focus?.();
 }
 
-document.querySelectorAll('.menu-btn[data-panel]').forEach((b) => b.addEventListener('click', () => openPanel(b.dataset.panel)));
-$('avatar').addEventListener('click', () => openPanel('skills'));
-$('points-chip').addEventListener('click', () => openPanel('skills'));
 $('panel-close').addEventListener('click', closePanel);
 $('panel-layer').addEventListener('click', (e) => e.target === $('panel-layer') && closePanel());
 
@@ -213,6 +187,11 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'escape' && openId) return closePanel();
+  if (key === 'escape') return rui?.closeShop();
+  if (key === 'b') {
+    e.preventDefault();
+    return rui?.shopOpen() ? rui.closeShop() : openPanel('shop');
+  }
   const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen', v: 'wetter' };
   if (map[key]) {
     e.preventDefault();
@@ -225,20 +204,9 @@ addEventListener('keydown', (e) => {
 
 // ── Funde ────────────────────────────────────────────────────────────────────
 
+// Hinweise zeigt die Roblox-Oberfläche (GameUI.Toast)
 function toast(text, color = '#d9b26a') {
-  const li = document.createElement('li');
-  li.className = 'feed-item feed-note';
-  li.style.setProperty('--c', color);
-  li.textContent = text;
-  pushFeed(li);
-}
-
-function pushFeed(li) {
-  const feed = $('feed');
-  feed.prepend(li);
-  while (feed.children.length > 4) feed.lastElementChild.remove();
-  setTimeout(() => li.classList.add('is-out'), 4200);
-  setTimeout(() => li.remove(), 4700);
+  rui?.toast(text, color);
 }
 
 function find() {
@@ -261,37 +229,12 @@ function find() {
   renderHud();
   sound(1 + tier.index * 0.05);
 
-  const li = document.createElement('li');
-  li.className = 'feed-item';
-  li.style.setProperty('--c', m ? m.color : tier.color);
   const value = coinValue({ id: r.id, mutation: r.mutation, bonus: r.bonus });
-  li.innerHTML = `<img src="${coinThumb(r.id, 48)}" alt="" width="36" height="36">
-    <span><strong>${coin.name}</strong>${n > 1 ? ' ×2' : ''}<br>
-    <small>${tier.name}${m ? ` · ${m.name} ${fmtMultiplier(m)}` : ''}${r.upgraded ? ' · Goldene Hand!' : ''} · ${fmtNumber(value, settings.shortNumbers)} Taler · +${r.xp} EP</small></span>`;
-  pushFeed(li);
-  burst(m ? m.color : tier.color, tier.index);
+  toast(`${coin.name}${n > 1 ? ' ×2' : ''} · ${tier.name}${m ? ` · ${m.name} ${fmtMultiplier(m)}` : ''}${r.upgraded ? ' · Goldene Hand!' : ''} · ${fmtNumber(value, true)} Taler · +${r.xp} EP`, m ? m.color : tier.color);
   if (openId) renderPanel();
   if (ups) levelUp(before, state.level);
 }
 
-$('find-btn').addEventListener('click', find);
-
-// Glitzer an der Fundstelle
-function burst(color, rank) {
-  if (settings.fewerParticles) return;
-  const world = $('world');
-  const n = 8 + rank * 3;
-  for (let k = 0; k < n; k++) {
-    const s = document.createElement('span');
-    s.className = 'spark';
-    s.style.setProperty('--c', color);
-    s.style.setProperty('--dx', `${(Math.random() - 0.5) * 220}px`);
-    s.style.setProperty('--dy', `${-60 - Math.random() * 160}px`);
-    s.style.left = `${45 + Math.random() * 10}%`;
-    world.append(s);
-    setTimeout(() => s.remove(), 1100);
-  }
-}
 
 // ── Level-Aufstieg ──
 function levelUp(from, to) {
@@ -374,12 +317,10 @@ const AREA_ACTIONS = {
 }
 
 function renderWorldName() {
-  const w = currentWorld(state), p = planetById[w.planet];
-  $('world-name').innerHTML = w.hub ? `<span>Treffpunkt</span> Spawn` : `<span>${p.name}</span> ${w.name}`;
-  $('world-name').style.setProperty('--c', w.accent);
-  $('find-hint').textContent = w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“`;
+  const w = currentWorld(state);
   $('world').dataset.world = w.id;
   $('spawn-bar').hidden = !w.hub;
+  renderHud();
 }
 
 // Kurzes Aufleuchten über der Welt (Teleport, Portal, Wiedergeburt)
@@ -408,6 +349,78 @@ function teleport(id) {
   toast(`Teleportiert nach ${w.name}`, w.accent);
 }
 
+// ── Roblox-Oberfläche ──
+// Käufe aus dem Shop (in Roblox prüft das der Server, hier state.js)
+function invoke(action, a, b) {
+  const pay = (price) => {
+    if (state.taler < price) return false;
+    state.taler = Math.round((state.taler - price) * 100) / 100;
+    return true;
+  };
+  const done = (text) => {
+    save();
+    renderHud();
+    sound(1.1);
+    return [true, text];
+  };
+  if (action === 'buyEgg') {
+    const e = EGGS.find((x) => x.id === a);
+    if (!e?.price || e.price.currency !== 'muenzen') return [false, 'Dieses Ei gibt es nicht für Taler'];
+    if (!pay(eggPrice(state, e.price.amount))) return [false, 'Zu wenig Taler'];
+    state.eggs[e.id] = (state.eggs[e.id] || 0) + 1;
+    return done(`${e.name} gekauft`);
+  }
+  if (action === 'buyBoost') {
+    const bo = BOOSTS.find((x) => x.id === a);
+    if (!bo) return [false, 'Diesen Boost gibt es nicht'];
+    if (!pay(bo.price)) return [false, 'Zu wenig Taler'];
+    state.boosts[bo.id] = Math.max(Date.now(), state.boosts[bo.id] || 0) + bo.minutes * 60000;
+    return done(`${bo.name} aktiv`);
+  }
+  if (action === 'aura') {
+    const au = auraById[b];
+    if (!au) return [false, 'Diese Aura gibt es nicht'];
+    state.auras ||= [];
+    if (a === 'unequip') {
+      state.aura = null;
+      return done('Aura abgelegt');
+    }
+    if (a === 'equip') {
+      if (!state.auras.includes(au.id)) return [false, 'Noch nicht gekauft'];
+      state.aura = au.id;
+      return done(`${au.name} angelegt: ${bonusText(au)}`);
+    }
+    if (state.auras.includes(au.id)) return [false, 'Schon gekauft'];
+    if (!pay(au.price)) return [false, 'Zu wenig Taler'];
+    state.auras.push(au.id);
+    state.aura = au.id;
+    return done(`${au.name} gekauft und angelegt`);
+  }
+  if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+  return [false, 'Unbekannt'];
+}
+function uiAction(name) {
+  if (name === 'find') return find();
+  if (name === 'index') return (location.href = '../muenzindex/');
+  if (PANELS[name]) openPanel(name);
+}
+let rui = null;
+try {
+  rui = await createRobloxUi($('game'), { onAction: uiAction, onInvoke: invoke });
+  if (location.hash === '#debug') window.rui = rui;
+} catch (e) {
+  console.error('Roblox-Oberfläche konnte nicht starten', e);
+}
+{
+  let last = performance.now();
+  const tick = (now) => {
+    rui?.frame(Math.min(0.1, (now - last) / 1000));
+    last = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 applyWorldSettings();
 worldBg.set(currentWorld(state));
 renderWorldName();
@@ -416,6 +429,7 @@ renderHud();
 if (location.hash === '#welten') openPanel('welten');
 // Link aus der Aura-Galerie: spiel/#shop-auras
 if (location.hash === '#shop-auras') openPanel('shop', 'auras');
+if (location.hash === '#shop') openPanel('shop');
 renderWeather();
 setInterval(() => {
   renderWeather();

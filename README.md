@@ -22,8 +22,8 @@ Roblox-Engine (`js/rbx/`):
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
-(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen und alle
-Haustiere. Die Spiel-Oberfläche folgt.
+(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
+Haustiere und von der Spiel-Oberfläche HUD, Menü und Shop. Die übrigen Fenster folgen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -272,11 +272,21 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
 
 ## Spiel-Oberfläche
 
-`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau:
+`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau. **HUD, Menü, Hinweise, Wetter-Ansage und Shop
+sind schon die echte Roblox-Oberfläche** (Etappe 1): das Modul `GameUI` aus dem Installer baut sie als
+ScreenGui, die Seite führt es aus und zeichnet die ScreenGuis über der Welt (`js/rbx/screen.js`, mit
+Roblox-Layout: UDim2, AnchorPoint, UIListLayout, UIGridLayout, UIPadding, UIScale, ScrollingFrame).
+Die übrigen Fenster (Welten, Skilltree, Inventar, Einstellungen, Wetter, Belohnungen) sind noch HTML
+und folgen in weiteren Etappen.
 
-- **HUD:** aktuelle Welt als 3D-Hintergrund, Level mit EP-Balken, freie Skillpunkte, Taler, Wetter
-  mit Countdown, aktive Boosts, Menü (Welten, Skills, Inventar, Shop, Index, Optionen) und
-  „Münze suchen“, das einen Fund in der aktuellen Welt simuliert.
+- **HUD:** Level-Abzeichen, EP-Balken, Skillpunkte, Welt, Taler, Wetter mit Countdown, aktive Boosts,
+  Menü (Welten, Skills, Inventar, Shop, Index, Optionen) und „Münze suchen“, das einen Fund simuliert.
+  Funde und Käufe erscheinen als Hinweise (`GameUI.Toast`).
+- **In Roblox:** `GameUI.Start()` läuft im LocalScript `CoinmasterUI`. Den Spielstand liest es aus
+  Attributen am Spieler (`Taler` oder `leaderstats.Taler`, `Level`, `XP`, `XPMax`, `Points`, `WorldName`,
+  `Aura`, `OwnedAuras`, `Egg_<id>`, `Boost_<id>`), das Wetter aus `ReplicatedStorage`. Käufe gehen an die
+  RemoteFunctions `ShopRemote` (Server-Skript `CoinmasterShop`: Eier, Boosts) und `AuraRemote`. Knöpfe für
+  Fenster, die es in Roblox noch nicht gibt, melden sich am BindableEvent `UIAction`.
 - **Welten:** Teleport-Menü je Planet, Portale und Wiedergeburt (siehe oben).
 - **Skilltree** (`spiel/js/skills.js`): Kern plus vier Äste mit je fünf Skills (Erkundung,
   Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
@@ -286,7 +296,7 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
   taucht mit einer Animation auf. Zoomen per +/−-Knöpfen, Mausrad, Tasten + − 0 oder zwei
   Fingern, verschieben durch Ziehen.
 - **Inventar:** Münzen sortieren, filtern, verkaufen; Eier; Haustiere folgen.
-- **Shop:** Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
+- **Shop** (Roblox-Oberfläche): Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
 - **Einstellungen** (`js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
   3D-Ansichten und „Animationen überspringen“ für Entdeckung und Schlüpfen.
 

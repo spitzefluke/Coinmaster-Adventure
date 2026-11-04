@@ -6,7 +6,7 @@
 <title>Spiel-Oberfläche · Coinmaster Adventure</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Fredoka+One&family=Montserrat:wght@500;600;700;900&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
 <link rel="stylesheet" href="../css/theme.css">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
@@ -24,7 +24,7 @@
     <div class="masthead-text">
       <p class="eyebrow">Spielvorschau</p>
       <h1>Spiel-Oberfläche</h1>
-      <p class="lede">HUD, Welten, Skilltree, Inventar, Shop und Einstellungen, so wie sie im Spiel aussehen sollen. Mit „Münze suchen“ simulierst du einen Fund in der Welt, damit du die Skills ausprobieren kannst.</p>
+      <p class="lede">HUD, Welten, Skilltree, Inventar, Shop und Einstellungen. HUD, Menü und Shop sind schon die echte Roblox-Oberfläche: dieselbe ScreenGui, die der Installer nach Studio bringt. Mit „Münze suchen“ simulierst du einen Fund in der Welt.</p>
     </div>
     <p class="keys" aria-label="Tastenkürzel"><kbd>W</kbd> Welten <kbd>K</kbd> Skills <kbd>I</kbd> Inventar <kbd>B</kbd> Shop <kbd>V</kbd> Wetter <kbd>O</kbd> Einstellungen <kbd>F</kbd> Suchen</p>
   </header>
@@ -42,42 +42,6 @@
     </div>
 
     <div class="hud">
-      <div class="hud-player">
-        <button id="avatar" class="avatar" type="button" aria-label="Skilltree öffnen">
-          <span class="avatar-coin" aria-hidden="true"></span>
-          <span id="level" class="level-badge">1</span>
-        </button>
-        <div class="player-info">
-          <p class="player-name">Abenteurer <span id="points-chip" class="points-chip" hidden></span></p>
-          <div class="xp-bar" role="progressbar" aria-label="Erfahrung bis zum nächsten Level" aria-valuemin="0" id="xp-bar"><span id="xp-fill"></span></div>
-          <p id="xp-text" class="xp-text"></p>
-        </div>
-      </div>
-
-      <p id="world-name" class="world-name"></p>
-
-      <div class="hud-right">
-        <p class="taler" aria-live="polite"><span class="taler-coin" aria-hidden="true"></span><span id="taler">0</span> <span class="taler-label">Taler</span></p>
-        <button id="weather" class="weather-pill" type="button" title="Wettervorhersage öffnen"></button>
-        <div id="boosts" class="boosts"></div>
-      </div>
-
-      <nav class="hud-menu" aria-label="Spielmenü">
-        <button class="menu-btn" type="button" data-panel="welten"><span class="menu-ico"></span><span class="menu-label">Welten</span><span class="menu-badge" hidden></span></button>
-        <button class="menu-btn" type="button" data-panel="skills"><span class="menu-ico"></span><span class="menu-label">Skills</span><span class="menu-badge" hidden></span></button>
-        <button class="menu-btn" type="button" data-panel="inventar"><span class="menu-ico"></span><span class="menu-label">Inventar</span><span class="menu-badge" hidden></span></button>
-        <button class="menu-btn" type="button" data-panel="shop"><span class="menu-ico"></span><span class="menu-label">Shop</span><span class="menu-badge" hidden></span></button>
-        <a class="menu-btn" href="../muenzindex/"><span class="menu-ico"></span><span class="menu-label">Index</span></a>
-        <button class="menu-btn" type="button" data-panel="einstellungen"><span class="menu-ico"></span><span class="menu-label">Optionen</span><span class="menu-badge" hidden></span></button>
-      </nav>
-
-      <div class="hud-bottom">
-        <button id="find-btn" class="find-btn" type="button"><span class="find-ico" aria-hidden="true"></span>Münze suchen</button>
-        <p id="find-hint" class="find-hint">Simuliert einen Fund in der Welt</p>
-      </div>
-
-      <ol id="feed" class="feed" aria-live="polite" aria-label="Letzte Funde"></ol>
-
       <nav id="spawn-bar" class="spawn-bar" aria-label="Spawn" hidden>
         <button type="button" data-spawn="belohnung"><span class="sb-ico" data-ico="gift"></span> Belohnung</button>
         <button type="button" data-spawn="gluecksrad"><span class="sb-ico" data-ico="sparkle"></span> Glücksrad</button>
@@ -85,13 +49,6 @@
         <button type="button" data-spawn="codes"><span class="sb-ico" data-ico="key"></span> Codes</button>
       </nav>
       <p id="area-tip" class="area-tip" hidden></p>
-    </div>
-
-    <div id="weather-alert" class="weather-alert" hidden aria-live="polite">
-      <p class="wa-eyebrow">Wetterwechsel</p>
-      <p id="wa-name" class="wa-name"></p>
-      <p id="wa-text" class="wa-text"></p>
-      <p id="wa-mut" class="wa-mut"></p>
     </div>
 
     <div id="levelup" class="levelup" hidden>

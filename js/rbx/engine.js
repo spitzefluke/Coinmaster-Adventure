@@ -55,7 +55,7 @@ const DEFAULTS = {
   TextLabel: () => ({ BackgroundColor3: WHITE, Text: 'Label', TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false }),
   ImageLabel: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE }),
   UICorner: () => ({ CornerRadius: [0, 8] }),
-  UIStroke: () => ({ Color: rgb(0, 0, 0), Thickness: 1, Transparency: 0, Enabled: true }),
+  UIStroke: () => ({ Color: rgb(0, 0, 0), Thickness: 1, Transparency: 0, Enabled: true, ApplyStrokeMode: 'Contextual', LineJoinMode: 'Round' }),
   UIGradient: () => ({ Color: CS(WHITE), Transparency: NS(0), Rotation: 0, Offset: [0, 0], Enabled: true }),
   SpecialMesh: () => ({ MeshType: 'Head', Scale: V3(1, 1, 1), Offset: V3() }),
   Decal: () => ({ Texture: '', Face: 'Front', Color3: WHITE, Transparency: 0 }),
@@ -66,12 +66,23 @@ const DEFAULTS = {
   Atmosphere: () => ({ Density: 0.3, Offset: 0.25, Color: rgb(199 / 255, 170 / 255, 107 / 255), Decay: rgb(92 / 255, 60 / 255, 13 / 255), Glare: 0, Haze: 0 }),
   ColorCorrectionEffect: () => ({ Enabled: true, Brightness: 0, Contrast: 0, Saturation: 0, TintColor: WHITE }),
   Model: () => ({ PrimaryPart: null, WorldPivot: new THREE.Matrix4() }),
+  ScreenGui: () => ({ Enabled: true, DisplayOrder: 0, IgnoreGuiInset: false, ResetOnSpawn: true, ZIndexBehavior: 'Sibling' }),
+  TextButton: () => ({ BackgroundColor3: WHITE, Text: 'Button', TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false, AutoButtonColor: true, Active: true }),
+  ImageButton: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE, Active: true, AutoButtonColor: true }),
+  ScrollingFrame: () => ({ ClipsDescendants: true, CanvasSize: [0, 0, 2, 0], CanvasPosition: [0, 0], ScrollBarThickness: 12, ScrollBarImageColor3: rgb(0, 0, 0), ScrollBarImageTransparency: 0, AutomaticCanvasSize: 'None', ScrollingDirection: 'XY', ScrollingEnabled: true }),
+  UIListLayout: () => ({ FillDirection: 'Vertical', Padding: [0, 0], HorizontalAlignment: 'Left', VerticalAlignment: 'Top', SortOrder: 'Name', Wraps: false }),
+  UIGridLayout: () => ({ CellSize: [0, 100, 0, 100], CellPadding: [0, 5, 0, 5], FillDirection: 'Horizontal', HorizontalAlignment: 'Left', VerticalAlignment: 'Top', SortOrder: 'Name' }),
+  UIPadding: () => ({ PaddingLeft: [0, 0], PaddingRight: [0, 0], PaddingTop: [0, 0], PaddingBottom: [0, 0] }),
+  UIAspectRatioConstraint: () => ({ AspectRatio: 1, DominantAxis: 'Width', AspectType: 'FitWithinMaxSize' }),
+  UIScale: () => ({ Scale: 1 }),
+  UISizeConstraint: () => ({ MinSize: [0, 0], MaxSize: [Infinity, Infinity] }),
 };
 const PART_CLASSES = new Set(['Part', 'WedgePart', 'SpawnLocation', 'MeshPart', 'TrussPart', 'Seat']);
 const GUI_CLASSES = new Set(['Frame', 'TextLabel', 'TextButton', 'ImageLabel', 'ImageButton', 'ScrollingFrame']);
+export { GUI_CLASSES };
 function defaultsFor(cls) {
   if (PART_CLASSES.has(cls)) return DEFAULTS.BasePart();
-  if (GUI_CLASSES.has(cls)) return { ...DEFAULTS.GuiObject(), ...(DEFAULTS[cls]?.() || {}) };
+  if (GUI_CLASSES.has(cls)) return { ...DEFAULTS.GuiObject(), ClipsDescendants: false, Active: false, LayoutOrder: 0, ...(DEFAULTS[cls]?.() || {}) };
   return DEFAULTS[cls]?.() || {};
 }
 

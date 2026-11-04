@@ -96,7 +96,9 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 @keyframes spark { to { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; } }
 
 /* ── HUD ── */
-.hud { position: absolute; inset: 0; z-index: 1; pointer-events: none; padding: 16px; }
+.hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; padding: 16px; }
+/* Roblox-Oberfläche (ScreenGui aus GameUI), gezeichnet über der Welt */
+.rbx-ui { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .hud-player { position: absolute; top: 16px; left: 16px; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); }
 .avatar {
@@ -443,7 +445,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 .wx-mut strong { color: var(--weather); }
 
 /* ── Spawn ── */
-.spawn-bar { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: #0f0d14b8; border: 1px solid #ffffff1f; }
+.spawn-bar { position: absolute; top: 126px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: #0f0d14b8; border: 1px solid #ffffff1f; }
 .spawn-bar button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 0.75rem/1 var(--font-body); cursor: pointer; }
 .spawn-bar button:hover { background: #ffffff1a; color: #ffe7a8; }
 .sb-ico { display: inline-grid; color: #ffd76a; }
