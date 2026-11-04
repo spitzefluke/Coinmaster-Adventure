@@ -7,17 +7,20 @@ import { createScreen } from '../../js/rbx/screen.js';
 import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI } from '../../roblox/js/uiLuau.js';
+import { skillDataSource, rewardDataSource } from '../../roblox/js/uiMoreLuau.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
-import { BOOSTS, ROBUX } from './state.js';
+import { BOOSTS, ROBUX, pointsForLevel } from './state.js';
+import { BRANCHES, SKILLS } from './skills.js';
+import { DAILY, WHEEL, GROUP_BONUS, BOARDS } from './rewards.js';
 import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 
 
 const q = (s) => JSON.stringify(String(s));
 
-export async function createRobloxUi(host, { onAction, onInvoke, devTools = false }) {
+export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devTools = false, codeHint = '' }) {
   const canvas = document.createElement('canvas');
   canvas.className = 'rbx-ui';
   canvas.setAttribute('aria-hidden', 'true');
@@ -29,10 +32,14 @@ export async function createRobloxUi(host, { onAction, onInvoke, devTools = fals
   lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
   lua.call('__addModule', 'AuraData', auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }));
   lua.call('__addModule', 'ShopData', shopDataSource({ BOOSTS, ROBUX }));
+  lua.call('__addModule', 'SkillData', skillDataSource({ BRANCHES, SKILLS, pointsForLevel }));
+  lua.call('__addModule', 'RewardData', rewardDataSource({ DAILY, WHEEL, GROUP_BONUS, BOARDS }));
   lua.call('__addModule', 'WeatherFx', WEATHER_FX);
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
+  // Daten für Fenster (Vorhersage, Rangliste) als JSON; in Roblox kämen sie vom Server
+  lua.registerFn('__uiQuery', (kind, arg) => [JSON.stringify(onQuery(kind, arg) ?? null)]);
   lua.run(`
     local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
     __GameUI = require(root.GameUI)
@@ -41,6 +48,8 @@ export async function createRobloxUi(host, { onAction, onInvoke, devTools = fals
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
       DevTools = ${devTools ? 'true' : 'false'},
+      CodeHint = ${codeHint ? q(codeHint) : 'nil'},
+      Query = function(kind, arg) return game:GetService("HttpService"):JSONDecode(__uiQuery(kind, arg or "")) end,
     })
   `, 'Spiel-Oberfläche');
   const playerGui = lua.get(9);

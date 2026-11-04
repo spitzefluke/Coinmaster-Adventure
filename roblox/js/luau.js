@@ -6,6 +6,7 @@
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
+import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1224,7 +1225,9 @@ export function moduleSources(data) {
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
-    ...(data.BOOSTS && data.AURAS ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'GameUI', source: GAME_UI }] : []),
+    ...(data.BOOSTS && data.AURAS && data.SKILLS
+      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'GameUI', source: GAME_UI }]
+      : []),
   ];
 }
 
@@ -1251,8 +1254,9 @@ export function installerSource(data) {
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
---   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü, Shop, Inventar, Welten) aus GameUI
---   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)${data.AURAS ? `
+--   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
+--   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
+--   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
 --   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
@@ -1379,7 +1383,8 @@ end
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
-${data.BOOSTS && data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
+${data.BOOSTS && data.AURAS && data.SKILLS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterPlayer", ${longString(playerServerSource(data))})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterUI", ${longString(UI_CLIENT)})
 ` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterAuraClient", ${longString(AURA_CLIENT)})
