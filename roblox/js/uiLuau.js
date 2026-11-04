@@ -726,21 +726,18 @@ local function fillCoins(w, entries)
 		if e.Index == ui.invSel then sel = e end
 	end
 	if sel then
-		coinDisc(side, sel, 104, UDim2.new(0.5, 0, 0, 0))
-		pill(side, sel.Tier.Name, sel.Tier.Color, 112)
-		label({ Size = UDim2.new(1, 0, 0, 26), Position = UDim2.new(0, 0, 0, 138), Text = sel.Coin.Name, Font = FONT, TextScaled = true, Parent = side })
-		local y = 168
+		coinDisc(side, sel, 84, UDim2.new(0.5, 0, 0, 0))
+		pill(side, sel.Tier.Name, sel.Tier.Color, 90)
+		label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = sel.Coin.Name, Font = FONT, TextScaled = true, Parent = side })
+		local y = 144
 		if sel.Mutation then
 			pill(side, sel.Mutation.Name .. " ×" .. tostring(sel.Mutation.Multiplier):gsub("%.", ","), sel.Mutation.Color, y)
 			y = y + 28
 		end
-		label({ Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, y), Text = sel.Coin.Text, TextSize = 12, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 38), Text = "Wert: " .. GameUI.Format(sel.Value) .. " Taler", TextSize = 14, TextColor3 = C.goldHi, Parent = side })
-		if sel.At > 0 then
-			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, y + 58), Text = "Gefunden " .. os.date("%d.%m.%y, %H:%M", sel.At), TextSize = 12, TextColor3 = C.muted, Font = Enum.Font.Code, Parent = side })
-		end
+		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 0, y), Text = sel.Coin.Text, TextSize = 12, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = "Wert: " .. GameUI.Format(sel.Value) .. " Taler" .. (sel.At > 0 and ("  ·  " .. os.date("%d.%m.%y", sel.At)) or ""), TextSize = 13, TextColor3 = C.goldHi, Parent = side })
 		local b = actionButton(side, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell({ sel.Index }, w) end)
-		b.Position = UDim2.new(0, 0, 1, -112)
+		b.Position = UDim2.new(0, 0, 1, -110)
 	else
 		label({ Size = UDim2.new(1, 0, 0, 50), Position = UDim2.new(0, 0, 0, 30), Text = "🪙", TextSize = 40, Font = Enum.Font.SourceSans, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0, 84), Text = "Wähle eine Münze, um sie dir anzusehen oder zu verkaufen.", TextSize = 14, TextWrapped = true, TextColor3 = C.muted, Parent = side })
