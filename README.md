@@ -293,10 +293,10 @@ Spielstand als Attribute, Aktionen und Daten über Rückrufe.
   (`"kern:1,beutel:2"`), `DailyDay`, `DailyStreak`, `WheelDay`, `Group`, `Codes` und `Set_<Einstellung>`.
   Die Codes stehen nur im Server-Skript, nicht im Spiel. Die Wettervorhersage rechnet der Client aus
   der Uhrzeit (`Gacha.CurrentWeather`), die Ranglisten zeigen in Roblox die Spieler auf dem Server.
-- **Inventar** (Taste I): Münzen sortieren (neu, Wert, selten, Name), nach Stufe filtern, nur Mutationen,
-  eine Münze ansehen und verkaufen oder alle normalen auf einmal; Eier mit Anzahl. Die Münzen stehen in
-  Roblox als JSON im Attribut `Coins` (`{ i = Münz-Id, m = Mutation, b = Fundbonus, t = Fundzeit }`);
-  der Wert kommt aus `CoinData.EntryValue`.
+- **Inventar** (Taste I): Münzen sortieren (neu, Wert, selten, Name), nach Stufe filtern, nur Mutationen.
+  Gleiche Münzen mit gleicher Mutation liegen als Stapel (×3); man verkauft eine, den ganzen Stapel oder
+  alle normalen auf einmal. Eier mit Anzahl. In Roblox hält der Server die Stapel im Spielstand und schickt
+  sie über das RemoteEvent `InventoryEvent`: beim Start alles, danach nur geänderte Stapel.
 - **Welten** (Taste W): Teleport-Menü je Planet mit Welt-Karten (kaufen, teleportieren), Portal-Banner
   mit Bedingungen und Wiedergeburt (siehe oben). Die Regeln stehen einmal in `WorldData` (`CanBuy`,
   `PortalChecks`, `CanOpenPortal`) und gelten für Server und Oberfläche. Der Teleport setzt in Roblox
@@ -323,6 +323,24 @@ Spielstand neu beginnen“.
 
 Tastenkürzel: W Welten, K Skills, I Inventar, B Shop, V Wetter, O Einstellungen, F Münze suchen,
 Esc schließt.
+
+## Speichern in Roblox
+
+Das Modul `PlayerData` (ServerScriptService > CoinmasterServer, gestartet vom Skript `CoinmasterData`)
+lädt und speichert den Spielstand im DataStore `CoinmasterAdventure` (ein Profil pro Spieler):
+
+- **Session-Lock:** Nur ein Server hält ein Profil. Ein zweiter wartet, bis der erste freigibt; ein
+  Lock von einem abgestürzten Server gilt nach 15 Minuten als frei.
+- **Sicher speichern:** jeder Zugriff mit bis zu drei Wiederholungen, Autosave alle 2 Minuten, beim
+  Verlassen und beim Herunterfahren (`BindToClose`).
+- **Versionsnummer:** `PlayerData.Migrate` bringt ältere Profile auf den neuesten Stand.
+- **Was gespeichert wird:** `leaderstats.Taler`, die Münz-Stapel und die Attribute (Level, EP, Welten,
+  Portale, Wiedergeburten, Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen).
+- Level-Aufstieg, Skillpunkte, Inventarplätze und Eier-Rabatt rechnet der Server daraus.
+
+In Studio speichert es nur mit „Enable Studio Access to API Services“ (Game Settings > Security);
+ohne läuft das Spiel normal, nur ohne Speichern. Getestet ist die Speicher-Logik mit einem Ersatz-DataStore
+(Laden, Lock, zweiter Server, alter Lock, Fehler mit Wiederholung, Migration, Stapel).
 
 ## Nach Roblox Studio übertragen
 
