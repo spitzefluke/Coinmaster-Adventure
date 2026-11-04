@@ -1,6 +1,8 @@
-// Spiel-Oberfläche für Roblox (Etappe 1): HUD, Menüleiste, Hinweise und Shop als ScreenGui.
+// Spiel-Oberfläche für Roblox: HUD, Menüleiste, Hinweise und alle Fenster (Shop, Inventar, Welten, Skilltree,
+// Einstellungen, Wetter, Belohnungen, Codes, Ranglisten) als ScreenGui.
 // GameUI baut alles aus Frames, Buttons und Layouts; die Webseite führt dasselbe Modul aus und zeigt es 1:1.
 // Reiner Text wie luau.js, damit es auch in Node prüfbar ist.
+import { GAME_UI_MORE } from './uiMoreLuau.js';
 
 const str = (s) => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
 const num = (n) => String(Math.round(n * 1000) / 1000);
@@ -46,7 +48,11 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
 --                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
 -- options.OnAction(name, arg)               Menü-Knöpfe für Fenster, die es hier noch nicht gibt
+-- options.Query(kind, arg) → table          Daten: forecast (Wettervorhersage), board (Rangliste)
 -- options.DevTools                          zeigt Test-Knöpfe (nur Vorschau, z. B. „+ Test-Taler“)
+-- Skills (Attribut Skills), Belohnungen (DailyDay, DailyStreak, WheelDay, Group, Codes) und
+-- Einstellungen (Set_sfx, Set_music, Set_quality, Set_fewerParticles, Set_skipAnimations, Set_shortNumbers)
+-- gehen über die RemoteFunction PlayerRemote (Server-Skript CoinmasterPlayer).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -187,14 +193,14 @@ local function buildHud(playerGui)
 		gradient(C.goldHi, Color3.fromRGB(176, 128, 52)),
 	})
 	ui.levelText = label({ Size = UDim2.new(1, 0, 1, 0), Text = "1", Font = FONT, TextSize = 30, TextColor3 = Color3.fromRGB(42, 30, 10), Parent = level })
-	pressable(level, function() options.OnAction("skills") end)
+	pressable(level, function() GameUI.Toggle("skills") end)
 	local info = new("Frame", { Name = "Spieler", Size = UDim2.new(0, 250, 0, 58), Position = UDim2.new(0, 72, 0, 11), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Parent = gui }, {
 		corner(UDim.new(0, 14)),
 		new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }),
 	})
 	ui.name = label({ Size = UDim2.new(1, 0, 0, 20), Text = player.DisplayName, TextXAlignment = Enum.TextXAlignment.Left, TextSize = 17, Font = FONT, Parent = info })
 	ui.points = new("TextButton", { Name = "Skillpunkte", Size = UDim2.new(0, 112, 0, 20), Position = UDim2.new(1, -112, 0, 0), BackgroundColor3 = C.green, Text = "+1 Skillpunkt", Font = BODY, TextSize = 12, TextColor3 = Color3.fromRGB(10, 40, 20), Visible = false, Parent = info }, { corner(UDim.new(1, 0)) })
-	pressable(ui.points, function() options.OnAction("skills") end)
+	pressable(ui.points, function() GameUI.Toggle("skills") end)
 	local bar = new("Frame", { Name = "EP", Size = UDim2.new(1, 0, 0, 10), Position = UDim2.new(0, 0, 0, 24), BackgroundColor3 = C.bg2, Parent = info }, { corner(UDim.new(1, 0)) })
 	ui.xpFill = new("Frame", { Size = UDim2.new(0.2, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(160, 120, 255), Parent = bar }, { corner(UDim.new(1, 0)), gradient(Color3.fromRGB(196, 160, 255), Color3.fromRGB(120, 80, 230)) })
 	ui.xpText = label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 36), Text = "", TextSize = 11, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Code, Parent = info })
@@ -221,7 +227,7 @@ local function buildHud(playerGui)
 	ui.weatherStroke = stroke(C.blue, 2)
 	ui.weatherStroke.Parent = ui.weather
 	ui.weatherText = label({ Size = UDim2.new(1, -20, 1, 0), Position = UDim2.new(0, 10, 0, 0), Text = "", TextSize = 14, Parent = ui.weather })
-	pressable(ui.weather, function() options.OnAction("wetter") end)
+	pressable(ui.weather, function() GameUI.Toggle("wetter") end)
 	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 100), BackgroundTransparency = 1, LayoutOrder = 3, Parent = right }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right }),
 	})
@@ -245,7 +251,7 @@ local function buildHud(playerGui)
 		local badge = new("TextLabel", { Name = "Zahl", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -14, 0, -8), BackgroundColor3 = C.red, Text = "", Font = BODY, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 2, Parent = b }, { corner(UDim.new(1, 0)), stroke(C.bg, 2) })
 		ui.badges[e[1]] = badge
 		pressable(b, function()
-			if e[1] == "shop" or e[1] == "inventar" or e[1] == "welten" then
+			if windows[e[1]] then
 				GameUI.Toggle(e[1])
 			else
 				options.OnAction(e[1])
@@ -443,7 +449,7 @@ local function clear(frame)
 end
 
 local function buildWindow(playerGui, key, icon, title, tabs, fill)
-	local w = { key = key, tabs = tabs, fill = fill, buttons = {}, tab = tabs[1][1] }
+	local w = { key = key, tabs = tabs, fill = fill, buttons = {}, tab = tabs[1] and tabs[1][1] }
 	local gui = new("ScreenGui", { Name = "Coinmaster" .. title, ResetOnSpawn = false, DisplayOrder = 5, Enabled = false, Parent = playerGui })
 	local dim = new("TextButton", { Name = "Abdunkeln", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, Parent = gui })
 	dim.Activated:Connect(function() GameUI.Close(key) end)
@@ -480,7 +486,9 @@ local function buildWindow(playerGui, key, icon, title, tabs, fill)
 			GameUI.Refresh(key)
 		end)
 	end
-	w.body = new("Frame", { Name = "Inhalt", Size = UDim2.new(1, -40, 1, -150), Position = UDim2.new(0, 20, 0, 140), BackgroundTransparency = 1, Parent = win })
+	-- ohne Reiter beginnt der Inhalt direkt unter dem Kopf
+	local top = #tabs > 0 and 140 or 92
+	w.body = new("Frame", { Name = "Inhalt", Size = UDim2.new(1, -40, 1, -top - 10), Position = UDim2.new(0, 20, 0, top), BackgroundTransparency = 1, Parent = win })
 	w.gui = gui
 	w.keep = {}
 	windows[key] = w
@@ -498,7 +506,7 @@ end
 
 function GameUI.Refresh(key)
 	local w = windows[key]
-	if not w or not w.gui.Enabled then return end
+	if not w or not w.gui.Enabled or w.busy then return end
 	for _, t in ipairs(w.tabs) do
 		local on = t[1] == w.tab
 		w.buttons[t[1]].BackgroundColor3 = on and C.gold or C.bg2
@@ -1044,16 +1052,39 @@ local function buildWorlds(playerGui)
 	end
 end
 function GameUI.OpenWorlds(tab) GameUI.Open("welten", tab) end
+${GAME_UI_MORE}
 -- Standard-Verbindungen in Roblox: Käufe über RemoteFunctions, fremde Fenster als BindableEvent
+local PLAYER_ACTIONS = { learn = true, resetSkills = true, daily = true, spin = true, group = true, code = true, setting = true, resetSettings = true }
 local function defaultInvoke(action, a, b)
 	if action == "aura" then
 		local remote = root:FindFirstChild("AuraRemote")
 		if remote then return remote:InvokeServer(a, b) end
 		return false, "AuraRemote fehlt"
 	end
+	if PLAYER_ACTIONS[action] then
+		local remote = root:FindFirstChild("PlayerRemote")
+		if remote then return remote:InvokeServer(action, a, b) end
+		return false, "PlayerRemote fehlt"
+	end
 	local remote = root:FindFirstChild("ShopRemote")
 	if not remote then return false, "ShopRemote fehlt" end
 	return remote:InvokeServer(action, a, b)
+end
+-- Daten für Fenster: Wettervorhersage (aus der Uhrzeit, wie der Server), Ranglisten vom Server
+local function defaultQuery(kind, arg)
+	if kind == "forecast" then
+		local Gacha = require(root:WaitForChild("Gacha"))
+		local out, d, t = {}, MutationData.WeatherDuration, os.time()
+		for i = 0, 8 do
+			local w, left = Gacha.CurrentWeather(t + i * d)
+			local ends = t + i * d + left
+			table.insert(out, { Id = w.Id, Starts = ends - d, Ends = ends })
+		end
+		return out
+	end
+	local remote = root:FindFirstChild("PlayerRemote")
+	if remote then return remote:InvokeServer(kind, arg) end
+	return nil
 end
 local function defaultAction(name, arg)
 	local event = root:FindFirstChild("UIAction")
@@ -1067,11 +1098,14 @@ function GameUI.Start(opts)
 	options.Invoke = opts.Invoke or defaultInvoke
 	options.OnAction = opts.OnAction or defaultAction
 	options.DevTools = opts.DevTools == true
+	options.Query = opts.Query or defaultQuery
+	options.CodeHint = opts.CodeHint
 	local playerGui = player:WaitForChild("PlayerGui")
 	buildHud(playerGui)
 	buildShop(playerGui)
 	buildInventory(playerGui)
 	buildWorlds(playerGui)
+	buildMore(playerGui)
 	refreshHud()
 	-- Änderungen am Spielstand: HUD und offenen Shop neu füllen
 	local pending = false
@@ -1098,6 +1132,9 @@ function GameUI.Start(opts)
 		while true do
 			task.wait(1)
 			refreshHud()
+			-- Countdowns in offenen Fenstern
+			if windows.belohnung and windows.belohnung.tab == "taeglich" then GameUI.Refresh("belohnung") end
+			GameUI.Refresh("wetter")
 		end
 	end)
 	return GameUI
