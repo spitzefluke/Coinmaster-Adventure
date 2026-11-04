@@ -10,6 +10,7 @@ import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
+import { PETS } from '../../haustiere/js/pets.js';
 import { moduleSources, installerSource } from './luau.js';
 import { makeZip } from './zip.js';
 
@@ -78,7 +79,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS };
 let built = null;
 
 function unlock() {
@@ -99,6 +100,7 @@ function build() {
     ['Wetter', WEATHER.length],
     ['Eier', EGGS.length],
     ['Auras', AURAS.length],
+    ['Haustiere', PETS.length],
     ['Welten', WORLDS.filter((w) => !w.soon && !w.hub).length],
     ['Module', modules.length],
   ]
@@ -158,6 +160,28 @@ ${COINS.map((c, i) => `${String(i + 1).padStart(2, '0')}  ${c.name}`).join('\n')
   files.push({ name: 'motive/LIESMICH.txt', data: new TextEncoder().encode(readme) });
   download(makeZip(files), 'CoinmasterAdventure-Motive.zip');
   status.textContent = `${COINS.length} Motive im ZIP`;
+  btn.disabled = false;
+});
+
+// Haustiere als Roblox-Modelle (.rbxmx)
+document.getElementById('download-pets').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const status = document.getElementById('pet-status');
+  btn.disabled = true;
+  try {
+    const [{ petToParts }, { petsFolder, rbxmxFile }] = await Promise.all([import('./petParts.js'), import('./rbxmx.js')]);
+    const list = [];
+    for (const [i, pet] of PETS.entries()) {
+      status.textContent = `Baue ${pet.name} (${i + 1} von ${PETS.length}) …`;
+      await new Promise((r) => setTimeout(r, 0));
+      list.push(petToParts(pet));
+    }
+    download(new Blob([rbxmxFile([petsFolder(list)])], { type: 'application/xml' }), 'Haustiere.rbxmx');
+    status.textContent = `${PETS.length} Haustiere, ${list.reduce((n, l) => n + l.parts.length, 0).toLocaleString('de-DE')} Teile`;
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Export fehlgeschlagen';
+  }
   btn.disabled = false;
 });
 

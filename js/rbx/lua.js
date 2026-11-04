@@ -43,13 +43,23 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
   }
   const get = (id) => (id === 1 ? world?.workspace : id === 2 ? world?.lighting : insts.get(id));
 
-  const str = (i) => lua.lua_tojsstring(L, i);
-  const num = (i) => lua.lua_tonumber(L, i);
+  let S = L;
+  const str = (i) => lua.lua_tojsstring(S, i);
+  const num = (i) => lua.lua_tonumber(S, i);
+  // JS-Funktionen bekommen den Lua-Zustand, der sie aufruft (auch Koroutinen aus task.spawn)
   const reg = (name, fn) => {
-    lua.lua_pushjsfunction(L, fn);
+    lua.lua_pushjsfunction(L, (thread) => {
+      const prev = S;
+      S = thread;
+      try {
+        return fn();
+      } finally {
+        S = prev;
+      }
+    });
     lua.lua_setglobal(L, to_luastring(name));
   };
-  const pushStr = (s) => lua.lua_pushstring(L, to_luastring(String(s)));
+  const pushStr = (s) => lua.lua_pushstring(S, to_luastring(String(s)));
 
   // Lua → Engine-Wert
   function value(kind, base) {
@@ -57,7 +67,7 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     switch (kind) {
       case 'n': return n(0);
       case 's': return str(base);
-      case 'b': return lua.lua_toboolean(L, base);
+      case 'b': return lua.lua_toboolean(S, base);
       case 'nil': return null;
       case 'V3': return new THREE.Vector3(n(0), n(1), n(2));
       case 'CF': return cfToMatrix(Array.from({ length: 12 }, (_, k) => n(k)));
@@ -69,12 +79,12 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
       case 'E': return str(base);
       case 'I': return get(n(0)) || null;
       case 'NS': {
-        const top = lua.lua_gettop(L), out = [];
+        const top = lua.lua_gettop(S), out = [];
         for (let i = base; i + 1 <= top; i += 2) out.push([num(i), num(i + 1)]);
         return out;
       }
       case 'CS': {
-        const top = lua.lua_gettop(L), out = [];
+        const top = lua.lua_gettop(S), out = [];
         for (let i = base; i + 3 <= top; i += 4) out.push([num(i), rgb(num(i + 1), num(i + 2), num(i + 3))]);
         return out;
       }
@@ -87,34 +97,34 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
       pushStr('none');
       return 1;
     }
-    if (typeof v === 'number') return pushStr('n'), lua.lua_pushnumber(L, v), 2;
+    if (typeof v === 'number') return pushStr('n'), lua.lua_pushnumber(S, v), 2;
     if (typeof v === 'string') return pushStr('s'), pushStr(v), 2;
-    if (typeof v === 'boolean') return pushStr('b'), lua.lua_pushboolean(L, v), 2;
-    if (v.isVector3) return pushStr('V3'), lua.lua_pushnumber(L, v.x), lua.lua_pushnumber(L, v.y), lua.lua_pushnumber(L, v.z), 4;
+    if (typeof v === 'boolean') return pushStr('b'), lua.lua_pushboolean(S, v), 2;
+    if (v.isVector3) return pushStr('V3'), lua.lua_pushnumber(S, v.x), lua.lua_pushnumber(S, v.y), lua.lua_pushnumber(S, v.z), 4;
     if (v.isMatrix4) {
       const e = v.elements;
       pushStr('CF');
-      for (const k of [12, 13, 14, 0, 4, 8, 1, 5, 9, 2, 6, 10]) lua.lua_pushnumber(L, e[k]);
+      for (const k of [12, 13, 14, 0, 4, 8, 1, 5, 9, 2, 6, 10]) lua.lua_pushnumber(S, e[k]);
       return 13;
     }
-    if (v.__rbx === 'Color3') return pushStr('C3'), v.srgb.forEach((c) => lua.lua_pushnumber(L, c)), 4;
+    if (v.__rbx === 'Color3') return pushStr('C3'), v.srgb.forEach((c) => lua.lua_pushnumber(S, c)), 4;
     if (v instanceof Inst) {
-      for (const [id, i] of insts) if (i === v) return pushStr('I'), lua.lua_pushnumber(L, id), 2;
+      for (const [id, i] of insts) if (i === v) return pushStr('I'), lua.lua_pushnumber(S, id), 2;
       return pushStr('none'), 1;
     }
     if (Array.isArray(v)) {
       if (Array.isArray(v[0])) {
         if (v[0][1] && v[0][1].__rbx === 'Color3') {
           pushStr('CS');
-          for (const [t, c] of v) [t, ...c.srgb].forEach((x) => lua.lua_pushnumber(L, x));
+          for (const [t, c] of v) [t, ...c.srgb].forEach((x) => lua.lua_pushnumber(S, x));
           return 1 + v.length * 4;
         }
         pushStr('NS');
-        for (const [t, x] of v) lua.lua_pushnumber(L, t), lua.lua_pushnumber(L, x);
+        for (const [t, x] of v) lua.lua_pushnumber(S, t), lua.lua_pushnumber(S, x);
         return 1 + v.length * 2;
       }
       pushStr(v.length === 4 ? 'U2' : 'NR');
-      v.forEach((x) => lua.lua_pushnumber(L, x));
+      v.forEach((x) => lua.lua_pushnumber(S, x));
       return 1 + v.length;
     }
     pushStr('none');
@@ -127,7 +137,7 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     const i = new Inst(cls);
     const id = nextId++;
     insts.set(id, i);
-    lua.lua_pushnumber(L, id);
+    lua.lua_pushnumber(S, id);
     return 1;
   });
   reg('__js_set', () => {
@@ -172,13 +182,13 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     return 0;
   });
   reg('__js_bulk', () => {
-    const n = lua.lua_rawlen(L, 1);
+    const n = lua.lua_rawlen(S, 1);
     const a = new Array(13);
     for (let i = 1; i <= n; i += 13) {
       for (let k = 0; k < 13; k++) {
-        lua.lua_rawgeti(L, 1, i + k);
-        a[k] = lua.lua_tonumber(L, -1);
-        lua.lua_pop(L, 1);
+        lua.lua_rawgeti(S, 1, i + k);
+        a[k] = lua.lua_tonumber(S, -1);
+        lua.lua_pop(S, 1);
       }
       const inst = get(a[0]);
       if (!inst) continue;
@@ -225,6 +235,15 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
         return false;
       }
       return true;
+    },
+    // Eigene JS-Funktion für Lua (Argumente als Zahlen oder Texte)
+    register(name, fn) {
+      reg(name, () => {
+        const n = lua.lua_gettop(S), args = [];
+        for (let i = 1; i <= n; i++) args.push(lua.lua_type(S, i) === lua.LUA_TNUMBER ? num(i) : str(i));
+        fn(...args);
+        return 0;
+      });
     },
     frame(dt) {
       return this.call('__frame', dt);

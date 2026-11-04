@@ -56,7 +56,7 @@ const prop = {
   content: (name, url) => `<Content name="${name}"><url>${esc(url)}</url></Content>`,
 };
 
-const item = (cls, props, children = '') => `<Item class="${cls}" referent="${referent()}"><Properties>${props.join('')}</Properties>${children}</Item>`;
+const item = (cls, props, children = '', ref = referent()) => `<Item class="${cls}" referent="${ref}"><Properties>${props.join('')}</Properties>${children}</Item>`;
 
 function part(p, offset = [0, 0, 0], extraChildren = '') {
   const size = p.size.map((v) => Math.max(0.05, v));
@@ -203,6 +203,38 @@ export function worldModel(w, offset = [0, 0, 0]) {
       folder('Himmel', list(sky)) +
       folder('Effekte', lightParts + fx) +
       (lighting ? lightFolder(lighting) : ''),
+  );
+}
+
+// Haustiere: Ordner „Haustiere“ mit einem Model je Tier (Name = Id). Jedes Model hat eine unsichtbare
+// PrimaryPart „Root“, die Füße stehen auf y = 0. Gehört nach ReplicatedStorage > CoinmasterAdventure.
+export function petsFolder(list) {
+  return folder(
+    'Haustiere',
+    list
+      .map(({ pet, parts, height }) => {
+        const rootRef = referent();
+        const root = item(
+          'Part',
+          [
+            prop.string('Name', 'Root'),
+            prop.bool('Anchored', true),
+            prop.bool('CanCollide', false),
+            prop.bool('CastShadow', false),
+            prop.cframe('CFrame', [0, height / 2, 0], ID.x),
+            prop.color3uint8('Color3uint8', '#ffffff'),
+            prop.token('Material', MATERIAL.SmoothPlastic),
+            prop.float('Transparency', 1),
+            prop.token('shape', SHAPE.Block),
+            prop.vec3('size', [2, height, 2]),
+          ],
+          '',
+          rootRef,
+        );
+        const name = value('StringValue', 'Anzeigename', pet.name);
+        return item('Model', [prop.string('Name', pet.id), `<Ref name="PrimaryPart">${rootRef}</Ref>`], root + parts.map((p) => part(p)).join('') + name);
+      })
+      .join(''),
   );
 }
 

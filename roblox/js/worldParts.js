@@ -72,7 +72,7 @@ function cylLocal(a, b, r) {
   return mul(T(mid.x, mid.y, mid.z), new THREE.Matrix4().makeRotationFromQuaternion(q), S(len, 2 * r, 2 * r));
 }
 
-function convertMesh(out, mesh, world) {
+export function convertMesh(out, mesh, world) {
   const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const r = mesh.userData.rbx || {};
   const ex = {};
@@ -85,8 +85,15 @@ function convertMesh(out, mesh, world) {
   if (r.className) ex.className = r.className; // z. B. SpawnLocation
   if (r.text) Object.assign(ex, { text: r.text, textColor: r.textColor || '#ffffff' }); // Schild mit SurfaceGui
   switch (type) {
-    case 'BoxGeometry':
+    case 'BoxGeometry': {
+      // verformte Quader (z. B. abgerundete Blöcke der Haustiere): Maße aus der Bounding-Box
+      const bb = g.boundingBox;
+      if (bb && Math.abs(bb.max.x - bb.min.x - P.width) > 1e-3) {
+        const c = bb.getCenter(V(0, 0, 0)), sz = bb.getSize(V(0, 0, 0));
+        return emit(out, mesh, 'Block', mul(T(c.x, c.y, c.z), S(sz.x, sz.y, sz.z)), lk, ex);
+      }
       return emit(out, mesh, 'Block', S(P.width, P.height, P.depth), lk, ex);
+    }
     case 'CylinderGeometry': {
       const rt = P.radiusTop, rb = P.radiusBottom, h = P.height, r = Math.max(rt, rb);
       if (P.radialSegments <= 4) return emit(out, mesh, 'Block', S(r * 1.5, h, r * 1.2), lk, ex); // Prisma (Dach)

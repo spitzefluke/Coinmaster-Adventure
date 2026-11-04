@@ -4,6 +4,7 @@
 // Alles ist reiner Text – keine Abhängigkeit vom Browser, damit es auch in Node prüfbar ist.
 
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
+import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -602,7 +603,7 @@ end
 return MutationFx
 `;
 
-const EGG_BUILDER = `${HEADER('Eier bauen')}
+export const EGG_BUILDER = `${HEADER('Eier bauen')}
 -- EggBuilder.Build(egg) baut ein Ei auf einem Sockel als Model.
 
 local EggData = require(script.Parent.EggData)
@@ -626,7 +627,8 @@ function EggBuilder.Build(egg)
 	model.Name = egg.Name
 
 	local pedestal = part("Part", { Name = "Pedestal", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 4.4, 4.4), Color = Color3.fromRGB(42, 37, 50), Material = Enum.Material.Slate, CFrame = CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)) }, model)
-	part("Part", { Name = "PedestalRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 4.5, 4.5), Color = egg.Glow, Material = Enum.Material.Neon, CFrame = CFrame.new(0, 0.62, 0) * CFrame.Angles(0, 0, math.rad(90)) }, model)
+	-- Leuchtband rund um die Sockelkante (etwas breiter als der Sockel, unterhalb der Oberseite)
+	part("Part", { Name = "PedestalRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 4.52, 4.52), Color = egg.Glow, Material = Enum.Material.Neon, CFrame = CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.rad(90)) }, model)
 
 	local shell = part("Part", { Name = "Shell", Shape = Enum.PartType.Ball, Size = Vector3.new(3, 3, 3), Color = look.Color or egg.Color, Material = look.Material or Enum.Material.SmoothPlastic, Transparency = look.Transparency or 0, Reflectance = look.Reflectance or 0, CFrame = CFrame.new(0, 0.6 + 2.05, 0) }, model)
 	local mesh = Instance.new("SpecialMesh")
@@ -1144,6 +1146,7 @@ export function moduleSources(data) {
     { name: 'WeatherFx', source: WEATHER_FX },
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
+    ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
   ];
 }
 
@@ -1170,6 +1173,8 @@ export function installerSource(data) {
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist${data.AURAS ? `
+--   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
+--   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
 --   ServerScriptService > CoinmasterAuras     Auras kaufen und anlegen (RemoteFunction AuraRemote)
 --   StarterPlayerScripts > CoinmasterAuraClient   zeichnet die Aura jedes Spielers
@@ -1181,6 +1186,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
 local old = ReplicatedStorage:FindFirstChild("CoinmasterAdventure")
+-- eingefügte Haustiere (Haustiere.rbxmx) behalten
+local keepPets = old and old:FindFirstChild("Haustiere")
+if keepPets then
+	keepPets.Parent = nil
+end
 if old then
 	old:Destroy()
 end
@@ -1192,6 +1202,9 @@ end
 local root = Instance.new("Folder")
 root.Name = "CoinmasterAdventure"
 root.Parent = ReplicatedStorage
+if keepPets then
+	keepPets.Parent = root
+end
 
 local function addModule(name, source)
 	local m = Instance.new("ModuleScript")
