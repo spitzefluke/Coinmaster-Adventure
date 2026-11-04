@@ -440,7 +440,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     radius: R,
     world,
     root,
-    lights: { hemi, sun }, // für das Wetter (welten/js/weatherFx.js)
+    lights: { hemi, sun },
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     update(t, dt) {

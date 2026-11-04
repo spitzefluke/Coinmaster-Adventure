@@ -2,28 +2,30 @@
 
 import * as THREE from 'three';
 import { AURAS, THEMES, rarityById, themeById, auraById, bonusText } from '../../../auren/js/auras.js';
-import { createAura, setPointScale } from '../../../auren/js/auraFactory.js';
-import { makeEnvironment, makeScene } from '../../../haustiere/js/kit.js';
+import { createAuraPreview, auraLua } from '../../../auren/js/auraRoblox.js';
 import { equippedAura, fmtNumber } from '../state.js';
-import { pixelRatio, loadSettings, skipAnimations } from '../../../js/settings.js';
+import { pixelRatio, skipAnimations } from '../../../js/settings.js';
 
 let theme = 'alle';
 let selected = null;
-let view = null; // { canvas, renderer, scene, camera, obj, id }
+let view = null; // { canvas, renderer, camera, obj, id }
 
+// 3D-Vorschau wie in Roblox: dieselben Module AuraData und AuraFx wie im Installer
 function preview(host, aura) {
   if (!view) {
     const canvas = document.createElement('canvas');
     canvas.className = 'aura-canvas';
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, stencil: true });
     renderer.setPixelRatio(pixelRatio());
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
-    camera.position.set(0, 0.9, 8.6);
-    camera.lookAt(0, 0.35, 0);
-    view = { canvas, renderer, camera, scene: makeScene(makeEnvironment(renderer)), obj: null, id: null };
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 2000);
+    view = { canvas, renderer, camera, obj: null, id: null, lua: null };
+    auraLua().then((l) => (view.lua = l));
     const clock = new THREE.Clock();
     renderer.setAnimationLoop(() => {
+      const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
       if (!canvas.isConnected || !view.obj) return;
       const w = canvas.clientWidth, h = canvas.clientHeight;
       if (w && h && canvas.width !== Math.round(w * renderer.getPixelRatio())) {
@@ -31,22 +33,23 @@ function preview(host, aura) {
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
       }
-      const t = clock.getElapsedTime();
-      view.obj.spinner.rotation.y = skipAnimations() ? 0.4 : t * 0.5;
-      view.obj.update(skipAnimations() ? 1 : t);
-      setPointScale(canvas.height, camera);
-      renderer.render(view.scene, camera);
+      view.lua?.frame(dt);
+      const a = skipAnimations() ? -0.5 : -0.5 + t * 0.4;
+      camera.position.set(Math.sin(a) * 17, 5.6, -Math.cos(a) * 17);
+      camera.lookAt(0, 3.6, 0);
+      view.obj.step(skipAnimations() ? 1 : t, dt);
+      view.obj.world.render(renderer, camera);
     });
   }
   host.append(view.canvas);
   if (view.id !== aura.id) {
-    if (view.obj) {
-      view.scene.remove(view.obj.root);
-      view.obj.dispose();
-    }
-    view.obj = createAura(aura, { amount: loadSettings().fewerParticles ? 0.45 : 1 });
-    view.scene.add(view.obj.root);
     view.id = aura.id;
+    const id = aura.id;
+    createAuraPreview(aura).then((obj) => {
+      if (view.id !== id) return obj.dispose();
+      view.obj?.dispose();
+      view.obj = obj;
+    });
   }
 }
 

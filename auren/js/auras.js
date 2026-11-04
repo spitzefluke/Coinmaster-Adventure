@@ -123,3 +123,15 @@ export function fmtPrice(n) {
   for (const [v, u] of [[1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']]) if (n >= v) return (n / v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + u;
   return n.toLocaleString('de-DE');
 }
+
+// Grundpaket je Seltenheit: Jede Stufe bringt diese Effekte mit, sie addieren sich nach oben.
+// Gebaut wird es in Roblox von AuraFx (roblox/js/auraLuau.js); rbx sagt, womit.
+export const TIER_FX = [
+  { add: 'Bodenleuchten und Licht in Aura-Farbe', rbx: 'Neon-Scheibe, PointLight' },
+  { add: 'Leuchtender Umriss in Seltenheitsfarbe', rbx: 'Highlight (Outline)' },
+  { add: 'Pulswellen am Boden, Glimmer', rbx: 'Neon-Ring, ParticleEmitter' },
+  { add: 'Lichtstrahlen, Funkelsterne am Kopf', rbx: 'Beams, ParticleEmitter' },
+  { add: 'Zwei Energieringe mit Lichtläufern', rbx: 'Neon-Ring, Trails' },
+  { add: 'Strahlenkranz, Schockwelle, Leuchtkörper', rbx: 'BillboardGui, Neon-Ring, Highlight-Füllung' },
+];
+export const tierOf = (aura) => Math.max(0, RARITIES.findIndex((r) => r.id === aura.rarity));

@@ -1,59 +1,55 @@
-// Die aktuelle Welt als 3D-Hintergrund hinter dem HUD. Die Kamera kreist langsam um die Insel.
-// Klappt WebGL nicht, bleibt der gezeichnete Hintergrund (Himmel und Hügel) stehen.
+// Die aktuelle Welt als 3D-Hintergrund hinter dem HUD, 1:1 wie in Roblox (welten/js/robloxWorld.js):
+// dieselben Teile wie der Export, Roblox-Licht und das Wetter aus dem Roblox-Modul WeatherFx.
+// Die Kamera kreist langsam um die Insel. Klappt WebGL nicht, bleibt der gezeichnete Hintergrund stehen.
 
 import * as THREE from 'three';
-import { buildWorld, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
-import { createWeatherFx } from '../../welten/js/weatherFx.js';
-
-const CS = ISLAND_RADIUS / 10; // Kamerawerte unten gelten für Radius 10
+import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
+import { buildRobloxWorld, showWeather, worldLua } from '../../welten/js/robloxWorld.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
+
+const CS = (ISLAND_RADIUS / 10) * 8; // Kamerawerte unten gelten für Radius 10, in Studs
 
 export function createWorldBg(host) {
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
   } catch (e) {
     console.warn('3D-Hintergrund nicht verfügbar', e);
-    return { set() {}, refresh() {} };
+    return { set() {}, refresh() {}, setWeather() {}, pick: () => null };
   }
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.className = 'world-canvas';
   host.prepend(renderer.domElement);
   host.classList.add('has-3d');
 
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
-  let built = null, worldId = null;
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 6000);
+  let built = null, worldId = null, lua = null;
+  worldLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
   let visible = true;
   new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(host);
 
   function applySettings() {
     renderer.setPixelRatio(Math.min(pixelRatio(), 1.5));
-    const shadows = loadSettings().quality === 'hoch';
-    renderer.shadowMap.enabled = shadows;
+    renderer.shadowMap.enabled = loadSettings().quality === 'hoch';
   }
 
-  let wfx = null, weatherId = 'klar';
+  let weatherId = 'klar';
   function build(world) {
-    wfx?.dispose();
-    wfx = null;
-    built?.dispose();
-    const s = loadSettings();
-    built = buildWorld(world, { particles: s.fewerParticles ? 0.35 : 1, shadows: renderer.shadowMap.enabled });
+    if (built) {
+      lua?.call('__weatherReset');
+      built.rw.dispose();
+    }
+    built = buildRobloxWorld(world, { shadows: renderer.shadowMap.enabled });
     worldId = world.id;
-    applyWeather();
-  }
-  function applyWeather() {
-    if (!built) return;
-    wfx?.dispose();
-    wfx = createWeatherFx(built, weatherId, { amount: loadSettings().fewerParticles ? 0.35 : 0.8 });
+    showWeather(built.rw, weatherId);
   }
 
   const clock = new THREE.Clock();
   let angle = 0.6;
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
+    const dt = Math.min(clock.getDelta(), 0.1);
     if (!visible || !built) return;
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h) return;
@@ -67,28 +63,29 @@ export function createWorldBg(host) {
     // schmale Bildschirme: weiter weg, damit die Insel ganz zu sehen ist
     const dist = CS * Math.min(56, Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
     camera.position.set(Math.cos(angle) * dist, 10.5 * CS, Math.sin(angle) * dist);
-    camera.lookAt(0, camera.aspect < 1 ? -1.2 : 0.4, 0);
-    built.update(t, dt);
-    wfx?.update(t, dt);
-    renderer.render(built.scene, camera);
+    camera.lookAt(0, (camera.aspect < 1 ? -1.2 : 0.4) * 8, 0);
+    camera.updateMatrixWorld();
+    if (lua) {
+      lua.setCamera(camera);
+      lua.frame(dt);
+    }
+    built.rw.update(dt);
+    built.rw.render(renderer, camera);
   });
 
-  // Was liegt unter dem Mauszeiger? Liefert den Spawn-Bereich (userData.area) oder null.
+  // Was liegt unter dem Mauszeiger? Liefert den Spawn-Bereich oder null.
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   function pick(clientX, clientY) {
-    if (!built?.areas?.length) return null;
+    const areas = built?.data.meta.areas;
+    if (!areas?.length) return null;
     const r = renderer.domElement.getBoundingClientRect();
     ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    for (const hit of ray.intersectObjects(built.scene.children, true)) {
-      if (!hit.object.isMesh || !hit.object.visible) continue;
-      for (let o = hit.object; o; o = o.parent) {
-        const id = o.userData.area;
-        if (id) return { id, name: built.areas.find((a) => a.id === id)?.name ?? id };
-      }
-      return null; // vorderstes Objekt gehört zu keinem Bereich
-    }
-    return null;
+    const meshes = built.rw.staticGroups.flatMap((g) => g.children);
+    const hit = ray.intersectObjects(meshes, false).find((x) => x.object.visible && !x.object.material.transparent);
+    if (!hit) return null;
+    const id = hit.object.userData.parts?.[hit.instanceId]?.area;
+    return id ? { id, name: areas.find((a) => a.id === id)?.name ?? id } : null; // vorderstes Teil zählt
   }
 
   applySettings();
@@ -98,12 +95,12 @@ export function createWorldBg(host) {
     setWeather(id) {
       if (id === weatherId) return;
       weatherId = id;
-      applyWeather();
+      if (built) showWeather(built.rw, weatherId);
     },
     set(world) {
       if (world.id !== worldId) build(world);
     },
-    // nach geänderten Einstellungen (Qualität, Partikel) neu aufbauen
+    // nach geänderten Einstellungen (Qualität) neu aufbauen
     refresh(world) {
       applySettings();
       build(world);

@@ -1,19 +1,19 @@
 // Weltkarte: Planeten wählen, Welten als Karten mit Vorschaubild, große drehbare 3D-Ansicht.
+// Die 3D-Ansicht zeigt die Welt 1:1 wie in Roblox: dieselben Teile wie der Export, Roblox-Licht,
+// Roblox-Himmel und das Wetter aus dem Roblox-Modul WeatherFx (robloxWorld.js). Alles in Studs.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
-import { buildWorld, ISLAND_RADIUS } from './worldFactory.js';
-
-// Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10)
-const CS = ISLAND_RADIUS / 10;
+import { ISLAND_RADIUS } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
-import { worldToParts } from '../../roblox/js/worldParts.js';
-import { partsGroup } from '../../roblox/js/partsPreview.js';
-import { makeCharacter, STUDS, FIGURE_STUDS } from './character.js';
-import { createWeatherFx } from './weatherFx.js';
+import { STUDS, FIGURE_STUDS } from './character.js';
+import { buildRobloxWorld, showWeather, worldLua, addFigure } from './robloxWorld.js';
 import { WEATHER, weatherAt } from '../../muenzen/js/mutations.js';
+
+// Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10, mal 8 für Studs)
+const CS = (ISLAND_RADIUS / 10) * STUDS;
 
 const $ = (id) => document.getElementById(id);
 let planet = 'hub'; // Start im Spawn
@@ -22,15 +22,14 @@ let current = WORLDS[0];
 // ── 3D-Ansicht ──────────────────────────────────────────────────────────────
 
 const canvas = $('viewer');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.shadowMap.enabled = loadSettings().quality !== 'niedrig';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(pixelRatio());
 
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
 camera.position.set(19 * CS, 12 * CS, 22 * CS);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -38,7 +37,7 @@ controls.enablePan = false;
 controls.minDistance = 12 * CS;
 controls.maxDistance = 50 * CS;
 controls.maxPolarAngle = Math.PI * 0.62;
-controls.target.set(0, 0.6, 0);
+controls.target.set(0, 0.6 * STUDS, 0);
 controls.autoRotate = !skipAnimations();
 controls.autoRotateSpeed = 0.6;
 let idleTimer;
@@ -51,60 +50,30 @@ controls.addEventListener('end', () => {
   idleTimer = setTimeout(() => (controls.autoRotate = !skipAnimations()), 4000);
 });
 
-let built = null;
-let robloxView = false;
-
-// Roblox-Ansicht: Insel und Himmelskörper durch die Roblox-Teile ersetzen, Licht, Himmel und
-// Partikel bleiben
-function toRobloxView(b, w) {
-  for (const o of [...b.scene.children]) if (o.isMesh || o.isGroup || o.isSprite) b.scene.remove(o);
-  const parts = partsGroup(worldToParts(w));
-  parts.scale.setScalar(1);
-  b.scene.add(parts);
-  const dispose = b.dispose;
-  b.dispose = () => {
-    parts.userData.dispose();
-    dispose();
-  };
-  return parts.userData.count;
-}
+let built = null; // { rw, data, model }
+let lua = null;
+worldLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
 
 // ── Größenvergleich mit einer normal großen Roblox-Figur ──
 let compare = false, figure = null, fly = null;
-const HOME = { target: new THREE.Vector3(0, 0.6, 0), dist: 30 * CS };
+const HOME = { target: new THREE.Vector3(0, 0.6 * STUDS, 0), dist: 30 * CS };
 
-// Platz neben der Teleport-Plattform (Ankunftsort), sonst am Inselrand
-function figureSpot(b) {
-  if (b.figureSpot) return b.figureSpot.clone();
-  let pad = null;
-  b.scene.traverse((o) => o.userData.rbx?.name === 'TeleportPad' && (pad = o.getWorldPosition(new THREE.Vector3())));
-  const p = pad ?? new THREE.Vector3(b.radius - 2, 0, 0);
-  // seitlich neben die Plattform, gleicher Abstand zum Rand
-  const out = new THREE.Vector3(p.x, 0, p.z).normalize(), side = new THREE.Vector3(-out.z, 0, out.x);
-  let x = p.x + side.x * 1.3, z = p.z + side.z * 1.3;
-  const r = Math.hypot(x, z), max = b.radius - 0.9;
-  if (r > max) (x *= max / r), (z *= max / r);
-  return new THREE.Vector3(x, b.height(x, z), z);
-}
-
-// Kamerarichtung mit freier Sicht auf die Figur: zuerst von außen, dann seitlich und von oben
-function clearView(b, look, skip, prefer = null, dist = 4.6, ups = [0.42, 0.75, 1.3, 2.2]) {
-  // prefer: bevorzugte Blickrichtung (sonst von außen)
+// Kamerarichtung mit freier Sicht: zuerst von außen, dann seitlich und von oben
+function clearView(b, look, skip, prefer = null, dist = 4.6 * STUDS, ups = [0.42, 0.75, 1.3, 2.2]) {
   const out = (prefer ? prefer.clone().setY(0) : new THREE.Vector3(look.x, 0, look.z)).normalize();
   const ray = new THREE.Raycaster();
   const meshes = [];
-  b.scene.traverse((o) => {
-    if (!o.isMesh || !o.visible || o.material.transparent || o.material.blending === THREE.AdditiveBlending) return;
-    for (let p = o; p; p = p.parent) if (p === skip) return;
+  b.rw.scene.traverse((o) => {
+    if (!o.isMesh || !o.visible || o.material.transparent || o.material.blending === THREE.AdditiveBlending || !o.geometry.attributes.normal) return;
+    if (skip && o.userData.inst && skip.descendants().includes(o.userData.inst)) return;
     meshes.push(o);
   });
-  b.scene.updateMatrixWorld(true);
+  b.rw.scene.updateMatrixWorld(true);
   for (const up of ups)
     for (const yaw of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) {
       const dir = out.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(new THREE.Vector3(0, up, 0)).normalize();
       const cam = look.clone().addScaledVector(dir, dist);
-      // Füße, Mitte und Kopf müssen alle zu sehen sein
-      const blocked = [-0.38, -0.1, 0.2].some((dy) => {
+      const blocked = [-3, -0.8, 1.6].some((dy) => {
         const from = look.clone().add(new THREE.Vector3(0, dy, 0)), to = cam.clone().sub(from);
         ray.set(from, to.clone().normalize());
         ray.far = to.length();
@@ -118,7 +87,6 @@ function clearView(b, look, skip, prefer = null, dist = 4.6, ups = [0.42, 0.75, 
 function flyTo(target, dist, minDist, from) {
   controls.autoRotate = false;
   controls.minDistance = minDist;
-  // from: Richtung, aus der die Kamera schaut (sonst die aktuelle)
   const off = (from ? from.clone() : camera.position.clone().sub(controls.target)).setLength(dist);
   fly = { t: 0, fromT: controls.target.clone(), toT: target.clone(), fromP: camera.position.clone(), toP: target.clone().add(off) };
 }
@@ -133,38 +101,27 @@ function showWorld(w) {
   current = w;
   $('soon-cover').hidden = !w.soon;
   if (built) {
-    built.dispose();
+    lua?.call('__weatherReset');
+    built.rw.dispose();
     built = null;
   }
+  figure = null;
   if (!w.soon) {
-    const fewer = loadSettings().fewerParticles;
-    built = buildWorld(w, { particles: fewer ? 0.4 : 1, shadows: renderer.shadowMap.enabled });
-    const spot = figureSpot(built);
-    if (robloxView) $('rbx-count').textContent = `${toRobloxView(built, w).toLocaleString('de-DE')} Roblox-Teile`;
+    built = buildRobloxWorld(w, { shadows: renderer.shadowMap.enabled });
+    const count = built.data.parts.length + built.data.sky.length;
+    $('rbx-count').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     applyWeather();
-    figure = null;
     if (compare) {
-      figure = makeCharacter();
-      figure.position.copy(spot);
-      // Figur schaut nach außen, zur Kamera
-      figure.lookAt(spot.x * 2, spot.y, spot.z * 2);
-      built.scene.add(figure);
-      const d = built.dispose;
-      const fig = figure;
-      built.dispose = () => {
-        fig.userData.dispose();
-        d();
-      };
-      const wide = Math.round(built.radius * 2 * STUDS);
+      const spot = built.data.meta.spot;
+      figure = addFigure(built.rw, spot, [spot[0] * 2, spot[1], spot[2] * 2]);
+      const wide = Math.round(built.data.meta.radius * 2);
       $('size-info').innerHTML = `<strong>Figur</strong> ${FIGURE_STUDS.toLocaleString('de-DE')} Studs hoch · <strong>Insel</strong> ${wide} Studs breit ≈ ${Math.round(wide / 4)} Figuren nebeneinander`;
-      // von außen (über dem Abgrund, dort steht nichts im Weg) auf die Figur schauen;
-      // dahinter ragt die Welt auf
-      const look = spot.clone().add(new THREE.Vector3(0, 0.45, 0));
-      flyTo(look, 4.6, 1.6, clearView(built, look, figure));
+      const look = new THREE.Vector3(spot[0], spot[1] + 3.6, spot[2]);
+      flyTo(look, 4.6 * STUDS, 1.6 * STUDS, clearView(built, look, figure));
     }
   }
   $('size-info').hidden = !compare || w.soon;
-  $('rbx-count').hidden = !robloxView || w.soon;
+  $('rbx-count').hidden = w.soon;
   canvas.classList.remove('is-in');
   void canvas.offsetWidth;
   canvas.classList.add('is-in');
@@ -194,7 +151,7 @@ new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(canvas);
 
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const dt = clock.getDelta(), t = clock.elapsedTime;
+  const dt = Math.min(clock.getDelta(), 0.1);
   if (!visible || !built) return;
   resize();
   if (fly) {
@@ -205,15 +162,18 @@ renderer.setAnimationLoop(() => {
     if (fly.t >= 1) fly = null;
   }
   controls.update();
-  built.update(t, dt);
-  wfx?.update(t, dt);
-  figure?.userData.update(t);
-  renderer.render(built.scene, camera);
+  camera.updateMatrixWorld();
+  if (lua) {
+    lua.setCamera(camera);
+    lua.frame(dt);
+  }
+  built.rw.update(dt);
+  built.rw.render(renderer, camera);
 });
 
 // ── Wetter ──
 // 'live' = das Wetter, das gerade im Spiel herrscht; sonst eine feste Auswahl
-let weatherMode = new URLSearchParams(location.search).get('wetter') || 'live', wfx = null, wfxId = null;
+let weatherMode = new URLSearchParams(location.search).get('wetter') || 'live', wfxId = null;
 const pick = $('weather-pick');
 pick.innerHTML = `<option value="live">Wetter: wie im Spiel</option>` + WEATHER.map((w) => `<option value="${w.id}">${w.name}</option>`).join('');
 pick.value = WEATHER.some((w) => w.id === weatherMode) ? weatherMode : 'live';
@@ -221,17 +181,11 @@ weatherMode = pick.value;
 const wantedWeather = () => (weatherMode === 'live' ? weatherAt().w.id : weatherMode);
 function applyWeather() {
   if (!built) return;
-  wfx?.dispose();
   wfxId = wantedWeather();
-  wfx = createWeatherFx(built, wfxId, { amount: loadSettings().fewerParticles ? 0.4 : 1 });
-  const d = built.dispose, mine = wfx;
-  built.dispose = () => {
-    if (wfx === mine) {
-      wfx.dispose();
-      wfx = null;
-    }
-    d();
-  };
+  const mine = built;
+  showWeather(built.rw, wfxId).then(() => {
+    if (built !== mine) return;
+  });
   const w = WEATHER.find((x) => x.id === wfxId);
   $('weather-live').hidden = weatherMode !== 'live';
   $('weather-live').textContent = `Gerade: ${w.name}`;
@@ -247,12 +201,6 @@ $('size-toggle').addEventListener('click', (e) => {
   compare = !compare;
   e.currentTarget.setAttribute('aria-pressed', String(compare));
   if (!compare) flyTo(HOME.target, HOME.dist, 12 * CS);
-  showWorld(current);
-});
-
-$('rbx-toggle').addEventListener('click', (e) => {
-  robloxView = !robloxView;
-  e.currentTarget.setAttribute('aria-pressed', String(robloxView));
   showWorld(current);
 });
 
@@ -303,7 +251,7 @@ function renderInfo() {
   info.style.setProperty('--c', w.soon ? p.color : w.accent);
   if (w.hub) {
     // Spawn: Bereiche zum Anfliegen
-    const areas = built?.areas ?? [];
+    const areas = built?.data.meta.areas ?? [];
     const portals = WORLDS.filter((x) => !x.hub).length;
     info.innerHTML = `
       <p class="info-eyebrow">Treffpunkt</p>
@@ -326,14 +274,15 @@ function renderInfo() {
         info.querySelectorAll('[data-area]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
         // von der Inselmitte her auf den Bereich schauen (alle Bauten schauen zur Mitte)
         // bevorzugt von der Stadtmitte her (alle Bauten schauen dorthin), Sicht frei prüfen
-        const inward = new THREE.Vector3(-a.pos.x, 0, -a.pos.z);
+        const pos = new THREE.Vector3(...a.pos);
+        const inward = new THREE.Vector3(-pos.x, 0, -pos.z);
         if (inward.lengthSq() < 0.01) inward.set(0, 0, 1);
-        const look = a.pos.clone().add(new THREE.Vector3(0, 1.3, 0));
-        const dist = a.id.startsWith('portale') ? 8 : 6.5;
+        const look = pos.clone().add(new THREE.Vector3(0, 1.3 * STUDS, 0));
+        const dist = (a.id.startsWith('portale') ? 8 : 6.5) * STUDS;
         focused = true;
         // äußerer Ring: über die Läden hinweg schauen
-        const ups = a.pos.length() > 10 ? [0.95, 1.4, 2.2] : [0.42, 0.75, 1.3, 2.2];
-        flyTo(look, dist, 3, clearView(built, look, null, inward, dist, ups));
+        const ups = pos.length() > 10 * STUDS ? [0.95, 1.4, 2.2] : [0.42, 0.75, 1.3, 2.2];
+        flyTo(look, dist, 3 * STUDS, clearView(built, look, null, inward, dist, ups));
       }),
     );
     return;
@@ -448,5 +397,11 @@ addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight') step(1);
   if (e.key === 'ArrowLeft') step(-1);
 });
-// Vorschaubilder der anderen Planeten schon im Hintergrund vorbereiten
-setTimeout(() => WORLDS.filter((w) => !w.soon).forEach((w) => worldThumb(w)), 1500);
+// Vorschaubilder der anderen Planeten nach und nach im Hintergrund vorbereiten (eins pro Pause)
+const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 400));
+const pending = WORLDS.filter((w) => !w.soon);
+const prefetch = () => {
+  const w = pending.shift();
+  if (w) worldThumb(w).then(() => setTimeout(() => idle(prefetch), 1200));
+};
+setTimeout(() => idle(prefetch), 4000);

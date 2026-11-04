@@ -3,6 +3,27 @@
 Vorschau-Seite mit allem, was wir für das Spiel bauen. Die Startseite (`index.html`) zeigt jeden
 Bereich als Kachel, jeder Bereich liegt in einem eigenen Ordner.
 
+## Roblox-Vorschau (1:1)
+
+Die Vorschauen sollen genau zeigen, wie es in Roblox aussieht. Dafür hat die Seite eine kleine
+Roblox-Engine (`js/rbx/`):
+
+- `engine.js` zeichnet Roblox-Klassen nach Roblox-Regeln: Teile (Block, Ball, Cylinder, Wedge,
+  SpecialMesh Sphere/Head), Materialien (`materials.js`, Struktur in Weltkoordinaten), Decals, Licht
+  (Lighting mit Uhrzeit, Atmosphere, Nebel, PointLights, Schatten), ParticleEmitter (Rate, Lifetime,
+  Speed, SpreadAngle, Drag, Acceleration, Size/Transparency/Color-Sequenzen, LightEmission), Beams,
+  Trails, Highlight (Umriss um die ganze Figur), BillboardGui und SurfaceGui (`gui.js`) und den
+  Roblox-Standardhimmel. Alles in Studs.
+- `lua.js` und `runtime.lua.js` führen den Luau-Code aus dem Installer im Browser aus (fengari, Lua 5.3)
+  mit Roblox-API: Vector3, CFrame, Color3, Sequenzen, Enum, Instance.new, Signale, TweenService,
+  task.wait/delay, RunService, workspace:BulkMoveTo. Die Vorschau führt also dieselben Skripte aus wie
+  Roblox, nicht eine Nachbildung.
+- Grenzen: Die Teilchenbilder (`rbxasset://…`) sind nachgezeichnet, weil die Originale nur in Studio
+  liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
+
+Umgestellt sind bisher Auras, Welten, das Wetter in den Welten und der Spiel-Hintergrund. Münzen, Eier,
+Haustiere und die Spiel-Oberfläche folgen.
+
 | Bereich | Ordner | Status |
 |---|---|---|
 | Münzkabinett | `muenzen/` | Vorschau |
@@ -171,14 +192,20 @@ Sturm, Blasen …).
   Kristallkuppel, vier Türmen, Runenkreis und Säulenallee (Atlantis).
 - Jede Insel hat eine Teleport-Plattform (Ankunftsort) und Details wie Brücke, Häuschen, Brunnen,
   Lore auf Schienen, Cupcakes, Geysire, Schatztruhe, Sandburg oder Statuen.
-- **Roblox-Ansicht** (Knopf in der 3D-Ansicht): zeigt die Insel so, wie sie nach dem Export in
-  Roblox Studio aus Teilen aufgebaut ist.
+- **Roblox-Vorschau:** Die 3D-Ansicht zeigt die Insel so, wie sie nach dem Import in Roblox aussieht:
+  dieselben Teile wie die `.rbxmx`-Datei, Roblox-Licht und -Himmel und das Wetter aus dem Modul
+  `WeatherFx` (`welten/js/robloxWorld.js`). Animationen der Insel (Wasser, Lebewesen) gibt es in Roblox
+  noch nicht, darum steht auch die Vorschau still.
+- **Licht je Welt:** Jede Welt bringt im Ordner `Licht` eine Atmosphere (Himmelsfarben) und
+  Lighting-Werte mit (`worldLighting` in `roblox/js/worldParts.js`). Das Skript
+  `CoinmasterWorldLighting` setzt sie im Spiel für die Welt, in der man ist; die Vorschau nutzt dieselben Werte.
 - **Größenvergleich** (Knopf in der 3D-Ansicht): stellt eine normal große Roblox-Figur (gut
   5 Studs, klassische Block-Proportionen) neben die Teleport-Plattform und fährt die Kamera hin.
   Eine Insel ist rund 256 Studs breit, also etwa 64 Figuren nebeneinander
   (`welten/js/character.js`).
 - `welten/js/worlds.js` – Daten (Preise, Boni, Portale, Wiedergeburt), `js/worldFactory.js` –
-  baut die 3D-Inseln, `js/thumbs.js` – Vorschaubilder.
+  entwirft die Inseln (daraus macht `roblox/js/worldParts.js` die Roblox-Teile), `js/robloxWorld.js` –
+  Roblox-Vorschau, `js/thumbs.js` – Vorschaubilder.
 
 In der Spiel-Oberfläche gibt es dazu das Fenster **Welten** (Taste W) zum Kaufen, Teleportieren,
 Öffnen von Portalen und für die Wiedergeburt. Die aktuelle Welt läuft dort als 3D-Hintergrund.
@@ -204,10 +231,8 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
 | Datensturm | 3 % | Hacked | 3 % | ×3 |
 | Sternschnuppen | 2 % | Kosmisch | 2 % | ×5 |
 
-- **3D-Wetter** (`welten/js/weatherFx.js`): Regen mit Pfützen, Gewitter mit Wolken und Blitzen (höchstens
-  alle 2,5 Sekunden), Erdbeben mit Beben, Rissen und fallenden Steinen, Schneesturm mit weißem Boden,
-  Disco-Kugel mit Lichtkegeln, Blutmond, Neon-Ringe, Goldregen, Code-Regen und Sternschnuppen.
-  Läuft in der Weltkarte (Auswahl „Wetter“), auf der Wetter-Seite und als Spiel-Hintergrund.
+- **3D-Wetter:** Die Weltkarte (Auswahl „Wetter“), die Wetter-Seite und der Spiel-Hintergrund führen
+  das Roblox-Modul `WeatherFx` aus: Licht, Nebel, Partikel und Blitze genau wie im Spiel.
 - **Spiel:** Ansage beim Wetterwechsel, Fenster „Wetter“ (Taste V oder Wetter-Anzeige antippen) mit
   Vorhersage und allen Wettern.
 - **Roblox:** Modul `WeatherFx` (Licht, Nebel, Partikel, Blitze, Ansage) und zwei Skripte, die der
@@ -216,9 +241,9 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
 ## Auras
 
 `auren/` zeigt 50 Auras, die um die Spielerfigur leuchten, als Galerie mit Filtern nach Thema und
-Seltenheit und einer drehbaren Detailansicht (`auren/js/auras.js` für die Daten, `auren/js/auraFactory.js`
-für die 3D-Effekte, überarbeitet nach dem Claude-Design-Projekt „Auras Vorher Nachher“; Bausteine und die
-erste Fassung in `auren/js/auraBase.js`).
+Seltenheit und einer drehbaren Detailansicht (`auren/js/auras.js` für die Daten). Jede Vorschau führt die
+Roblox-Module `AuraData` und `AuraFx` aus und zeigt die Aura an einer Roblox-Figur auf einer Baseplate,
+genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
 
 - **Themen:** Elemente, Münzen & Schätze, Weltraum & Magie, Lustig & Glitch (je 12 bis 13 Auras).
 - **Seltenheit, Preis und Bonus:** Gewöhnlich (ab 1.000 Taler, +1 bis 3 %) bis Göttlich (bis 1 Mrd. Taler,
@@ -229,7 +254,8 @@ erste Fassung in `auren/js/auraBase.js`).
   Schockwelle und Leuchtkörper.
 - **Effekte:** aufsteigende und fallende Teilchen, Wirbel, Feuerwerk, kreisende Dinge (Münzen, Edelsteine,
   Planeten, Katzen …), Bodenkreise mit Runen, Heiligenschein, Krone, Flügel, Lichtsäule, Hülle,
-  Lichtbänder, Blitze und Glitch-Doppelgänger. Was eine Aura zeigt, steht in ihrem `look`.
+  Lichtbänder, Blitze und Glitch-Flackern. Was eine Aura zeigt, steht in ihrem `look`; gebaut wird sie von
+  `AuraFx` in `roblox/js/auraLuau.js`.
 - **Spiel:** Shop-Reiter „Auras“ mit 3D-Vorschau. Kaufen legt die Aura gleich an; man trägt immer eine.
   Glück, Münzwert und Erfahrung wirken schon beim simulierten Fund, Tempo erst im Roblox-Spiel.
 - **Roblox:** Module `AuraData` und `AuraFx`, das Skript `CoinmasterAuras` (Server, prüft Kaufen und
@@ -284,7 +310,8 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
   Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
   („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
-  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 256 Studs breit. Animationen fehlen in Studio noch.
+  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 256 Studs breit. Dazu der Ordner `Licht` (Atmosphere und
+  Lighting-Werte). Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 
@@ -303,7 +330,8 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
-- `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni), `js/auraFactory.js` (3D-Effekte mit Grundpaket je Seltenheit), `js/auraBase.js` (Figur, Texturen, Bausteine), `js/main.js` (Galerie)
+- `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
+- `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
