@@ -4,7 +4,7 @@
 // Rückrufe (invoke), Daten für Fenster als Abfragen (query).
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, weatherAt, weatherById, forecast, WEATHER, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { mutationById, weatherAt, weatherById, mutationForWeather, forecast, WEATHER, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';

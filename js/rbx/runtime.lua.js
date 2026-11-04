@@ -14,6 +14,8 @@ function math.noise(x, y, z) return (sin((x or 0) * 12.9898 + (y or 0) * 78.233 
 function table.find(t, v) for i, x in ipairs(t) do if x == v then return i end end return nil end
 function table.clear(t) for k in pairs(t) do t[k] = nil end end
 function table.clone(t) local c = {} for k, v in pairs(t) do c[k] = v end return c end
+-- Luau kennt math.atan2 (Lua 5.3 nur math.atan mit zwei Werten)
+math.atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 function string.split(s, sep)
 	local out, pat = {}, "([^" .. (sep or ","):gsub("%p", "%%%0") .. "]*)"
 	for part in (s .. (sep or ",")):gmatch(pat .. (sep or ","):gsub("%p", "%%%0")) do table.insert(out, part) end
