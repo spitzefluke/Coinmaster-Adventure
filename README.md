@@ -327,6 +327,20 @@ Abstände und Bewegungen der Oberfläche an einer Stelle. Bewegungsregeln: `Fast
 Boosts, Auras). Ändert sich etwas anderes, bleibt es stehen; mehrere Änderungen im selben Bild ergeben einen
 Neuaufbau. Countdowns (Wetter, Belohnungen, Boosts im HUD) ändern jede Sekunde nur ihren Text.
 
+**Spielgefühl:** Taler zählen hoch statt zu springen, ein grünes „+500“ steigt neben dem Taler-Feld auf
+und das Feld wippt; der EP-Balken gleitet (bei einem neuen Level erst voll, dann von vorn). Beim Verkaufen
+fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameUI.Found` je nach Seltenheit:
+
+| Stufe | Seltenheit | Effekt |
+| --- | --- | --- |
+| 1 | Normal, Selten | Hinweis |
+| 2 | Sehr selten, Episch | Fundkarte mit Glanz über „Münze suchen“ |
+| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken und große Ansage |
+| 4 | Göttlich, Galaktisch, Unerreichbar | alles stärker und länger |
+
+Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den Hinweis, „Weniger Partikel“
+weniger Funken.
+
 Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
 Spielstand neu beginnen“.
 

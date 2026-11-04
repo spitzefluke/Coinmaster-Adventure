@@ -545,7 +545,7 @@ do
 			stroke(C.line, 2),
 			new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 16) }),
 		})
-		label({ Size = UDim2.new(1, 0, 0, 14), Text = string.upper(branch and branch.Name or "Kern"), TextSize = T.Tiny, Font = MONO, TextColor3 = col, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 14), Text = GameUI.Upper(branch and branch.Name or "Kern"), TextSize = T.Tiny, Font = MONO, TextColor3 = col, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = k.Icon .. " " .. k.Name, Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 48), Text = k.Text, TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
 		local pips = new("Frame", { Name = "Stufen", Size = UDim2.new(1, 0, 0, 10), Position = UDim2.new(0, 0, 0, 92), BackgroundTransparency = 1, Parent = side }, {

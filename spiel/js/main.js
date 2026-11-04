@@ -4,7 +4,7 @@
 // Rückrufe (invoke), Daten für Fenster als Abfragen (query).
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, weatherAt, weatherById, mutationForWeather, forecast, WEATHER, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { weatherAt, weatherById, mutationForWeather, forecast, WEATHER } from '../../muenzen/js/mutations.js';
 import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
@@ -183,7 +183,7 @@ function find() {
     return;
   }
   const r = findCoin(state, Math.random, currentWeather().w.id);
-  const coin = COINS[r.id], tier = tierById[coin.tier], m = r.mutation && mutationById[r.mutation];
+  const tier = tierById[COINS[r.id].tier];
   const space = slots(state) - state.inventory.length;
   const n = Math.min(r.count, space);
   for (let k = 0; k < n; k++) state.inventory.push({ id: r.id, mutation: r.mutation, at: Date.now(), bonus: r.bonus });
@@ -194,7 +194,8 @@ function find() {
   sound(1 + tier.index * 0.05);
 
   const value = coinValue({ id: r.id, mutation: r.mutation, bonus: r.bonus });
-  toast(`${coin.name}${n > 1 ? ' ×2' : ''} · ${tier.name}${m ? ` · ${m.name} ${fmtMultiplier(m)}` : ''}${r.upgraded ? ' · Goldene Hand!' : ''} · ${fmtNumber(value, true)} Taler · +${r.xp} EP`, m ? m.color : tier.color);
+  // Effekte je nach Seltenheit zeigt die Roblox-Oberfläche (GameUI.Found)
+  rui?.found({ coinId: r.id + 1, mutation: r.mutation, count: n, value, xp: r.xp, upgraded: r.upgraded });
   if (ups) levelUp(before, state.level);
 }
 

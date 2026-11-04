@@ -168,6 +168,18 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     if (!inst) return pushStr('none'), 1;
     const key = str(2);
     if (key === 'Position' && inst.props.CFrame) return push(new THREE.Vector3().setFromMatrixPosition(inst.props.CFrame));
+    // GUI: Lage auf dem Bildschirm aus dem letzten Layout (screen.js), wie in Roblox ohne die obere Leiste
+    if (key === 'AbsolutePosition' || key === 'AbsoluteSize') {
+      const r = inst.abs;
+      if (!r) return pushStr('V2'), lua.lua_pushnumber(S, 0), lua.lua_pushnumber(S, 0), 3;
+      let sg = inst;
+      while (sg && sg.ClassName !== 'ScreenGui') sg = sg.parent;
+      const inset = sg && !sg.props.IgnoreGuiInset ? 58 : 0;
+      pushStr('V2');
+      if (key === 'AbsoluteSize') lua.lua_pushnumber(S, r.w), lua.lua_pushnumber(S, r.h);
+      else lua.lua_pushnumber(S, r.x), lua.lua_pushnumber(S, r.y - inset);
+      return 3;
+    }
     if (key === 'WorldPosition' && inst.world) return push(new THREE.Vector3().setFromMatrixPosition(inst.world.worldCFrame(inst, tmpM)));
     if (key === 'WorldCFrame' && inst.world) return push(inst.world.worldCFrame(inst, new THREE.Matrix4()));
     return push(inst.props[key]);

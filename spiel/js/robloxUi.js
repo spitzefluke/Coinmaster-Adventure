@@ -113,6 +113,10 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
     announce(id) {
       lua.run(`__WeatherFx.Announce(${q(id)}, game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))`, 'Ansage');
     },
+    // Fund mit Effekten je nach Seltenheit (GameUI.Found)
+    found({ coinId, mutation, count, value, xp, upgraded }) {
+      lua.run(`__GameUI.Found({ CoinId = ${coinId}, Mutation = ${mutation ? q(mutation) : 'nil'}, Count = ${count}, Value = ${value}, Xp = ${xp}, Upgraded = ${upgraded ? 'true' : 'false'} })`, 'Fund');
+    },
     toast(text, color = '#d9b26a') {
       lua.run(`__GameUI.Toast(${q(text)}, Color3.fromHex(${q(color)}))`, 'Hinweis');
     },
