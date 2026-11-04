@@ -1,4 +1,4 @@
-/* Münzrollen – baut auf ../../css/theme.css auf.
+/* Münzrollen – baut auf ../../css/theme.css auf. Die Öffnen-Ebene steht in open.css.
    Große Karten mit Rolle auf Sockel, darunter Inhalt, Chancen und Preis. Öffnen läuft als Vollbild-Ebene. */
 
 .page {
@@ -148,86 +148,8 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
   .detail-info { padding: 0 20px 24px; }
 }
 
-/* ── Öffnen ── */
-.open {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  overflow: hidden;
-  background: radial-gradient(60% 55% at 50% 45%, color-mix(in srgb, var(--roll) 14%, #0a0910), #040306 80%);
-  cursor: pointer;
-  user-select: none;
-}
-.open-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.open-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
-.open-stage {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(7% + env(safe-area-inset-bottom, 0px));
-  margin: 0;
-  text-align: center;
-  font: 700 clamp(1.5rem, 4vw, 2.4rem)/1 var(--font-display);
-  color: var(--roll);
-  text-shadow: 0 0 24px var(--roll);
-  opacity: 0;
-  pointer-events: none;
-}
-.open-stage.is-shown { opacity: 1; }
-.open-text {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(5% + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
-  text-align: center;
-  pointer-events: none;
-  visibility: hidden;
-}
-.open-text.is-shown { visibility: visible; }
-.open-text > * { margin: 0; }
-.open-eyebrow { font: 600 var(--step--1)/1.2 var(--font-data); letter-spacing: 0.18em; text-transform: uppercase; color: var(--roll); }
-.open-name { font: 700 clamp(2.4rem, 7vw, 4rem)/1 var(--font-display); color: #fff; text-shadow: 0 0 30px var(--roll); }
-.open-from { color: #ddd6e6; font-size: var(--step-0); }
-.open-note { color: #9a92a6; font: 400 0.75rem/1.3 var(--font-data); }
-.open-done {
-  margin-top: 8px;
-  padding: 11px 24px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--roll);
-  color: #0b0a10;
-  font: 700 var(--step-0)/1 var(--font-body);
-  cursor: pointer;
-  pointer-events: auto;
-  animation: rise 0.4s ease both;
-}
-.open-hint {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right, 0px));
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  margin: 0;
-  color: #8f879b;
-  font: 400 0.75rem/1 var(--font-data);
-  pointer-events: none;
-}
-.open-text.is-shown .open-eyebrow { animation: rise 0.45s ease both; }
-.open-text.is-shown .open-name { animation: slam 0.6s cubic-bezier(.2, 1.3, .3, 1) both 0.1s; }
-.open-text.is-shown .open-from { animation: rise 0.45s ease both 0.35s; }
-.open-text.is-shown .open-note { animation: rise 0.45s ease both 0.5s; }
-@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
-@keyframes slam {
-  0% { opacity: 0; transform: scale(2.6); filter: blur(8px); }
-  60% { opacity: 1; transform: scale(0.94); filter: blur(0); }
-  100% { transform: scale(1); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .card { transition: none; }
-  .open-text.is-shown * { animation: none !important; }
 }
 
 /* ── Chancen-Leiste ── */
@@ -239,37 +161,9 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .odds-list li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--t); }
 .detail-odds { margin-top: 2px; }
 
-/* ── Ausbeute nach dem Öffnen ── */
-.open-loot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; max-width: 640px; }
-.open-loot li { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--t); color: #fff; background: color-mix(in srgb, var(--t) 18%, #0a0910cc); font: 600 0.75rem/1.2 var(--font-data); }
-.open-text.is-shown .open-loot { animation: rise 0.45s ease both 0.45s; }
-.open-name { font-size: clamp(1.8rem, 5vw, 3rem); }
-.open-again {
-  margin-top: 8px;
-  padding: 11px 20px;
-  border: 1px solid var(--roll);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--roll);
-  font: 700 var(--step-0)/1 var(--font-body);
-  cursor: pointer;
-  pointer-events: auto;
-  animation: rise 0.4s ease both;
-}
-.open-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-
 /* ── Taler ── */
 .wallet-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 14px 0 0; }
 .wallet-label { font: 600 0.6875rem/1 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .wallet-line strong { font: 700 var(--step-1)/1 var(--font-data); color: var(--brass); font-variant-numeric: tabular-nums; }
 .wallet-link, .lede a { color: var(--brass); }
-.open-btn:disabled, .open-again:disabled { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; }
-.open-garden {
-  position: absolute;
-  left: max(16px, env(safe-area-inset-left, 0px));
-  top: calc(16px + env(safe-area-inset-top, 0px));
-  color: #c9c0d6;
-  font: 600 0.8125rem/1 var(--font-data);
-  text-decoration: none;
-}
-.open-garden:hover { color: #fff; }
+.open-btn:disabled { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; }

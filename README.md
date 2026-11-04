@@ -21,9 +21,9 @@ Roblox-Engine (`js/rbx/`):
 - Grenzen: Die Teilchenbilder (`rbxasset://…`) sind nachgezeichnet, weil die Originale nur in Studio
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
-Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
+Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
 (Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
-Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar und Welten. Die übrigen Fenster folgen.
+Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar, Welten und Garten. Die übrigen Fenster folgen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -201,7 +201,30 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
   `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Tool(tool)`, `Build(item)`) und
   `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume).
   Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
-- Noch nicht im Spiel: Kauf, Spielstand (DataStore) und Remotes für Garten und Rollen fehlen.
+
+### Im Spiel (Roblox)
+
+- **Spiel-Oberfläche:** Menüknopf **🌱 Garten** öffnet das Fenster mit drei Reitern: *Beete* (Wachstum, Countdown,
+  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
+  und dann ein Beet antippen, Talerbeutel und Spaten direkt benutzen) und *Rollen* (kaufen und öffnen). Nach dem
+  Öffnen spielt `GameUI.PlayRoll` die Animation `RollFx` vor dem Spieler. „🚪 Zum Garten“ teleportiert zum Garten.
+- **Server** (`ServerScriptService > CoinmasterGarden`): RemoteFunction `GardenRemote` mit `openRoll` und den
+  Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig). Der Server würfelt, prüft
+  Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
+  zwei Aufrufen.
+- **Speichern:** DataStore `CoinmasterGarden`, Schlüssel `g_<UserId>`. Laden mit drei Versuchen. Schlägt das fehl,
+  bleibt der Garten gesperrt und wird **nicht** überschrieben. Gespeichert wird beim Verlassen, alle 60 Sekunden
+  bei Änderungen und beim Herunterfahren (`BindToClose`). Legt kein anderes Skript `leaderstats.Taler` an, macht
+  es dieses Skript und speichert die Taler mit. In Studio: *Game Settings › Security › Enable Studio Access to
+  API Services*.
+- **Robux-Rolle:** Developer Product anlegen und die Id oben im Skript in `ROLL_PRODUCTS` eintragen
+  (`[ProductId] = "stern"`). Jeder Kauf wird mit seiner `PurchaseId` gemerkt und zählt nur einmal. Achtung:
+  `ProcessReceipt` darf im Spiel nur ein Skript setzen.
+- **Garten in der Welt** (`StarterPlayerScripts > CoinmasterGardenClient`): baut den eigenen Garten mit
+  `GardenBuilder` (nur für den Spieler sichtbar) auf einem Part **`GartenPlatz`** im Workspace, sonst bei
+  (0, 0, −160). Neu gebaut wird, wenn ein Baum wächst oder reift.
+- **Vorschau:** Die Spiel-Oberfläche (`spiel/`) zeigt dasselbe Fenster. Käufe rechnet dort `gardenAct` in
+  `garten/js/garden.js`, die JS-Fassung von `GardenData.Act`.
 
 ## Haustiere
 

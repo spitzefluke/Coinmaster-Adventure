@@ -16,14 +16,18 @@ import { skillPanel } from './panels/skilltree.js';
 import { settingsPanel } from './panels/einstellungen.js';
 import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
 import { wetterPanel } from './panels/wetter.js';
+import { newGarden, gardenAct, lootById } from '../../garten/js/garden.js';
+import { rollById, openRoll } from '../../rollen/js/rolls.js';
+import { Opener } from '../../rollen/js/open.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
 const state = loadState();
+state.garden ||= newGarden();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
 // Fenster in Roblox (GameUI) und noch als HTML
-const RBX_WINDOWS = new Set(['shop', 'inventar', 'welten']);
+const RBX_WINDOWS = new Set(['shop', 'inventar', 'welten', 'garten']);
 const PANELS = { skills: skillPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
@@ -78,6 +82,7 @@ function renderHud() {
   set('Worlds', state.worlds.join(','));
   set('Portals', state.portals.join(','));
   set('Rebirths', state.rebirths);
+  set('Garden', JSON.stringify(state.garden));
 }
 
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
@@ -403,6 +408,25 @@ function invoke(action, a, b) {
     return done(`${au.name} gekauft und angelegt`);
   }
   if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+  // Münzbaumgarten und Münzrollen (in Roblox: GardenRemote, Regeln aus GardenData.Act)
+  if (action === 'openRoll') {
+    const roll = rollById[a];
+    if (!roll) return [false, 'Diese Rolle gibt es nicht'];
+    if (roll.price.currency !== 'taler') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+    if (!pay(roll.price.amount)) return [false, 'Zu wenig Taler'];
+    const items = openRoll(roll);
+    for (const it of items) state.garden.Inv[it.id] = (state.garden.Inv[it.id] || 0) + 1;
+    save();
+    renderHud();
+    return [true, `${roll.name}: ${items[items.length - 1].name}!`, items.map((i) => i.id).join(',')];
+  }
+  const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig' };
+  if (GARDEN_ACTIONS[action]) {
+    const [ok, text, delta] = gardenAct(state.garden, GARDEN_ACTIONS[action], a, b, Date.now() / 1000, state.taler);
+    if (!ok) return [false, text];
+    state.taler = Math.round((state.taler + delta) * 100) / 100;
+    return done(text);
+  }
   // Inventar: Positionen in der Liste Coins (1-basiert)
   if (action === 'sell' || action === 'sellNormal') {
     const pick = new Set();
@@ -459,8 +483,20 @@ function invoke(action, a, b) {
   }
   return [false, 'Unbekannt'];
 }
-function uiAction(name) {
+// Geöffnete Münzrolle: dieselbe Öffnen-Ansicht wie auf der Rollen-Seite (RollFx)
+let opener = null;
+function playRoll(arg) {
+  const [rollId, ids] = String(arg).split('|');
+  const roll = rollById[rollId];
+  const items = (ids || '').split(',').map((id) => lootById[id]).filter(Boolean);
+  if (!roll || !items.length) return;
+  opener ||= Opener.mount();
+  opener.play(roll, items).then(() => rui?.open('garten', 'sachen'));
+}
+function uiAction(name, arg) {
   if (name === 'find') return find();
+  if (name === 'playRoll') return playRoll(arg);
+  if (name === 'gartenBesuchen') return toast('Im Spiel geht es jetzt zum Garten. Hier: Seite „Münzbaumgarten“ zum Ansehen in 3D.', '#6fbf4a');
   if (name === 'index') return (location.href = '../muenzindex/');
   if (PANELS[name] || RBX_WINDOWS.has(name)) openPanel(name);
 }

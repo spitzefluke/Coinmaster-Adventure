@@ -114,3 +114,95 @@ export function fmtTime(sec) {
   if (sec >= 60) return join(Math.floor(sec / 60), 'min', sec % 60, 's');
   return `${sec} s`;
 }
+
+// ── Spielstand wie im Spiel (Attribut Garden, siehe GardenData in Luau) ──────
+// { Owned, Beds, Plots: { "1": { Tree, Planted, Bonus, Harvested, Boost, BoostEnd } }, Inv: { id: n } }
+// Zeiten in Sekunden (os.time()). gardenAct ist dieselbe Regel wie GardenData.Act.
+
+export const newGarden = () => ({ Owned: false, Beds: GARDEN.startBeds, Plots: {}, Inv: {}, Receipts: [] });
+const asPlot = (p) => ({ tree: p.Tree, planted: p.Planted, bonus: p.Bonus, harvested: p.Harvested, boost: p.Boost, boostEnd: p.BoostEnd });
+const kindName = { water: 'Water', boost: 'Boost', taler: 'Taler', bed: 'Bed' };
+
+// → [ok, text, Taler-Änderung]
+export function gardenAct(g, action, a, b, t, taler) {
+  const bed = Number(a);
+  const take = (id) => {
+    g.Inv[id] = (g.Inv[id] || 0) - 1;
+    if (g.Inv[id] <= 0) delete g.Inv[id];
+  };
+  if (action === 'buyGarden') {
+    if (g.Owned) return [false, 'Du hast schon einen Garten', 0];
+    if (taler < GARDEN.price) return [false, 'Zu wenig Taler', 0];
+    g.Owned = true;
+    g.Beds = Math.max(g.Beds, GARDEN.startBeds);
+    return [true, 'Der Münzbaumgarten gehört dir!', -GARDEN.price];
+  }
+  if (!g.Owned) return [false, 'Kauf zuerst den Garten', 0];
+  if (action === 'buyBed') {
+    if (g.Beds >= GARDEN.maxBeds) return [false, 'Mehr Beete gehen nicht', 0];
+    const price = GARDEN.bedPrice(g.Beds);
+    if (taler < price) return [false, 'Zu wenig Taler', 0];
+    g.Beds++;
+    return [true, `Beet ${g.Beds} ist umgegraben`, -price];
+  }
+  if (action === 'plant') {
+    const tree = lootById[b];
+    if (!Number.isInteger(bed) || bed < 1 || bed > g.Beds) return [false, 'Dieses Beet gibt es nicht', 0];
+    if (g.Plots[bed]) return [false, 'Das Beet ist schon belegt', 0];
+    if (!tree || tree.type !== 'tree' || !(g.Inv[b] > 0)) return [false, 'Diesen Baum hast du nicht', 0];
+    take(b);
+    g.Plots[bed] = { Tree: b, Planted: t, Bonus: 0, Harvested: 0, Boost: 1, BoostEnd: 0 };
+    return [true, `${tree.name} in Beet ${bed} gepflanzt`, 0];
+  }
+  if (action === 'use') {
+    const tool = lootById[a];
+    if (!tool || tool.type !== 'tool' || !(g.Inv[a] > 0)) return [false, 'Das hast du nicht', 0];
+    const kind = kindName[tool.kind];
+    if (kind === 'Taler') {
+      take(a);
+      return [true, `+${fmt(tool.amount)} Taler aus ${tool.name}`, tool.amount];
+    }
+    if (kind === 'Bed') {
+      if (g.Beds >= GARDEN.maxBeds) return [false, 'Mehr Beete gehen nicht', 0];
+      take(a);
+      g.Beds++;
+      return [true, `${tool.name}: Beet ${g.Beds} ist umgegraben`, 0];
+    }
+    const i = Number(b);
+    const plot = g.Plots[i];
+    if (!plot) return [false, 'Auf dem Beet wächst nichts', 0];
+    if (kind === 'Water') {
+      const left = grownAt(asPlot(plot)) - t;
+      if (left <= 0) return [false, 'Der Baum ist schon ausgewachsen', 0];
+      plot.Bonus += Math.min(tool.seconds, left);
+      take(a);
+      return [true, `Beet ${i} gegossen${tool.seconds >= left ? ': ausgewachsen!' : ` (${fmtTime(tool.seconds)} schneller)`}`, 0];
+    }
+    plot.Boost = tool.mult;
+    plot.BoostEnd = t + tool.seconds;
+    take(a);
+    return [true, `Beet ${i} gedüngt: ×${tool.mult} Ernte für ${fmtTime(tool.seconds)}`, 0];
+  }
+  if (action === 'harvest') {
+    let total = 0;
+    for (const [key, plot] of Object.entries(g.Plots)) {
+      if (a !== 'all' && Number(key) !== bed) continue;
+      const value = harvestValue(asPlot(plot), t);
+      if (value > 0) {
+        total += value;
+        plot.Harvested = t;
+      }
+    }
+    if (total <= 0) return [false, 'Noch nichts reif', 0];
+    return [true, `+${fmt(total)} Taler geerntet`, total];
+  }
+  if (action === 'dig') {
+    const plot = g.Plots[bed];
+    if (!plot) return [false, 'Auf dem Beet wächst nichts', 0];
+    const value = harvestValue(asPlot(plot), t);
+    g.Inv[plot.Tree] = (g.Inv[plot.Tree] || 0) + 1;
+    delete g.Plots[bed];
+    return [true, `${lootById[plot.Tree].name} ausgegraben und ins Inventar gelegt`, value];
+  }
+  return [false, 'Ungültig', 0];
+}

@@ -13,6 +13,10 @@ import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { BOOSTS, ROBUX } from './state.js';
 import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
+import { gardenDataSource } from '../../roblox/js/gardenLuau.js';
+import { rollDataSource } from '../../roblox/js/rollLuau.js';
+import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, GARDEN } from '../../garten/js/garden.js';
+import { ROLLS } from '../../rollen/js/rolls.js';
 
 
 const q = (s) => JSON.stringify(String(s));
@@ -30,6 +34,8 @@ export async function createRobloxUi(host, { onAction, onInvoke, devTools = fals
   lua.call('__addModule', 'AuraData', auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }));
   lua.call('__addModule', 'ShopData', shopDataSource({ BOOSTS, ROBUX }));
   lua.call('__addModule', 'WeatherFx', WEATHER_FX);
+  lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }));
+  lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
@@ -40,6 +46,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, devTools = fals
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
+      PlayRoll = function(rollId, ids) __uiAction("playRoll", rollId .. "|" .. ids) end,
       DevTools = ${devTools ? 'true' : 'false'},
     })
   `, 'Spiel-Oberfläche');
@@ -99,7 +106,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, devTools = fals
     toast(text, color = '#d9b26a') {
       lua.run(`__GameUI.Toast(${q(text)}, Color3.fromHex(${q(color)}))`, 'Hinweis');
     },
-    // Fenster: shop, inventar, welten
+    // Fenster: shop, inventar, welten, garten
     open(key, tab) {
       lua.run(`__GameUI.Open(${q(key)}, ${tab ? q(tab) : 'nil'})`, 'Fenster');
     },

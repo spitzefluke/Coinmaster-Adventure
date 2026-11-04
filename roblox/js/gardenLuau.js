@@ -128,6 +128,159 @@ function GardenData.HarvestValue(plot, now)
 	return GardenData.Ripe(plot, now) * GardenData.ById[plot.Tree].Yield * mult
 end
 
+-- ── Spielstand eines Spielers ──
+-- garden = { Owned = bool, Beds = n, Plots = { ["1"] = Plot, … }, Inv = { [id] = Anzahl }, Receipts = { PurchaseIds } }
+-- Liegt als JSON im Attribut Garden am Spieler (schreibt nur der Server).
+
+function GardenData.New()
+	return { Owned = false, Beds = GardenData.Garden.StartBeds, Plots = {}, Inv = {}, Receipts = {} }
+end
+
+-- Repariert geladene oder fremde Daten (fehlende Felder, falsche Typen, unbekannte Ids)
+function GardenData.Clean(g)
+	local out = GardenData.New()
+	if type(g) ~= "table" then
+		return out
+	end
+	out.Owned = g.Owned == true
+	out.Beds = math.clamp(math.floor(tonumber(g.Beds) or out.Beds), 1, GardenData.Garden.MaxBeds)
+	if type(g.Receipts) == "table" then
+		for _, r in ipairs(g.Receipts) do
+			if type(r) == "string" then table.insert(out.Receipts, r) end
+		end
+	end
+	if type(g.Inv) == "table" then
+		for id, n in pairs(g.Inv) do
+			n = math.floor(tonumber(n) or 0)
+			if GardenData.ById[id] and n > 0 then
+				out.Inv[id] = n
+			end
+		end
+	end
+	if type(g.Plots) == "table" then
+		for key, p in pairs(g.Plots) do
+			local i = tonumber(key)
+			if i and i >= 1 and i <= out.Beds and type(p) == "table" and GardenData.ById[p.Tree] and GardenData.ById[p.Tree].Type == "Tree" then
+				out.Plots[tostring(i)] = {
+					Tree = p.Tree, Planted = tonumber(p.Planted) or 0, Bonus = tonumber(p.Bonus) or 0,
+					Harvested = tonumber(p.Harvested) or 0, Boost = tonumber(p.Boost) or 1, BoostEnd = tonumber(p.BoostEnd) or 0,
+				}
+			end
+		end
+	end
+	return out
+end
+
+local function take(g, id)
+	g.Inv[id] = (g.Inv[id] or 0) - 1
+	if g.Inv[id] <= 0 then
+		g.Inv[id] = nil
+	end
+end
+
+local function fmtTime(sec)
+	sec = math.max(0, math.ceil(sec))
+	if sec >= 3600 then
+		return math.floor(sec / 3600) .. " h " .. math.floor(sec % 3600 / 60) .. " min"
+	elseif sec >= 60 then
+		return math.floor(sec / 60) .. " min" .. (sec % 60 > 0 and (" " .. sec % 60 .. " s") or "")
+	end
+	return sec .. " s"
+end
+GardenData.FormatTime = fmtTime
+
+-- 480270 → "480.270"
+local function fmtNum(n)
+	local out = tostring(math.floor(n + 0.5)):reverse():gsub("(%d%d%d)", "%1."):reverse()
+	return (out:gsub("^%.", ""))
+end
+GardenData.FormatNumber = fmtNum
+
+-- Eine Aktion auf dem Spielstand ausführen. Ändert g, rechnet aber keine Taler ab:
+-- gibt ok, Text und die Taler-Änderung zurück (negativ = kostet). taler = Taler, die der Spieler hat.
+--   buyGarden · buyBed · plant (Beet, Baum-Id) · use (Werkzeug-Id, Beet) · harvest (Beet oder "all") · dig (Beet)
+function GardenData.Act(g, action, a, b, now, taler)
+	local G = GardenData.Garden
+	local bed = tonumber(a)
+	local function plotAt(i)
+		return i and g.Plots[tostring(i)]
+	end
+	if action == "buyGarden" then
+		if g.Owned then return false, "Du hast schon einen Garten", 0 end
+		if taler < G.Price then return false, "Zu wenig Taler", 0 end
+		g.Owned = true
+		g.Beds = math.max(g.Beds, G.StartBeds)
+		return true, "Der Münzbaumgarten gehört dir!", -G.Price
+	end
+	if not g.Owned then
+		return false, "Kauf zuerst den Garten", 0
+	end
+	if action == "buyBed" then
+		if g.Beds >= G.MaxBeds then return false, "Mehr Beete gehen nicht", 0 end
+		local price = GardenData.BedPrice(g.Beds)
+		if taler < price then return false, "Zu wenig Taler", 0 end
+		g.Beds = g.Beds + 1
+		return true, "Beet " .. g.Beds .. " ist umgegraben", -price
+	elseif action == "plant" then
+		local tree = GardenData.ById[b]
+		if not bed or bed < 1 or bed > g.Beds or bed ~= math.floor(bed) then return false, "Dieses Beet gibt es nicht", 0 end
+		if plotAt(bed) then return false, "Das Beet ist schon belegt", 0 end
+		if not tree or tree.Type ~= "Tree" or (g.Inv[b] or 0) < 1 then return false, "Diesen Baum hast du nicht", 0 end
+		take(g, b)
+		g.Plots[tostring(bed)] = { Tree = b, Planted = now, Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0 }
+		return true, tree.Name .. " in Beet " .. bed .. " gepflanzt", 0
+	elseif action == "use" then
+		local tool = GardenData.ById[a]
+		if not tool or tool.Type ~= "Tool" or (g.Inv[a] or 0) < 1 then return false, "Das hast du nicht", 0 end
+		if tool.Kind == "Taler" then
+			take(g, a)
+			return true, "+" .. fmtNum(tool.Amount) .. " Taler aus " .. tool.Name, tool.Amount
+		elseif tool.Kind == "Bed" then
+			if g.Beds >= G.MaxBeds then return false, "Mehr Beete gehen nicht", 0 end
+			take(g, a)
+			g.Beds = g.Beds + 1
+			return true, tool.Name .. ": Beet " .. g.Beds .. " ist umgegraben", 0
+		end
+		local i = tonumber(b)
+		local plot = plotAt(i)
+		if not plot then return false, "Auf dem Beet wächst nichts", 0 end
+		if tool.Kind == "Water" then
+			local left = GardenData.GrownAt(plot) - now
+			if left <= 0 then return false, "Der Baum ist schon ausgewachsen", 0 end
+			plot.Bonus = plot.Bonus + math.min(tool.Seconds, left)
+			take(g, a)
+			return true, "Beet " .. i .. " gegossen" .. (tool.Seconds >= left and ": ausgewachsen!" or (" (" .. fmtTime(tool.Seconds) .. " schneller)")), 0
+		elseif tool.Kind == "Boost" then
+			plot.Boost = tool.Mult
+			plot.BoostEnd = now + tool.Seconds
+			take(g, a)
+			return true, "Beet " .. i .. " gedüngt: ×" .. tool.Mult .. " Ernte für " .. fmtTime(tool.Seconds), 0
+		end
+		return false, "Das geht nicht", 0
+	elseif action == "harvest" then
+		local total = 0
+		for key, plot in pairs(g.Plots) do
+			if a == "all" or key == tostring(bed) then
+				local value = GardenData.HarvestValue(plot, now)
+				if value > 0 then
+					total = total + value
+					plot.Harvested = now
+				end
+			end
+		end
+		if total <= 0 then return false, "Noch nichts reif", 0 end
+		return true, "+" .. fmtNum(total) .. " Taler geerntet", total
+	elseif action == "dig" then
+		local plot = plotAt(bed)
+		if not plot then return false, "Auf dem Beet wächst nichts", 0 end
+		local value = GardenData.HarvestValue(plot, now)
+		g.Inv[plot.Tree] = (g.Inv[plot.Tree] or 0) + 1
+		g.Plots[tostring(bed)] = nil
+		return true, GardenData.ById[plot.Tree].Name .. " ausgegraben und ins Inventar gelegt", value
+	end
+	return false, "Ungültig", 0
+end
+
 return GardenData
 `;
 }
@@ -554,4 +707,350 @@ function GardenBuilder.Build(garden)
 end
 
 return GardenBuilder
+`;
+
+// Server: Garten und Münzrollen. RemoteFunction GardenRemote, Spielstand im DataStore.
+export const GARDEN_SERVER = `-- Coinmaster Adventure · Münzbaumgarten und Münzrollen (Server)
+-- RemoteFunction GardenRemote: openRoll (Rollen-Id) sowie die Garten-Aktionen aus GardenData.Act
+-- (buyGarden, buyBed, plant, use, harvest, dig). Der Server prüft alles und würfelt selbst.
+-- Der Spielstand steht als JSON im Attribut Garden am Spieler und wird im DataStore „CoinmasterGarden“
+-- gespeichert: beim Verlassen, alle 60 Sekunden bei Änderungen und beim Herunterfahren.
+-- Taler kommen aus leaderstats.Taler. Legt kein anderes Skript leaderstats an, macht das dieses Skript
+-- und speichert die Taler dann mit (Feld Taler im selben Eintrag).
+-- Robux-Rollen brauchen ein Developer Product: Id in ROLL_PRODUCTS eintragen.
+-- Damit das Speichern in Studio klappt: Game Settings > Security > „Enable Studio Access to API Services“.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local DataStoreService = game:GetService("DataStoreService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
+local GardenData = require(root:WaitForChild("GardenData"))
+local RollData = require(root:WaitForChild("RollData"))
+
+-- Developer Products für Robux-Rollen: [ProductId] = "stern"
+local ROLL_PRODUCTS = {}
+
+local remote = root:FindFirstChild("GardenRemote")
+if not remote then
+	remote = Instance.new("RemoteFunction")
+	remote.Name = "GardenRemote"
+	remote.Parent = root
+end
+-- Server → Client: Robux-Rolle gekauft, Animation zeigen
+local rollEvent = root:FindFirstChild("RollOpened")
+if not rollEvent then
+	rollEvent = Instance.new("RemoteEvent")
+	rollEvent.Name = "RollOpened"
+	rollEvent.Parent = root
+end
+
+local okStore, store = pcall(function()
+	return DataStoreService:GetDataStore("CoinmasterGarden")
+end)
+if not okStore then
+	warn("[Garten] DataStore nicht erreichbar, der Garten wird nicht gespeichert: " .. tostring(store))
+	store = nil
+end
+
+local gardens = {} -- [player] = { Data = garden, Loaded = bool, Dirty = bool, OwnTaler = bool }
+local lastCall = {}
+
+local function talerOf(player)
+	local stats = player:FindFirstChild("leaderstats")
+	local taler = stats and stats:FindFirstChild("Taler")
+	if taler and (taler:IsA("IntValue") or taler:IsA("NumberValue")) then
+		return taler
+	end
+	return nil
+end
+
+local function publish(player)
+	local entry = gardens[player]
+	if entry then
+		player:SetAttribute("Garden", HttpService:JSONEncode(entry.Data))
+	end
+end
+
+local function key(player)
+	return "g_" .. player.UserId
+end
+
+-- mit Wiederholung: 3 Versuche, Wartezeit wächst
+local function retry(fn)
+	local ok, result
+	for attempt = 1, 3 do
+		ok, result = pcall(fn)
+		if ok then
+			return true, result
+		end
+		task.wait(attempt * 2)
+	end
+	return false, result
+end
+
+local function save(player)
+	local entry = gardens[player]
+	-- nie speichern, was nicht sauber geladen wurde: sonst würde ein Ladefehler den alten Stand überschreiben
+	if not store or not entry or not entry.Loaded then
+		return
+	end
+	local taler = entry.OwnTaler and talerOf(player)
+	local payload = { V = 1, Garden = entry.Data, Taler = taler and taler.Value or nil }
+	local ok, err = retry(function()
+		store:UpdateAsync(key(player), function()
+			return payload
+		end)
+	end)
+	if ok then
+		entry.Dirty = false
+	else
+		warn("[Garten] Speichern fehlgeschlagen für " .. player.Name .. ": " .. tostring(err))
+	end
+end
+
+local function onJoin(player)
+	gardens[player] = { Data = GardenData.New(), Loaded = false, Dirty = false, OwnTaler = false }
+	-- leaderstats von einem anderen Skript abwarten, sonst selbst anlegen
+	local stats = player:WaitForChild("leaderstats", 5)
+	local saved = nil
+	if store then
+		local ok, result = retry(function()
+			return store:GetAsync(key(player))
+		end)
+		if not ok then
+			warn("[Garten] Laden fehlgeschlagen für " .. player.Name .. ": " .. tostring(result))
+			player:SetAttribute("GardenError", "Dein Garten konnte nicht geladen werden. Bitte später neu beitreten.")
+			publish(player)
+			return
+		end
+		saved = result
+	end
+	local entry = gardens[player]
+	if not entry then return end -- schon wieder weg
+	entry.Data = GardenData.Clean(saved and saved.Garden)
+	entry.Loaded = true
+	if not stats then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		local t = Instance.new("NumberValue")
+		t.Name = "Taler"
+		t.Value = saved and tonumber(saved.Taler) or 0
+		t.Parent = stats
+		stats.Parent = player
+		entry.OwnTaler = true
+		t.Changed:Connect(function()
+			entry.Dirty = true
+		end)
+	end
+	publish(player)
+end
+
+local function onLeave(player)
+	save(player)
+	gardens[player] = nil
+	lastCall[player] = nil
+end
+
+Players.PlayerAdded:Connect(onJoin)
+Players.PlayerRemoving:Connect(onLeave)
+for _, p in ipairs(Players:GetPlayers()) do
+	task.spawn(onJoin, p)
+end
+
+game:BindToClose(function()
+	for _, p in ipairs(Players:GetPlayers()) do
+		task.spawn(save, p)
+	end
+	task.wait(3)
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(60)
+		for player, entry in pairs(gardens) do
+			if entry.Dirty then
+				task.spawn(save, player)
+			end
+		end
+	end
+end)
+
+-- Rolle öffnen: würfeln, ins Inventar legen; gibt die Ids mit Komma zurück
+local function openRoll(player, entry, roll)
+	local items = RollData.Open(roll.Id)
+	local ids = {}
+	for _, item in ipairs(items) do
+		entry.Data.Inv[item.Id] = (entry.Data.Inv[item.Id] or 0) + 1
+		table.insert(ids, item.Id)
+	end
+	entry.Dirty = true
+	publish(player)
+	local best = items[#items]
+	return table.concat(ids, ","), best
+end
+
+remote.OnServerInvoke = function(player, action, a, b)
+	local clock = os.clock()
+	if lastCall[player] and clock - lastCall[player] < 0.2 then
+		return false, "Zu schnell"
+	end
+	lastCall[player] = clock
+	if type(action) ~= "string" or (a ~= nil and (type(a) ~= "string" or #a > 64)) or (b ~= nil and (type(b) ~= "string" or #b > 64)) then
+		return false, "Ungültig"
+	end
+	local entry = gardens[player]
+	if not entry or not entry.Loaded then
+		return false, player:GetAttribute("GardenError") or "Dein Garten lädt noch"
+	end
+	local taler = talerOf(player)
+	if not taler then
+		return false, "Keine Taler gefunden (leaderstats.Taler fehlt)"
+	end
+	if action == "openRoll" then
+		local roll = RollData.ById[a or ""]
+		if not roll or not roll.Price then return false, "Diese Rolle gibt es nicht" end
+		if roll.Price.Currency ~= "Coins" then
+			for productId, rollId in pairs(ROLL_PRODUCTS) do
+				if rollId == roll.Id then
+					MarketplaceService:PromptProductPurchase(player, productId)
+					return false, "Kauf in Roblox bestätigen"
+				end
+			end
+			return false, "Robux-Rollen brauchen ein Developer Product"
+		end
+		if taler.Value < roll.Price.Amount then return false, "Zu wenig Taler" end
+		taler.Value = taler.Value - roll.Price.Amount
+		local ids, best = openRoll(player, entry, roll)
+		return true, roll.Name .. ": " .. best.Name .. "!", ids
+	end
+	local ok, text, delta = GardenData.Act(entry.Data, action, a, b, os.time(), taler.Value)
+	if ok then
+		if delta ~= 0 then
+			taler.Value = taler.Value + delta
+		end
+		entry.Dirty = true
+		publish(player)
+	end
+	return ok, text
+end
+
+-- Robux-Rollen. Achtung: ProcessReceipt darf im ganzen Spiel nur ein Skript setzen. Darum wird es
+-- nur gesetzt, wenn oben Produkte eingetragen sind. Jeder Kauf wird mit seiner PurchaseId gemerkt,
+-- damit er auch bei einer Wiederholung durch Roblox nur einmal zählt.
+if next(ROLL_PRODUCTS) then
+	MarketplaceService.ProcessReceipt = function(receipt)
+		local rollId = ROLL_PRODUCTS[receipt.ProductId]
+		local player = Players:GetPlayerByUserId(receipt.PlayerId)
+		local entry = player and gardens[player]
+		if not rollId or not entry or not entry.Loaded then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		local receipts = entry.Data.Receipts
+		if not table.find(receipts, receipt.PurchaseId) then
+			table.insert(receipts, receipt.PurchaseId)
+			while #receipts > 50 do
+				table.remove(receipts, 1)
+			end
+			local ids = openRoll(player, entry, RollData.ById[rollId])
+			rollEvent:FireClient(player, rollId, ids)
+		end
+		save(player)
+		if entry.Dirty then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+end
+`;
+
+// Client: baut den eigenen Garten in die Welt und zeigt Robux-Rollen
+export const GARDEN_CLIENT = `-- Coinmaster Adventure · Münzbaumgarten (Client)
+-- Baut den Garten des Spielers aus dem Attribut Garden mit GardenBuilder (nur für ihn sichtbar).
+-- Platz: ein Part „GartenPlatz“ im Workspace (seine Oberseite ist der Boden), sonst neben dem Spawn.
+-- Wachsen und Reifen werden jede Sekunde geprüft; neu gebaut wird nur, wenn sich etwas ändert.
+-- „Zum Garten“ im Garten-Fenster teleportiert hierher (UIAction gartenBesuchen).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
+local GardenData = require(root:WaitForChild("GardenData"))
+local GardenBuilder = require(root:WaitForChild("GardenBuilder"))
+local player = Players.LocalPlayer
+
+local function place()
+	local spot = workspace:FindFirstChild("GartenPlatz", true)
+	if spot and spot:IsA("BasePart") then
+		return spot.CFrame * CFrame.new(0, spot.Size.Y / 2, 0)
+	end
+	return CFrame.new(0, 0, -160)
+end
+
+local model, signature = nil, ""
+local function update()
+	local ok, g = pcall(function()
+		return HttpService:JSONDecode(player:GetAttribute("Garden") or "null")
+	end)
+	g = GardenData.Clean(ok and g or nil)
+	if not g.Owned then
+		if model then model:Destroy() model = nil signature = "" end
+		return
+	end
+	local now = os.time()
+	local plots, parts = {}, { tostring(g.Beds) }
+	for i = 1, g.Beds do
+		local p = g.Plots[tostring(i)]
+		if p then
+			plots[i] = { Tree = p.Tree, Stage = GardenData.Stage(p, now), Ripe = GardenData.Ripe(p, now) }
+			table.insert(parts, p.Tree .. plots[i].Stage .. plots[i].Ripe)
+		else
+			plots[i] = false
+			table.insert(parts, "-")
+		end
+	end
+	local sig = table.concat(parts, ",")
+	if sig == signature and model then return end
+	signature = sig
+	if model then model:Destroy() end
+	model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots })
+	model.Name = "MeinGarten"
+	local base = place()
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.CFrame = base * d.CFrame
+		end
+	end
+	model.Parent = workspace
+end
+
+player:GetAttributeChangedSignal("Garden"):Connect(update)
+task.spawn(function()
+	while true do
+		update()
+		task.wait(1)
+	end
+end)
+
+-- Teleport vor das Gartentor
+local action = root:WaitForChild("UIAction", 10)
+if action then
+	action.Event:Connect(function(name)
+		if name ~= "gartenBesuchen" then return end
+		local character = player.Character
+		if not character then return end
+		local depth = (model and model:GetAttribute("Depth")) or 10
+		character:PivotTo(place() * CFrame.new(0, 4, -depth / 2 - 6) * CFrame.Angles(0, math.pi, 0))
+	end)
+end
+
+-- Robux-Rolle gekauft: Animation zeigen
+local rollEvent = root:WaitForChild("RollOpened", 10)
+if rollEvent then
+	local GameUI = require(root:WaitForChild("GameUI"))
+	rollEvent.OnClientEvent:Connect(function(rollId, ids)
+		GameUI.PlayRoll(rollId, ids)
+	end)
+end
 `;

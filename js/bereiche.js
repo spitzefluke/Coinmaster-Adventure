@@ -69,7 +69,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Spiel-Oberfläche',
-    text: 'HUD über der aktuellen 3D-Welt, Teleport-Menü, Skilltree mit vier Ästen, Inventar, Shop und Einstellungen. Mit simulierten Funden zum Ausprobieren.',
+    text: 'HUD über der aktuellen 3D-Welt, Teleport-Menü, Skilltree mit vier Ästen, Inventar, Shop, Münzbaumgarten und Einstellungen. Mit simulierten Funden zum Ausprobieren.',
     href: 'spiel/',
     status: 'vorschau',
     eckdaten: ['21 Skills', 'HUD', '5 Fenster'],
