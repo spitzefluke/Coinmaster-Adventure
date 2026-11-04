@@ -44,6 +44,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
     local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
     __GameUI = require(root.GameUI)
     __WeatherFx = require(root.WeatherFx)
+    function __applyInventory(kind, a, b) __GameUI.ApplyInventory(kind, a, b) end
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
@@ -93,7 +94,13 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
       lua.frame(dt);
       screen.render();
       // HTML-Teile über der Welt (Spawn-Leiste) ausblenden, solange ein Roblox-Fenster offen ist
-      if (++checks % 15 === 0) host.classList.toggle('rbx-window-open', this.isOpen());
+      if (++checks % 6 === 0) host.classList.toggle('rbx-window-open', this.isOpen());
+    },
+    // Münz-Inventar wie vom Server: ("full", Liste) oder ("set", Schlüssel, Stapel oder null)
+    inventory(kind, a, b) {
+      if (kind === 'full') lua.call('__applyInventory', 'full', JSON.stringify(a));
+      else if (b) lua.call('__applyInventory', 'set', a, JSON.stringify(b));
+      else lua.call('__applyInventory', 'set', a);
     },
     setAttr(name, value) {
       lua.call('__setAttr', name, value);
@@ -111,6 +118,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
     // Fenster: shop, inventar, welten
     open(key, tab) {
       lua.run(`__GameUI.Open(${q(key)}, ${tab ? q(tab) : 'nil'})`, 'Fenster');
+      host.classList.add('rbx-window-open');
     },
     close(key) {
       lua.run(`__GameUI.Close(${key ? q(key) : 'nil'})`, 'Fenster');
