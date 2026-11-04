@@ -448,6 +448,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 .spawn-bar { position: absolute; top: 126px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: #0f0d14b8; border: 1px solid #ffffff1f; }
 .spawn-bar button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 0.75rem/1 var(--font-body); cursor: pointer; }
 .spawn-bar button:hover { background: #ffffff1a; color: #ffe7a8; }
+.rbx-window-open .spawn-bar { visibility: hidden; }
 .sb-ico { display: inline-grid; color: #ffd76a; }
 .area-tip { position: absolute; z-index: 3; margin: 0; padding: 6px 10px; border-radius: 10px; background: #0f0d14e6; border: 1px solid #ffd76a88; color: #fff; font: 700 0.8125rem/1 var(--font-body); pointer-events: none !important; white-space: nowrap; }
 @media (max-width: 760px) {

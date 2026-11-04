@@ -704,6 +704,109 @@ local function stepTweens()
 	end
 end
 
+-- ── JSON (HttpService) ──
+function __jsonEncode(v)
+	local t = type(v)
+	if v == nil then return "null"
+	elseif t == "boolean" then return v and "true" or "false"
+	elseif t == "number" then
+		if v ~= v or v == math.huge or v == -math.huge then return "null" end
+		if math.type and math.type(v) == "integer" then return tostring(v) end
+		if v == math.floor(v) and math.abs(v) < 1e15 then return string.format("%d", v) end
+		return string.format("%.14g", v)
+	elseif t == "string" then
+		return '"' .. v:gsub('[%c"\\]', function(c)
+			local map = { ['"'] = '\\"', ['\\'] = '\\\\', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
+			return map[c] or string.format("\\u%04x", c:byte())
+		end) .. '"'
+	elseif t == "table" then
+		local n = #v
+		if n > 0 or next(v) == nil then
+			local out = {}
+			for i = 1, n do out[i] = __jsonEncode(v[i]) end
+			return "[" .. table.concat(out, ",") .. "]"
+		end
+		local out = {}
+		for k, val in pairs(v) do out[#out + 1] = __jsonEncode(tostring(k)) .. ":" .. __jsonEncode(val) end
+		return "{" .. table.concat(out, ",") .. "}"
+	end
+	error("JSONEncode: " .. t .. " geht nicht")
+end
+function __jsonDecode(text)
+	local pos = 1
+	local function ws() pos = text:find("[^ \t\r\n]", pos) or #text + 1 end
+	local value
+	local function str()
+		local out, i = {}, pos + 1
+		while true do
+			local c = text:sub(i, i)
+			if c == "" then error("JSONDecode: Text endet im String") end
+			if c == '"' then break end
+			if c == "\\" then
+				local e = text:sub(i + 1, i + 1)
+				local map = { b = "\b", f = "\f", n = "\n", r = "\r", t = "\t" }
+				if e == "u" then
+					local code = tonumber(text:sub(i + 2, i + 5), 16)
+					out[#out + 1] = utf8.char(code)
+					i = i + 6
+				else
+					out[#out + 1] = map[e] or e
+					i = i + 2
+				end
+			else
+				out[#out + 1] = c
+				i = i + 1
+			end
+		end
+		pos = i + 1
+		return table.concat(out)
+	end
+	function value()
+		ws()
+		local c = text:sub(pos, pos)
+		if c == "{" then
+			local obj = {}
+			pos = pos + 1
+			ws()
+			if text:sub(pos, pos) == "}" then pos = pos + 1 return obj end
+			while true do
+				ws()
+				local k = str()
+				ws()
+				pos = pos + 1 -- :
+				obj[k] = value()
+				ws()
+				local d = text:sub(pos, pos)
+				pos = pos + 1
+				if d == "}" then return obj end
+			end
+		elseif c == "[" then
+			local arr = {}
+			pos = pos + 1
+			ws()
+			if text:sub(pos, pos) == "]" then pos = pos + 1 return arr end
+			local n = 0
+			while true do
+				n = n + 1
+				arr[n] = value()
+				ws()
+				local d = text:sub(pos, pos)
+				pos = pos + 1
+				if d == "]" then return arr end
+			end
+		elseif c == '"' then return str()
+		elseif text:sub(pos, pos + 3) == "true" then pos = pos + 4 return true
+		elseif text:sub(pos, pos + 4) == "false" then pos = pos + 5 return false
+		elseif text:sub(pos, pos + 3) == "null" then pos = pos + 4 return nil
+		end
+		local num = text:match("^-?%d+%.?%d*[eE]?[-+]?%d*", pos)
+		if not num or num == "" then error("JSONDecode: unerwartet bei " .. pos) end
+		pos = pos + #num
+		return tonumber(num)
+	end
+	return value()
+end
+
 -- ── Dienste ──
 local RunService = { RenderStepped = signal(), Heartbeat = signal(), Stepped = signal(), PreRender = signal(), PostSimulation = signal() }
 function RunService.IsStudio() return true end
@@ -720,7 +823,7 @@ function __service(name)
 	elseif name == "RunService" then s = RunService
 	elseif name == "Debris" then s = { AddItem = function(_, inst, t) task.delay(t or 10, function() inst:Destroy() end) end }
 	elseif name == "Players" then s = __players
-	elseif name == "HttpService" then s = { GenerateGUID = function() return tostring(math.random(1, 1e9)) end, JSONEncode = function() return "{}" end }
+	elseif name == "HttpService" then s = { GenerateGUID = function() return tostring(math.random(1, 1e9)) end, JSONEncode = function(_, v) return __jsonEncode(v) end, JSONDecode = function(_, text) return __jsonDecode(text) end }
 	elseif name == "CollectionService" then
 		local tags = {}
 		s = { AddTag = function(_, i, t) tags[t] = tags[t] or {} tags[t][i] = true end, HasTag = function(_, i, t) return tags[t] and tags[t][i] or false end, GetTagged = function(_, t) local o = {} for i in pairs(tags[t] or {}) do o[#o + 1] = i end return o end, GetInstanceAddedSignal = function() return signal() end, GetInstanceRemovedSignal = function() return signal() end, RemoveTag = function(_, i, t) if tags[t] then tags[t][i] = nil end end }

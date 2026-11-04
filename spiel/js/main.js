@@ -1,11 +1,11 @@
 // Spiel-Oberfläche: HUD über einer Spielwelt, dazu die Fenster Skilltree, Inventar, Shop und
 // Einstellungen. „Münze suchen“ simuliert einen Fund in der Welt mit allen Skill-Effekten.
-// HUD, Menü, Hinweise und Shop sind die Roblox-Oberfläche GameUI (robloxUi.js); die übrigen Fenster
-// sind noch HTML und folgen in späteren Etappen.
+// HUD, Menü, Hinweise und die Fenster Shop, Inventar und Welten sind die Roblox-Oberfläche GameUI
+// (robloxUi.js); die übrigen Fenster sind noch HTML und folgen in späteren Etappen.
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, weatherAt, weatherById, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect } from './state.js';
+import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier } from './state.js';
 import { createRobloxUi } from './robloxUi.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
@@ -13,9 +13,7 @@ import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
 import { icon } from './icons.js';
 import { skillPanel } from './panels/skilltree.js';
-import { inventarPanel } from './panels/inventar.js';
 import { settingsPanel } from './panels/einstellungen.js';
-import { weltenPanel } from './panels/welten.js';
 import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
 import { wetterPanel } from './panels/wetter.js';
 
@@ -24,7 +22,9 @@ await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) 
 const state = loadState();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-const PANELS = { welten: weltenPanel, skills: skillPanel, inventar: inventarPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
+// Fenster in Roblox (GameUI) und noch als HTML
+const RBX_WINDOWS = new Set(['shop', 'inventar', 'welten']);
+const PANELS = { skills: skillPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,13 @@ function renderHud() {
   set('EggDiscount', effect(state, 'feilscher'));
   for (const e of EGGS) set('Egg_' + e.id, state.eggs[e.id] || 0);
   for (const b of BOOSTS) set('Boost_' + b.id, boostActive(state, b.id) ? Math.round(state.boosts[b.id] / 1000) : 0);
+  // Inventar und Welten (in Roblox schreibt das der Server)
+  set('Slots', slots(state));
+  set('Coins', JSON.stringify(state.inventory.map((e) => ({ i: e.id + 1, m: e.mutation || undefined, b: e.bonus || 1, t: Math.round((e.at || 0) / 1000) }))));
+  set('World', state.world);
+  set('Worlds', state.worlds.join(','));
+  set('Portals', state.portals.join(','));
+  set('Rebirths', state.rebirths);
 }
 
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
@@ -155,9 +162,10 @@ function renderPanel() {
 }
 
 function openPanel(id, tab = null) {
-  if (id === 'shop') {
+  if (RBX_WINDOWS.has(id)) {
     closePanel();
-    rui?.openShop(tab);
+    if (rui?.isOpen(id) && !tab) rui.close(id);
+    else rui?.open(id, tab);
     sound(0.95);
     return;
   }
@@ -167,7 +175,7 @@ function openPanel(id, tab = null) {
   openTab = tab ?? PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
   $('panel-layer').hidden = false;
   $('panel').dataset.panel = id;
-  rui?.closeShop();
+  rui?.close();
   renderPanel();
   $('panel-body').scrollTop = 0;
   $('panel-close').focus();
@@ -187,11 +195,7 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'escape' && openId) return closePanel();
-  if (key === 'escape') return rui?.closeShop();
-  if (key === 'b') {
-    e.preventDefault();
-    return rui?.shopOpen() ? rui.closeShop() : openPanel('shop');
-  }
+  if (key === 'escape') return rui?.close();
   const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen', v: 'wetter' };
   if (map[key]) {
     e.preventDefault();
@@ -333,11 +337,12 @@ function flash(color = '#ffffff') {
   el.classList.add('is-on');
 }
 
-function teleport(id) {
+function teleport(id, quiet = false) {
   const w = worldById[id];
-  if (!w || !ownsWorld(state, id)) return;
+  if (!w || !ownsWorld(state, id)) return false;
   state.world = id;
   save();
+  renderHud();
   closePanel();
   flash(w.accent);
   // Welt mitten im Aufleuchten tauschen
@@ -346,7 +351,8 @@ function teleport(id) {
     renderWorldName();
   }, settings.skipAnimations ? 0 : 260);
   sound(0.8);
-  toast(`Teleportiert nach ${w.name}`, w.accent);
+  if (!quiet) toast(`Teleportiert nach ${w.name}`, w.accent);
+  return true;
 }
 
 // ── Roblox-Oberfläche ──
@@ -397,16 +403,70 @@ function invoke(action, a, b) {
     return done(`${au.name} gekauft und angelegt`);
   }
   if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+  // Inventar: Positionen in der Liste Coins (1-basiert)
+  if (action === 'sell' || action === 'sellNormal') {
+    const pick = new Set();
+    if (action === 'sellNormal') state.inventory.forEach((e, i) => tierById[COINS[e.id].tier].index === 0 && !e.mutation && pick.add(i));
+    else String(a).split(',').forEach((n) => pick.add(Number(n) - 1));
+    let total = 0, count = 0;
+    state.inventory = state.inventory.filter((e, i) => {
+      if (!pick.has(i)) return true;
+      total += coinValue(e);
+      count++;
+      return false;
+    });
+    if (!count) return [false, 'Keine Münze gewählt'];
+    state.taler = Math.round((state.taler + total) * 100) / 100;
+    return done(`${count} Münze${count > 1 ? 'n' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Taler verkauft`);
+  }
+  // Welten, Portale, Wiedergeburt
+  if (action === 'buyWorld') {
+    const w = worldById[a];
+    const why = w ? canBuyWorld(state, a) : 'Diese Welt gibt es nicht';
+    if (why) return [false, why];
+    state.taler -= w.price;
+    state.worlds.push(w.id);
+    save();
+    teleport(w.id, true);
+    return [true, `${w.name} freigeschaltet!`];
+  }
+  if (action === 'teleport') {
+    const w = worldById[a];
+    if (!w || !ownsWorld(state, a)) return [false, 'Diese Welt hast du noch nicht'];
+    teleport(a, true);
+    return [true, `Teleportiert nach ${w.name}`];
+  }
+  if (action === 'portal') {
+    const p = planetById[a];
+    const why = p ? canOpenPortal(state, a) : 'Diesen Planeten gibt es nicht';
+    if (why) return [false, why];
+    state.portals.push(p.id);
+    flash(p.color);
+    sound(1.6);
+    return done(`${p.portal.name} bereit: ${p.name} ist offen!`);
+  }
+  if (action === 'rebirth') {
+    if (canRebirth(state)) return [false, 'Zu wenig Taler'];
+    rebirth(state);
+    flash('#ffd76a');
+    sound(1.5);
+    return done(`Wiedergeburt ${state.rebirths}! Münzwert jetzt ×${rebirthMultiplier(state.rebirths).toLocaleString('de-DE')}`);
+  }
+  // nur Vorschau: Taler verzehnfachen, um spätere Welten auszuprobieren
+  if (action === 'testTaler') {
+    state.taler = Math.max(1e6, Math.round(state.taler * 10));
+    return done(`Test: ${fmtNumber(state.taler, true)} Taler`);
+  }
   return [false, 'Unbekannt'];
 }
 function uiAction(name) {
   if (name === 'find') return find();
   if (name === 'index') return (location.href = '../muenzindex/');
-  if (PANELS[name]) openPanel(name);
+  if (PANELS[name] || RBX_WINDOWS.has(name)) openPanel(name);
 }
 let rui = null;
 try {
-  rui = await createRobloxUi($('game'), { onAction: uiAction, onInvoke: invoke });
+  rui = await createRobloxUi($('game'), { onAction: uiAction, onInvoke: invoke, devTools: true });
   if (location.hash === '#debug') window.rui = rui;
 } catch (e) {
   console.error('Roblox-Oberfläche konnte nicht starten', e);

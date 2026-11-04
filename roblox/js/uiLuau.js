@@ -41,8 +41,12 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- Spielstand kommt aus Attributen am Spieler: Taler (sonst leaderstats.Taler), Level, XP, XPMax, Points,
 -- WorldName, WorldPlanet, Aura, OwnedAuras, Egg_<id> (Anzahl), Boost_<id> (Ende als os.time()),
 -- EggDiscount (Prozent). Das Wetter steht an ReplicatedStorage (Weather, WeatherEnds).
--- options.Invoke(action, a, b) → ok, text   Käufe (buyEgg, buyBoost, aura, robux); Standard: RemoteFunctions
+-- Inventar: Coins (JSON-Liste { i = Münz-Id, m = Mutation, b = Fundbonus, t = Fundzeit }), Slots.
+-- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths.
+-- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
+--                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
 -- options.OnAction(name, arg)               Menü-Knöpfe für Fenster, die es hier noch nicht gibt
+-- options.DevTools                          zeigt Test-Knöpfe (nur Vorschau, z. B. „+ Test-Taler“)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -53,6 +57,9 @@ local EggData = require(root:WaitForChild("EggData"))
 local ShopData = require(root:WaitForChild("ShopData"))
 local AuraData = require(root:WaitForChild("AuraData"))
 local MutationData = require(root:WaitForChild("MutationData"))
+local CoinData = require(root:WaitForChild("CoinData"))
+local WorldData = require(root:WaitForChild("WorldData"))
+local HttpService = game:GetService("HttpService")
 
 local GameUI = {}
 
@@ -136,6 +143,7 @@ end
 local player = Players.LocalPlayer
 local options = {}
 local ui = {}
+local windows = {} -- Shop, Inventar, Welten
 
 local function attr(name, default)
 	local v = player:GetAttribute(name)
@@ -237,8 +245,8 @@ local function buildHud(playerGui)
 		local badge = new("TextLabel", { Name = "Zahl", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -14, 0, -8), BackgroundColor3 = C.red, Text = "", Font = BODY, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 2, Parent = b }, { corner(UDim.new(1, 0)), stroke(C.bg, 2) })
 		ui.badges[e[1]] = badge
 		pressable(b, function()
-			if e[1] == "shop" then
-				GameUI.OpenShop()
+			if e[1] == "shop" or e[1] == "inventar" or e[1] == "welten" then
+				GameUI.Toggle(e[1])
 			else
 				options.OnAction(e[1])
 			end
@@ -328,8 +336,9 @@ local function actionButton(parent, text, color, enabled, onClick)
 	end)
 	return b
 end
-local function result(ok, text)
-	GameUI.Toast(text or (ok and "Gekauft" or "Das geht gerade nicht"), ok and C.gold or C.red)
+local function result(ok, text, color)
+	GameUI.Toast(text or (ok and "Gekauft" or "Das geht gerade nicht"), ok and (color or C.gold) or C.red)
+	return ok
 end
 
 local function fillShop()
@@ -338,15 +347,10 @@ local function fillShop()
 		if c:IsA("GuiObject") then c:Destroy() end
 	end
 	local money = taler()
-	ui.shopSub.Text = GameUI.Format(money) .. " Taler verfügbar"
-	for _, t in ipairs(TABS) do
-		local on = t[1] == ui.shopTab
-		ui.tabs[t[1]].BackgroundColor3 = on and C.gold or C.bg2
-		ui.tabs[t[1]].TextColor3 = on and Color3.fromRGB(42, 30, 10) or C.ink
-	end
+	windows.shop.sub.Text = GameUI.Format(money) .. " Taler verfügbar"
 	local grid = list:FindFirstChildOfClass("UIGridLayout")
-	grid.CellSize = ui.shopTab == "auras" and UDim2.new(0, 200, 0, 200) or UDim2.new(0, 200, 0, 236)
-	if ui.shopTab == "eier" then
+	grid.CellSize = windows.shop.tab == "auras" and UDim2.new(0, 200, 0, 200) or UDim2.new(0, 200, 0, 236)
+	if windows.shop.tab == "eier" then
 		local discount = attr("EggDiscount", 0)
 		for i, egg in ipairs(EggData.Eggs) do
 			local c = card(list, egg.Glow)
@@ -374,7 +378,7 @@ local function fillShop()
 			end
 			shape.Name = "Ei"
 		end
-	elseif ui.shopTab == "boosts" then
+	elseif windows.shop.tab == "boosts" then
 		for i, b in ipairs(ShopData.Boosts) do
 			local c = card(list)
 			c.LayoutOrder = i
@@ -387,7 +391,7 @@ local function fillShop()
 				result(options.Invoke("buyBoost", b.Id))
 			end)
 		end
-	elseif ui.shopTab == "auras" then
+	elseif windows.shop.tab == "auras" then
 		local owned = AuraData.ParseOwned(attr("OwnedAuras", ""))
 		local equipped = attr("Aura", "")
 		for i, a in ipairs(AuraData.Auras) do
@@ -431,63 +435,615 @@ local function fillShop()
 	end
 end
 
-local function buildShop(playerGui)
-	local gui = new("ScreenGui", { Name = "CoinmasterShop", ResetOnSpawn = false, DisplayOrder = 5, Enabled = false, Parent = playerGui })
+-- ── Fenster: Gerüst mit Kopf, Reitern und Inhalt (Shop, Inventar, Welten) ──
+local function clear(frame)
+	for _, c in ipairs(frame:GetChildren()) do
+		if c:IsA("GuiObject") then c:Destroy() end
+	end
+end
+
+local function buildWindow(playerGui, key, icon, title, tabs, fill)
+	local w = { key = key, tabs = tabs, fill = fill, buttons = {}, tab = tabs[1][1] }
+	local gui = new("ScreenGui", { Name = "Coinmaster" .. title, ResetOnSpawn = false, DisplayOrder = 5, Enabled = false, Parent = playerGui })
 	local dim = new("TextButton", { Name = "Abdunkeln", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, Parent = gui })
-	dim.Activated:Connect(function() GameUI.CloseShop() end)
+	dim.Activated:Connect(function() GameUI.Close(key) end)
 	local win = new("Frame", { Name = "Fenster", Size = UDim2.new(0.84, 0, 0.84, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.bg, Parent = gui }, {
 		corner(UDim.new(0, 22)),
 		stroke(C.gold, 3),
 		new("UISizeConstraint", { MaxSize = Vector2.new(980, 640) }),
 	})
-	ui.shopScale = new("UIScale", { Scale = 1, Parent = win })
+	w.scale = new("UIScale", { Scale = 1, Parent = win })
 	local head = new("Frame", { Name = "Kopf", Size = UDim2.new(1, -40, 0, 64), Position = UDim2.new(0, 20, 0, 14), BackgroundTransparency = 1, Parent = win })
 	new("Frame", { Size = UDim2.new(0, 56, 0, 56), BackgroundColor3 = C.gold, Parent = head }, {
 		corner(UDim.new(0, 14)),
 		gradient(C.goldHi, Color3.fromRGB(176, 128, 52)),
-		label({ Size = UDim2.new(1, 0, 1, 0), Text = "🛒", TextSize = 30, Font = Enum.Font.SourceSans }),
+		label({ Size = UDim2.new(1, 0, 1, 0), Text = icon, TextSize = 30, Font = Enum.Font.SourceSans }),
 	})
-	label({ Size = UDim2.new(1, -140, 0, 34), Position = UDim2.new(0, 70, 0, 2), Text = "Shop", Font = FONT, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Left, Parent = head })
-	ui.shopSub = label({ Size = UDim2.new(1, -140, 0, 18), Position = UDim2.new(0, 70, 0, 38), Text = "", TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Code, Parent = head })
+	label({ Size = UDim2.new(0.5, 0, 0, 34), Position = UDim2.new(0, 70, 0, 2), Text = title, Font = FONT, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Left, Parent = head })
+	w.sub = label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 70, 0, 38), Text = "", TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Code, Parent = head })
+	-- Werkzeuge rechts im Kopf (z. B. „Zum Spawn“)
+	w.tools = new("Frame", { Name = "Werkzeuge", Size = UDim2.new(0, 360, 0, 38), Position = UDim2.new(1, -58, 0, 8), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = head }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
 	local close = new("TextButton", { Name = "Schliessen", Size = UDim2.new(0, 46, 0, 46), Position = UDim2.new(1, 0, 0, 4), AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = C.red, Text = "✕", Font = BODY, TextSize = 22, TextColor3 = Color3.new(1, 1, 1), Parent = head }, { corner(UDim.new(0, 12)) })
-	pressable(close, function() GameUI.CloseShop() end)
-	local tabs = new("Frame", { Name = "Reiter", Size = UDim2.new(1, -40, 0, 40), Position = UDim2.new(0, 20, 0, 88), BackgroundTransparency = 1, Parent = win }, {
+	pressable(close, function() GameUI.Close(key) end)
+	local row = new("Frame", { Name = "Reiter", Size = UDim2.new(1, -40, 0, 40), Position = UDim2.new(0, 20, 0, 88), BackgroundTransparency = 1, Parent = win }, {
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	ui.tabs = {}
-	for i, t in ipairs(TABS) do
-		local b = new("TextButton", { Name = t[1], Size = UDim2.new(0, 132, 1, 0), BackgroundColor3 = C.bg2, Text = t[2], Font = FONT, TextSize = 18, TextColor3 = C.ink, LayoutOrder = i, Parent = tabs }, { corner(UDim.new(1, 0)) })
-		ui.tabs[t[1]] = b
+	for i, t in ipairs(tabs) do
+		local b = new("TextButton", { Name = t[1], Size = UDim2.new(0, t[3] or 132, 1, 0), BackgroundColor3 = C.bg2, Text = t[2], Font = FONT, TextSize = 18, TextColor3 = C.ink, LayoutOrder = i, Parent = row }, { corner(UDim.new(1, 0)) })
+		w.buttons[t[1]] = b
 		pressable(b, function()
-			ui.shopTab = t[1]
-			ui.shopList.CanvasPosition = Vector2.new(0, 0)
-			fillShop()
+			w.tab = t[1]
+			w.keep = {}
+			if w.onTab then w.onTab(t[1]) end
+			GameUI.Refresh(key)
 		end)
 	end
-	ui.shopList = new("ScrollingFrame", { Name = "Inhalt", Size = UDim2.new(1, -24, 1, -150), Position = UDim2.new(0, 12, 0, 140), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 8, ScrollBarImageColor3 = C.gold, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = win }, {
+	w.body = new("Frame", { Name = "Inhalt", Size = UDim2.new(1, -40, 1, -150), Position = UDim2.new(0, 20, 0, 140), BackgroundTransparency = 1, Parent = win })
+	w.gui = gui
+	w.keep = {}
+	windows[key] = w
+	return w
+end
+
+-- Bildlauf, der beim Neuaufbau (gleicher Reiter) an seiner Stelle bleibt
+local function scroller(w, parent, name, props, children)
+	local base = { Name = name, BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 8, ScrollBarImageColor3 = C.gold, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = parent }
+	for k, v in pairs(props) do base[k] = v end
+	local sf = new("ScrollingFrame", base, children)
+	sf.CanvasPosition = w.keep[name] or Vector2.new(0, 0)
+	return sf
+end
+
+function GameUI.Refresh(key)
+	local w = windows[key]
+	if not w or not w.gui.Enabled then return end
+	for _, t in ipairs(w.tabs) do
+		local on = t[1] == w.tab
+		w.buttons[t[1]].BackgroundColor3 = on and C.gold or C.bg2
+		w.buttons[t[1]].TextColor3 = on and Color3.fromRGB(42, 30, 10) or C.ink
+	end
+	-- Bildlauf merken, dann neu füllen
+	for _, d in ipairs(w.body:GetDescendants()) do
+		if d:IsA("ScrollingFrame") then w.keep[d.Name] = d.CanvasPosition end
+	end
+	w.fill(w)
+end
+local function refreshWindows()
+	for key in pairs(windows) do
+		GameUI.Refresh(key)
+	end
+end
+
+function GameUI.Open(key, tab)
+	local w = windows[key]
+	if not w then return end
+	for other, o in pairs(windows) do
+		if other ~= key then o.gui.Enabled = false end
+	end
+	if tab and w.buttons[tab] then
+		w.tab = tab
+	elseif w.defaultTab and not w.gui.Enabled then
+		w.tab = w.defaultTab()
+	end
+	w.keep = {}
+	if w.onTab then w.onTab(w.tab) end
+	w.gui.Enabled = true
+	w.scale.Scale = 0.85
+	TweenService:Create(w.scale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	GameUI.Refresh(key)
+end
+function GameUI.Close(key)
+	if key == nil then
+		for _, w in pairs(windows) do w.gui.Enabled = false end
+	elseif windows[key] then
+		windows[key].gui.Enabled = false
+	end
+end
+function GameUI.IsOpen(key)
+	if key == nil then
+		for _, w in pairs(windows) do
+			if w.gui.Enabled then return true end
+		end
+		return false
+	end
+	return windows[key] ~= nil and windows[key].gui.Enabled
+end
+function GameUI.Toggle(key, tab)
+	if GameUI.IsOpen(key) and not tab then
+		GameUI.Close(key)
+	else
+		GameUI.Open(key, tab)
+	end
+end
+
+-- ── Shop ──
+local function buildShop(playerGui)
+	local w = buildWindow(playerGui, "shop", "🛒", "Shop", TABS, fillShop)
+	ui.shopList = new("ScrollingFrame", { Name = "Inhalt", Size = UDim2.new(1, 16, 1, 0), Position = UDim2.new(0, -8, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 8, ScrollBarImageColor3 = C.gold, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = w.body }, {
 		new("UIGridLayout", { CellSize = UDim2.new(0, 200, 0, 236), CellPadding = UDim2.new(0, 12, 0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
 		new("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }),
 	})
-	ui.shopTab = "eier"
-	ui.shop = gui
-	return gui
+	w.onTab = function()
+		ui.shopList.CanvasPosition = Vector2.new(0, 0)
+	end
+end
+function GameUI.OpenShop(tab) GameUI.Open("shop", tab) end
+function GameUI.CloseShop() GameUI.Close("shop") end
+function GameUI.IsShopOpen() return GameUI.IsOpen("shop") end
+
+-- ── Inventar ──
+local SORTS = { { "neu", "Neueste zuerst" }, { "wert", "Höchster Wert" }, { "selten", "Seltenste" }, { "name", "Name" } }
+ui.invSort, ui.invTier, ui.invMut = 1, 0, false
+
+-- Münzen aus dem Attribut Coins (JSON), mit Wert und Stufe
+local function coinEntries()
+	local ok, list = pcall(function()
+		return HttpService:JSONDecode(attr("Coins", "[]"))
+	end)
+	local out = {}
+	if not ok or type(list) ~= "table" then return out end
+	for index, e in ipairs(list) do
+		local coin = CoinData.Coins[e.i]
+		if coin then
+			local tier = CoinData.TierById[coin.Tier]
+			local mutation = e.m and MutationData.ById[e.m] or nil
+			table.insert(out, {
+				Index = index, Coin = coin, Tier = tier, Mutation = mutation, At = e.t or 0,
+				Value = CoinData.EntryValue(e.i, mutation and mutation.Multiplier or 1, e.b),
+			})
+		end
+	end
+	return out
 end
 
-function GameUI.OpenShop(tab)
-	if not ui.shop then return end
-	if tab then ui.shopTab = tab end
-	ui.shop.Enabled = true
-	ui.shopScale.Scale = 0.85
-	TweenService:Create(ui.shopScale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	fillShop()
-end
-function GameUI.CloseShop()
-	if ui.shop then ui.shop.Enabled = false end
-end
-function GameUI.IsShopOpen()
-	return ui.shop ~= nil and ui.shop.Enabled
+local function firstLetter(text)
+	return text:match("^[%z\\1-\\127\\194-\\244][\\128-\\191]*") or "?"
 end
 
+-- Münze aus Frames: Metall-Verlauf, Rand in Stufenfarbe, innerer Ring, Anfangsbuchstabe
+local function coinDisc(parent, entry, size, position)
+	local metal = entry.Coin.Metal
+	local disc = new("Frame", { Name = "Muenze", Size = UDim2.new(0, size, 0, size), Position = position, AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = parent }, {
+		corner(UDim.new(1, 0)),
+		stroke(entry.Tier.Color, math.max(2, size / 22)),
+		new("UIGradient", { Rotation = 45, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, metal.Light), ColorSequenceKeypoint.new(0.5, metal.Mid), ColorSequenceKeypoint.new(1, metal.Dark) }) }),
+	})
+	new("Frame", { Name = "Ring", Size = UDim2.new(0.72, 0, 0.72, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Parent = disc }, {
+		corner(UDim.new(1, 0)),
+		stroke(metal.Dark, math.max(1, size / 40)),
+	})
+	label({ Size = UDim2.new(1, 0, 1, 0), Text = firstLetter(entry.Coin.Name), Font = FONT, TextSize = size * 0.42, TextColor3 = metal.Dark, Parent = disc })
+	if entry.Mutation then
+		new("Frame", { Name = "Mutation", Size = UDim2.new(0, size * 0.26, 0, size * 0.26), Position = UDim2.new(0.86, 0, 0.02, 0), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = entry.Mutation.Color, ZIndex = 2, Parent = disc }, {
+			corner(UDim.new(1, 0)),
+			stroke(C.bg, 2),
+		})
+	end
+	return disc
+end
+
+local function pill(parent, text, color, y)
+	local width = math.max(60, utf8.len(text) * 8 + 22)
+	return new("TextLabel", { Size = UDim2.new(0, width, 0, 22), Position = UDim2.new(0.5, 0, 0, y), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = color, BackgroundTransparency = 0.75, Text = text, TextColor3 = color, Font = BODY, TextSize = 12, Parent = parent }, {
+		corner(UDim.new(1, 0)),
+		stroke(color, 1),
+	})
+end
+
+local function smallButton(parent, text, order, width, onClick, on)
+	local b = new("TextButton", { Size = UDim2.new(0, width, 0, 34), BackgroundColor3 = on and C.gold or C.bg2, Text = text, Font = BODY, TextSize = 13, TextColor3 = on and Color3.fromRGB(42, 30, 10) or C.ink, LayoutOrder = order, Parent = parent }, {
+		corner(UDim.new(0, 10)),
+		stroke(C.line, 1),
+	})
+	pressable(b, onClick)
+	return b
+end
+
+local function sell(indices, w)
+	if #indices == 0 then return end
+	local ok, text = options.Invoke("sell", table.concat(indices, ","))
+	if result(ok, text) then
+		ui.invSel = nil
+		GameUI.Refresh("inventar")
+	end
+end
+
+local function fillCoins(w, entries)
+	local cap = attr("Slots", 30)
+	local full = #entries >= cap
+	local main = new("Frame", { Name = "Muenzen", Size = UDim2.new(1, -276, 1, 0), BackgroundTransparency = 1, Parent = w.body })
+	local bar = new("Frame", { Name = "Werkzeuge", Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Parent = main }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	label({ Size = UDim2.new(0, 130, 1, 0), Text = #entries .. " / " .. cap .. " Plätze" .. (full and " · voll" or ""), Font = FONT, TextSize = 17, TextColor3 = full and C.red or C.ink, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = bar })
+	smallButton(bar, "↕ " .. SORTS[ui.invSort][2], 2, 150, function()
+		ui.invSort = ui.invSort % #SORTS + 1
+		w.keep = {}
+		GameUI.Refresh("inventar")
+	end)
+	local tierName = ui.invTier == 0 and "Alle Stufen" or CoinData.Tiers[ui.invTier].Name
+	smallButton(bar, "◆ " .. tierName, 3, 130, function()
+		ui.invTier = (ui.invTier + 1) % (#CoinData.Tiers + 1)
+		w.keep = {}
+		GameUI.Refresh("inventar")
+	end)
+	smallButton(bar, (ui.invMut and "☑" or "☐") .. " Nur Mutationen", 4, 140, function()
+		ui.invMut = not ui.invMut
+		w.keep = {}
+		GameUI.Refresh("inventar")
+	end, ui.invMut)
+
+	-- filtern und sortieren
+	local list = {}
+	for _, e in ipairs(entries) do
+		if (ui.invTier == 0 or e.Tier.Index == ui.invTier) and (not ui.invMut or e.Mutation) then
+			table.insert(list, e)
+		end
+	end
+	local by = SORTS[ui.invSort][1]
+	table.sort(list, function(a, b)
+		if by == "wert" and a.Value ~= b.Value then return a.Value > b.Value end
+		if by == "selten" and a.Tier.Index ~= b.Tier.Index then return a.Tier.Index > b.Tier.Index end
+		if by == "selten" and a.Value ~= b.Value then return a.Value > b.Value end
+		if by == "name" and a.Coin.Name ~= b.Coin.Name then return a.Coin.Name < b.Coin.Name end
+		if a.At ~= b.At then return a.At > b.At end
+		return a.Index > b.Index
+	end)
+
+	if #list == 0 then
+		label({ Size = UDim2.new(1, 0, 0, 80), Position = UDim2.new(0, 0, 0, 60), Text = #entries > 0 and "Keine Münze passt zum Filter." or "Noch keine Münzen. Mit „Münze suchen“ findest du welche.", TextColor3 = C.muted, TextSize = 15, TextWrapped = true, Parent = main })
+	else
+		local grid = scroller(w, main, "Raster", { Size = UDim2.new(1, 8, 1, -46), Position = UDim2.new(0, 0, 0, 46) }, {
+			new("UIGridLayout", { CellSize = UDim2.new(0, 104, 0, 128), CellPadding = UDim2.new(0, 10, 0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+			new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 2), PaddingRight = UDim.new(0, 12) }),
+		})
+		for order, e in ipairs(list) do
+			local selected = ui.invSel == e.Index
+			local cell = new("TextButton", { Name = "Muenze" .. e.Index, BackgroundColor3 = C.bg2, Text = "", AutoButtonColor = false, LayoutOrder = order, Parent = grid }, {
+				corner(UDim.new(0, 14)),
+				stroke(selected and C.goldHi or e.Tier.Color, selected and 3 or 1.5),
+			})
+			coinDisc(cell, e, 62, UDim2.new(0.5, 0, 0, 8))
+			label({ Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 76), Text = e.Coin.Name, TextScaled = true, Font = BODY, Parent = cell })
+			label({ Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 98), Text = GameUI.Format(e.Value), TextSize = 13, Font = Enum.Font.Code, TextColor3 = C.goldHi, Parent = cell })
+			pressable(cell, function()
+				ui.invSel = e.Index
+				GameUI.Refresh("inventar")
+			end)
+		end
+	end
+
+	-- Seitenleiste: gewählte Münze und Verkaufen
+	local side = new("Frame", { Name = "Auswahl", Size = UDim2.new(0, 262, 1, 0), Position = UDim2.new(1, -262, 0, 0), BackgroundColor3 = C.bg2, Parent = w.body }, {
+		corner(UDim.new(0, 18)),
+		stroke(C.line, 2),
+		new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14) }),
+	})
+	local sel = nil
+	for _, e in ipairs(entries) do
+		if e.Index == ui.invSel then sel = e end
+	end
+	if sel then
+		coinDisc(side, sel, 84, UDim2.new(0.5, 0, 0, 0))
+		pill(side, sel.Tier.Name, sel.Tier.Color, 90)
+		label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = sel.Coin.Name, Font = FONT, TextScaled = true, Parent = side })
+		local y = 144
+		if sel.Mutation then
+			pill(side, sel.Mutation.Name .. " ×" .. tostring(sel.Mutation.Multiplier):gsub("%.", ","), sel.Mutation.Color, y)
+			y = y + 28
+		end
+		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 0, y), Text = sel.Coin.Text, TextSize = 12, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = "Wert: " .. GameUI.Format(sel.Value) .. " Taler" .. (sel.At > 0 and ("  ·  " .. os.date("%d.%m.%y", sel.At)) or ""), TextSize = 13, TextColor3 = C.goldHi, Parent = side })
+		local b = actionButton(side, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell({ sel.Index }, w) end)
+		b.Position = UDim2.new(0, 0, 1, -110)
+	else
+		label({ Size = UDim2.new(1, 0, 0, 50), Position = UDim2.new(0, 0, 0, 30), Text = "🪙", TextSize = 40, Font = Enum.Font.SourceSans, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0, 84), Text = "Wähle eine Münze, um sie dir anzusehen oder zu verkaufen.", TextSize = 14, TextWrapped = true, TextColor3 = C.muted, Parent = side })
+	end
+	local normal = {}
+	for _, e in ipairs(entries) do
+		if e.Tier.Index == 1 and not e.Mutation then table.insert(normal, e.Index) end
+	end
+	local all = actionButton(side, "Alle normalen verkaufen (" .. #normal .. ")", C.blue, #normal > 0, function() sell(normal, w) end)
+	all.Position = UDim2.new(0, 0, 1, -62)
+	all.TextSize = 15
+	label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16), Text = "Münzen mit Mutation bleiben im Inventar.", TextSize = 11, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
+end
+
+local function fillEggs(w)
+	local list = scroller(w, w.body, "Eier", { Size = UDim2.new(1, 8, 1, -50) }, {
+		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingRight = UDim.new(0, 14) }),
+	})
+	local any = false
+	for i, egg in ipairs(EggData.Eggs) do
+		local n = attr("Egg_" .. egg.Id, 0)
+		if n > 0 then
+			any = true
+			local row = new("Frame", { Name = egg.Id, Size = UDim2.new(1, 0, 0, 70), BackgroundColor3 = C.bg2, LayoutOrder = i, Parent = list }, {
+				corner(UDim.new(0, 16)),
+				stroke(egg.Glow, 2),
+			})
+			new("Frame", { Name = "Ei", Size = UDim2.new(0, 40, 0, 52), Position = UDim2.new(0, 18, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = egg.Color, Parent = row }, {
+				corner(UDim.new(0.5, 0)),
+				stroke(egg.Glow, 2),
+				new("UIGradient", { Rotation = 35, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150)) }),
+			})
+			label({ Size = UDim2.new(0.6, 0, 0, 24), Position = UDim2.new(0, 76, 0, 12), Text = egg.Name, Font = FONT, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+			label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 76, 0, 38), Text = egg.RankName, TextSize = 13, TextColor3 = egg.Glow, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+			label({ Size = UDim2.new(0, 90, 1, 0), Position = UDim2.new(1, -106, 0, 0), Text = "×" .. n, Font = FONT, TextSize = 28, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
+		end
+	end
+	if not any then
+		label({ Size = UDim2.new(1, 0, 0, 40), Text = "Noch keine Eier. Im Shop gibt es welche.", TextSize = 15, TextColor3 = C.muted, Parent = list })
+	end
+	label({ Size = UDim2.new(1, -190, 0, 40), Position = UDim2.new(0, 0, 1, -40), Text = "Eier schlüpfen im Spiel nach einer Brutzeit.", TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = w.body })
+	local shop = new("TextButton", { Name = "ZumShop", Size = UDim2.new(0, 170, 0, 40), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = C.green, Text = "🛒 Eier kaufen", Font = FONT, TextSize = 17, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(UDim.new(0, 12)) })
+	pressable(shop, function() GameUI.Open("shop", "eier") end)
+end
+
+local function fillInventory(w)
+	clear(w.body)
+	clear(w.tools)
+	local entries = coinEntries()
+	local eggs = 0
+	for _, egg in ipairs(EggData.Eggs) do
+		eggs = eggs + attr("Egg_" .. egg.Id, 0)
+	end
+	w.sub.Text = #entries .. " Münzen · " .. eggs .. " Eier"
+	if w.tab == "eier" then
+		fillEggs(w)
+	elseif w.tab == "tiere" then
+		label({ Size = UDim2.new(1, -80, 0, 80), Position = UDim2.new(0, 40, 0, 60), Text = "Hier erscheinen deine geschlüpften Haustiere mit ihrem Bonus, sobald das Schlüpfen im Spiel läuft.", TextSize = 16, TextWrapped = true, TextColor3 = C.muted, Parent = w.body })
+	else
+		fillCoins(w, entries)
+	end
+end
+
+local function buildInventory(playerGui)
+	buildWindow(playerGui, "inventar", "🎒", "Inventar", { { "muenzen", "🪙 Münzen" }, { "eier", "🥚 Eier" }, { "tiere", "🐾 Haustiere", 150 } }, fillInventory)
+end
+function GameUI.OpenInventory(tab) GameUI.Open("inventar", tab) end
+
+-- ── Welten ──
+local function worldState()
+	return {
+		Owned = WorldData.ParseList(attr("Worlds", "")),
+		Portals = WorldData.ParseList(attr("Portals", "p1")),
+		Taler = taler(),
+		Rebirths = attr("Rebirths", 0),
+	}
+end
+local function decimal(n)
+	local text = string.format("%.2f", n):gsub("0+$", ""):gsub("%.$", "")
+	return (text:gsub("%.", ","))
+end
+
+local function toolButton(parent, text, order, enabled, onClick)
+	local b = new("TextButton", { Size = UDim2.new(0, 132, 1, 0), BackgroundColor3 = C.bg2, Text = text, Font = BODY, TextSize = 13, TextColor3 = C.ink, AutoButtonColor = enabled, LayoutOrder = order, Parent = parent }, {
+		corner(UDim.new(0, 10)),
+		stroke(C.line, 1),
+	})
+	if not enabled then b.TextTransparency = 0.5 end
+	pressable(b, function()
+		if enabled then onClick() end
+	end)
+	return b
+end
+
+local function worldCard(parent, st, world, number, order, here)
+	local owned = WorldData.Owns(st, world.Id)
+	local accent = world.Accent or C.line
+	local c = card(parent, here and C.goldHi or (owned and accent or C.line))
+	c.Name = world.Id
+	c.LayoutOrder = order
+	local img = new("Frame", { Name = "Bild", Size = UDim2.new(1, 0, 0, 92), BackgroundColor3 = Color3.new(1, 1, 1), Parent = c }, {
+		corner(UDim.new(0, 12)),
+	})
+	if world.ComingSoon then
+		img.BackgroundColor3 = C.line
+		label({ Size = UDim2.new(1, 0, 1, 0), Text = "?", Font = FONT, TextSize = 46, TextColor3 = C.muted, Parent = img })
+		label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 98), Text = "···", TextSize = 12, TextColor3 = C.muted, Font = Enum.Font.Code, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = "Coming soon", Font = FONT, TextSize = 20, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 142), Text = "Kommt mit einem späteren Update.", TextSize = 12, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = c })
+		actionButton(c, "🔒 Bald", C.line, false, function() end)
+		return c
+	end
+	new("UIGradient", { Rotation = 120, Color = ColorSequence.new(world.Ground, accent), Parent = img })
+	label({ Size = UDim2.new(1, 0, 1, 0), Text = world.Planet == "hub" and "🏛️" or "🌍", TextSize = 40, Font = Enum.Font.SourceSans, Parent = img })
+	if here then
+		new("TextLabel", { Size = UDim2.new(0, 100, 0, 22), Position = UDim2.new(0, 8, 0, 8), BackgroundColor3 = C.gold, Text = "Du bist hier", Font = BODY, TextSize = 12, TextColor3 = Color3.fromRGB(42, 30, 10), Parent = img }, { corner(UDim.new(1, 0)) })
+	end
+	label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 98), Text = "Welt " .. number, TextSize = 12, TextColor3 = C.muted, Font = Enum.Font.Code, Parent = c })
+	label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = world.Name, Font = FONT, TextScaled = true, Parent = c })
+	local luck = world.Luck > 0 and ("+" .. decimal(world.Luck * 100) .. " %") or "±0 %"
+	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 146), Text = "🍀 " .. luck .. "    💎 ×" .. decimal(world.Value), TextSize = 13, TextColor3 = Color3.fromRGB(159, 227, 181), Font = Enum.Font.Code, Parent = c })
+	local why = WorldData.CanBuy(st, world.Id)
+	if here then
+		actionButton(c, "✔ Hier bist du", C.line, false, function() end)
+	elseif owned then
+		actionButton(c, "🌀 Teleportieren", C.blue, true, function()
+			if result(options.Invoke("teleport", world.Id)) then GameUI.Close("welten") end
+		end)
+	elseif not why or why == "Zu wenig Taler" then
+		local b = actionButton(c, "Kaufen · " .. GameUI.Format(world.Price), C.green, true, function()
+			local now = worldState()
+			local reason = WorldData.CanBuy(now, world.Id)
+			if reason == "Zu wenig Taler" then
+				result(false, "Dafür fehlen noch " .. GameUI.Format(math.ceil(world.Price - now.Taler)) .. " Taler")
+			elseif result(options.Invoke("buyWorld", world.Id)) then
+				GameUI.Close("welten")
+			end
+		end)
+		if why then b.BackgroundTransparency = 0.45 end
+	else
+		local b = actionButton(c, "🔒 " .. why, C.line, false, function() end)
+		b.TextScaled = true
+	end
+	return c
+end
+
+local function portalBanner(parent, st, planet)
+	if not planet.Portal or st.Portals[planet.Id] then return 0 end
+	local banner = new("Frame", { Name = "Portal", Size = UDim2.new(1, -12, 0, 112), Position = UDim2.new(0, 0, 0, 86), BackgroundColor3 = C.bg2, Parent = parent }, {
+		corner(UDim.new(0, 18)),
+		stroke(planet.Color, 2),
+	})
+	new("Frame", { Size = UDim2.new(0, 70, 0, 70), Position = UDim2.new(0, 18, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = planet.Color, BackgroundTransparency = 0.6, Parent = banner }, {
+		corner(UDim.new(1, 0)),
+		stroke(planet.Color, 2),
+		label({ Size = UDim2.new(1, 0, 1, 0), Text = planet.ComingSoon and "🔒" or (planet.Id == "p2" and "🚀" or "🌀"), TextSize = 36, Font = Enum.Font.SourceSans }),
+	})
+	if planet.ComingSoon then
+		label({ Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 106, 0, 24), Text = planet.Name .. " · Coming soon", Font = FONT, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, Parent = banner })
+		label({ Size = UDim2.new(1, -130, 0, 40), Position = UDim2.new(0, 106, 0, 52), Text = planet.Text .. " Kommt mit einem späteren Update.", TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = banner })
+		return 124
+	end
+	label({ Size = UDim2.new(1, -340, 0, 26), Position = UDim2.new(0, 106, 0, 10), Text = planet.Portal.Name .. " nach " .. planet.Name, Font = FONT, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, Parent = banner })
+	label({ Size = UDim2.new(1, -340, 0, 18), Position = UDim2.new(0, 106, 0, 36), Text = planet.Portal.Text, TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = banner })
+	for i, check in ipairs(WorldData.PortalChecks(st, planet.Id)) do
+		label({ Size = UDim2.new(1, -340, 0, 18), Position = UDim2.new(0, 106, 0, 40 + i * 22), Text = (check[2] and "✔ " or "🔒 ") .. check[1], TextSize = 13, TextColor3 = check[2] and C.green or C.ink, TextXAlignment = Enum.TextXAlignment.Left, Parent = banner })
+	end
+	local why = WorldData.CanOpenPortal(st, planet.Id)
+	local holder = new("Frame", { Size = UDim2.new(0, 210, 0, 44), Position = UDim2.new(1, -20, 0.5, 22), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Parent = banner })
+	actionButton(holder, why and "Noch verschlossen" or (planet.Portal.Name .. " starten"), C.green, why == nil, function()
+		result(options.Invoke("portal", planet.Id), nil, planet.Color)
+	end)
+	return 124
+end
+
+local function fillPlanet(w, planet, st)
+	new("Frame", { Name = "Planet", Size = UDim2.new(1, 0, 0, 78), BackgroundTransparency = 1, Parent = w.body }, {
+		label({ Size = UDim2.new(1, 0, 0, 16), Text = string.upper(planet.Name), TextSize = 12, TextColor3 = planet.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Code }),
+		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = planet.Title, Font = FONT, TextSize = 26, TextXAlignment = Enum.TextXAlignment.Left }),
+		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 46), Text = planet.Text, TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham }),
+	})
+	local top = 86 + portalBanner(w.body, st, planet)
+	local grid = scroller(w, w.body, "Welten" .. planet.Id, { Size = UDim2.new(1, 8, 1, -top), Position = UDim2.new(0, -4, 0, top) }, {
+		new("UIGridLayout", { CellSize = UDim2.new(0, 200, 0, 236), CellPadding = UDim2.new(0, 12, 0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 12) }),
+	})
+	local here = attr("World", "spawn")
+	local n = 0
+	for order, world in ipairs(WorldData.Worlds) do
+		if world.Planet == planet.Id then
+			if not world.ComingSoon then n = n + 1 end
+			local c = worldCard(grid, st, world, n, order, here == world.Id)
+			if not st.Portals[planet.Id] then
+				-- Planet noch zu: Karten gedämpft
+				c.BackgroundTransparency = 0.4
+			end
+		end
+	end
+end
+
+local function fact(parent, title, value, color, order)
+	return new("Frame", { BackgroundColor3 = C.bg2, LayoutOrder = order, Parent = parent }, {
+		corner(UDim.new(0, 12)),
+		label({ Size = UDim2.new(1, -20, 0, 16), Position = UDim2.new(0, 10, 0, 8), Text = title, TextSize = 12, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left }),
+		label({ Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 26), Text = value, Font = FONT, TextSize = 22, TextColor3 = color or C.ink, TextXAlignment = Enum.TextXAlignment.Left }),
+	})
+end
+
+local function fillRebirth(w, st)
+	local cost = WorldData.RebirthCost(st.Rebirths)
+	local hero = new("Frame", { Name = "Wiedergeburten", Size = UDim2.new(0, 210, 1, 0), BackgroundColor3 = C.bg2, Parent = w.body }, {
+		corner(UDim.new(0, 18)),
+		stroke(C.goldHi, 2),
+		gradient(Color3.fromRGB(255, 240, 200), Color3.fromRGB(150, 130, 110)),
+		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.5, -96), Text = "♻️", TextSize = 50, Font = Enum.Font.SourceSans }),
+		label({ Size = UDim2.new(1, 0, 0, 70), Position = UDim2.new(0, 0, 0.5, -34), Text = tostring(st.Rebirths), Font = FONT, TextSize = 64, TextColor3 = C.goldHi }),
+		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0.5, 40), Text = "Wiedergeburt" .. (st.Rebirths == 1 and "" or "en"), TextSize = 14, TextColor3 = C.muted }),
+	})
+	hero.BackgroundTransparency = 0
+	local main = new("Frame", { Size = UDim2.new(1, -230, 1, 0), Position = UDim2.new(0, 230, 0, 0), BackgroundTransparency = 1, Parent = w.body })
+	local facts = new("Frame", { Size = UDim2.new(1, 0, 0, 132), BackgroundTransparency = 1, Parent = main }, {
+		new("UIGridLayout", { CellSize = UDim2.new(0.5, -6, 0, 60), CellPadding = UDim2.new(0, 12, 0, 12), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	fact(facts, "Münzwert jetzt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths)), nil, 1)
+	fact(facts, "Nach der Wiedergeburt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths + 1)), C.green, 2)
+	fact(facts, "Kosten", GameUI.Format(cost) .. " Taler", C.goldHi, 3)
+	for _, p in ipairs(WorldData.Planets) do
+		if p.Portal and not p.ComingSoon and p.Portal.Rebirths > st.Rebirths then
+			fact(facts, p.Portal.Name, "ab " .. p.Portal.Rebirths .. " Wiedergeburt" .. (p.Portal.Rebirths > 1 and "en" or ""), nil, 4)
+			break
+		end
+	end
+	local pct = math.clamp(st.Taler / cost, 0, 1)
+	local bar = new("Frame", { Name = "Fortschritt", Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 146), BackgroundColor3 = C.bg2, Parent = main }, {
+		corner(UDim.new(1, 0)),
+		stroke(C.line, 1),
+	})
+	new("Frame", { Size = UDim2.new(math.max(pct, 0.02), 0, 1, 0), BackgroundColor3 = C.gold, Parent = bar }, { corner(UDim.new(1, 0)), gradient(C.goldHi, Color3.fromRGB(176, 128, 52)) })
+	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = GameUI.Format(math.floor(st.Taler)) .. " von " .. GameUI.Format(cost) .. " Taler", TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Code, Parent = main })
+	local rules = {
+		{ "✕ Deine Taler sind danach weg", C.red },
+		{ "✔ Welten, Portale, Münzen, Eier, Level und Skills bleiben", C.ink },
+		{ "✔ Jede Münze ist für immer " .. math.floor(WorldData.Rebirth.Bonus * 100 + 0.5) .. " % mehr wert", C.ink },
+	}
+	for i, r in ipairs(rules) do
+		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0, 180 + i * 24), Text = r[1], TextSize = 14, TextColor3 = r[2], TextXAlignment = Enum.TextXAlignment.Left, Parent = main })
+	end
+	local ready = st.Taler >= cost
+	local holder = new("Frame", { Size = UDim2.new(0, 320, 0, 52), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1, Parent = main })
+	local armed = ui.rebirthArmed and os.clock() - ui.rebirthArmed < 3
+	local text = not ready and ("Noch " .. GameUI.Format(math.ceil(cost - st.Taler)) .. " Taler") or (armed and "Sicher? Nochmal klicken" or "Wiedergeboren werden")
+	local b = actionButton(holder, text, armed and C.red or C.gold, ready, function()
+		if not (ui.rebirthArmed and os.clock() - ui.rebirthArmed < 3) then
+			-- erst bestätigen lassen
+			ui.rebirthArmed = os.clock()
+			GameUI.Refresh("welten")
+			task.delay(3, function() GameUI.Refresh("welten") end)
+			return
+		end
+		ui.rebirthArmed = nil
+		result(options.Invoke("rebirth"), nil, C.goldHi)
+		GameUI.Refresh("welten")
+	end)
+	b.Size = UDim2.new(1, 0, 1, 0)
+	b.Position = UDim2.new(0, 0, 0, 0)
+	b.TextSize = 20
+end
+
+local function fillWorlds(w)
+	clear(w.body)
+	clear(w.tools)
+	local st = worldState()
+	local here = WorldData.ById[attr("World", "spawn")]
+	local inHub = not here or here.Planet == "hub"
+	local planet = here and WorldData.PlanetById[here.Planet]
+	w.sub.Text = (inHub and "Spawn" or (planet.Name .. " · " .. here.Name)) .. " · " .. GameUI.Format(st.Taler) .. " Taler"
+	toolButton(w.tools, inHub and "Im Spawn" or "🏛️ Zum Spawn", 1, not inHub, function()
+		if result(options.Invoke("teleport", "spawn")) then GameUI.Close("welten") end
+	end)
+	if options.DevTools then
+		toolButton(w.tools, "+ Test-Taler", 2, true, function()
+			result(options.Invoke("testTaler"), nil, C.blue)
+		end)
+	end
+	if w.tab == "wiedergeburt" then
+		fillRebirth(w, st)
+	else
+		fillPlanet(w, WorldData.PlanetById[w.tab] or WorldData.Planets[1], st)
+	end
+end
+
+local function buildWorlds(playerGui)
+	local tabs = {}
+	for _, p in ipairs(WorldData.Planets) do
+		table.insert(tabs, { p.Id, p.Name, 120 })
+	end
+	table.insert(tabs, { "wiedergeburt", "♻️ Wiedergeburt", 170 })
+	local w = buildWindow(playerGui, "welten", "🌍", "Welten", tabs, fillWorlds)
+	-- Standard-Reiter: Planet der aktuellen Welt
+	w.defaultTab = function()
+		local here = WorldData.ById[attr("World", "spawn")]
+		return (here and here.Planet ~= "hub") and here.Planet or WorldData.Planets[1].Id
+	end
+end
+function GameUI.OpenWorlds(tab) GameUI.Open("welten", tab) end
 -- Standard-Verbindungen in Roblox: Käufe über RemoteFunctions, fremde Fenster als BindableEvent
 local function defaultInvoke(action, a, b)
 	if action == "aura" then
@@ -510,9 +1066,12 @@ function GameUI.Start(opts)
 	opts = opts or {}
 	options.Invoke = opts.Invoke or defaultInvoke
 	options.OnAction = opts.OnAction or defaultAction
+	options.DevTools = opts.DevTools == true
 	local playerGui = player:WaitForChild("PlayerGui")
 	buildHud(playerGui)
 	buildShop(playerGui)
+	buildInventory(playerGui)
+	buildWorlds(playerGui)
 	refreshHud()
 	-- Änderungen am Spielstand: HUD und offenen Shop neu füllen
 	local pending = false
@@ -522,11 +1081,14 @@ function GameUI.Start(opts)
 		task.defer(function()
 			pending = false
 			refreshHud()
-			if GameUI.IsShopOpen() then fillShop() end
+			refreshWindows()
 		end)
 	end
 	player.AttributeChanged:Connect(changed)
 	ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(changed)
+	player:GetAttributeChangedSignal("Coins"):Connect(function()
+		ui.invSel = nil
+	end)
 	local stats = player:FindFirstChild("leaderstats")
 	if stats and stats:FindFirstChild("Taler") then
 		stats.Taler.Changed:Connect(changed)
@@ -544,16 +1106,21 @@ end
 return GameUI
 `;
 
-// Server: Eier und Boosts kaufen (Taler aus leaderstats.Taler), Ergebnis als Attribute am Spieler
-export const SHOP_SERVER = `-- Coinmaster Adventure · Shop (Server)
--- Kauft Eier und Boosts über die RemoteFunction ShopRemote. Der Server prüft Preis und Taler.
+// Server: Eier und Boosts kaufen, Münzen verkaufen, Welten, Portale, Wiedergeburt (Taler aus leaderstats.Taler)
+export const SHOP_SERVER = `-- Coinmaster Adventure · Shop, Inventar und Welten (Server)
+-- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Taler und Regeln (WorldData).
 -- Ein gekauftes Ei zählt das Attribut Egg_<id> hoch, ein Boost setzt Boost_<id> auf sein Ende (os.time()).
--- Speichern (DataStore) fehlt noch.
+-- Münzen stehen als JSON im Attribut Coins, Welten und Portale als Ids mit Komma in Worlds und Portals,
+-- die aktuelle Welt in World, Wiedergeburten in Rebirths. Speichern (DataStore) fehlt noch.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local EggData = require(root:WaitForChild("EggData"))
 local ShopData = require(root:WaitForChild("ShopData"))
+local CoinData = require(root:WaitForChild("CoinData"))
+local MutationData = require(root:WaitForChild("MutationData"))
+local WorldData = require(root:WaitForChild("WorldData"))
 
 local remote = root:FindFirstChild("ShopRemote")
 if not remote then
@@ -568,6 +1135,7 @@ if not root:FindFirstChild("UIAction") then
 end
 
 local lastCall = {}
+local teleport, sellCoins
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
 	local taler = stats and stats:FindFirstChild("Taler")
@@ -588,15 +1156,78 @@ local function pay(player, price)
 	return true
 end
 
+local function stateOf(player)
+	local taler = talerOf(player)
+	return {
+		Owned = WorldData.ParseList(player:GetAttribute("Worlds")),
+		Portals = WorldData.ParseList(player:GetAttribute("Portals") or "p1"),
+		Taler = taler and taler.Value or 0,
+		Rebirths = player:GetAttribute("Rebirths") or 0,
+	}
+end
+
+-- Spieler in eine Welt setzen: Modell „Welt_<Name>“ aus der .rbxmx-Datei, dort der Spawn oder die Mitte
+teleport = function(player, world)
+	player:SetAttribute("World", world.Id)
+	local model = workspace:FindFirstChild("Welt_" .. world.Name:gsub("%s+", ""), true)
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not model or not rootPart then return end
+	local target = nil
+	local spawn = model:FindFirstChild("Spawn") or model:FindFirstChild("Teleport")
+	if spawn and #spawn:GetChildren() > 0 then
+		target = spawn:GetChildren()[1].CFrame
+	else
+		target = model:GetBoundingBox()
+	end
+	character:PivotTo(target + Vector3.new(0, 5, 0))
+end
+
+-- Münzen verkaufen: id = Positionen in der Liste (1-basiert, mit Komma) oder sellNormal für alle normalen ohne Mutation
+sellCoins = function(player, action, id)
+	local ok, list = pcall(function()
+		return HttpService:JSONDecode(player:GetAttribute("Coins") or "[]")
+	end)
+	if not ok or type(list) ~= "table" then return false, "Inventar unlesbar" end
+	local pick = {}
+	if action == "sellNormal" then
+		for i, e in ipairs(list) do
+			local coin = CoinData.Coins[e.i]
+			if coin and CoinData.TierById[coin.Tier].Index == 1 and not e.m then pick[i] = true end
+		end
+	else
+		for n in string.gmatch(id, "%d+") do
+			pick[tonumber(n)] = true
+		end
+	end
+	local keep, total, count = {}, 0, 0
+	for i, e in ipairs(list) do
+		if pick[i] then
+			local m = e.m and MutationData.ById[e.m]
+			total = total + CoinData.EntryValue(e.i, m and m.Multiplier or 1, e.b)
+			count = count + 1
+		else
+			table.insert(keep, e)
+		end
+	end
+	if count == 0 then return false, "Keine Münze gewählt" end
+	local taler = talerOf(player)
+	if not taler then return false, "Keine Taler gefunden (leaderstats.Taler fehlt)" end
+	taler.Value = taler.Value + total
+	player:SetAttribute("Coins", HttpService:JSONEncode(keep))
+	return true, count .. " Münze" .. (count > 1 and "n" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
+end
+
 remote.OnServerInvoke = function(player, action, id)
 	local now = os.clock()
 	if lastCall[player] and now - lastCall[player] < 0.25 then
 		return false, "Zu schnell"
 	end
 	lastCall[player] = now
-	if type(action) ~= "string" or type(id) ~= "string" or #id > 40 then
+	if type(action) ~= "string" or (id ~= nil and (type(id) ~= "string" or #id > 2000)) then
 		return false, "Ungültig"
 	end
+	id = id or ""
 	if action == "buyEgg" then
 		local egg = EggData.ById[id]
 		if not egg or not egg.Price or egg.Price.Currency ~= "Coins" then
@@ -619,6 +1250,40 @@ remote.OnServerInvoke = function(player, action, id)
 		return true, boost.Name .. " aktiv"
 	elseif action == "robux" then
 		return false, "Robux-Angebote brauchen ein Developer Product"
+	elseif action == "sell" or action == "sellNormal" then
+		return sellCoins(player, action, id)
+	elseif action == "buyWorld" then
+		local why = WorldData.CanBuy(stateOf(player), id)
+		if why then return false, why end
+		local world = WorldData.ById[id]
+		local ok, err = pay(player, world.Price)
+		if not ok then return false, err end
+		player:SetAttribute("Worlds", (player:GetAttribute("Worlds") or "") .. "," .. id)
+		teleport(player, world)
+		return true, world.Name .. " freigeschaltet!"
+	elseif action == "teleport" then
+		local world = WorldData.ById[id]
+		if not world or not WorldData.Owns(stateOf(player), id) then
+			return false, "Diese Welt hast du noch nicht"
+		end
+		teleport(player, world)
+		return true, "Teleportiert nach " .. world.Name
+	elseif action == "portal" then
+		local why = WorldData.CanOpenPortal(stateOf(player), id)
+		if why then return false, why end
+		local planet = WorldData.PlanetById[id]
+		player:SetAttribute("Portals", (player:GetAttribute("Portals") or "p1") .. "," .. id)
+		return true, planet.Portal.Name .. " bereit: " .. planet.Name .. " ist offen!"
+	elseif action == "rebirth" then
+		local n = player:GetAttribute("Rebirths") or 0
+		local taler = talerOf(player)
+		local cost = WorldData.RebirthCost(n)
+		if not taler or taler.Value < cost then
+			return false, "Zu wenig Taler"
+		end
+		taler.Value = 0
+		player:SetAttribute("Rebirths", n + 1)
+		return true, "Wiedergeburt " .. (n + 1) .. "! Münzwert jetzt ×" .. WorldData.RebirthMultiplier(n + 1)
 	end
 	return false, "Ungültig"
 end
