@@ -261,7 +261,7 @@ local function attachment(parent, position)
 end
 `;
 
-const COIN_BUILDER = `${HEADER('Münzen bauen')}
+export const COIN_BUILDER = `${HEADER('Münzen bauen')}
 -- CoinBuilder.Build(coin) baut eine Münze als Model aus Parts. Die Münze steht hochkant,
 -- die Vorder- und Rückseite zeigen entlang der X-Achse. Stufen-Effekte (Glühen, Funken,
 -- Flügel, Heiligenschein …) werden als Lichter, Partikel und Parts angebaut.
@@ -291,11 +291,11 @@ function CoinBuilder.Build(coin)
 	local model = Instance.new("Model")
 	model.Name = coin.Name
 
-	-- Rand, Körper und erhöhtes Feld in der Mitte
+	-- Gestufte Prägung: Randscheibe, darauf der Münzkörper, darauf die Motivplatte; dazwischen ein Perlkreis
 	local rim = part("Part", {
 		Name = "Rim",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(THICKNESS * 0.85, RADIUS * 2 + 0.16, RADIUS * 2 + 0.16),
+		Size = Vector3.new(THICKNESS, RADIUS * 2 + 0.2, RADIUS * 2 + 0.2),
 		Color = coin.Metal.Light,
 		Material = Enum.Material.Metal,
 		Reflectance = 0.25,
@@ -303,7 +303,7 @@ function CoinBuilder.Build(coin)
 	local body = part("Part", {
 		Name = "Body",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(THICKNESS, RADIUS * 2, RADIUS * 2),
+		Size = Vector3.new(THICKNESS * 1.25, RADIUS * 1.84, RADIUS * 1.84),
 		Color = tier.Index == 9 and coin.Metal.Dark or coin.Metal.Mid,
 		Material = Enum.Material.Metal,
 		Reflectance = 0.15,
@@ -311,12 +311,17 @@ function CoinBuilder.Build(coin)
 	local field = part("Part", {
 		Name = "Field",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(THICKNESS + 0.06, RADIUS * 1.62, RADIUS * 1.62),
+		Size = Vector3.new(THICKNESS * 1.5, RADIUS * 1.5, RADIUS * 1.5),
 		Color = coin.Metal.Dark,
 		Material = Enum.Material.Metal,
 		Reflectance = 0.3,
 	}, model)
 	model.PrimaryPart = body
+	for i = 0, 31 do
+		for _, side in ipairs({ 1, -1 }) do
+			part("Part", { Name = "Perle", Shape = Enum.PartType.Ball, Size = Vector3.new(0.13, 0.13, 0.13), Color = coin.Metal.Light, Material = Enum.Material.Metal, Reflectance = 0.25, CFrame = CFrame.new(onRim(i * 11.25, RADIUS * 0.84, side * THICKNESS * 0.64)) }, model)
+		end
+	end
 
 	-- Motiv als Decal auf beiden Seiten, sobald eine Asset-ID eingetragen ist
 	if coin.DecalId and coin.DecalId > 0 then
@@ -395,7 +400,7 @@ end
 return CoinBuilder
 `;
 
-const MUTATION_FX = `${HEADER('Mutations-Effekte')}
+export const MUTATION_FX = `${HEADER('Mutations-Effekte')}
 -- MutationFx.Apply(model, mutationId) hängt die dauerhaften Effekte einer Mutation an eine
 -- Münze aus CoinBuilder. Animierte Effekte laufen, solange die Münze im Spiel ist.
 

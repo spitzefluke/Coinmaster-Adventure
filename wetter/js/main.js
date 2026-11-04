@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { WEATHER, WEATHER_MS, weatherById, weatherAt, forecast, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { COINS } from '../../muenzen/js/coins.js';
-import { createCoin, makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
+import { createRobloxCoin, coinLua, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
 import { buildRobloxWorld, showWeather, worldLua } from '../../welten/js/robloxWorld.js';
 import { WORLDS, worldById } from '../../welten/js/worlds.js';
@@ -50,24 +50,21 @@ function buildScene() {
   showWeather(built.rw, selected);
 }
 
-// ── Münze mit Mutation ──
+// ── Münze mit Mutation (1:1 die Roblox-Münze aus CoinBuilder und MutationFx) ──
 const coinCanvas = $('coin-canvas');
-const cr = new THREE.WebGLRenderer({ canvas: coinCanvas, antialias: true, alpha: true });
-cr.setPixelRatio(pixelRatio());
-cr.toneMapping = THREE.ACESFilmicToneMapping;
-const cScene = makeScene(makeEnvironment(cr));
-const cCam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-cCam.position.set(0, 0, 5.6);
-let coin = null;
+const cr = rbxRenderer(coinCanvas);
+const cCam = new THREE.PerspectiveCamera(30, 1, 0.1, 500);
+let coin = null, coinToken = 0, coinLuaState = null;
+coinLua().then((l) => (coinLuaState = l)).catch((e) => console.error('Luau konnte nicht starten', e));
 const showcase = COINS.find((c) => c.name === 'Kronendukat') || COINS[12];
 function buildCoin() {
-  if (coin) {
-    cScene.remove(coin.root);
-    coin.dispose();
-  }
   const m = mutationForWeather(selected);
-  coin = createCoin(showcase, { resolution: 512, mutation: m?.id ?? null });
-  cScene.add(coin.root);
+  const mine = ++coinToken;
+  createRobloxCoin(showcase, { mutation: m?.id ?? null }).then((o) => {
+    if (mine !== coinToken) return o.dispose();
+    coin?.dispose();
+    coin = o;
+  });
 }
 
 const clock = new THREE.Clock();
@@ -94,9 +91,10 @@ renderer.setAnimationLoop(() => {
       cCam.aspect = cw / ch;
       cCam.updateProjectionMatrix();
     }
-    coin.spinner.rotation.y = skipAnimations() ? 0.4 : t * 0.6;
-    coin.update(t);
-    cr.render(cScene, cCam);
+    coinLuaState?.frame(dt);
+    coin.step(dt);
+    orbitCoin(cCam, skipAnimations() ? -0.4 : -0.4 + t * 0.6, 0.08, coin.distance + 1);
+    coin.world.render(cr, cCam);
   }
 });
 

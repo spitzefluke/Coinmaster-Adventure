@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { TIERS, COINS, tierById, rollCoin } from '../../muenzen/js/coins.js';
-import { createCoin, makeEnvironment, makeScene } from '../../muenzen/js/coinFactory.js';
+import { createRobloxCoin, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { MUTATIONS, WEATHER, WEATHER_MS, weatherById, weatherAt, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { Discovery } from './discovery.js';
 
@@ -31,44 +31,37 @@ function save() {
 }
 
 // ── Vorschaubilder ───────────────────────────────────────────────────────────
-// Ein kleiner Renderer zeichnet jede entdeckte Münze einmal als Bild.
+// Ein kleiner Renderer zeichnet jede entdeckte Münze einmal als Bild, 1:1 die Roblox-Münze.
 
 const thumbs = new Map();
-let thumbRenderer, thumbScene, thumbCamera;
+let thumbRenderer, thumbCamera;
 let thumbQueue = Promise.resolve();
 
 function thumbnail(index) {
   if (thumbs.has(index)) return Promise.resolve(thumbs.get(index));
-  thumbQueue = thumbQueue.then(
-    () =>
-      new Promise((res) =>
-        requestAnimationFrame(() => {
-          if (!thumbRenderer) {
-            thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-            thumbRenderer.setSize(256, 256);
-            thumbRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-            thumbScene = makeScene(makeEnvironment(thumbRenderer));
-            thumbCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-            thumbCamera.position.set(0, 0, 4.3);
-          }
-          const coin = COINS[index];
-          // Engelsgleich hat Flügel am Körper – weiter weg, damit sie ins Bild passen
-          thumbCamera.position.z = coin.tier === 'engelsgleich' ? 6.6 : 4.3;
-          const obj = createCoin(coin, { resolution: 384 });
-          obj.spinner.rotation.set(0.12, -0.38, 0);
-          // Effekte wie Ringe und Flügel passen nicht ins kleine Bild
-          obj.root.children[0].visible = false;
-          obj.update(1);
-          thumbScene.add(obj.root);
-          thumbRenderer.render(thumbScene, thumbCamera);
-          const url = thumbRenderer.domElement.toDataURL('image/png');
-          thumbScene.remove(obj.root);
-          obj.dispose();
-          thumbs.set(index, url);
-          res(url);
-        }),
-      ),
-  );
+  thumbQueue = thumbQueue.then(async () => {
+    if (thumbs.has(index)) return thumbs.get(index);
+    if (!thumbRenderer) {
+      thumbRenderer = rbxRenderer(document.createElement('canvas'));
+      thumbRenderer.setPixelRatio(1);
+      thumbRenderer.setSize(256, 256, false);
+      thumbCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 500);
+    }
+    let url = '';
+    try {
+      const obj = await createRobloxCoin(COINS[index]);
+      obj.step(0.6);
+      // nah heran: das kleine Bild zeigt die Münze selbst, Effekte ragen über den Rand
+      orbitCoin(thumbCamera, -0.38, 0.12, 9.4);
+      obj.world.render(thumbRenderer, thumbCamera);
+      url = thumbRenderer.domElement.toDataURL('image/png');
+      obj.dispose();
+    } catch (e) {
+      console.error('Vorschaubild', index, e);
+    }
+    thumbs.set(index, url);
+    return url;
+  });
   return thumbQueue;
 }
 

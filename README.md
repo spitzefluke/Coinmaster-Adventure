@@ -21,8 +21,9 @@ Roblox-Engine (`js/rbx/`):
 - Grenzen: Die Teilchenbilder (`rbxasset://…`) sind nachgezeichnet, weil die Originale nur in Studio
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
-Umgestellt sind bisher Auras, Welten, das Wetter in den Welten und der Spiel-Hintergrund. Münzen, Eier,
-Haustiere und die Spiel-Oberfläche folgen.
+Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
+(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite). Eier, Haustiere und die
+Spiel-Oberfläche folgen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -51,7 +52,11 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 
 ## Münzkabinett
 
-50 3D-Münzen in 10 Seltenheitsstufen, gerendert mit three.js.
+50 3D-Münzen in 10 Seltenheitsstufen. **Roblox-Vorschau:** Jede Münze ist genau die, die `CoinBuilder` und
+`MutationFx` in Roblox bauen (`muenzen/js/coinRoblox.js`): gestufte Prägung aus Randscheibe, Münzkörper
+und Motivplatte, ein Perlkreis und das Motiv als Decal auf beiden Seiten (so, wie es nach dem Hochladen
+der Motive und dem Eintragen der `DecalId` aussieht). Stufen-Effekte und Mutationen kommen aus denselben
+Skripten. Die Beschreibung unten gilt für die gezeichneten Motive (`emblems.js`), die als Decals dienen.
 
 Alle Münzen sind rund. Die Prägung hat einen spiegelpolierten Grund und ein mattiertes Relief
 mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster und Zierband.
