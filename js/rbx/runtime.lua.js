@@ -396,7 +396,7 @@ INST.__index = function(self, k)
 	local kindAndValues = { JS_get(rawget(self, "__id"), k) }
 	if kindAndValues[1] == nil or kindAndValues[1] == "none" then return nil end
 	local r = receive(unpack(kindAndValues))
-	if type(r) == "table" and getmetatable(r) ~= INST then props[k] = r end
+	if type(r) == "table" and getmetatable(r) ~= INST and k ~= "AbsolutePosition" and k ~= "AbsoluteSize" then props[k] = r end
 	return r
 end
 local attrSignals = setmetatable({}, { __mode = "k" })

@@ -91,6 +91,8 @@ UITheme.Space = { XS = 4, S = 8, M = 12, L = 16, XL = 24 }
 --   Slow    Belohnungen, hochzählende Zahlen
 --   Exit    Verschwinden (schneller als Erscheinen)
 --   Spin    Glücksrad
+--   Float   aufsteigende Zahlen und Funken
+--   Fly     Münzen fliegen zum Taler-Feld (werden schneller)
 UITheme.Motion = {
 	Fast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 	Normal = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -98,6 +100,8 @@ UITheme.Motion = {
 	Slow = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 	Exit = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 	Spin = TweenInfo.new(4.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+	Float = TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), -- „+500“ steigt auf, Funken fliegen
+	Fly = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), -- Münzen fliegen zum Taler-Feld
 }
 UITheme.ExitTime = 0.16
 
@@ -124,6 +128,8 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 --                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
 -- options.OnAction(name, arg)               Menü-Knöpfe für Fenster, die es hier noch nicht gibt
 -- options.Query(kind, arg) → table          Daten: forecast (Wettervorhersage), board (Rangliste)
+-- options.Sound(kind, level)               Klang zu Effekten (z. B. "found", Stufe 1–4), optional
+-- GameUI.Found(info)                        zeigt einen Fund je nach Seltenheit (Hinweis bis große Ansage)
 -- options.DevTools                          zeigt Test-Knöpfe (nur Vorschau, z. B. „+ Test-Taler“)
 -- Skills (Attribut Skills), Belohnungen (DailyDay, DailyStreak, WheelDay, Group, Codes) und
 -- Einstellungen (Set_sfx, Set_music, Set_quality, Set_fewerParticles, Set_skipAnimations, Set_shortNumbers)
@@ -191,6 +197,11 @@ function GameUI.Format(n)
 	local s = tostring(math.floor(n + 0.5))
 	local out = s:reverse():gsub("(%d%d%d)", "%1."):reverse()
 	return (out:gsub("^%.", ""))
+end
+
+-- Großbuchstaben auch für ä, ö, ü (string.upper kennt nur A–Z)
+function GameUI.Upper(text)
+	return (string.upper(text):gsub("ä", "Ä"):gsub("ö", "Ö"):gsub("ü", "Ü"))
 end
 
 local function mmss(seconds)
@@ -292,6 +303,8 @@ local function buildHud(playerGui)
 		label({ Size = UDim2.new(0, 46, 1, 0), Position = UDim2.new(0, 6, 0, 0), Text = "🪙", TextSize = 30, Font = EMOJI }),
 		label({ Name = "Einheit", Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -60, 0, 2), Text = "Taler", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right }),
 	})
+	ui.talerPill = coins
+	ui.talerScale = new("UIScale", { Scale = 1, Parent = coins })
 	ui.taler = label({ Size = UDim2.new(1, -116, 1, 0), Position = UDim2.new(0, 52, 0, 0), Text = "0", Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Left, Parent = coins })
 	ui.weather = new("TextButton", { Name = "Wetter", Size = UDim2.new(0, 300, 0, 36), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Text = "", AutoButtonColor = false, LayoutOrder = 2, Parent = right }, { corner(R.Round) })
 	ui.weatherStroke = stroke(C.blue, 2)
@@ -348,10 +361,10 @@ end
 
 local function refreshHud()
 	if not ui.taler then return end
-	ui.taler.Text = GameUI.Format(taler())
+	GameUI._showTaler(taler())
 	local lvl, xp, xpMax = attr("Level", 1), attr("XP", 0), attr("XPMax", 100)
 	ui.levelText.Text = tostring(lvl)
-	ui.xpFill.Size = UDim2.new(math.clamp(xp / math.max(1, xpMax), 0.02, 1), 0, 1, 0)
+	GameUI._showXp(xp / math.max(1, xpMax), lvl)
 	ui.xpText.Text = GameUI.Format(math.floor(xp)) .. " / " .. GameUI.Format(xpMax) .. " EP bis Level " .. (lvl + 1)
 	local pts = attr("Points", 0)
 	ui.points.Visible = pts > 0
@@ -830,14 +843,17 @@ local function smallButton(parent, text, order, width, onClick, on)
 	return b
 end
 
-local function sell(key, count)
+local function sell(key, count, button)
 	local ok, text
 	if key == nil then
 		ok, text = options.Invoke("sellNormal")
 	else
 		ok, text = options.Invoke("sell", key, count)
 	end
-	if result(ok, text) then GameUI.Refresh("inventar") end
+	if result(ok, text) then
+		if button then GameUI.FlyCoins(button, math.min(8, (count or 6) + 2)) end
+		GameUI.Refresh("inventar")
+	end
 end
 
 local function fillCoins(w, entries)
@@ -933,12 +949,14 @@ local function fillCoins(w, entries)
 		-- eine verkaufen oder den ganzen Stapel
 		local row = new("Frame", { Name = "Verkaufen", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, -110), BackgroundTransparency = 1, Parent = side })
 		local one = new("Frame", { Size = UDim2.new(sel.Count > 1 and 0.5 or 1, sel.Count > 1 and -4 or 0, 1, 0), BackgroundTransparency = 1, Parent = row })
-		local b = actionButton(one, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell(sel.Key, 1) end)
+		local b
+		b = actionButton(one, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell(sel.Key, 1, b) end)
 		b.Size = UDim2.new(1, 0, 1, 0)
 		if sel.Count > 1 then b.TextSize = T.Small end
 		if sel.Count > 1 then
 			local stack = new("Frame", { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0), BackgroundTransparency = 1, Parent = row })
-			local all = actionButton(stack, "Alle ×" .. sel.Count .. " · " .. GameUI.Format(sel.Total), C.green, true, function() sell(sel.Key, sel.Count) end)
+			local all
+			all = actionButton(stack, "Alle ×" .. sel.Count .. " · " .. GameUI.Format(sel.Total), C.green, true, function() sell(sel.Key, sel.Count, all) end)
 			all.Size = UDim2.new(1, 0, 1, 0)
 			all.TextSize = T.Small
 		end
@@ -950,7 +968,8 @@ local function fillCoins(w, entries)
 	for _, e in ipairs(entries) do
 		if e.Tier.Index == 1 and not e.Mutation then normal = normal + e.Count end
 	end
-	local all = actionButton(side, "Alle normalen verkaufen (" .. normal .. ")", C.blue, normal > 0, function() sell(nil) end)
+	local all
+	all = actionButton(side, "Alle normalen verkaufen (" .. normal .. ")", C.blue, normal > 0, function() sell(nil, normal, all) end)
 	all.Position = UDim2.new(0, 0, 1, -62)
 	all.TextSize = T.Body
 	label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16), Text = "Münzen mit Mutation bleiben im Inventar.", TextSize = T.Tiny, TextColor3 = C.muted, Font = TEXT, Parent = side })
@@ -1120,7 +1139,7 @@ end
 
 local function fillPlanet(w, planet, st)
 	new("Frame", { Name = "Planet", Size = UDim2.new(1, 0, 0, 78), BackgroundTransparency = 1, Parent = w.body }, {
-		label({ Size = UDim2.new(1, 0, 0, 16), Text = string.upper(planet.Name), TextSize = T.Tiny, TextColor3 = planet.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO }),
+		label({ Size = UDim2.new(1, 0, 0, 16), Text = GameUI.Upper(planet.Name), TextSize = T.Tiny, TextColor3 = planet.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO }),
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = planet.Title, Font = FONT, TextSize = T.Title, TextXAlignment = Enum.TextXAlignment.Left }),
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 46), Text = planet.Text, TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT }),
 	})
@@ -1249,6 +1268,208 @@ local function buildWorlds(playerGui)
 end
 function GameUI.OpenWorlds(tab) GameUI.Open("welten", tab) end
 ${GAME_UI_MORE}
+
+-- ══ Spielgefühl: Zahlen zählen hoch, Münzen fliegen, Funde nach Seltenheit ══
+local function setting(name, default)
+	local v = player:GetAttribute("Set_" .. name)
+	if v == nil then return default end
+	return v
+end
+-- Zahl über die Zeit verändern (Quad Out); ein neuer Aufruf mit demselben Schlüssel ersetzt den alten
+local counters = {}
+local function animate(key, from, to, duration, apply)
+	local token = {}
+	counters[key] = token
+	task.spawn(function()
+		local start = os.clock()
+		while counters[key] == token do
+			local k = math.min(1, (os.clock() - start) / duration)
+			apply(from + (to - from) * (1 - (1 - k) * (1 - k)))
+			if k >= 1 then break end
+			task.wait()
+		end
+	end)
+end
+local function centerOf(object)
+	return object.AbsolutePosition + object.AbsoluteSize * 0.5
+end
+
+-- Taler: zählen hoch oder runter, bei Gewinn steigt „+1.250“ auf und das Feld wippt
+function GameUI._showTaler(target)
+	if ui.talerTarget == nil or setting("skipAnimations", false) then
+		ui.talerTarget, ui.talerShown = target, target
+		ui.taler.Text = GameUI.Format(target)
+		return
+	end
+	if target == ui.talerTarget then return end
+	local gain = target - ui.talerTarget
+	ui.talerTarget = target
+	local function run()
+		local from = ui.talerShown or target
+		animate("taler", from, target, math.abs(gain) > 0 and 0.6 or 0.01, function(v)
+			ui.talerShown = v
+			ui.taler.Text = GameUI.Format(v)
+		end)
+		if gain > 0 then
+			ui.talerScale.Scale = 1
+			TweenService:Create(ui.talerScale, M.Pop, { Scale = 1.08 }):Play()
+			task.delay(0.25, function() TweenService:Create(ui.talerScale, M.Normal, { Scale = 1 }):Play() end)
+			GameUI.FloatText("+" .. GameUI.Format(gain), ui.talerPill.AbsolutePosition + Vector2.new(-70, ui.talerPill.AbsoluteSize.Y * 0.5), C.green)
+		end
+	end
+	-- warten, bis fliegende Münzen angekommen sind
+	local wait = (ui.talerHold or 0) - os.clock()
+	if wait > 0 then task.delay(wait, run) else run() end
+end
+
+-- EP-Balken gleitet; bei einem neuen Level erst voll, dann von vorn
+function GameUI._showXp(fraction, level)
+	fraction = math.clamp(fraction, 0.02, 1)
+	local size = UDim2.new(fraction, 0, 1, 0)
+	if ui.xpLevel == nil or setting("skipAnimations", false) then
+		ui.xpFill.Size = size
+	elseif level > ui.xpLevel then
+		TweenService:Create(ui.xpFill, M.Normal, { Size = UDim2.new(1, 0, 1, 0) }):Play()
+		task.delay(0.24, function()
+			ui.xpFill.Size = UDim2.new(0.02, 0, 1, 0)
+			TweenService:Create(ui.xpFill, M.Slow, { Size = size }):Play()
+		end)
+	elseif ui.xpFraction ~= fraction then
+		TweenService:Create(ui.xpFill, M.Slow, { Size = size }):Play()
+	end
+	ui.xpLevel, ui.xpFraction = level, fraction
+end
+
+-- Text, der aufsteigt und verblasst (Bildschirm-Punkt wie AbsolutePosition)
+function GameUI.FloatText(text, at, color)
+	if not ui.fx then return end
+	local t = label({ Size = UDim2.new(0, 200, 0, 30), Position = UDim2.new(0, at.X, 0, at.Y), AnchorPoint = Vector2.new(0.5, 0.5), Text = text, Font = FONT, TextSize = T.Large, TextColor3 = color or C.goldHi, ZIndex = 5, Parent = ui.fx })
+	stroke(C.bg, 2, Enum.ApplyStrokeMode.Contextual).Parent = t
+	-- erst gut lesbar aufsteigen, dann verblassen
+	TweenService:Create(t, M.Float, { Position = UDim2.new(0, at.X, 0, at.Y - 40) }):Play()
+	task.delay(0.55, function()
+		TweenService:Create(t, M.Normal, { TextTransparency = 1 }):Play()
+	end)
+	task.delay(0.8, function() t:Destroy() end)
+end
+
+-- Münzen fliegen von einem Knopf zum Taler-Feld
+function GameUI.FlyCoins(from, count)
+	if not ui.fx or setting("skipAnimations", false) then return end
+	local start = typeof(from) == "Vector2" and from or centerOf(from)
+	local goal = centerOf(ui.talerPill) - Vector2.new(70, 0)
+	count = math.clamp(count or 5, 1, 8)
+	ui.talerHold = os.clock() + 0.5 + count * 0.04
+	for i = 1, count do
+		local offset = Vector2.new(math.random(-24, 24), math.random(-14, 14))
+		local coin = new("Frame", { Name = "Muenze", Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, start.X + offset.X, 0, start.Y + offset.Y), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.goldHi, ZIndex = 6, Parent = ui.fx }, {
+			corner(R.Round),
+			stroke(C.goldDark, 2),
+			new("UIGradient", { Rotation = 45, Color = ColorSequence.new(C.cream, C.goldDark) }),
+		})
+		task.delay((i - 1) * 0.04, function()
+			TweenService:Create(coin, M.Fly, { Position = UDim2.new(0, goal.X, 0, goal.Y), Size = UDim2.new(0, 14, 0, 14) }):Play()
+			task.delay(0.52, function() coin:Destroy() end)
+		end)
+	end
+end
+
+-- Kurz aufblitzen (ganzer Bildschirm)
+local function flash(color, strength)
+	if not ui.flashGui then return end
+	local f = new("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = color, BackgroundTransparency = 1 - strength, BorderSizePixel = 0, Parent = ui.flashGui })
+	TweenService:Create(f, M.Float, { BackgroundTransparency = 1 }):Play()
+	task.delay(0.95, function() f:Destroy() end)
+end
+-- Funken fliegen aus der Mitte
+local function burst(color, count)
+	if not ui.fx then return end
+	for _ = 1, count do
+		local angle = math.random() * math.pi * 2
+		local dist = math.random(140, 280)
+		local spark = label({ Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0.5, 0, 0.42, 0), AnchorPoint = Vector2.new(0.5, 0.5), Text = "✦", TextSize = math.random(18, 30), TextColor3 = math.random() < 0.5 and color or C.goldHi, Font = EMOJI, ZIndex = 4, Parent = ui.fx })
+		TweenService:Create(spark, M.Float, { Position = UDim2.new(0.5, math.cos(angle) * dist, 0.42, math.sin(angle) * dist), Rotation = math.random(-180, 180), TextTransparency = 1 }):Play()
+		task.delay(0.95, function() spark:Destroy() end)
+	end
+end
+-- Große Ansage in der Mitte
+local function banner(title, sub, color, hold)
+	if not ui.fx then return end
+	local box = new("Frame", { Name = "Ansage", Size = UDim2.new(0, 600, 0, 110), Position = UDim2.new(0.5, 0, 0.36, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 5, Parent = ui.fx })
+	local scale = new("UIScale", { Scale = 0.3, Parent = box })
+	local big = label({ Size = UDim2.new(1, 0, 0, 70), Text = title, Font = FONT, TextSize = 64, TextColor3 = color, ZIndex = 5, Parent = box })
+	stroke(C.bg, 4, Enum.ApplyStrokeMode.Contextual).Parent = big
+	local small = label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 74), Text = sub, Font = FONT, TextSize = T.Big, TextColor3 = C.ink, ZIndex = 5, Parent = box })
+	stroke(C.bg, 3, Enum.ApplyStrokeMode.Contextual).Parent = small
+	TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
+	task.delay(hold, function()
+		TweenService:Create(scale, M.Exit, { Scale = 1.15 }):Play()
+		TweenService:Create(big, M.Exit, { TextTransparency = 1 }):Play()
+		TweenService:Create(small, M.Exit, { TextTransparency = 1 }):Play()
+		task.delay(Theme.ExitTime + 0.05, function() box:Destroy() end)
+	end)
+end
+-- Karte mit Münze, die über „Münze suchen“ erscheint; ein Glanz läuft darüber
+local function foundCard(entry, text, value, hold)
+	if not ui.fx then return end
+	local card = new("Frame", { Name = "Fund", Size = UDim2.new(0, 380, 0, 84), Position = UDim2.new(0.5, 0, 1, -112), AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = C.bg, ZIndex = 3, Parent = ui.fx }, {
+		corner(R.L),
+		stroke(entry.Mutation and entry.Mutation.Color or entry.Tier.Color, 3),
+	})
+	local scale = new("UIScale", { Scale = 0.6, Parent = card })
+	coinDisc(card, entry, 62, UDim2.new(0, 46, 0, 11))
+	label({ Size = UDim2.new(1, -200, 0, 28), Position = UDim2.new(0, 86, 0, 12), Text = entry.Coin.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3, Parent = card })
+	label({ Size = UDim2.new(1, -200, 0, 20), Position = UDim2.new(0, 86, 0, 44), Text = text, TextSize = T.Small, TextColor3 = entry.Mutation and entry.Mutation.Color or entry.Tier.Color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3, Parent = card })
+	label({ Size = UDim2.new(0, 104, 1, 0), Position = UDim2.new(1, -116, 0, 0), Text = "+" .. GameUI.Format(value), Font = FONT, TextSize = T.Large, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3, Parent = card })
+	-- Glanz: heller Streifen im Verlauf, der von links nach rechts wandert
+	local shine = new("Frame", { Name = "Glanz", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 4, Parent = card }, { corner(R.L) })
+	local gradient = new("UIGradient", { Rotation = 20, Offset = Vector2.new(-1, 0), Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.55),
+		NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1),
+	}), Parent = shine })
+	TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
+	task.delay(0.15, function()
+		animate(gradient, -1, 1, 0.7, function(x) gradient.Offset = Vector2.new(x, 0) end)
+	end)
+	task.delay(hold, function()
+		TweenService:Create(scale, M.Exit, { Scale = 0.01 }):Play()
+		task.delay(Theme.ExitTime + 0.05, function() card:Destroy() end)
+	end)
+end
+
+-- Fund anzeigen: je seltener, desto größer
+--   Stufe 1 (Normal, Selten): Hinweis
+--   Stufe 2 (Sehr selten, Episch): Karte mit Glanz
+--   Stufe 3 (Legendär bis Engelsgleich): dazu Blitz, Funken und Ansage
+--   Stufe 4 (Göttlich und seltener): alles größer und länger
+--   Eine Mutation hebt um eine Stufe. „Animationen überspringen“: nur der Hinweis; „Weniger Partikel“: weniger Funken.
+-- info = { CoinId, Mutation, Count, Value, Xp, Upgraded }
+function GameUI.Found(info)
+	local coin = CoinData.Coins[info.CoinId]
+	if not coin then return end
+	local tier = CoinData.TierById[coin.Tier]
+	local mutation = info.Mutation and MutationData.ById[info.Mutation] or nil
+	local level = tier.Index <= 2 and 1 or (tier.Index <= 4 and 2 or (tier.Index <= 7 and 3 or 4))
+	if mutation then level = math.min(4, level + 1) end
+	local count = info.Count or 1
+	local value = (info.Value or 0) * count
+	local line = tier.Name .. (mutation and (" · " .. mutation.Name) or "") .. (count > 1 and " · ×" .. count or "") .. (info.Upgraded and " · Goldene Hand!" or "") .. " · +" .. (info.Xp or 0) .. " EP"
+	local color = mutation and mutation.Color or tier.Color
+	if options.Sound then options.Sound("found", level) end
+	if level == 1 or setting("skipAnimations", false) then
+		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Taler", color)
+		return
+	end
+	local entry = { Coin = coin, Tier = tier, Mutation = mutation }
+	foundCard(entry, line, value, level == 2 and 1.8 or (level == 3 and 2.4 or 3.2))
+	if level >= 3 then
+		local few = setting("fewerParticles", false)
+		flash(color, level == 3 and 0.35 or 0.6)
+		burst(color, few and (level == 3 and 4 or 8) or (level == 3 and 14 or 26))
+		banner(GameUI.Upper(tier.Name) .. "!", coin.Name .. (mutation and (" · " .. mutation.Name) or ""), color, level == 3 and 1.6 or 2.4)
+	end
+end
+
 -- Standard-Verbindungen in Roblox: Käufe über RemoteFunctions, fremde Fenster als BindableEvent
 local PLAYER_ACTIONS = { learn = true, resetSkills = true, daily = true, spin = true, group = true, code = true, setting = true, resetSettings = true }
 local function defaultInvoke(action, a, b)
@@ -1296,8 +1517,12 @@ function GameUI.Start(opts)
 	options.DevTools = opts.DevTools == true
 	options.Query = opts.Query or defaultQuery
 	options.CodeHint = opts.CodeHint
+	options.Sound = opts.Sound
 	local playerGui = player:WaitForChild("PlayerGui")
 	buildHud(playerGui)
+	-- Ebenen für Effekte: über allen Fenstern; der Blitz deckt auch die Roblox-Leiste ab
+	ui.flashGui = new("ScreenGui", { Name = "CoinmasterBlitz", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 19, Parent = playerGui })
+	ui.fx = new("ScreenGui", { Name = "CoinmasterEffekte", ResetOnSpawn = false, DisplayOrder = 20, Parent = playerGui })
 	buildShop(playerGui)
 	buildInventory(playerGui)
 	buildWorlds(playerGui)
