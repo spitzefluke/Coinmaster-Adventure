@@ -139,7 +139,7 @@ export function addFigure(rw, pos, faceTo) {
   const tag = inst('BillboardGui', { Size: [0, 150, 0, 34], StudsOffsetWorldSpace: new THREE.Vector3(0, 4.2, 0), AlwaysOnTop: true }, head);
   const label = inst('TextLabel', { Size: [1, 0, 1, 0], BackgroundColor3: rgb(0.06, 0.05, 0.08), BackgroundTransparency: 0.1, Text: 'Roblox-Figur', TextScaled: true, Font: 'GothamBold', TextColor3: rgb(1, 1, 1) }, tag);
   inst('UICorner', { CornerRadius: [1, 0] }, label);
-  inst('UIStroke', { Color: hexColor('#00a2ff'), Thickness: 3 }, label);
+  inst('UIStroke', { Color: hexColor('#00a2ff'), Thickness: 3, ApplyStrokeMode: 'Border' }, label);
   void beam;
   return model;
 }

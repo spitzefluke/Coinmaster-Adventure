@@ -378,7 +378,7 @@ __signal = signal
 -- ── Instanzen ──
 local INST = { __type = "Instance" }
 local methods = {}
-local SIGNAL_PROPS = { Changed = true, ChildAdded = true, ChildRemoved = true, Touched = true, AncestryChanged = true, Destroying = true }
+local SIGNAL_PROPS = { AttributeChanged = true, Changed = true, ChildAdded = true, ChildRemoved = true, Touched = true, AncestryChanged = true, Destroying = true, Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true, MouseLeave = true, MouseWheelForward = true, MouseWheelBackward = true }
 INST.__index = function(self, k)
 	local m = methods[k]
 	if m then return m end
@@ -501,6 +501,8 @@ function methods.SetAttribute(self, k, v)
 	a[k] = v
 	local s = attrSignals[self] and attrSignals[self][k]
 	if s and old ~= v then s:Fire() end
+	local all = rawget(rawget(self, "__props"), "AttributeChanged")
+	if all and old ~= v then all:Fire(k) end
 end
 function methods.GetAttribute(self, k) return rawget(self, "__attrs")[k] end
 function methods.GetAttributes(self) return table.clone(rawget(self, "__attrs")) end
@@ -799,6 +801,26 @@ function require(m)
 	loaded[m] = fn()
 	return loaded[m]
 end
+-- GUI-Ereignis aus JS (Klick, Maus drüber) an die Instanz weitergeben
+function __fireGui(id, name)
+	local inst = byId[id]
+	if not inst then return end
+	local s = rawget(rawget(inst, "__props"), name)
+	if s then s:Fire() end
+end
+-- Wert, den JS geändert hat (z. B. CanvasPosition beim Scrollen), in Lua nachziehen
+function __syncProp(id, key, x, y)
+	local inst = byId[id]
+	if inst then rawget(inst, "__props")[key] = Vector2.new(x, y) end
+end
+-- Attribut am lokalen Spieler oder an ReplicatedStorage setzen (Spielstand der Vorschau)
+function __setAttr(name, value)
+	__players.LocalPlayer:SetAttribute(name, value)
+end
+function __setRSAttr(name, value)
+	SERVICES.ReplicatedStorage:SetAttribute(name, value)
+end
+
 -- ModuleScript unter ReplicatedStorage > CoinmasterAdventure anlegen (wie der Installer)
 function __addModule(name, src, folderName)
 	local rs = SERVICES.ReplicatedStorage

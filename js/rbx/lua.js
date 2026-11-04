@@ -44,6 +44,9 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
   const get = (id) => (id === 1 ? world?.workspace : id === 2 ? world?.lighting : insts.get(id));
 
   let S = L;
+  // ganze Zahlen als Integer übergeben, sonst zeigt Lua 5.3 „4.0“ statt „4“ (wie Luau)
+  // (fengari rechnet mit 32-Bit-Integern, darum nur kleine ganze Zahlen)
+  const pushNum = (st, n) => (Number.isInteger(n) && Math.abs(n) < 2 ** 31 ? lua.lua_pushinteger(st, n) : lua.lua_pushnumber(st, n));
   const str = (i) => lua.lua_tojsstring(S, i);
   const num = (i) => lua.lua_tonumber(S, i);
   // JS-Funktionen bekommen den Lua-Zustand, der sie aufruft (auch Koroutinen aus task.spawn)
@@ -97,7 +100,7 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
       pushStr('none');
       return 1;
     }
-    if (typeof v === 'number') return pushStr('n'), lua.lua_pushnumber(S, v), 2;
+    if (typeof v === 'number') return pushStr('n'), pushNum(S, v), 2;
     if (typeof v === 'string') return pushStr('s'), pushStr(v), 2;
     if (typeof v === 'boolean') return pushStr('b'), lua.lua_pushboolean(S, v), 2;
     if (v.isVector3) return pushStr('V3'), lua.lua_pushnumber(S, v.x), lua.lua_pushnumber(S, v.y), lua.lua_pushnumber(S, v.z), 4;
@@ -136,6 +139,7 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     const cls = str(1);
     const i = new Inst(cls);
     const id = nextId++;
+    i.luaId = id;
     insts.set(id, i);
     lua.lua_pushnumber(S, id);
     return 1;
@@ -221,13 +225,14 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
     L,
     run,
     get: (id) => get(id),
+    idOf: (inst) => inst.luaId ?? null,
     setWorld(w) {
       world = w;
     },
     // Globale Lua-Funktion mit Zahlen/Texten aufrufen
     call(fn, ...args) {
       lua.lua_getglobal(L, to_luastring(fn));
-      for (const a of args) typeof a === 'number' ? lua.lua_pushnumber(L, a) : typeof a === 'boolean' ? lua.lua_pushboolean(L, a) : pushStr(a);
+      for (const a of args) typeof a === 'number' ? pushNum(L, a) : typeof a === 'boolean' ? lua.lua_pushboolean(L, a) : pushStr(a);
       if (lua.lua_pcall(L, args.length, 0, 0) !== lua.LUA_OK) {
         const e = str(-1);
         lua.lua_pop(L, 1);
@@ -243,6 +248,24 @@ export async function createLua({ onPrint = (s) => console.log('[Luau]', s) } = 
         for (let i = 1; i <= n; i++) args.push(lua.lua_type(S, i) === lua.LUA_TNUMBER ? num(i) : str(i));
         fn(...args);
         return 0;
+      });
+    },
+    // JS-Funktion mit Rückgabewerten (Zahlen, Texte, Wahrheitswerte)
+    registerFn(name, fn) {
+      reg(name, () => {
+        const n = lua.lua_gettop(S), args = [];
+        for (let i = 1; i <= n; i++) {
+          const t = lua.lua_type(S, i);
+          args.push(t === lua.LUA_TNUMBER ? num(i) : t === lua.LUA_TBOOLEAN ? lua.lua_toboolean(S, i) : t === lua.LUA_TNIL ? null : str(i));
+        }
+        const out = [].concat(fn(...args) ?? []);
+        for (const v of out) {
+          if (typeof v === 'number') pushNum(S, v);
+          else if (typeof v === 'boolean') lua.lua_pushboolean(S, v);
+          else if (v === null || v === undefined) lua.lua_pushnil(S);
+          else pushStr(v);
+        }
+        return out.length;
       });
     },
     frame(dt) {

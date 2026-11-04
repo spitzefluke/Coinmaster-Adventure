@@ -143,6 +143,14 @@ export const BOOSTS = [
   { id: 'xp', name: 'Weisheitsrolle', minutes: 10, price: 350, text: 'Doppelte Erfahrung für jeden Fund.', icon: 'star' },
   { id: 'wetter', name: 'Wetterglocke', minutes: 5, price: 1200, text: 'Doppelte Mutationschance während des Wetters.', icon: 'cloud' },
 ];
+// Robux-Angebote im Shop (im Spiel über Developer Products)
+export const ROBUX = [
+  { id: 'taler-s', name: 'Beutel Taler', text: '5.000 Taler', robux: 49 },
+  { id: 'taler-m', name: 'Truhe Taler', text: '30.000 Taler', robux: 249, badge: 'Beliebt' },
+  { id: 'release', name: 'Release Egg', text: 'Nur zum Release des Spiels', robux: 199, badge: 'Limitiert' },
+  { id: 'vip', name: 'VIP-Pass', text: 'Doppelte Taler aus Verkäufen, für immer', robux: 499 },
+];
+
 export const boostActive = (s, id) => (s.boosts[id] || 0) > Date.now();
 
 // ── Auras ────────────────────────────────────────────────────────────────────

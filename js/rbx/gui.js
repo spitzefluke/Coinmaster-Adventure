@@ -122,7 +122,13 @@ function drawObject(g, o, px, py, pw, ph, images) {
     const ta = 1 - (P.TextTransparency ?? 0);
     lines.forEach((line, i) => {
       const ty = y + h / 2 + (i - (lines.length - 1) / 2) * size * 1.1;
-      if ((P.TextStrokeTransparency ?? 1) < 1) {
+      const ts = child(o, 'UIStroke');
+      if (ts && ts.props.ApplyStrokeMode !== 'Border') {
+        g.strokeStyle = css(c8(ts.props.Color), (1 - (ts.props.Transparency ?? 0)) * ta);
+        g.lineWidth = (ts.props.Thickness ?? 1) * 2;
+        g.lineJoin = 'round';
+        g.strokeText(line, tx, ty);
+      } else if ((P.TextStrokeTransparency ?? 1) < 1) {
         g.strokeStyle = css(c8(P.TextStrokeColor3), (1 - P.TextStrokeTransparency) * ta);
         g.lineWidth = Math.max(1, size / 9);
         g.lineJoin = 'round';
@@ -133,7 +139,11 @@ function drawObject(g, o, px, py, pw, ph, images) {
     });
   }
   const stroke = child(o, 'UIStroke');
-  if (stroke) {
+  // Roblox: Contextual umrandet bei Text-Objekten den Text (hier wie TextStroke gezeichnet), sonst den Rahmen
+  const textObj = o.ClassName === 'TextLabel' || o.ClassName === 'TextButton';
+  if (stroke && textObj && stroke.props.ApplyStrokeMode !== 'Border') {
+    // schon beim Text berücksichtigt
+  } else if (stroke) {
     g.strokeStyle = css(c8(stroke.props.Color), 1 - (stroke.props.Transparency ?? 0));
     g.lineWidth = stroke.props.Thickness ?? 1;
     roundRect(g, x, y, w, h, radius);

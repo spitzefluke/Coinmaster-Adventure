@@ -11,6 +11,7 @@ import { EGGS } from '../../eier/js/eggs.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { PETS } from '../../haustiere/js/pets.js';
+import { BOOSTS, ROBUX } from '../../spiel/js/state.js';
 import { moduleSources, installerSource } from './luau.js';
 import { makeZip } from './zip.js';
 
@@ -79,7 +80,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS, BOOSTS, ROBUX };
 let built = null;
 
 function unlock() {
