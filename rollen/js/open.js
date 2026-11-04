@@ -1,12 +1,17 @@
 // Öffnen-Ansicht 1:1 wie in Roblox: Das Modul RollFx aus dem Installer spielt die Animation
-// (Rolle wackelt, hebt ab, reißt auf; die Münzen springen heraus und reihen sich auf).
-// Tippen spult vor, danach zeigt die Seite die Ausbeute.
+// (Rolle wackelt, hebt ab, reißt auf; Bäume und Gartenwerkzeug springen heraus und reihen sich auf).
+// Tippen spult vor, danach zeigt die Seite die Ausbeute. Sie landet im Inventar des Gartens.
 
 import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
-import { tierById } from '../../muenzen/js/coins.js';
+import { rarityById, loadState, saveState, addLoot } from '../../garten/js/garden.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { openRoll } from './rolls.js';
+
+// Kann die Rolle bezahlt werden? Robux werden in der Vorschau nur simuliert.
+export function canPay(roll, state = loadState()) {
+  return !roll.price || roll.price.currency !== 'taler' || state.taler >= roll.price.amount;
+}
 import { createRobloxOpening, rollLua } from './rollRoblox.js';
 
 export class Opener {
@@ -35,7 +40,7 @@ export class Opener {
 
     el.addEventListener('click', (e) => {
       if (e.target.closest('.open-done')) return this.close();
-      if (e.target.closest('.open-again')) return this.start(this.roll);
+      if (e.target.closest('.open-again')) return canPay(this.roll) ? this.start(this.roll) : null;
       if (!this.view) return;
       if (!this.view.done) this.view.skip();
     });
@@ -72,9 +77,15 @@ export class Opener {
   start(roll) {
     this.roll = roll;
     const token = (this.token = (this.token || 0) + 1);
-    const coins = openRoll(roll);
-    const best = coins[coins.length - 1];
-    const bestTier = tierById[best.tier];
+    const items = openRoll(roll);
+    // bezahlen und Inhalt ins Garten-Inventar legen
+    const state = loadState();
+    if (roll.price?.currency === 'taler') state.taler -= roll.price.amount;
+    addLoot(state, items);
+    saveState(state);
+    this.onChange?.(state);
+    const best = items[items.length - 1];
+    const bestTier = rarityById[best.rarity];
     this.view?.dispose();
     this.view = null;
     const u = this.ui;
@@ -82,24 +93,26 @@ export class Opener {
     u.eyebrow.textContent = `${roll.name} aufgerissen`;
     u.name.textContent = best.name;
     u.name.style.textShadow = `0 0 30px ${bestTier.color}`;
-    u.from.textContent = `Beste Münze: ${bestTier.name} · ${coins.length} Münzen`;
-    u.loot.innerHTML = coins
-      .map((c) => `<li style="--t:${tierById[c.tier].color}">${c.name}</li>`)
+    u.from.textContent = `Bestes Stück: ${bestTier.name} · alles liegt jetzt im Inventar deines Gartens`;
+    u.loot.innerHTML = items
+      .map((c) => `<li style="--t:${rarityById[c.rarity].color}">${c.name}</li>`)
       .join('');
+    u.again.disabled = !canPay(roll, state);
+    u.again.textContent = u.again.disabled ? 'Zu wenig Taler' : 'Noch eine';
     u.text.classList.remove('is-shown');
     u.done.hidden = u.again.hidden = true;
     u.hint.hidden = false;
     this.time = 0;
     this.lift = 0;
-    // im Hochformat eine Münze pro Reihe weniger, damit alles aufs Bild passt
+    // im Hochformat eine Sache pro Reihe weniger, damit alles aufs Bild passt
     const perRow = this.portrait ? 3 : 4;
-    this.rows = Math.ceil(coins.length / perRow);
+    this.rows = Math.ceil(items.length / perRow);
     const finish = () => {
       u.hint.hidden = true;
       u.done.hidden = u.again.hidden = false;
       setTimeout(() => u.text.classList.add('is-shown'), 250);
     };
-    createRobloxOpening(roll, coins, { perRow, onDone: finish }).then((view) => {
+    createRobloxOpening(roll, items, { perRow, onDone: finish }).then((view) => {
       if (this.el.hidden || token !== this.token) return view.dispose();
       this.view = view;
       if (skipAnimations()) view.skip();
@@ -124,11 +137,11 @@ export class Opener {
     this.view.step(dt);
     // langsam heranfahren; mit vielen Reihen etwas weiter weg und höher schauen
     const k = Math.min(1, this.time / 2.5);
-    const base = (this.portrait ? 22 : 15) + (this.rows - 1) * 2.5;
+    const base = (this.portrait ? 26 : 17) + (this.rows - 1) * 2.8;
     const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.12 : -0.12 + k * 0.12;
     // ist alles draußen, rutscht das Bild etwas nach oben, damit unten Platz für die Ausbeute ist
     this.lift += ((this.view.done ? 1 : 0) - this.lift) * Math.min(1, dt * 2.5);
-    const y = 2.8 + (this.rows - 1) * 1.1 - this.lift * (this.portrait ? 3.2 : 1.8);
+    const y = 2.9 + (this.rows - 1) * 1.2 - this.lift * (this.portrait ? 3.6 : 2);
     orbitEgg(this.camera, angle, 0.1, base * (1.12 - 0.12 * k), y);
     this.view.world.render(this.renderer, this.camera);
   }

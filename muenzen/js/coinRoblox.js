@@ -12,7 +12,7 @@ import { renderEmblem } from './emblems.js';
 import { pixelRatio } from '../../js/settings.js';
 
 // In der Vorschau hat jede Münze eine „hochgeladene“ Decal-ID: 9000 + Nummer
-export const PREVIEW_DECAL = 9000;
+const PREVIEW_DECAL = 9000;
 
 const PREVIEW = `
 local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
@@ -56,7 +56,7 @@ export function coinLua() {
 
 // Motiv-Bild einer Münze (dasselbe wie im ZIP zum Hochladen)
 const emblemDone = new Set();
-export function ensureEmblem(index) {
+function ensureEmblem(index) {
   if (emblemDone.has(index)) return;
   const c = COINS[index];
   registerImage(`rbxassetid://${PREVIEW_DECAL + index + 1}`, renderEmblem(c.emblem, 512, c.metal).colorCv);

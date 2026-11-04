@@ -1,15 +1,17 @@
-// Münzrollen: Papierrollen voller Münzen. Aufreißen, und die Münzen purzeln heraus.
+// Münzrollen: Papierrollen voller Gartenschätze für den Münzbaumgarten. Aufreißen, und heraus
+// springen Münzbäume, Gießkannen, Dünger und mehr.
 //
-// coins     wie viele Münzen in der Rolle stecken
-// luck      Glück: hebt seltene Stufen an. Gewicht einer Stufe = Drop-Chance × luck ^ (Stufe / 9),
-//           die seltenste Stufe bekommt also den vollen Faktor, Normal keinen.
-// guarantee die letzte Münze ist mindestens diese Stufe (null = keine Garantie)
+// items     wie viele Sachen in der Rolle stecken
+// luck      Glück: hebt seltene Stufen an. Gewicht einer Stufe = Chance × luck ^ (Stufe / 5),
+//           die seltenste Stufe (Göttlich) bekommt also den vollen Faktor, Gewöhnlich keinen.
+// guarantee die letzte Sache ist mindestens diese Seltenheit (null = keine Garantie)
 // rank      0–4 bestimmt, wie lang und groß das Aufreißen ist
 // Preise sind Vorschläge. price: null = nicht kaufbar.
 //
-// Dieselbe Rechnung steht in Luau in RollData (roblox/js/rollLuau.js). Im Spiel würfelt der Server.
+// Was drin sein kann, steht in garten/js/garden.js (Bäume und Werkzeug). Dieselbe Rechnung steht
+// in Luau in RollData (roblox/js/rollLuau.js). Im Spiel würfelt der Server.
 
-import { TIERS, COINS } from '../../muenzen/js/coins.js';
+import { RARITIES, LOOT, rarityById } from '../../garten/js/garden.js';
 
 export const ROLLS = [
   {
@@ -17,7 +19,7 @@ export const ROLLS = [
     name: 'Kupferrolle',
     rank: 0,
     rankName: 'Normal',
-    coins: 3,
+    items: 3,
     luck: 1,
     guarantee: null,
     paper: '#b9773f',
@@ -26,14 +28,14 @@ export const ROLLS = [
     glow: '#ffb070',
     price: { amount: 500, currency: 'taler' },
     availability: 'Immer im Shop',
-    text: 'Braunes Packpapier, an den Enden eingedreht. Drei Münzen, ganz ohne Versprechen.',
+    text: 'Braunes Packpapier, an den Enden eingedreht. Drei Sachen für den Garten, ganz ohne Versprechen.',
   },
   {
     id: 'silber',
     name: 'Silberrolle',
     rank: 1,
     rankName: 'Selten',
-    coins: 4,
+    items: 4,
     luck: 1.6,
     guarantee: 'selten',
     paper: '#d6dbe4',
@@ -42,39 +44,39 @@ export const ROLLS = [
     glow: '#bcd8ff',
     price: { amount: 5000, currency: 'taler' },
     availability: 'Immer im Shop',
-    text: 'Wie frisch von der Bank, mit blauer Banderole. Mindestens eine seltene Münze steckt drin.',
+    text: 'Wie frisch von der Bank, mit blauer Banderole. Mindestens eine seltene Sache steckt drin.',
   },
   {
     id: 'gold',
     name: 'Goldrolle',
     rank: 2,
     rankName: 'Episch',
-    coins: 5,
+    items: 5,
     luck: 2.5,
-    guarantee: 'sehr-selten',
+    guarantee: 'episch',
     paper: '#f2c443',
     band: '#b0241c',
     metal: '#ffd45a',
     glow: '#ffe07a',
     price: { amount: 40000, currency: 'taler' },
     availability: 'Immer im Shop',
-    text: 'Goldpapier mit rotem Siegel. Sie klimpert schwerer, als sie aussieht.',
+    text: 'Goldpapier mit rotem Siegel. Raschelt nach Laub und klimpert nach Gold. Mindestens eine epische Sache.',
   },
   {
     id: 'juwel',
     name: 'Juwelenrolle',
     rank: 3,
     rankName: 'Mystisch',
-    coins: 6,
+    items: 6,
     luck: 4,
-    guarantee: 'episch',
+    guarantee: 'legendaer',
     paper: '#5b2aa6',
     band: '#ff5fd2',
     metal: '#ffd27a',
     glow: '#e59bff',
     price: { amount: 250000, currency: 'taler' },
     availability: 'Immer im Shop',
-    text: 'Samtiges Violett, besetzt mit Edelsteinen. Ganz unten wartet mindestens eine epische Münze.',
+    text: 'Samtiges Violett, besetzt mit Edelsteinen. Ganz unten wartet mindestens etwas Legendäres.',
   },
   {
     id: 'stern',
@@ -82,7 +84,7 @@ export const ROLLS = [
     alias: 'Robux-Rolle',
     rank: 4,
     rankName: 'Limitiert',
-    coins: 8,
+    items: 8,
     luck: 6,
     guarantee: 'legendaer',
     paper: '#1d1747',
@@ -91,20 +93,19 @@ export const ROLLS = [
     glow: '#ffe07a',
     price: { amount: 149, currency: 'robux' },
     availability: 'Nur für Robux',
-    text: 'Eingewickelt in den Nachthimmel und von Sternen umkreist. Acht Münzen, die letzte mindestens legendär.',
+    text: 'Eingewickelt in den Nachthimmel und von Sternen umkreist. Acht Sachen, die letzte mindestens legendär.',
   },
 ];
 
 export const rollById = Object.fromEntries(ROLLS.map((r) => [r.id, r]));
-const tierIndex = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
 
 export const fmtPrice = (p) =>
   !p ? 'Nicht kaufbar' : p.currency === 'robux' ? `R$ ${p.amount.toLocaleString('de-DE')}` : `${p.amount.toLocaleString('de-DE')} Taler`;
 
-// Chance je Stufe (in %) für eine Münze aus dieser Rolle; minIndex schneidet Stufen darunter ab
+// Chance je Seltenheit (in %) für eine Sache aus dieser Rolle; minIndex schneidet darunter ab
 export function tierChances(roll, minIndex = 0) {
-  const n = TIERS.length - 1;
-  const w = TIERS.map((t, i) => (i < minIndex ? 0 : t.chance * roll.luck ** (i / n)));
+  const n = RARITIES.length - 1;
+  const w = RARITIES.map((t, i) => (i < minIndex ? 0 : t.chance * roll.luck ** (i / n)));
   const sum = w.reduce((a, b) => a + b, 0);
   return w.map((x) => (x / sum) * 100);
 }
@@ -118,20 +119,19 @@ function pickTier(chances, random) {
   return chances.findLastIndex((c) => c > 0);
 }
 
-// Öffnet eine Rolle: Liste von Münzen (Objekte aus COINS), die letzte erfüllt die Garantie
+// Öffnet eine Rolle: Liste von Sachen (Einträge aus LOOT), seltenste zuletzt
 export function openRoll(roll, random = Math.random) {
   const free = tierChances(roll);
-  const min = roll.guarantee ? tierIndex[roll.guarantee] : 0;
+  const min = roll.guarantee ? rarityById[roll.guarantee].index : 0;
   const sure = tierChances(roll, min);
   const out = [];
-  for (let k = 0; k < roll.coins; k++) {
-    const last = k === roll.coins - 1;
-    // die Garantie greift nur, wenn vorher noch keine Münze so selten war
-    const reached = out.some((c) => tierIndex[c.tier] >= min);
-    const tier = TIERS[pickTier(last && !reached ? sure : free, random)];
-    const pool = COINS.filter((c) => c.tier === tier.id);
+  for (let k = 0; k < roll.items; k++) {
+    const last = k === roll.items - 1;
+    // die Garantie greift nur, wenn vorher noch nichts so Seltenes kam
+    const reached = out.some((c) => rarityById[c.rarity].index >= min);
+    const tier = RARITIES[pickTier(last && !reached ? sure : free, random)];
+    const pool = LOOT.filter((c) => c.rarity === tier.id);
     out.push(pool[Math.floor(random() * pool.length)]);
   }
-  // seltenste Münze zuletzt, damit die Spannung steigt
-  return out.sort((a, b) => tierIndex[a.tier] - tierIndex[b.tier]);
+  return out.sort((a, b) => rarityById[a.rarity].index - rarityById[b.rarity].index);
 }

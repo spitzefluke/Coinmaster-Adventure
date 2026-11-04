@@ -7,6 +7,7 @@ import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
 import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
+import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER } from './gardenLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1225,7 +1226,8 @@ export function moduleSources(data) {
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
-    ...(data.ROLLS ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
+    ...(data.TREES ? [{ name: 'GardenData', source: gardenDataSource(data) }, { name: 'LootBuilder', source: LOOT_BUILDER }, { name: 'GardenBuilder', source: GARDEN_BUILDER }] : []),
+    ...(data.ROLLS && data.TREES ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
     ...(data.BOOSTS && data.AURAS ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'GameUI', source: GAME_UI }] : []),
   ];
 }
@@ -1249,8 +1251,9 @@ export function installerSource(data) {
 -- Danach gibt es:
 --   ReplicatedStorage > CoinmasterAdventure   alle Daten und Module (${modules.length} ModuleScripts)
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
---   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS ? `
---   Münzrollen: auf dem Server RollData.Open(rollId) würfeln, auf dem Client RollFx.Play(rollId, ids) zeigen` : ''}
+--   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS && data.TREES ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS && data.TREES ? `
+--   Münzrollen: auf dem Server RollData.Open(rollId) würfeln, auf dem Client RollFx.Play(rollId, ids) zeigen
+--   Workspace > CoinmasterGarden              Münzbaumgarten mit allen ${data.TREES.length} Münzbäumen (GardenBuilder)` : ''}
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
@@ -1365,7 +1368,7 @@ for i, egg in ipairs(EggData.Eggs) do
 	model.Parent = showcase
 end
 
-${data.ROLLS ? `-- Münzrollen in einer Reihe vor den Eiern
+${data.ROLLS && data.TREES ? `-- Münzrollen in einer Reihe vor den Eiern
 local RollData = require(root.RollData)
 local RollBuilder = require(root.RollBuilder)
 local rollFolder = Instance.new("Folder")
@@ -1378,6 +1381,22 @@ for i, roll in ipairs(RollData.Rolls) do
 	nameTag(model, roll.Name, roll.Glow)
 	model.Parent = showcase
 end
+
+-- Münzbaumgarten mit allen Bäumen, ausgewachsen und reif
+local GardenData = require(root.GardenData)
+local GardenBuilder = require(root.GardenBuilder)
+local oldGarden = workspace:FindFirstChild("CoinmasterGarden")
+if oldGarden then
+	oldGarden:Destroy()
+end
+local plots = {}
+for i, tree in ipairs(GardenData.Trees) do
+	plots[i] = { Tree = tree.Id, Stage = 3, Ripe = 1 }
+end
+local garden = GardenBuilder.Build({ Beds = math.min(GardenData.Garden.MaxBeds, math.ceil(#plots / 4) * 4), Plots = plots })
+garden.Name = "CoinmasterGarden"
+garden:PivotTo(CFrame.new(0, 0, 70))
+garden.Parent = workspace
 ` : ''}showcase.Parent = workspace
 ${data.AURAS ? AURA_SHOWCASE : ''}
 -- Wetter: Server-Skript und Client-Skript (alte Fassungen ersetzen)

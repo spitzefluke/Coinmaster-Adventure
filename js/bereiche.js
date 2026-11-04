@@ -27,10 +27,17 @@ export const BEREICHE = [
   },
   {
     titel: 'Münzrollen',
-    text: 'Papierrollen voller Münzen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Mehr Münzen, mehr Glück und eine Garantie, je teurer die Rolle.',
+    text: 'Papierrollen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Heraus springen Münzbäume, Gießkannen, Dünger und mehr für den Münzbaumgarten.',
     href: 'rollen/',
     status: 'vorschau',
-    eckdaten: ['5 Rollen', 'bis 8 Münzen', 'Öffnen-Animation'],
+    eckdaten: ['5 Rollen', '18 Sachen', 'Öffnen-Animation'],
+  },
+  {
+    titel: 'Münzbaumgarten',
+    text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen pflanzen, gießen, düngen und ihre Münzen als Taler ernten.',
+    href: 'garten/',
+    status: 'vorschau',
+    eckdaten: ['9 Münzbäume', 'bis 12 Beete', '3D'],
   },
   {
     titel: 'Haustiere',

@@ -1,4 +1,5 @@
 // Münzrollen: Galerie aller Rollen, Detailansicht zum Drehen und Öffnen-Animation.
+// Die Rollen kosten Taler aus dem Münzbaumgarten, der Inhalt landet dort im Inventar.
 // Wie in der Eierhalle rendert ein einziges WebGL-Canvas alle Karten per Scissor-Test.
 // Alles 1:1 wie in Roblox: RollBuilder und RollFx aus dem Installer (rollRoblox.js).
 
@@ -7,8 +8,8 @@ import { ROLLS, fmtPrice, tierChances } from './rolls.js';
 import { createRobloxRoll, rollLua } from './rollRoblox.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
-import { TIERS, tierById } from '../../muenzen/js/coins.js';
-import { Opener } from './open.js';
+import { RARITIES, rarityById, loadState, fmt } from '../../garten/js/garden.js';
+import { Opener, canPay } from './open.js';
 
 await Promise.race([
   Promise.all([document.fonts.load('48px "Marcellus SC"'), document.fonts.load('700 40px "JetBrains Mono"')]),
@@ -21,14 +22,14 @@ const opener = new Opener(document.getElementById('open'));
 if (location.hash === '#debug') window.rollOpener = opener;
 
 const pct = (x) => (x >= 10 ? x.toFixed(0) : x >= 1 ? x.toFixed(1) : x.toFixed(2)).replace('.', ',') + ' %';
-const guaranteeText = (roll) => (roll.guarantee ? `ab ${tierById[roll.guarantee].name}` : 'keine');
-// Chancen-Leiste: Anteil jeder Stufe, darunter die seltenen Stufen mit Prozent
+const guaranteeText = (roll) => (roll.guarantee ? `ab ${rarityById[roll.guarantee].name}` : 'keine');
+// Chancen-Leiste: Anteil jeder Seltenheit, darunter alle mit Prozent
 function oddsHtml(roll) {
   const ch = tierChances(roll);
-  const bar = TIERS.map((t, i) => `<span style="--t:${t.color};flex:${ch[i]}" title="${t.name} ${pct(ch[i])}"></span>`).join('');
-  const rare = TIERS.map((t, i) => [t, ch[i]]).slice(4);
+  const bar = RARITIES.map((t, i) => `<span style="--t:${t.color};flex:${ch[i]}" title="${t.name} ${pct(ch[i])}"></span>`).join('');
+  const rare = RARITIES.map((t, i) => [t, ch[i]]);
   return `<div class="odds-bar" aria-hidden="true">${bar}</div>
-    <ul class="odds-list" aria-label="Chance je Münze">${rare.map(([t, c]) => `<li style="--t:${t.color}">${t.name} ${pct(c)}</li>`).join('')}</ul>`;
+    <ul class="odds-list" aria-label="Chance je Sache">${rare.map(([t, c]) => `<li style="--t:${t.color}">${t.name} ${pct(c)}</li>`).join('')}</ul>`;
 }
 
 // ── Karten ───────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ const cards = ROLLS.map((roll) => {
       <h2 class="card-name">${roll.name}${roll.alias ? ` <span class="alias">${roll.alias}</span>` : ''}</h2>
       <p class="card-text">${roll.text}</p>
       <dl class="card-facts">
-        <div><dt>Inhalt</dt><dd>${roll.coins} Münzen</dd></div>
+        <div><dt>Inhalt</dt><dd>${roll.items} Sachen</dd></div>
         <div><dt>Garantie</dt><dd>${guaranteeText(roll)}</dd></div>
         <div><dt>Preis</dt><dd class="${roll.price ? '' : 'is-locked'}">${fmtPrice(roll.price)}</dd></div>
         <div><dt>Glück</dt><dd>×${String(roll.luck).replace('.', ',')}</dd></div>
@@ -176,11 +177,12 @@ function openDetail(roll) {
   document.getElementById('detail-rank').textContent = roll.rankName;
   document.getElementById('detail-name').textContent = roll.alias ? `${roll.name} (${roll.alias})` : roll.name;
   document.getElementById('detail-text').textContent = roll.text;
-  document.getElementById('detail-coins').textContent = `${roll.coins} Münzen`;
+  document.getElementById('detail-coins').textContent = `${roll.items} Sachen`;
   document.getElementById('detail-guarantee').textContent = guaranteeText(roll);
   document.getElementById('detail-price').textContent = fmtPrice(roll.price);
   document.getElementById('detail-avail').textContent = roll.availability;
   document.getElementById('detail-odds').innerHTML = oddsHtml(roll);
+  refreshWallet();
   detail.hidden = false;
   overlayOpen = true;
   document.body.style.overflow = 'hidden';
@@ -219,7 +221,28 @@ document.getElementById('detail-open').addEventListener('click', () => {
   startOpen(dData);
 });
 
+// Taler-Anzeige und Knöpfe, die mehr kosten als man hat
+const wallet = document.getElementById('wallet');
+function refreshWallet(state = loadState()) {
+  wallet.textContent = fmt(state.taler);
+  for (const c of cards) {
+    const btn = c.card.querySelector('.open-btn');
+    btn.disabled = !canPay(c.roll, state);
+    btn.textContent = btn.disabled ? 'Zu wenig Taler' : 'Aufreißen';
+  }
+  const d = document.getElementById('detail-open');
+  if (dData) {
+    d.disabled = !canPay(dData, state);
+    d.textContent = d.disabled ? 'Zu wenig Taler' : 'Aufreißen';
+  }
+}
+opener.onChange = refreshWallet;
+addEventListener('pageshow', () => refreshWallet());
+addEventListener('storage', () => refreshWallet());
+refreshWallet();
+
 async function startOpen(roll) {
+  if (!canPay(roll)) return;
   overlayOpen = true;
   await opener.play(roll);
   overlayOpen = !detail.hidden;

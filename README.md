@@ -31,6 +31,7 @@ Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar und Welten. D
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
 | Münzrollen | `rollen/` | Vorschau |
+| Münzbaumgarten | `garten/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
@@ -143,27 +144,64 @@ Client; das Tier zieht `PetData.Roll(eggId)`.
 
 ## Münzrollen
 
-Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Münzen, wie frisch von der Bank. Beim Öffnen
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Schätze für den Münzbaumgarten. Beim Öffnen
 wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
-springen die Münzen einzeln heraus, die seltenste zuletzt. Seltene Münzen kommen mit Blitz und Druckwelle,
-vor einer sehr seltenen letzten Münze (ab Legendär) gibt es eine kurze Pause mit Lichtsog.
+springen **Münzbäume und Gartenwerkzeug** einzeln heraus, das Seltenste zuletzt. Seltenes kommt mit Blitz und
+Druckwelle, vor einer legendären oder selteneren letzten Sache gibt es eine kurze Pause mit Lichtsog.
+Die Rollen kosten Taler aus dem Garten, der Inhalt landet im Inventar des Gartens.
 
-| Rolle | Stufe | Münzen | Glück | Garantie (letzte Münze) | Preis (Vorschlag) |
+| Rolle | Stufe | Inhalt | Glück | Garantie (letzte Sache) | Preis (Vorschlag) |
 |---|---|---|---|---|---|
 | Kupferrolle | Normal | 3 | ×1 | – | 500 Taler |
 | Silberrolle | Selten | 4 | ×1,6 | ab Selten | 5.000 Taler |
-| Goldrolle | Episch | 5 | ×2,5 | ab Sehr selten | 40.000 Taler |
-| Juwelenrolle | Mystisch | 6 | ×4 | ab Episch | 250.000 Taler |
+| Goldrolle | Episch | 5 | ×2,5 | ab Episch | 40.000 Taler |
+| Juwelenrolle | Mystisch | 6 | ×4 | ab Legendär | 250.000 Taler |
 | Sternenrolle (Robux-Rolle) | Limitiert | 8 | ×6 | ab Legendär | R$ 149 |
 
-- **Chancen:** Gewicht einer Stufe = Drop-Chance × Glück ^ (Stufe / 9). Normal bleibt gleich, die seltenste Stufe
-  bekommt den vollen Faktor (Unerreichbar: 0,1 % bei Kupfer, 0,43 % bei der Sternenrolle). Die Garantie greift nur,
-  wenn vorher keine so seltene Münze kam. Daten und Rechnung: `rollen/js/rolls.js`.
-- **Roblox:** `RollData` (Daten, `TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
-  `RollFx.Play(rollId, coinIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
-  `RollData.Open(rollId)` würfeln, auf dem Client mit den Münz-Ids `RollFx.Play` zeigen. Der Installer legt die
-  Modelle unter `CoinmasterAdventure > Rolls` ab und stellt die Rollen in den Showcase.
-- Noch nicht im Spiel-Shop (`spiel/`); dort fehlen Kauf, Inventar und Remote.
+- **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
+  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Göttlich bekommt also den vollen Faktor (1,72 % bei der
+  Sternenrolle). Innerhalb einer Seltenheit ist jede Sache gleich wahrscheinlich. Die Garantie greift nur, wenn
+  vorher nichts so Seltenes kam. Rechnung: `rollen/js/rolls.js`.
+- **Roblox:** `RollData` (`TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
+  `RollFx.Play(rollId, itemIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
+  `RollData.Open(rollId)` würfeln, auf dem Client mit den Ids `RollFx.Play` zeigen.
+
+## Münzbaumgarten
+
+`garten/`: Ein kleiner Garten, den man für **25.000 Taler** kauft (4 Beete, erweiterbar bis 12; jedes weitere Beet
+kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in drei Stufen
+(Setzling, Jungbaum, ausgewachsen) und tragen dann Münzen. Jede Ernte bringt Taler, höchstens 3 Ernten warten am
+Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Browser.
+
+| Münzbaum | Seltenheit | Wachsen | Ernte | Taler je Ernte |
+|---|---|---|---|---|
+| Pfennigbusch | Gewöhnlich | 1 min | alle 30 s | 40 |
+| Kupferbaum | Gewöhnlich | 2 min | alle 45 s | 90 |
+| Silberbirke | Selten | 4 min | alle 1 min | 300 |
+| Talertanne | Selten | 5 min | alle 1 min 15 s | 420 |
+| Goldeiche | Episch | 10 min | alle 1 min 30 s | 1.500 |
+| Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 |
+| Kristallweide | Legendär | 20 min | alle 2 min | 6.000 |
+| Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 |
+| Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 |
+
+| Werkzeug & mehr | Seltenheit | Wirkung |
+|---|---|---|
+| Talerbeutel | Gewöhnlich | +750 Taler |
+| Blechkanne | Gewöhnlich | Baum wächst 1 min schneller |
+| Kupferkanne | Selten | 5 min schneller |
+| Dünger | Selten | ×2 Ernte für 10 min |
+| Goldkanne | Episch | 30 min schneller |
+| Goldener Spaten | Legendär | +1 Beet |
+| Regenbogenkanne | Legendär | Baum sofort ausgewachsen |
+| Zauberdünger | Mythisch | ×3 Ernte für 30 min |
+| Talertruhe | Göttlich | +250.000 Taler |
+
+- **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
+  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Tool(tool)`, `Build(item)`) und
+  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume).
+  Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
+- Noch nicht im Spiel: Kauf, Spielstand (DataStore) und Remotes für Garten und Rollen fehlen.
 
 ## Haustiere
 

@@ -1,5 +1,6 @@
-// Münzrollen für Roblox: RollData (Daten und Öffnen nach Drop-Chance), RollBuilder (Rolle auf Sockel)
-// und RollFx (Aufreißen, die Münzen fliegen heraus). Die Webseite führt dieselben Module aus (rollen/).
+// Münzrollen für Roblox: RollData (Daten und Öffnen nach Seltenheit), RollBuilder (Rolle auf Sockel)
+// und RollFx (Aufreißen, Bäume und Gartenwerkzeug fliegen heraus). Die Webseite führt dieselben
+// Module aus (rollen/). Was in den Rollen steckt, steht in GardenData (gardenLuau.js).
 
 const str = (s) => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
 const num = (n) => (Number.isFinite(n) ? String(Math.round(n * 1000) / 1000) : 'math.huge');
@@ -26,7 +27,7 @@ export function rollDataSource({ ROLLS }) {
       Alias: r.alias ? str(r.alias) : undefined,
       Rank: num(r.rank),
       RankName: str(r.rankName),
-      Coins: num(r.coins),
+      Items: num(r.items),
       Luck: num(r.luck),
       Guarantee: r.guarantee ? str(r.guarantee) : undefined,
       Paper: color(r.paper),
@@ -39,12 +40,13 @@ export function rollDataSource({ ROLLS }) {
     }),
   );
   return `${HEADER('Münzrollen')}
--- Eine Münzrolle enthält Coins Münzen. Luck hebt seltene Stufen an:
--- Gewicht einer Stufe = Drop-Chance × Luck ^ (Stufe / 9). Die letzte Münze ist mindestens
--- Guarantee (falls vorher keine so seltene kam). Price = nil: nicht kaufbar.
+-- Eine Münzrolle enthält Items Sachen für den Münzbaumgarten (Bäume und Werkzeug aus GardenData).
+-- Luck hebt seltene Stufen an: Gewicht einer Seltenheit = Chance × Luck ^ (Stufe / 5).
+-- Die letzte Sache ist mindestens Guarantee (falls vorher nichts so Seltenes kam).
+-- Price = nil: nicht kaufbar.
 -- Wichtig: RollData.Open nur auf dem Server aufrufen, nie auf dem Client.
 
-local CoinData = require(script.Parent.CoinData)
+local GardenData = require(script.Parent.GardenData)
 
 local RollData = {}
 
@@ -55,12 +57,12 @@ for _, roll in ipairs(RollData.Rolls) do
 	RollData.ById[roll.Id] = roll
 end
 
--- Chance je Stufe in Prozent (Liste in Reihenfolge von CoinData.Tiers); minIndex schneidet darunter ab
+-- Chance je Seltenheit in Prozent (Reihenfolge von GardenData.Rarities); minIndex schneidet darunter ab
 function RollData.TierChances(roll, minIndex)
 	minIndex = minIndex or 1
-	local n = #CoinData.Tiers - 1
+	local n = #GardenData.Rarities - 1
 	local weights, sum = {}, 0
-	for i, tier in ipairs(CoinData.Tiers) do
+	for i, tier in ipairs(GardenData.Rarities) do
 		local w = 0
 		if i >= minIndex then
 			w = tier.Chance * roll.Luck ^ ((i - 1) / n)
@@ -89,33 +91,33 @@ local function pickTier(chances, rng)
 	return last
 end
 
--- Öffnet eine Rolle: Liste von Münzen (Einträge aus CoinData.Coins), seltenste zuletzt
+-- Öffnet eine Rolle: Liste von Sachen (Einträge aus GardenData.Loot), seltenste zuletzt
 function RollData.Open(rollId, rng)
 	rng = rng or Random.new()
 	local roll = RollData.ById[rollId]
-	local min = roll.Guarantee and CoinData.TierById[roll.Guarantee].Index or 1
+	local min = roll.Guarantee and GardenData.RarityById[roll.Guarantee].Index or 1
 	local free = RollData.TierChances(roll)
 	local sure = RollData.TierChances(roll, min)
 	local out, reached = {}, false
-	for k = 1, roll.Coins do
+	for k = 1, roll.Items do
 		local chances = free
-		if k == roll.Coins and not reached then
+		if k == roll.Items and not reached then
 			chances = sure
 		end
-		local tier = CoinData.Tiers[pickTier(chances, rng)]
+		local tier = GardenData.Rarities[pickTier(chances, rng)]
 		if tier.Index >= min then
 			reached = true
 		end
 		local pool = {}
-		for _, coin in ipairs(CoinData.Coins) do
-			if coin.Tier == tier.Id then
-				table.insert(pool, coin)
+		for _, item in ipairs(GardenData.Loot) do
+			if item.Rarity == tier.Id then
+				table.insert(pool, item)
 			end
 		end
 		table.insert(out, pool[rng:NextInteger(1, #pool)])
 	end
 	table.sort(out, function(a, b)
-		return CoinData.TierById[a.Tier].Index < CoinData.TierById[b.Tier].Index
+		return GardenData.RarityById[a.Rarity].Index < GardenData.RarityById[b.Rarity].Index
 	end)
 	return out
 end
@@ -231,23 +233,23 @@ return RollBuilder
 `;
 
 export const ROLL_FX = `${HEADER('Münzrolle öffnen')}
--- RollFx.Play(rollId, coinIds, options) zeigt das Öffnen einer Rolle an einem Ort
+-- RollFx.Play(rollId, itemIds, options) zeigt das Öffnen einer Rolle an einem Ort
 -- (options.CFrame = Boden unter der Rolle, options.Parent = Elternteil, Standard workspace).
--- coinIds: Liste von Münz-Ids (CoinData.Coins[i].Id), am besten aus RollData.Open auf dem Server.
+-- itemIds: Liste von Ids aus GardenData (Bäume, Werkzeug), am besten aus RollData.Open auf dem Server.
 -- Die Rolle wackelt, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen fliegen, dann
--- springen die Münzen einzeln heraus und reihen sich auf. Seltene Münzen kommen mit Blitz und
--- Druckwelle, vor der seltensten gibt es eine kurze Pause.
--- Läuft am besten auf dem Client (LocalScript). Gibt { Folder, Coins } zurück, wenn alles liegt.
+-- springen die Sachen einzeln heraus und reihen sich auf. Seltene kommen mit Blitz und Druckwelle,
+-- vor einer sehr seltenen letzten (ab Legendär) gibt es eine kurze Pause.
+-- Läuft am besten auf dem Client (LocalScript). Gibt { Folder, Items } zurück, wenn alles liegt.
 
 local TweenService = game:GetService("TweenService")
-local CoinData = require(script.Parent.CoinData)
-local CoinBuilder = require(script.Parent.CoinBuilder)
+local GardenData = require(script.Parent.GardenData)
+local LootBuilder = require(script.Parent.LootBuilder)
 local RollData = require(script.Parent.RollData)
 local RollBuilder = require(script.Parent.RollBuilder)
 
 local RollFx = {}
 
-RollFx.CoinScale = 0.42
+RollFx.ItemSize = 2.1 -- so hoch wird jede Sache in Studs
 RollFx.PerRow = 4
 
 local function tween(inst, time, goal, style, dir)
@@ -315,7 +317,7 @@ local function rig(model, pivot)
 	end, parts
 end
 
--- Platz der k-ten von n Münzen: Reihen zu je PerRow, leicht gebogen, oberste Reihe zuerst
+-- Platz der k-ten von n Sachen: Reihen zu je PerRow, leicht gebogen, oberste Reihe zuerst
 local function slot(k, n)
 	local per = RollFx.PerRow
 	local rows = math.ceil(n / per)
@@ -323,17 +325,17 @@ local function slot(k, n)
 	local inRow = math.min(per, n - row * per)
 	local col = (k - 1) % per
 	-- die Kamera schaut von vorne (−Z), dort liegt +X links: darum von +X nach −X auffüllen
-	local x = ((inRow - 1) / 2 - col) * 1.95
-	local y = 2.2 + (rows - 1 - row) * 2.75
-	local z = -1.6 + 0.12 * x * x
+	local x = ((inRow - 1) / 2 - col) * 2.45
+	local y = 2.2 + (rows - 1 - row) * 2.95
+	local z = -1.6 + 0.09 * x * x
 	return Vector3.new(x, y, z)
 end
 
-local function label(parent, coin, tier)
+local function label(parent, item, tier)
 	local gui = Instance.new("BillboardGui")
 	-- Größe in Studs, damit sich die Schilder nebeneinander nie überlappen
-	gui.Size = UDim2.new(1.85, 0, 0.6, 0)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.25, 0)
+	gui.Size = UDim2.new(2.35, 0, 0.66, 0)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.45, 0)
 	gui.AlwaysOnTop = true
 	gui.Parent = parent
 	local title = Instance.new("TextLabel")
@@ -344,7 +346,7 @@ local function label(parent, coin, tier)
 	title.TextColor3 = Color3.new(1, 1, 1)
 	title.TextStrokeTransparency = 0.2
 	title.TextStrokeColor3 = Color3.fromRGB(20, 16, 28)
-	title.Text = coin.Name
+	title.Text = item.Name
 	title.Parent = gui
 	local sub = Instance.new("TextLabel")
 	sub.BackgroundTransparency = 1
@@ -359,7 +361,7 @@ local function label(parent, coin, tier)
 	return gui
 end
 
-function RollFx.Play(rollId, coinIds, options)
+function RollFx.Play(rollId, itemIds, options)
 	options = options or {}
 	local roll = RollData.ById[rollId]
 	local origin = options.CFrame or CFrame.new()
@@ -474,83 +476,85 @@ function RollFx.Play(rollId, coinIds, options)
 	end)
 	task.wait(0.2)
 
-	-- 4. Münzen springen einzeln heraus, die seltenste zuletzt
-	local coins = {}
-	local n = #coinIds
-	local scale = RollFx.CoinScale
-	local face = CFrame.Angles(0, math.rad(90), 0) -- Bildseite zur Kamera (−Z)
-	for k, id in ipairs(coinIds) do
-		local coin = CoinData.Coins[id]
-		local tier = CoinData.TierById[coin.Tier]
-		local rare = tier.Index - 1 -- 0 bei Normal
+	-- 4. Die Sachen springen einzeln heraus, die seltenste zuletzt
+	local items = {}
+	local n = #itemIds
+	for k, id in ipairs(itemIds) do
+		local item = GardenData.ById[id]
+		local tier = GardenData.RarityById[item.Rarity]
+		local rare = tier.Index - 1 -- 0 bei Gewöhnlich
 		local isLast = k == n
-		-- Spannung vor einer sehr seltenen letzten Münze
-		if isLast and rare >= 4 then
-			local tease = emitter(burst, { Color = ColorSequence.new(tier.Color), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(-6, -3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.4, 0), Rate = 40 + rare * 10 })
+		-- Spannung vor einer sehr seltenen letzten Sache
+		if isLast and rare >= 3 then
+			local tease = emitter(burst, { Color = ColorSequence.new(tier.Color), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(-6, -3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.4, 0), Rate = 40 + rare * 15 })
 			local pulse = Instance.new("PointLight")
 			pulse.Color = tier.Color
 			pulse.Brightness = 0
 			pulse.Range = 14
 			pulse.Parent = burst
-			tween(pulse, 0.4 + rare * 0.12, { Brightness = 6 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
-			task.wait(0.4 + rare * 0.12)
+			tween(pulse, 0.5 + rare * 0.2, { Brightness = 6 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+			task.wait(0.5 + rare * 0.2)
 			tease.Rate = 0
 			tween(pulse, 0.6, { Brightness = 0 })
 		end
 
-		local model = CoinBuilder.Build(coin)
+		local model = LootBuilder.Build(item)
 		model.Parent = folder
-		local place, parts = rig(model, CFrame.new())
+		local height = model:GetAttribute("Height") or 2
+		local scale = RollFx.ItemSize / height
+		local place = rig(model, CFrame.new(0, height / 2, 0))
 		local from = center.Position
 		local to = (origin * CFrame.new(slot(k, n))).Position
 		local flight = 0.32 + (isLast and 0.12 or 0)
 		local steps = math.max(4, math.floor(flight / 0.03))
-		local turns = 2 + math.min(rare, 4)
+		local turns = 1 + math.min(rare, 3)
 		for s = 1, steps do
 			local t = s / steps
 			local e = 1 - (1 - t) ^ 3
 			local pos = from:Lerp(to, e) + Vector3.new(0, math.sin(t * math.pi) * 2.2, 0)
-			place(CFrame.new(pos) * CFrame.Angles(0, (1 - e) * turns * math.pi * 2, 0) * face, scale * (0.3 + 0.7 * e))
+			place(CFrame.new(pos) * CFrame.Angles(0, (1 - e) * turns * math.pi * 2, 0), scale * (0.3 + 0.7 * e))
 			task.wait(flight / steps)
 		end
-		place(CFrame.new(to) * face, scale)
+		place(CFrame.new(to), scale)
 		local anchor = holder(folder, CFrame.new(to))
-		anchor.Name = coin.Name
-		label(anchor, coin, tier)
+		anchor.Name = item.Name
+		label(anchor, item, tier)
 		local pop = emitter(anchor, { Color = ColorSequence.new(tier.Color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.4, 0.8), Speed = NumberRange.new(3, 6 + rare), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.3, 0) })
-		pop:Emit(6 + rare * 6)
-		if rare >= 2 then
+		pop:Emit(6 + rare * 8)
+		if rare >= 1 then
 			local l = Instance.new("PointLight")
 			l.Color = tier.Color
-			l.Brightness = 4 + rare
+			l.Brightness = 3 + rare * 1.5
 			l.Range = 6 + rare
 			l.Parent = anchor
-			tween(l, 0.8, { Brightness = 0.6 + rare * 0.15 })
-			shockwave(folder, CFrame.new(to) * CFrame.Angles(0, math.rad(90), 0), tier.Color, 3 + rare * 0.8, 0.5)
+			tween(l, 0.8, { Brightness = 0.5 + rare * 0.25 })
 		end
-		if isLast and rare >= 4 then
-			shockwave(folder, origin * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), tier.Color, 14 + rare * 2, 1)
+		if rare >= 2 then
+			shockwave(folder, CFrame.new(to) * CFrame.Angles(0, math.rad(90), 0), tier.Color, 3 + rare, 0.5)
+		end
+		if isLast and rare >= 3 then
+			shockwave(folder, origin * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), tier.Color, 14 + rare * 3, 1)
 			local s = Instance.new("Sparkles")
 			s.SparkleColor = tier.Color
 			s.Parent = anchor
 		end
-		table.insert(coins, { Model = model, Coin = coin, Tier = tier, Place = place, Position = to })
-		task.wait(isLast and 0.3 or 0.12 + math.min(rare, 3) * 0.06)
+		table.insert(items, { Model = model, Item = item, Tier = tier, Place = place, Position = to, Scale = scale })
+		task.wait(isLast and 0.3 or 0.12 + math.min(rare, 3) * 0.08)
 	end
 
-	-- die Münzen wiegen sich sanft, solange der Ordner existiert
+	-- die Sachen wiegen sich sanft und drehen sich, solange der Ordner existiert
 	task.spawn(function()
 		local t = 0
 		while folder.Parent do
 			t = t + 0.05
-			for i, c in ipairs(coins) do
+			for i, c in ipairs(items) do
 				local bob = math.sin(t * 2 + i) * 0.08
-				c.Place(CFrame.new(c.Position + Vector3.new(0, bob, 0)) * CFrame.Angles(0, math.sin(t + i * 0.7) * 0.35, 0) * face, scale)
+				c.Place(CFrame.new(c.Position + Vector3.new(0, bob, 0)) * CFrame.Angles(0, math.sin(t * 0.8 + i * 0.7) * 0.5, 0), c.Scale)
 			end
 			task.wait(0.05)
 		end
 	end)
-	return { Folder = folder, Coins = coins }
+	return { Folder = folder, Items = items }
 end
 
 return RollFx
