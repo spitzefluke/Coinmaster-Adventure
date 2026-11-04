@@ -43,7 +43,8 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- Spielstand kommt aus Attributen am Spieler: Taler (sonst leaderstats.Taler), Level, XP, XPMax, Points,
 -- WorldName, WorldPlanet, Aura, OwnedAuras, Egg_<id> (Anzahl), Boost_<id> (Ende als os.time()),
 -- EggDiscount (Prozent). Das Wetter steht an ReplicatedStorage (Weather, WeatherEnds).
--- Inventar: Coins (JSON-Liste { i = Münz-Id, m = Mutation, b = Fundbonus, t = Fundzeit }), Slots.
+-- Inventar: Münzen als Stapel über das RemoteEvent InventoryEvent ("full", Liste) und ("set", Schlüssel, Stapel);
+-- in der Vorschau ruft die Seite GameUI.ApplyInventory direkt auf. Plätze im Attribut Slots.
 -- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths.
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
 --                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
@@ -585,25 +586,39 @@ function GameUI.IsShopOpen() return GameUI.IsOpen("shop") end
 local SORTS = { { "neu", "Neueste zuerst" }, { "wert", "Höchster Wert" }, { "selten", "Seltenste" }, { "name", "Name" } }
 ui.invSort, ui.invTier, ui.invMut = 1, 0, false
 
--- Münzen aus dem Attribut Coins (JSON), mit Wert und Stufe
+-- Münz-Inventar: Stapel vom Server (InventoryEvent: erst alles, danach nur Änderungen)
+-- Stapel { k = Schlüssel, i = Münz-Id, m = Mutation, n = Anzahl, v = Wert aller zusammen, t = neuester Fund }
+local inventory = {}
+function GameUI.ApplyInventory(kind, a, b)
+	if kind == "full" then
+		if type(a) == "string" then a = HttpService:JSONDecode(a) end
+		inventory = {}
+		for _, st in ipairs(a or {}) do inventory[st.k] = st end
+	elseif kind == "set" then
+		if type(b) == "string" then b = HttpService:JSONDecode(b) end
+		inventory[a] = b
+	end
+	if ui.invSel and not inventory[ui.invSel] then ui.invSel = nil end
+	GameUI.Refresh("inventar")
+end
+
 local function coinEntries()
-	local ok, list = pcall(function()
-		return HttpService:JSONDecode(attr("Coins", "[]"))
-	end)
 	local out = {}
-	if not ok or type(list) ~= "table" then return out end
-	for index, e in ipairs(list) do
-		local coin = CoinData.Coins[e.i]
-		if coin then
-			local tier = CoinData.TierById[coin.Tier]
-			local mutation = e.m and MutationData.ById[e.m] or nil
+	for key, st in pairs(inventory) do
+		local coin = CoinData.Coins[st.i]
+		if coin and st.n > 0 then
 			table.insert(out, {
-				Index = index, Coin = coin, Tier = tier, Mutation = mutation, At = e.t or 0,
-				Value = CoinData.EntryValue(e.i, mutation and mutation.Multiplier or 1, e.b),
+				Key = key, Coin = coin, Tier = CoinData.TierById[coin.Tier], Mutation = st.m and MutationData.ById[st.m] or nil,
+				At = st.t or 0, Count = st.n, Total = st.v, Value = math.floor(st.v / st.n * 100 + 0.5) / 100,
 			})
 		end
 	end
 	return out
+end
+local function coinTotal(entries)
+	local n = 0
+	for _, e in ipairs(entries) do n = n + e.Count end
+	return n
 end
 
 local function firstLetter(text)
@@ -649,23 +664,25 @@ local function smallButton(parent, text, order, width, onClick, on)
 	return b
 end
 
-local function sell(indices, w)
-	if #indices == 0 then return end
-	local ok, text = options.Invoke("sell", table.concat(indices, ","))
-	if result(ok, text) then
-		ui.invSel = nil
-		GameUI.Refresh("inventar")
+local function sell(key, count)
+	local ok, text
+	if key == nil then
+		ok, text = options.Invoke("sellNormal")
+	else
+		ok, text = options.Invoke("sell", key, count)
 	end
+	if result(ok, text) then GameUI.Refresh("inventar") end
 end
 
 local function fillCoins(w, entries)
 	local cap = attr("Slots", 30)
-	local full = #entries >= cap
+	local total = coinTotal(entries)
+	local full = total >= cap
 	local main = new("Frame", { Name = "Muenzen", Size = UDim2.new(1, -276, 1, 0), BackgroundTransparency = 1, Parent = w.body })
 	local bar = new("Frame", { Name = "Werkzeuge", Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Parent = main }, {
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	label({ Size = UDim2.new(0, 130, 1, 0), Text = #entries .. " / " .. cap .. " Plätze" .. (full and " · voll" or ""), Font = FONT, TextSize = 17, TextColor3 = full and C.red or C.ink, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = bar })
+	label({ Size = UDim2.new(0, 130, 1, 0), Text = total .. " / " .. cap .. " Plätze" .. (full and " · voll" or ""), Font = FONT, TextSize = 17, TextColor3 = full and C.red or C.ink, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = bar })
 	smallButton(bar, "↕ " .. SORTS[ui.invSort][2], 2, 150, function()
 		ui.invSort = ui.invSort % #SORTS + 1
 		w.keep = {}
@@ -697,7 +714,7 @@ local function fillCoins(w, entries)
 		if by == "selten" and a.Value ~= b.Value then return a.Value > b.Value end
 		if by == "name" and a.Coin.Name ~= b.Coin.Name then return a.Coin.Name < b.Coin.Name end
 		if a.At ~= b.At then return a.At > b.At end
-		return a.Index > b.Index
+		return a.Key > b.Key
 	end)
 
 	if #list == 0 then
@@ -708,16 +725,19 @@ local function fillCoins(w, entries)
 			new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 2), PaddingRight = UDim.new(0, 12) }),
 		})
 		for order, e in ipairs(list) do
-			local selected = ui.invSel == e.Index
-			local cell = new("TextButton", { Name = "Muenze" .. e.Index, BackgroundColor3 = C.bg2, Text = "", AutoButtonColor = false, LayoutOrder = order, Parent = grid }, {
+			local selected = ui.invSel == e.Key
+			local cell = new("TextButton", { Name = "Muenze" .. order, BackgroundColor3 = C.bg2, Text = "", AutoButtonColor = false, LayoutOrder = order, Parent = grid }, {
 				corner(UDim.new(0, 14)),
 				stroke(selected and C.goldHi or e.Tier.Color, selected and 3 or 1.5),
 			})
 			coinDisc(cell, e, 62, UDim2.new(0.5, 0, 0, 8))
 			label({ Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 76), Text = e.Coin.Name, TextScaled = true, Font = BODY, Parent = cell })
 			label({ Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 98), Text = GameUI.Format(e.Value), TextSize = 13, Font = Enum.Font.Code, TextColor3 = C.goldHi, Parent = cell })
+			if e.Count > 1 then
+				new("TextLabel", { Name = "Anzahl", Size = UDim2.new(0, 34, 0, 20), Position = UDim2.new(1, -4, 0, 4), AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = C.bg, Text = "×" .. e.Count, Font = BODY, TextSize = 12, TextColor3 = C.ink, ZIndex = 3, Parent = cell }, { corner(UDim.new(1, 0)), stroke(e.Tier.Color, 1) })
+			end
 			pressable(cell, function()
-				ui.invSel = e.Index
+				ui.invSel = e.Key
 				GameUI.Refresh("inventar")
 			end)
 		end
@@ -731,7 +751,7 @@ local function fillCoins(w, entries)
 	})
 	local sel = nil
 	for _, e in ipairs(entries) do
-		if e.Index == ui.invSel then sel = e end
+		if e.Key == ui.invSel then sel = e end
 	end
 	if sel then
 		coinDisc(side, sel, 84, UDim2.new(0.5, 0, 0, 0))
@@ -743,18 +763,28 @@ local function fillCoins(w, entries)
 			y = y + 28
 		end
 		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 0, y), Text = sel.Coin.Text, TextSize = 12, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = "Wert: " .. GameUI.Format(sel.Value) .. " Taler" .. (sel.At > 0 and ("  ·  " .. os.date("%d.%m.%y", sel.At)) or ""), TextSize = 13, TextColor3 = C.goldHi, Parent = side })
-		local b = actionButton(side, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell({ sel.Index }, w) end)
-		b.Position = UDim2.new(0, 0, 1, -110)
+		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = (sel.Count > 1 and (sel.Count .. " Stück · je ") or "Wert: ") .. GameUI.Format(sel.Value) .. " Taler", TextSize = 13, TextColor3 = C.goldHi, Parent = side })
+		-- eine verkaufen oder den ganzen Stapel
+		local row = new("Frame", { Name = "Verkaufen", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, -110), BackgroundTransparency = 1, Parent = side })
+		local one = new("Frame", { Size = UDim2.new(sel.Count > 1 and 0.5 or 1, sel.Count > 1 and -4 or 0, 1, 0), BackgroundTransparency = 1, Parent = row })
+		local b = actionButton(one, "Verkaufen · " .. GameUI.Format(sel.Value), C.green, true, function() sell(sel.Key, 1) end)
+		b.Size = UDim2.new(1, 0, 1, 0)
+		if sel.Count > 1 then b.TextSize = 14 end
+		if sel.Count > 1 then
+			local stack = new("Frame", { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0), BackgroundTransparency = 1, Parent = row })
+			local all = actionButton(stack, "Alle ×" .. sel.Count .. " · " .. GameUI.Format(sel.Total), C.green, true, function() sell(sel.Key, sel.Count) end)
+			all.Size = UDim2.new(1, 0, 1, 0)
+			all.TextSize = 14
+		end
 	else
 		label({ Size = UDim2.new(1, 0, 0, 50), Position = UDim2.new(0, 0, 0, 30), Text = "🪙", TextSize = 40, Font = Enum.Font.SourceSans, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0, 84), Text = "Wähle eine Münze, um sie dir anzusehen oder zu verkaufen.", TextSize = 14, TextWrapped = true, TextColor3 = C.muted, Parent = side })
 	end
-	local normal = {}
+	local normal = 0
 	for _, e in ipairs(entries) do
-		if e.Tier.Index == 1 and not e.Mutation then table.insert(normal, e.Index) end
+		if e.Tier.Index == 1 and not e.Mutation then normal = normal + e.Count end
 	end
-	local all = actionButton(side, "Alle normalen verkaufen (" .. #normal .. ")", C.blue, #normal > 0, function() sell(normal, w) end)
+	local all = actionButton(side, "Alle normalen verkaufen (" .. normal .. ")", C.blue, normal > 0, function() sell(nil) end)
 	all.Position = UDim2.new(0, 0, 1, -62)
 	all.TextSize = 15
 	label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16), Text = "Münzen mit Mutation bleiben im Inventar.", TextSize = 11, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = side })
@@ -800,7 +830,7 @@ local function fillInventory(w)
 	for _, egg in ipairs(EggData.Eggs) do
 		eggs = eggs + attr("Egg_" .. egg.Id, 0)
 	end
-	w.sub.Text = #entries .. " Münzen · " .. eggs .. " Eier"
+	w.sub.Text = coinTotal(entries) .. " Münzen · " .. eggs .. " Eier"
 	if w.tab == "eier" then
 		fillEggs(w)
 	elseif w.tab == "tiere" then
@@ -1120,9 +1150,12 @@ function GameUI.Start(opts)
 	end
 	player.AttributeChanged:Connect(changed)
 	ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(changed)
-	player:GetAttributeChangedSignal("Coins"):Connect(function()
-		ui.invSel = nil
-	end)
+	-- Münzen vom Server: erst alles, danach nur Änderungen
+	local inventoryEvent = root:WaitForChild("InventoryEvent", 10)
+	if inventoryEvent and inventoryEvent:IsA("RemoteEvent") then
+		inventoryEvent.OnClientEvent:Connect(GameUI.ApplyInventory)
+		inventoryEvent:FireServer("full")
+	end
 	local stats = player:FindFirstChild("leaderstats")
 	if stats and stats:FindFirstChild("Taler") then
 		stats.Taler.Changed:Connect(changed)
@@ -1147,8 +1180,8 @@ return GameUI
 export const SHOP_SERVER = `-- Coinmaster Adventure · Shop, Inventar und Welten (Server)
 -- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Taler und Regeln (WorldData).
 -- Ein gekauftes Ei zählt das Attribut Egg_<id> hoch, ein Boost setzt Boost_<id> auf sein Ende (os.time()).
--- Münzen stehen als JSON im Attribut Coins, Welten und Portale als Ids mit Komma in Worlds und Portals,
--- die aktuelle Welt in World, Wiedergeburten in Rebirths. Speichern (DataStore) fehlt noch.
+-- Münzen liegen als Stapel im Spielstand (PlayerData), Welten und Portale als Ids mit Komma in Worlds und
+-- Portals, die aktuelle Welt in World, Wiedergeburten in Rebirths. Gespeichert wird über PlayerData.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -1158,6 +1191,7 @@ local ShopData = require(root:WaitForChild("ShopData"))
 local CoinData = require(root:WaitForChild("CoinData"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local WorldData = require(root:WaitForChild("WorldData"))
+local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterServer"):WaitForChild("PlayerData"))
 
 local remote = root:FindFirstChild("ShopRemote")
 if not remote then
@@ -1221,41 +1255,30 @@ teleport = function(player, world)
 end
 
 -- Münzen verkaufen: id = Positionen in der Liste (1-basiert, mit Komma) oder sellNormal für alle normalen ohne Mutation
-sellCoins = function(player, action, id)
-	local ok, list = pcall(function()
-		return HttpService:JSONDecode(player:GetAttribute("Coins") or "[]")
-	end)
-	if not ok or type(list) ~= "table" then return false, "Inventar unlesbar" end
-	local pick = {}
+sellCoins = function(player, action, key, count)
+	local picks = {}
 	if action == "sellNormal" then
-		for i, e in ipairs(list) do
-			local coin = CoinData.Coins[e.i]
-			if coin and CoinData.TierById[coin.Tier].Index == 1 and not e.m then pick[i] = true end
+		for k, st in pairs(PlayerData.Coins(player)) do
+			local coin = CoinData.Coins[st.i]
+			if coin and CoinData.TierById[coin.Tier].Index == 1 and not st.m then picks[k] = st.n end
 		end
 	else
-		for n in string.gmatch(id, "%d+") do
-			pick[tonumber(n)] = true
-		end
+		picks[key] = math.max(1, math.floor(tonumber(count) or 1))
 	end
-	local keep, total, count = {}, 0, 0
-	for i, e in ipairs(list) do
-		if pick[i] then
-			local m = e.m and MutationData.ById[e.m]
-			total = total + CoinData.EntryValue(e.i, m and m.Multiplier or 1, e.b)
-			count = count + 1
-		else
-			table.insert(keep, e)
-		end
+	local total, n = 0, 0
+	for k, c in pairs(picks) do
+		local took, value = PlayerData.TakeCoins(player, k, c)
+		n, total = n + took, total + value
 	end
-	if count == 0 then return false, "Keine Münze gewählt" end
+	if n == 0 then return false, "Keine Münze gewählt" end
 	local taler = talerOf(player)
 	if not taler then return false, "Keine Taler gefunden (leaderstats.Taler fehlt)" end
 	taler.Value = taler.Value + total
-	player:SetAttribute("Coins", HttpService:JSONEncode(keep))
-	return true, count .. " Münze" .. (count > 1 and "n" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
+	return true, n .. " Münze" .. (n > 1 and "n" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
 end
 
-remote.OnServerInvoke = function(player, action, id)
+remote.OnServerInvoke = function(player, action, id, extra)
+	if not PlayerData.IsReady(player) then return false, "Spielstand lädt noch" end
 	local now = os.clock()
 	if lastCall[player] and now - lastCall[player] < 0.25 then
 		return false, "Zu schnell"
@@ -1288,7 +1311,7 @@ remote.OnServerInvoke = function(player, action, id)
 	elseif action == "robux" then
 		return false, "Robux-Angebote brauchen ein Developer Product"
 	elseif action == "sell" or action == "sellNormal" then
-		return sellCoins(player, action, id)
+		return sellCoins(player, action, id, extra)
 	elseif action == "buyWorld" then
 		local why = WorldData.CanBuy(stateOf(player), id)
 		if why then return false, why end

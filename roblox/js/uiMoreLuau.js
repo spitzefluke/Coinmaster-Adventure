@@ -214,13 +214,13 @@ return RewardData
 export function playerServerSource({ CODES }) {
   const codes = Object.entries(CODES).map(([k, p]) => `${k} = ${prize(p)}`);
   return `-- Coinmaster Adventure · Skills, Belohnungen, Codes, Einstellungen, Ranglisten (Server)
--- Alles über die RemoteFunction PlayerRemote; der Server prüft jede Aktion.
--- Speichern (DataStore) fehlt noch.
+-- Alles über die RemoteFunction PlayerRemote; der Server prüft jede Aktion. Gespeichert wird über PlayerData.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local SkillData = require(root:WaitForChild("SkillData"))
 local RewardData = require(root:WaitForChild("RewardData"))
+local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterServer"):WaitForChild("PlayerData"))
 
 -- Codes nur hier auf dem Server, damit sie niemand aus dem Spiel auslesen kann
 local CODES = {
@@ -290,6 +290,7 @@ end
 
 local lastCall = {}
 remote.OnServerInvoke = function(player, action, a, b)
+	if not PlayerData.IsReady(player) then return false, "Spielstand lädt noch" end
 	local now = os.clock()
 	if lastCall[player] and now - lastCall[player] < 0.2 then
 		return false, "Zu schnell"
@@ -365,12 +366,17 @@ remote.OnServerInvoke = function(player, action, a, b)
 	return false, "Ungültig"
 end
 
-Players.PlayerAdded:Connect(function(player)
-	if player:GetAttribute("Skills") == nil then player:SetAttribute("Skills", "kern:1") end
+-- fehlende Einstellungen nach dem Laden mit Standardwerten füllen
+local function fill(player)
+	if not PlayerData.WaitReady(player, 60) then return end
 	for k, v in pairs(DEFAULTS) do
 		if player:GetAttribute("Set_" .. k) == nil then player:SetAttribute("Set_" .. k, v) end
 	end
-end)
+end
+Players.PlayerAdded:Connect(fill)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(fill, player)
+end
 Players.PlayerRemoving:Connect(function(player)
 	lastCall[player] = nil
 end)

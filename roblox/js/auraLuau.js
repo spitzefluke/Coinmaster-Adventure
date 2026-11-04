@@ -635,12 +635,14 @@ return AuraFx
 export const AURA_SERVER = `-- Coinmaster Adventure · Auras (Server)
 -- Kaufen und Anlegen. Der Client fragt nur, der Server prüft Preis, Besitz und Aura-Id.
 -- Taler kommen aus leaderstats.Taler (IntValue oder NumberValue), falls es das gibt.
--- Speichern (DataStore) fehlt noch: Gekauftes geht beim Verlassen verloren.
+-- Gespeichert wird über PlayerData (Attribute OwnedAuras und Aura).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local AuraData = require(root:WaitForChild("AuraData"))
+local serverFolder = game:GetService("ServerScriptService"):FindFirstChild("CoinmasterServer")
+local PlayerData = serverFolder and require(serverFolder:WaitForChild("PlayerData"))
 
 local remote = root:FindFirstChild("AuraRemote")
 if not remote then
@@ -670,6 +672,9 @@ local function addOwned(player, id)
 end
 
 local function handle(player, action, id)
+	if PlayerData and not PlayerData.IsReady(player) then
+		return false, "Spielstand lädt noch"
+	end
 	-- höchstens 4 Anfragen pro Sekunde
 	local now = os.clock()
 	if lastCall[player] and now - lastCall[player] < 0.25 then

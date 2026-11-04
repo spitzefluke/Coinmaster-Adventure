@@ -70,7 +70,7 @@ function renderHud() {
   for (const b of BOOSTS) set('Boost_' + b.id, boostActive(state, b.id) ? Math.round(state.boosts[b.id] / 1000) : 0);
   // Inventar und Welten (in Roblox schreibt das der Server)
   set('Slots', slots(state));
-  set('Coins', JSON.stringify(state.inventory.map((e) => ({ i: e.id + 1, m: e.mutation || undefined, b: e.bonus || 1, t: Math.round((e.at || 0) / 1000) }))));
+  sendInventory();
   set('World', state.world);
   set('Worlds', state.worlds.join(','));
   set('Portals', state.portals.join(','));
@@ -83,6 +83,32 @@ function renderHud() {
   set('Group', !!state.group);
   set('Codes', (state.codes ?? []).join(','));
   for (const [k, v] of Object.entries(settings)) set('Set_' + k, v);
+}
+
+// Münzen als Stapel wie im Roblox-Spielstand (PlayerData): gleiche Münze + gleiche Mutation = ein Stapel.
+// Beim ersten Mal alles, danach nur geänderte Stapel (wie das RemoteEvent InventoryEvent)
+const coinKey = (e) => `${e.id + 1}|${e.mutation || ''}`;
+function stacks() {
+  const out = new Map();
+  for (const e of state.inventory) {
+    const k = coinKey(e);
+    const s = out.get(k) ?? { k, i: e.id + 1, m: e.mutation || undefined, n: 0, v: 0, t: 0 };
+    s.n++;
+    s.v = Math.round((s.v + coinValue(e)) * 100) / 100;
+    s.t = Math.max(s.t, Math.round((e.at || 0) / 1000));
+    out.set(k, s);
+  }
+  return out;
+}
+let sentStacks = null;
+function sendInventory() {
+  const now = stacks();
+  if (!sentStacks) rui.inventory('full', [...now.values()]);
+  else {
+    for (const [k, s] of now) if (JSON.stringify(s) !== JSON.stringify(sentStacks.get(k))) rui.inventory('set', k, s);
+    for (const k of sentStacks.keys()) if (!now.has(k)) rui.inventory('set', k, null);
+  }
+  sentStacks = now;
 }
 
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
@@ -335,11 +361,14 @@ function invoke(action, a, b) {
     return done(`${au.name} gekauft und angelegt`);
   }
   if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
-  // Inventar: Positionen in der Liste Coins (1-basiert)
+  // Inventar: Stapel-Schlüssel und Anzahl (oder alle normalen ohne Mutation)
   if (action === 'sell' || action === 'sellNormal') {
     const pick = new Set();
     if (action === 'sellNormal') state.inventory.forEach((e, i) => tierById[COINS[e.id].tier].index === 0 && !e.mutation && pick.add(i));
-    else String(a).split(',').forEach((n) => pick.add(Number(n) - 1));
+    else {
+      let left = Math.max(1, Math.floor(Number(b) || 1));
+      state.inventory.forEach((e, i) => coinKey(e) === a && left-- > 0 && pick.add(i));
+    }
     let total = 0, count = 0;
     state.inventory = state.inventory.filter((e, i) => {
       if (!pick.has(i)) return true;

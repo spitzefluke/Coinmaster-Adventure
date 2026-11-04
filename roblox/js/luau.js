@@ -7,6 +7,7 @@ import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
+import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1256,7 +1257,9 @@ export function installerSource(data) {
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
 --   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
 --   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
---   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)${data.AURAS ? `
+--   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)
+--   ServerScriptService > CoinmasterData      lädt und speichert den Spielstand (Modul CoinmasterServer > PlayerData)
+--     Zum Speichern in Studio: Game Settings > Security > „Enable Studio Access to API Services“${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
 --   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
@@ -1383,7 +1386,20 @@ end
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
-${data.BOOSTS && data.AURAS && data.SKILLS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
+${data.BOOSTS && data.AURAS && data.SKILLS ? `-- Spielstand: Modul PlayerData (ServerScriptService > CoinmasterServer) und das Skript, das es startet
+local serverFolder = game:GetService("ServerScriptService"):FindFirstChild("CoinmasterServer")
+if serverFolder then
+	serverFolder:Destroy()
+end
+serverFolder = Instance.new("Folder")
+serverFolder.Name = "CoinmasterServer"
+serverFolder.Parent = game:GetService("ServerScriptService")
+local playerData = Instance.new("ModuleScript")
+playerData.Name = "PlayerData"
+playerData.Source = ${longString(PLAYER_DATA)}
+playerData.Parent = serverFolder
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterData", ${longString(PLAYER_DATA_START)})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterPlayer", ${longString(playerServerSource(data))})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterUI", ${longString(UI_CLIENT)})
 ` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
