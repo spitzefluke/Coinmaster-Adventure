@@ -429,8 +429,8 @@ do
 		if not SkillData.IsVisible(lv, ui.skillSel) then ui.skillSel = "kern" end
 
 		-- Baum: Flächen und Linien in Anteilen einer Fläche mit festem Seitenverhältnis
-		local area = new("Frame", { Name = "Baum", Size = UDim2.new(1, -290, 1, 0), BackgroundColor3 = Color3.fromRGB(16, 14, 22), ClipsDescendants = true, Parent = w.body }, {
-			corner(UDim.new(0, 18)),
+		local area = new("Frame", { Name = "Baum", Size = UDim2.new(1, -290, 1, 0), BackgroundColor3 = C.deep, ClipsDescendants = true, Parent = w.body }, {
+			corner(R.L),
 			stroke(C.line, 2),
 		})
 		local vis, hidden = {}, 0
@@ -492,7 +492,7 @@ do
 					x, y, ax, ay = across, far * dy + 0.62 * dy, 0.5, dy > 0 and 0 or 1
 					align = Enum.TextXAlignment.Center
 				end
-				label({ Name = "Ast", Size = UDim2.new(0, 150, 0, 20), Position = UDim2.new(fx(x), 0, fy(y), 0), AnchorPoint = Vector2.new(ax, ay), Text = b.Name, Font = FONT, TextSize = 16, TextColor3 = b.Color, TextXAlignment = align, ZIndex = 2, Parent = tree })
+				label({ Name = "Ast", Size = UDim2.new(0, 150, 0, 20), Position = UDim2.new(fx(x), 0, fy(y), 0), AnchorPoint = Vector2.new(ax, ay), Text = b.Name, Font = FONT, TextSize = T.Body, TextColor3 = b.Color, TextXAlignment = align, ZIndex = 2, Parent = tree })
 			end
 		end
 		-- Knoten
@@ -504,19 +504,19 @@ do
 			local learnable = k.Cost > 0 and SkillData.CanLearn(lv, level, k.Id) == nil
 			local selected = k.Id == ui.skillSel
 			local node = new("TextButton", { Name = k.Id, Size = UDim2.new(ns, 0, ns * aspect, 0), Position = UDim2.new(fx(k.X), 0, fy(k.Y), 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = n >= k.Max and col or (n > 0 and col:Lerp(C.bg2, 0.55) or C.bg2), Text = "", AutoButtonColor = false, ZIndex = 3, Parent = tree }, {
-				corner(UDim.new(1, 0)),
+				corner(R.Round),
 				stroke(selected and C.goldHi or (learnable and C.green or col), selected and 4 or 3),
 			})
 			if locked and n == 0 then node.BackgroundTransparency = 0.3 end
-			label({ Size = UDim2.new(0.7, 0, 0.7, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Text = (locked and n == 0) and "🔒" or k.Icon, TextScaled = true, Font = Enum.Font.SourceSans, ZIndex = 3, Parent = node })
-			label({ Size = UDim2.new(2, 0, 0, 16), Position = UDim2.new(0.5, 0, 1, 4), AnchorPoint = Vector2.new(0.5, 0), Text = n .. "/" .. k.Max, TextSize = 12, Font = Enum.Font.Code, TextColor3 = n > 0 and C.ink or C.muted, ZIndex = 3, Parent = node })
+			label({ Size = UDim2.new(0.7, 0, 0.7, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Text = (locked and n == 0) and "🔒" or k.Icon, TextScaled = true, Font = EMOJI, ZIndex = 3, Parent = node })
+			label({ Size = UDim2.new(2, 0, 0, 16), Position = UDim2.new(0.5, 0, 1, 4), AnchorPoint = Vector2.new(0.5, 0), Text = n .. "/" .. k.Max, TextSize = T.Tiny, Font = MONO, TextColor3 = n > 0 and C.ink or C.muted, ZIndex = 3, Parent = node })
 			pressable(node, function()
 				ui.skillSel = k.Id
 				GameUI.Refresh("skills")
 			end)
 		end
 		if hidden > 0 then
-			label({ Size = UDim2.new(0, 240, 0, 18), Position = UDim2.new(0, 14, 1, -28), Text = "🔒 " .. hidden .. " Skill" .. (hidden > 1 and "s" or "") .. " noch verborgen", TextSize = 12, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Parent = area })
+			label({ Size = UDim2.new(0, 240, 0, 18), Position = UDim2.new(0, 14, 1, -28), Text = "🔒 " .. hidden .. " Skill" .. (hidden > 1 and "s" or "") .. " noch verborgen", TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Parent = area })
 		end
 		-- Zoom: vergrößert um den gewählten Skill
 		local zoom = new("Frame", { Name = "Zoom", Size = UDim2.new(0, 38, 0, 128), Position = UDim2.new(1, -12, 0, 12), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, ZIndex = 4, Parent = area }, {
@@ -532,7 +532,7 @@ do
 				GameUI.Refresh("skills")
 			end)
 			btn.Size = UDim2.new(0, 38, 0, 38)
-			btn.TextSize = 20
+			btn.TextSize = T.Large
 			btn.ZIndex = 4
 		end
 
@@ -541,18 +541,18 @@ do
 		local branch = k.Branch and SkillData.BranchById[k.Branch]
 		local col = branch and branch.Color or C.gold
 		local side = new("Frame", { Name = "Details", Size = UDim2.new(0, 276, 1, 0), Position = UDim2.new(1, -276, 0, 0), BackgroundColor3 = C.bg2, Parent = w.body }, {
-			corner(UDim.new(0, 18)),
+			corner(R.L),
 			stroke(C.line, 2),
 			new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 16) }),
 		})
-		label({ Size = UDim2.new(1, 0, 0, 14), Text = string.upper(branch and branch.Name or "Kern"), TextSize = 12, Font = Enum.Font.Code, TextColor3 = col, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = k.Icon .. " " .. k.Name, Font = FONT, TextSize = 24, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 48), Text = k.Text, TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 14), Text = string.upper(branch and branch.Name or "Kern"), TextSize = T.Tiny, Font = MONO, TextColor3 = col, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = k.Icon .. " " .. k.Name, Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 48), Text = k.Text, TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
 		local pips = new("Frame", { Name = "Stufen", Size = UDim2.new(1, 0, 0, 10), Position = UDim2.new(0, 0, 0, 92), BackgroundTransparency = 1, Parent = side }, {
 			new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 		})
 		for i = 1, k.Max do
-			new("Frame", { Size = UDim2.new(0, 30, 1, 0), BackgroundColor3 = i <= n and col or C.line, LayoutOrder = i, Parent = pips }, { corner(UDim.new(1, 0)) })
+			new("Frame", { Size = UDim2.new(0, 30, 1, 0), BackgroundColor3 = i <= n and col or C.line, LayoutOrder = i, Parent = pips }, { corner(R.Round) })
 		end
 		local facts = { { "Jetzt", n > 0 and k.Effects[n] or "Noch nicht gelernt" } }
 		if n < k.Max then table.insert(facts, { "Nächste Stufe", k.Effects[n + 1] }) end
@@ -560,8 +560,8 @@ do
 		if k.Req then table.insert(facts, { "Braucht", SkillData.ById[k.Req].Name }) end
 		for i, f in ipairs(facts) do
 			local y = 112 + (i - 1) * 42
-			label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, y), Text = f[1], TextSize = 11, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-			label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0, y + 15), Text = f[2], TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = #f[2] > 30, Parent = side })
+			label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, y), Text = f[1], TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+			label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0, y + 15), Text = f[2], TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, TextScaled = #f[2] > 30, Parent = side })
 		end
 		if k.Cost > 0 then
 			local why = SkillData.CanLearn(lv, level, k.Id)
@@ -579,30 +579,30 @@ do
 		GameUI.Refresh("einstellungen")
 	end
 	local function settingRow(parent, order, icon, title, hint)
-		local row = new("Frame", { Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = C.bg2, LayoutOrder = order, Parent = parent }, { corner(UDim.new(0, 14)) })
-		label({ Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(0, 12, 0, 0), Text = icon, TextSize = 26, Font = Enum.Font.SourceSans, Parent = row })
-		label({ Size = UDim2.new(1, -330, 0, 22), Position = UDim2.new(0, 62, 0, 10), Text = title, Font = FONT, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
-		label({ Size = UDim2.new(1, -330, 0, 18), Position = UDim2.new(0, 62, 0, 34), Text = hint, TextSize = 12, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = row })
+		local row = new("Frame", { Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = C.bg2, LayoutOrder = order, Parent = parent }, { corner(R.M) })
+		label({ Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(0, 12, 0, 0), Text = icon, TextSize = T.Title, Font = EMOJI, Parent = row })
+		label({ Size = UDim2.new(1, -330, 0, 22), Position = UDim2.new(0, 62, 0, 10), Text = title, Font = FONT, TextSize = T.Medium, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+		label({ Size = UDim2.new(1, -330, 0, 18), Position = UDim2.new(0, 62, 0, 34), Text = hint, TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = row })
 		return new("Frame", { Name = "Regler", Size = UDim2.new(0, 250, 1, 0), Position = UDim2.new(1, -14, 0, 0), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = row })
 	end
 	local function heading(parent, order, text)
-		label({ Size = UDim2.new(1, 0, 0, 28), Text = text, Font = FONT, TextSize = 17, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, LayoutOrder = order, Parent = parent })
+		label({ Size = UDim2.new(1, 0, 0, 28), Text = text, Font = FONT, TextSize = T.Medium, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, LayoutOrder = order, Parent = parent })
 	end
 	local function toggle(control, key)
 		local on = attr("Set_" .. key, false) == true
-		local b = new("TextButton", { Name = "Schalter", Size = UDim2.new(0, 60, 0, 32), Position = UDim2.new(1, 0, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = on and C.green or C.line, Text = "", AutoButtonColor = false, Parent = control }, { corner(UDim.new(1, 0)) })
-		new("Frame", { Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(0, on and 31 or 3, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Parent = b }, { corner(UDim.new(1, 0)) })
+		local b = new("TextButton", { Name = "Schalter", Size = UDim2.new(0, 60, 0, 32), Position = UDim2.new(1, 0, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = on and C.green or C.line, Text = "", AutoButtonColor = false, Parent = control }, { corner(R.Round) })
+		new("Frame", { Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(0, on and 31 or 3, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Parent = b }, { corner(R.Round) })
 		pressable(b, function() setting(key, not on) end)
 	end
 	local function stepper(control, key, default)
 		local v = attr("Set_" .. key, default)
 		local minus = smallButton(control, "−", 1, 36, function() setting(key, math.max(0, v - 10)) end)
 		minus.Position = UDim2.new(0, 0, 0.5, -17)
-		local bar = new("Frame", { Size = UDim2.new(0, 112, 0, 10), Position = UDim2.new(0, 46, 0.5, -5), BackgroundColor3 = C.bg, Parent = control }, { corner(UDim.new(1, 0)) })
-		new("Frame", { Size = UDim2.new(math.max(0.03, v / 100), 0, 1, 0), BackgroundColor3 = C.gold, Parent = bar }, { corner(UDim.new(1, 0)) })
+		local bar = new("Frame", { Size = UDim2.new(0, 112, 0, 10), Position = UDim2.new(0, 46, 0.5, -5), BackgroundColor3 = C.bg, Parent = control }, { corner(R.Round) })
+		new("Frame", { Size = UDim2.new(math.max(0.03, v / 100), 0, 1, 0), BackgroundColor3 = C.gold, Parent = bar }, { corner(R.Round) })
 		local plus = smallButton(control, "+", 2, 36, function() setting(key, math.min(100, v + 10)) end)
 		plus.Position = UDim2.new(0, 168, 0.5, -17)
-		label({ Size = UDim2.new(0, 46, 1, 0), Position = UDim2.new(1, 0, 0, 0), AnchorPoint = Vector2.new(1, 0), Text = v .. " %", TextSize = 14, Font = Enum.Font.Code, TextXAlignment = Enum.TextXAlignment.Right, Parent = control })
+		label({ Size = UDim2.new(0, 46, 1, 0), Position = UDim2.new(1, 0, 0, 0), AnchorPoint = Vector2.new(1, 0), Text = v .. " %", TextSize = T.Small, Font = MONO, TextXAlignment = Enum.TextXAlignment.Right, Parent = control })
 	end
 	local function segmented(control, key, values)
 		local current = attr("Set_" .. key, values[2])
@@ -668,17 +668,21 @@ do
 				local m = MutationData.ForWeather(x.Id)
 				local c = card(grid, x.Color)
 				c.LayoutOrder = i
-				label({ Size = UDim2.new(1, 0, 0, 22), Text = x.Name, Font = FONT, TextSize = 19, TextColor3 = x.Color, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
-				label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 24), Text = math.floor(x.Weight / total * 100 + 0.5) .. " % der Zeit", TextSize = 11, Font = Enum.Font.Code, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
-				label({ Size = UDim2.new(1, 0, 0, 46), Position = UDim2.new(0, 0, 0, 42), Text = x.Text, TextSize = 12, TextWrapped = true, TextColor3 = C.ink, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, Parent = c })
-				label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 92), Text = m and (m.Name .. " · " .. (m.Chance + bonus) .. " % · ×" .. tostring(m.Multiplier):gsub("%.", ",")) or "Keine Mutation", TextSize = 13, TextColor3 = m and m.Color or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 22), Text = x.Name, Font = FONT, TextSize = T.Large, TextColor3 = x.Color, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 24), Text = math.floor(x.Weight / total * 100 + 0.5) .. " % der Zeit", TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 46), Position = UDim2.new(0, 0, 0, 42), Text = x.Text, TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.ink, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 92), Text = m and (m.Name .. " · " .. (m.Chance + bonus) .. " % · ×" .. tostring(m.Multiplier):gsub("%.", ",")) or "Keine Mutation", TextSize = T.Small, TextColor3 = m and m.Color or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
 				if m then
-					label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 112), Text = m.Effect, TextSize = 11, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, Parent = c })
+					label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 112), Text = m.Effect, TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = c })
 				end
+			end
+			w.tick = function()
+				w.sub.Text = now.Name .. " · wechselt in " .. mmss((ReplicatedStorage:GetAttribute("WeatherEnds") or os.time()) - os.time())
 			end
 			return
 		end
 		local list = query("forecast") or {}
+		local firstTime, firstEnds
 		local rows = scroller(w, w.body, "Vorhersage", { Size = UDim2.new(1, 8, 1, -40) }, {
 			new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 			new("UIPadding", { PaddingRight = UDim.new(0, 14) }),
@@ -687,14 +691,21 @@ do
 			local x = MutationData.WeatherById[f.Id]
 			if x then
 				local m = MutationData.ForWeather(x.Id)
-				local row = new("Frame", { Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = C.bg2, BackgroundTransparency = i == 1 and 0 or 0.4, LayoutOrder = i, Parent = rows }, { corner(UDim.new(0, 12)) })
+				local row = new("Frame", { Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = C.bg2, BackgroundTransparency = i == 1 and 0 or 0.4, LayoutOrder = i, Parent = rows }, { corner(R.S) })
 				if i == 1 then stroke(x.Color, 2).Parent = row end
-				label({ Size = UDim2.new(0, 110, 1, 0), Position = UDim2.new(0, 14, 0, 0), Text = i == 1 and ("noch " .. mmss(f.Ends - os.time())) or os.date("%H:%M", f.Starts), TextSize = 14, Font = Enum.Font.Code, TextColor3 = i == 1 and C.ink or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
-				new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 128, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = x.Color, Parent = row }, { corner(UDim.new(1, 0)) })
-				label({ Size = UDim2.new(1, -170, 1, 0), Position = UDim2.new(0, 156, 0, 0), Text = x.Name .. (m and ("  ·  " .. m.Name .. " " .. (m.Chance + bonus) .. " % (×" .. tostring(m.Multiplier):gsub("%.", ",") .. ")") or ""), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+				local time = label({ Size = UDim2.new(0, 110, 1, 0), Position = UDim2.new(0, 14, 0, 0), Text = i == 1 and ("noch " .. mmss(f.Ends - os.time())) or os.date("%H:%M", f.Starts), TextSize = T.Small, Font = MONO, TextColor3 = i == 1 and C.ink or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+				if i == 1 then firstTime, firstEnds = time, f.Ends end
+				new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 128, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = x.Color, Parent = row }, { corner(R.Round) })
+				label({ Size = UDim2.new(1, -170, 1, 0), Position = UDim2.new(0, 156, 0, 0), Text = x.Name .. (m and ("  ·  " .. m.Name .. " " .. (m.Chance + bonus) .. " % (×" .. tostring(m.Multiplier):gsub("%.", ",") .. ")") or ""), TextSize = T.Body, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 			end
 		end
-		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 1, -32), Text = "Die Vorhersage ist sicher: Das Wetter ergibt sich aus der Uhrzeit und ist für alle gleich.", TextSize = 12, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, Parent = w.body })
+		-- jede Sekunde nur die Zeiten
+		w.tick = function()
+			local ends = ReplicatedStorage:GetAttribute("WeatherEnds") or os.time()
+			w.sub.Text = now.Name .. " · wechselt in " .. mmss(ends - os.time())
+			if firstTime then firstTime.Text = "noch " .. mmss(firstEnds - os.time()) end
+		end
+		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 1, -32), Text = "Die Vorhersage ist sicher: Das Wetter ergibt sich aus der Uhrzeit und ist für alle gleich.", TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
 	end
 
 	-- ── Belohnungen ──
@@ -702,7 +713,7 @@ do
 		return (RewardData.PrizeText(p):gsub(" Taler", ""):gsub(" %(.*%)", ""))
 	end
 	local function fillDaily(w, st)
-		label({ Size = UDim2.new(1, 0, 0, 22), Text = "🎁 Hol dir jeden Tag ein Geschenk. Wer einen Tag auslässt, fängt wieder bei Tag 1 an.", TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 22), Text = "🎁 Hol dir jeden Tag ein Geschenk. Wer einen Tag auslässt, fängt wieder bei Tag 1 an.", TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
 		local days = new("Frame", { Name = "Tage", Size = UDim2.new(1, 0, 0, 170), Position = UDim2.new(0, 0, 0, 36), BackgroundTransparency = 1, Parent = w.body }, {
 			new("UIGridLayout", { CellSize = UDim2.new(0, 120, 0, 160), CellPadding = UDim2.new(0, 10, 0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
 		})
@@ -711,15 +722,15 @@ do
 			local today = i == st.Next and not st.ClaimedToday
 			local c = card(days, today and C.goldHi or (done and C.green or C.line))
 			c.LayoutOrder = i
-			if today then c.BackgroundColor3 = Color3.fromRGB(58, 48, 30) end
-			label({ Size = UDim2.new(1, 0, 0, 16), Text = "Tag " .. i, TextSize = 12, Font = Enum.Font.Code, TextColor3 = C.muted, Parent = c })
-			label({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.new(0, 0, 0, 20), Text = RewardData.PrizeIcon(p), TextSize = 36, Font = Enum.Font.SourceSans, Parent = c })
-			label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), Text = RewardData.PrizeText(p), TextSize = 13, TextWrapped = true, Parent = c })
+			if today then c.BackgroundColor3 = C.highlight end
+			label({ Size = UDim2.new(1, 0, 0, 16), Text = "Tag " .. i, TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, Parent = c })
+			label({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.new(0, 0, 0, 20), Text = RewardData.PrizeIcon(p), TextSize = 36, Font = EMOJI, Parent = c })
+			label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), Text = RewardData.PrizeText(p), TextSize = T.Small, TextWrapped = true, Parent = c })
 			if done then
-				label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 1, -20), Text = "✔", TextSize = 18, TextColor3 = C.green, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 1, -20), Text = "✔", TextSize = T.Medium, TextColor3 = C.green, Parent = c })
 			end
 		end
-		label({ Size = UDim2.new(1, -300, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "Serie: " .. st.Streak .. " Tag" .. (st.Streak == 1 and "" or "e") .. (st.ClaimedToday and ("  ·  nächstes Geschenk in " .. clock(RewardData.SecondsToMidnight())) or ""), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
+		ui.dailyFoot = label({ Size = UDim2.new(1, -300, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "Serie: " .. st.Streak .. " Tag" .. (st.Streak == 1 and "" or "e") .. (st.ClaimedToday and ("  ·  nächstes Geschenk in " .. clock(RewardData.SecondsToMidnight())) or ""), TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
 		local holder = new("Frame", { Size = UDim2.new(0, 280, 0, 46), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundTransparency = 1, Parent = w.body })
 		actionButton(holder, st.ClaimedToday and "Morgen wieder" or ("Tag " .. st.Next .. " abholen"), C.green, not st.ClaimedToday, function()
 			result(options.Invoke("daily"), nil, C.goldHi)
@@ -732,7 +743,7 @@ do
 		local seg = 360 / count
 		local box = new("Frame", { Name = "Glücksrad", Size = UDim2.new(0, 330, 0, 330), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = w.body })
 		local wheel = new("Frame", { Name = "Rad", Size = UDim2.new(0, 300, 0, 300), Position = UDim2.new(0.5, 0, 0.5, 6), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.bg, Rotation = ui.wheelAngle, Parent = box }, {
-			corner(UDim.new(1, 0)),
+			corner(R.Round),
 		})
 		-- Felder aus schmalen Speichen: jede Speiche ist eine gedrehte Leiste, die äußere Hälfte gefärbt
 		local spokes = 10
@@ -742,30 +753,30 @@ do
 				new("Frame", { Size = UDim2.new(1, 0, 0.5, 0), BackgroundColor3 = p.Color, BorderSizePixel = 0, Parent = spoke })
 			end
 			local holder = new("Frame", { Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = (i - 0.5) * seg, BackgroundTransparency = 1, ZIndex = 2, Parent = wheel })
-			label({ Size = UDim2.new(0, 70, 0, 18), Position = UDim2.new(0.5, 0, 0, 34), AnchorPoint = Vector2.new(0.5, 0.5), Text = shortPrize(p), TextSize = 13, Font = BODY, TextColor3 = Color3.fromRGB(30, 22, 10), ZIndex = 2, Parent = holder })
+			label({ Size = UDim2.new(0, 70, 0, 18), Position = UDim2.new(0.5, 0, 0, 34), AnchorPoint = Vector2.new(0.5, 0.5), Text = shortPrize(p), TextSize = T.Small, Font = BODY, TextColor3 = C.goldInk, ZIndex = 2, Parent = holder })
 		end
 		new("Frame", { Name = "Rand", Size = UDim2.new(1, 8, 1, 8), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 3, Parent = wheel }, {
-			corner(UDim.new(1, 0)),
+			corner(R.Round),
 			stroke(C.gold, 6),
 		})
 		new("Frame", { Name = "Mitte", Size = UDim2.new(0, 46, 0, 46), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.gold, ZIndex = 3, Parent = wheel }, {
-			corner(UDim.new(1, 0)),
+			corner(R.Round),
 			stroke(C.bg, 3),
-			gradient(C.goldHi, Color3.fromRGB(176, 128, 52)),
+			gradient(C.goldHi, C.goldDark),
 		})
 		new("Frame", { Name = "Zeiger", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0.5, 0, 0, 2), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = 45, BackgroundColor3 = C.red, ZIndex = 4, Parent = box }, { stroke(C.bg, 3) })
 
 		local side = new("Frame", { Size = UDim2.new(1, -370, 1, 0), Position = UDim2.new(0, 370, 0, 0), BackgroundTransparency = 1, Parent = w.body })
-		label({ Size = UDim2.new(1, 0, 0, 30), Text = "Glücksrad", Font = FONT, TextSize = 28, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 34), Text = "Einmal am Tag gratis drehen. Das seltene rote Feld bringt die meisten Taler.", TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 30), Text = "Glücksrad", Font = FONT, TextSize = T.Title, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 34), Text = "Einmal am Tag gratis drehen. Das seltene rote Feld bringt die meisten Taler.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
 		for i, p in ipairs(RewardData.Wheel) do
 			local y = 76 + (i - 1) * 26
-			new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 0, 0, y + 3), BackgroundColor3 = p.Color, Parent = side }, { corner(UDim.new(0, 4)) })
-			label({ Size = UDim2.new(1, -24, 0, 20), Position = UDim2.new(0, 24, 0, y), Text = RewardData.PrizeText(p), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+			new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 0, 0, y + 3), BackgroundColor3 = p.Color, Parent = side }, { corner(R.XS) })
+			label({ Size = UDim2.new(1, -24, 0, 20), Position = UDim2.new(0, 24, 0, y), Text = RewardData.PrizeText(p), TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
 		end
 		local ready = attr("WheelDay", "") ~= RewardData.DayKey()
 		local holder = new("Frame", { Size = UDim2.new(1, 0, 0, 48), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1, Parent = side })
-		actionButton(holder, ready and "Drehen!" or ("Wieder in " .. clock(RewardData.SecondsToMidnight())), C.green, ready and not w.busy, function()
+		ui.wheelButton = actionButton(holder, ready and "Drehen!" or ("Wieder in " .. clock(RewardData.SecondsToMidnight())), C.green, ready and not w.busy, function()
 			if w.busy then return end
 			local ok, text, index = options.Invoke("spin")
 			if not ok or not index then return result(false, text) end
@@ -779,9 +790,10 @@ do
 			if attr("Set_skipAnimations", false) then return done() end
 			w.busy = true
 			wheel.Rotation = ui.wheelAngle % 360
-			TweenService:Create(wheel, TweenInfo.new(4.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Rotation = target }):Play()
+			TweenService:Create(wheel, M.Spin, { Rotation = target }):Play()
 			task.delay(4.3, done)
-		end).Size = UDim2.new(1, 0, 1, 0)
+		end)
+		ui.wheelButton.Size = UDim2.new(1, 0, 1, 0)
 	end
 
 	local function fillGroup(w)
@@ -789,9 +801,9 @@ do
 		c.Size = UDim2.new(0, 480, 0, 280)
 		c.Position = UDim2.new(0.5, 0, 0.5, 0)
 		c.AnchorPoint = Vector2.new(0.5, 0.5)
-		label({ Size = UDim2.new(1, 0, 0, 56), Text = "⭐", TextSize = 46, Font = Enum.Font.SourceSans, Parent = c })
-		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 60), Text = "Coinmaster-Gruppe", Font = FONT, TextSize = 26, Parent = c })
-		label({ Size = UDim2.new(1, -20, 0, 60), Position = UDim2.new(0, 10, 0, 96), Text = "Tritt der Gruppe bei und bekomme einmalig " .. RewardData.PrizeText(RewardData.GroupBonus) .. ". Das Spiel prüft, ob du Mitglied bist.", TextSize = 14, TextWrapped = true, TextColor3 = C.muted, Font = Enum.Font.Gotham, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 56), Text = "⭐", TextSize = 46, Font = EMOJI, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 60), Text = "Coinmaster-Gruppe", Font = FONT, TextSize = T.Title, Parent = c })
+		label({ Size = UDim2.new(1, -20, 0, 60), Position = UDim2.new(0, 10, 0, 96), Text = "Tritt der Gruppe bei und bekomme einmalig " .. RewardData.PrizeText(RewardData.GroupBonus) .. ". Das Spiel prüft, ob du Mitglied bist.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = c })
 		local joined = attr("Group", false) == true
 		actionButton(c, joined and "✔ Schon beigetreten" or "Gruppe beitreten", C.blue, not joined, function()
 			result(options.Invoke("group"), nil, C.blue)
@@ -805,6 +817,20 @@ do
 		w.sub.Text = st.ClaimedToday and ("Nächstes Geschenk in " .. clock(RewardData.SecondsToMidnight())) or "Heute wartet ein Geschenk"
 		if options.DevTools then
 			toolButton(w.tools, "Test: nächster Tag", 1, true, function() result(options.Invoke("testDay"), nil, C.blue) end)
+		end
+		-- jede Sekunde nur die Uhren; um Mitternacht neu füllen
+		ui.dailyFoot, ui.wheelButton = nil, nil
+		local day = RewardData.DayKey()
+		w.tick = function()
+			if RewardData.DayKey() ~= day then return GameUI.Refresh("belohnung") end
+			local left = clock(RewardData.SecondsToMidnight())
+			if st.ClaimedToday then w.sub.Text = "Nächstes Geschenk in " .. left end
+			if ui.dailyFoot and st.ClaimedToday then
+				ui.dailyFoot.Text = "Serie: " .. st.Streak .. " Tag" .. (st.Streak == 1 and "" or "e") .. "  ·  nächstes Geschenk in " .. left
+			end
+			if ui.wheelButton and not w.busy and attr("WheelDay", "") == RewardData.DayKey() then
+				ui.wheelButton.Text = "Wieder in " .. left
+			end
 		end
 		if w.tab == "rad" then
 			fillWheel(w)
@@ -822,18 +848,18 @@ do
 		local used = {}
 		for c in string.gmatch(attr("Codes", ""), "[^,]+") do table.insert(used, c) end
 		w.sub.Text = #used .. " Code" .. (#used == 1 and "" or "s") .. " eingelöst"
-		label({ Size = UDim2.new(1, 0, 0, 24), Text = "Code eingeben", Font = FONT, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 24), Text = "Code eingeben", Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
 		local field = new("Frame", { Name = "Feld", Size = UDim2.new(1, -176, 0, 52), Position = UDim2.new(0, 0, 0, 32), BackgroundColor3 = C.bg2, Parent = w.body }, {
-			corner(UDim.new(0, 14)),
+			corner(R.M),
 			stroke(C.gold, 2),
 		})
-		local box = new("TextBox", { Name = "Code", Size = UDim2.new(1, -32, 1, 0), Position = UDim2.new(0, 16, 0, 0), BackgroundTransparency = 1, Text = ui.codeText, PlaceholderText = "z. B. COINMASTER", PlaceholderColor3 = C.muted, ClearTextOnFocus = false, Font = BODY, TextSize = 20, TextColor3 = C.ink, TextXAlignment = Enum.TextXAlignment.Left, Parent = field })
+		local box = new("TextBox", { Name = "Code", Size = UDim2.new(1, -32, 1, 0), Position = UDim2.new(0, 16, 0, 0), BackgroundTransparency = 1, Text = ui.codeText, PlaceholderText = "z. B. COINMASTER", PlaceholderColor3 = C.muted, ClearTextOnFocus = false, Font = BODY, TextSize = T.Large, TextColor3 = C.ink, TextXAlignment = Enum.TextXAlignment.Left, Parent = field })
 		local function redeem()
 			local ok, text = options.Invoke("code", box.Text)
 			ui.codeMsg = { text or "", ok }
 			if ok then
 				ui.codeText = ""
-				result(true, text, Color3.fromRGB(56, 240, 255))
+				result(true, text, C.cyan)
 			end
 			GameUI.Refresh("codes")
 		end
@@ -841,19 +867,19 @@ do
 		box.FocusLost:Connect(function(enter)
 			if enter then redeem() end
 		end)
-		local b = new("TextButton", { Name = "Einloesen", Size = UDim2.new(0, 160, 0, 52), Position = UDim2.new(1, 0, 0, 32), AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = C.green, Text = "Einlösen", Font = FONT, TextSize = 20, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(UDim.new(0, 14)) })
+		local b = new("TextButton", { Name = "Einloesen", Size = UDim2.new(0, 160, 0, 52), Position = UDim2.new(1, 0, 0, 32), AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = C.green, Text = "Einlösen", Font = FONT, TextSize = T.Large, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(R.M) })
 		pressable(b, redeem)
 		if ui.codeMsg then
-			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 94), Text = ui.codeMsg[1], TextSize = 15, TextColor3 = ui.codeMsg[2] and C.green or C.red, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
+			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 94), Text = ui.codeMsg[1], TextSize = T.Body, TextColor3 = ui.codeMsg[2] and C.green or C.red, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
 		end
-		label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 124), Text = "Neue Codes gibt es zu Updates und Feiertagen. Groß- und Kleinschreibung ist egal." .. (options.CodeHint and ("  " .. options.CodeHint) or ""), TextSize = 13, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 124), Text = "Neue Codes gibt es zu Updates und Feiertagen. Groß- und Kleinschreibung ist egal." .. (options.CodeHint and ("  " .. options.CodeHint) or ""), TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = w.body })
 		if #used > 0 then
 			local list = new("Frame", { Name = "Eingeloest", Size = UDim2.new(1, 0, 1, -176), Position = UDim2.new(0, 0, 0, 176), BackgroundTransparency = 1, Parent = w.body }, {
 				new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 			})
-			label({ Size = UDim2.new(1, 0, 0, 22), Text = "Eingelöst", Font = FONT, TextSize = 17, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0, Parent = list })
+			label({ Size = UDim2.new(1, 0, 0, 22), Text = "Eingelöst", Font = FONT, TextSize = T.Medium, TextColor3 = C.gold, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0, Parent = list })
 			for i, c in ipairs(used) do
-				label({ Size = UDim2.new(1, 0, 0, 20), Text = "✔ " .. c, TextSize = 14, Font = Enum.Font.Code, TextColor3 = C.green, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = i, Parent = list })
+				label({ Size = UDim2.new(1, 0, 0, 20), Text = "✔ " .. c, TextSize = T.Small, Font = MONO, TextColor3 = C.green, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = i, Parent = list })
 			end
 		end
 	end
@@ -874,24 +900,24 @@ do
 		})
 		local inTop = false
 		local function row(order, place, name, value, me)
-			local r = new("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = me and Color3.fromRGB(58, 48, 30) or C.bg2, BackgroundTransparency = me and 0 or (order % 2 == 0 and 0.3 or 0), LayoutOrder = order, Parent = list }, { corner(UDim.new(0, 10)) })
+			local r = new("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = me and C.highlight or C.bg2, BackgroundTransparency = me and 0 or (order % 2 == 0 and 0.3 or 0), LayoutOrder = order, Parent = list }, { corner(R.S) })
 			if me then stroke(C.goldHi, 2).Parent = r end
-			new("TextLabel", { Size = UDim2.new(0, 40, 0, 22), Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = place <= 3 and b.Color or C.line, Text = GameUI.Format(place), Font = BODY, TextSize = 13, TextColor3 = place <= 3 and Color3.fromRGB(30, 22, 10) or C.ink, Parent = r }, { corner(UDim.new(1, 0)) })
-			label({ Size = UDim2.new(0.6, 0, 1, 0), Position = UDim2.new(0, 60, 0, 0), Text = name, Font = FONT, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left, Parent = r })
-			label({ Size = UDim2.new(0.35, 0, 1, 0), Position = UDim2.new(1, -14, 0, 0), AnchorPoint = Vector2.new(1, 0), Text = GameUI.Format(value), TextSize = 16, Font = Enum.Font.Code, TextColor3 = b.Color, TextXAlignment = Enum.TextXAlignment.Right, Parent = r })
+			new("TextLabel", { Size = UDim2.new(0, 40, 0, 22), Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = place <= 3 and b.Color or C.line, Text = GameUI.Format(place), Font = BODY, TextSize = T.Small, TextColor3 = place <= 3 and C.goldInk or C.ink, Parent = r }, { corner(R.Round) })
+			label({ Size = UDim2.new(0.6, 0, 1, 0), Position = UDim2.new(0, 60, 0, 0), Text = name, Font = FONT, TextSize = T.Medium, TextXAlignment = Enum.TextXAlignment.Left, Parent = r })
+			label({ Size = UDim2.new(0.35, 0, 1, 0), Position = UDim2.new(1, -14, 0, 0), AnchorPoint = Vector2.new(1, 0), Text = GameUI.Format(value), TextSize = T.Body, Font = MONO, TextColor3 = b.Color, TextXAlignment = Enum.TextXAlignment.Right, Parent = r })
 		end
 		for i, r in ipairs(data.Rows or {}) do
 			if r.Me then inTop = true end
 			row(i, i, r.Me and "Du" or r.Name, r.Value, r.Me)
 		end
 		if not inTop then
-			label({ Size = UDim2.new(1, 0, 0, 14), Text = "···", TextSize = 14, TextColor3 = C.muted, LayoutOrder = 50, Parent = list })
+			label({ Size = UDim2.new(1, 0, 0, 14), Text = "···", TextSize = T.Small, TextColor3 = C.muted, LayoutOrder = 50, Parent = list })
 			row(51, data.Place or 0, "Du", data.Mine or 0, true)
 		end
 		local rows = data.Rows or {}
 		local note = inTop and ("Du bist auf Platz " .. data.Place .. ". Stark!") or (#rows >= 10 and (("Bis Platz 10 fehlen dir noch " .. GameUI.Format(math.max(0, rows[10].Value - (data.Mine or 0) + 1)) .. "."):gsub("%.%.$", ".")) or "")
 		if options.DevTools then note = note .. " Die anderen Namen sind Beispiel-Spieler." end
-		label({ Size = UDim2.new(1, 0, 0, 30), Text = note, TextSize = 13, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, LayoutOrder = 60, Parent = list })
+		label({ Size = UDim2.new(1, 0, 0, 30), Text = note, TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, LayoutOrder = 60, Parent = list })
 	end
 
 	function buildMore(playerGui)

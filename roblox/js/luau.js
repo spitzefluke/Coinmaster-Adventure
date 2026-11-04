@@ -5,7 +5,7 @@
 
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
-import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
+import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
 import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
 
@@ -1227,7 +1227,7 @@ export function moduleSources(data) {
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
     ...(data.BOOSTS && data.AURAS && data.SKILLS
-      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'GameUI', source: GAME_UI }]
+      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'UITheme', source: UI_THEME }, { name: 'GameUI', source: GAME_UI }]
       : []),
   ];
 }

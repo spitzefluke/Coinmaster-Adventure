@@ -318,6 +318,15 @@ Spielstand als Attribute, Aktionen und Daten über Rückrufe.
 - **Einstellungen** (Taste O, `js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
   3D-Ansichten und „Animationen überspringen“. In Roblox stehen sie als Attribute `Set_…` am Spieler.
 
+**Design-System** (Modul `UITheme`): alle Farben, Schriften, Textgrößen (Tiny 12 bis Hero 34), Ecken,
+Abstände und Bewegungen der Oberfläche an einer Stelle. Bewegungsregeln: `Fast` 0,12 s (Maus drüber),
+`Normal` 0,22 s (Fenster, Balken), `Pop` 0,22 s mit Überschwingen (Öffnen, Drücken, Hinweise), `Slow`
+0,4 s (Belohnungen), `Exit` 0,16 s (Schließen, schneller als Öffnen). Fenster öffnen und schließen animiert.
+
+**Neu füllen nur wenn nötig:** Jedes Fenster kennt seine Daten (`deps`, z. B. der Shop: Taler, Eier,
+Boosts, Auras). Ändert sich etwas anderes, bleibt es stehen; mehrere Änderungen im selben Bild ergeben einen
+Neuaufbau. Countdowns (Wetter, Belohnungen, Boosts im HUD) ändern jede Sekunde nur ihren Text.
+
 Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
 Spielstand neu beginnen“.
 

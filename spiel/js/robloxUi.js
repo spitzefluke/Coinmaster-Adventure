@@ -6,7 +6,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { createScreen } from '../../js/rbx/screen.js';
 import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
-import { shopDataSource, GAME_UI } from '../../roblox/js/uiLuau.js';
+import { shopDataSource, GAME_UI, UI_THEME } from '../../roblox/js/uiLuau.js';
 import { skillDataSource, rewardDataSource } from '../../roblox/js/uiMoreLuau.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
@@ -35,6 +35,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.call('__addModule', 'SkillData', skillDataSource({ BRANCHES, SKILLS, pointsForLevel }));
   lua.call('__addModule', 'RewardData', rewardDataSource({ DAILY, WHEEL, GROUP_BONUS, BOARDS }));
   lua.call('__addModule', 'WeatherFx', WEATHER_FX);
+  lua.call('__addModule', 'UITheme', UI_THEME);
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
