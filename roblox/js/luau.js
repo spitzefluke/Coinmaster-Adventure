@@ -74,6 +74,16 @@ for _, coin in ipairs(CoinData.Coins) do
 	CoinData.CoinByName[coin.Name] = coin
 end
 
+-- Wert einer gefundenen Münze: Nennwert (unendlich zählt als 1 Mio.) × Mutation × Fundbonus
+-- (Fundbonus = Skills, Aura, Welt und Wiedergeburten beim Finden)
+function CoinData.EntryValue(coinId, mutationMultiplier, bonus)
+	local coin = CoinData.Coins[coinId]
+	if not coin then return 0 end
+	local base = CoinData.TierById[coin.Tier].Value
+	if base == math.huge then base = 1000000 end
+	return math.floor(base * (mutationMultiplier or 1) * (bonus or 1) * 100 + 0.5) / 100
+end
+
 return CoinData
 `;
 }
@@ -693,8 +703,9 @@ export function worldDataSource({ PLANETS, WORLDS, REBIRTH }) {
       Id: str(p.id),
       Name: str(p.name),
       Title: str(p.title),
+      Text: str(p.text),
       Color: color(p.color),
-      Portal: p.portal ? `{ Name = ${str(p.portal.name)}, Rebirths = ${num(p.portal.rebirths)} }` : 'nil',
+      Portal: p.portal ? `{ Name = ${str(p.portal.name)}, Rebirths = ${num(p.portal.rebirths)}, Text = ${str(p.portal.text)} }` : 'nil',
       ComingSoon: p.soon ? 'true' : undefined,
     }),
   );
@@ -759,6 +770,71 @@ end
 -- Münzwert-Faktor bei n Wiedergeburten
 function WorldData.RebirthMultiplier(n)
 	return 1 + WorldData.Rebirth.Bonus * n
+end
+
+-- ── Regeln für Kaufen und Portale (Server und Oberfläche nutzen dieselben) ──
+-- state = { Owned = { [worldId] = true }, Portals = { [planetId] = true }, Taler = n, Rebirths = n }
+-- Am Spieler stehen sie als Attribute: Worlds und Portals (Ids mit Komma), Rebirths, World (aktuelle Welt)
+
+function WorldData.ParseList(text)
+	local set = {}
+	for id in string.gmatch(text or "", "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
+function WorldData.Owns(state, worldId)
+	local world = WorldData.ById[worldId]
+	return (world ~= nil and world.Planet == "hub") or state.Owned[worldId] == true
+end
+
+-- Grund, warum die Welt (noch) nicht gekauft werden kann, sonst nil
+function WorldData.CanBuy(state, worldId)
+	local world = WorldData.ById[worldId]
+	if not world then return "Diese Welt gibt es nicht" end
+	if world.ComingSoon then return "Coming soon" end
+	if world.Planet == "hub" then return "Immer offen" end
+	if WorldData.Owns(state, worldId) then return "Schon gekauft" end
+	if not state.Portals[world.Planet] then return "Erst das Portal öffnen" end
+	local list = WorldData.OfPlanet(world.Planet)
+	for i, w in ipairs(list) do
+		if w == world and i > 1 and not WorldData.Owns(state, list[i - 1].Id) then
+			return "Erst „" .. list[i - 1].Name .. "“ kaufen"
+		end
+	end
+	if state.Taler < world.Price then return "Zu wenig Taler" end
+	return nil
+end
+
+-- Bedingungen für das Portal zu einem Planeten: { { Text, erfüllt } }
+function WorldData.PortalChecks(state, planetId)
+	local planet = WorldData.PlanetById[planetId]
+	if not planet or not planet.Portal then return {} end
+	local prev
+	for i, p in ipairs(WorldData.Planets) do
+		if p == planet then prev = WorldData.Planets[i - 1] end
+	end
+	local checks = {}
+	if prev then
+		local list = WorldData.OfPlanet(prev.Id)
+		local last = list[#list]
+		table.insert(checks, { "„" .. last.Name .. "“ auf " .. prev.Name .. " gekauft", WorldData.Owns(state, last.Id) })
+	end
+	local n = planet.Portal.Rebirths
+	table.insert(checks, { n .. " Wiedergeburt" .. (n > 1 and "en" or "") .. " (du hast " .. state.Rebirths .. ")", state.Rebirths >= n })
+	return checks
+end
+
+function WorldData.CanOpenPortal(state, planetId)
+	local planet = WorldData.PlanetById[planetId]
+	if not planet then return "Diesen Planeten gibt es nicht" end
+	if planet.ComingSoon then return "Kommt mit einem späteren Update" end
+	if state.Portals[planetId] then return "Schon offen" end
+	for _, check in ipairs(WorldData.PortalChecks(state, planetId)) do
+		if not check[2] then return "Fehlt: " .. check[1] end
+	end
+	return nil
 end
 
 return WorldData
@@ -1175,8 +1251,8 @@ export function installerSource(data) {
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
---   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü, Shop) aus dem Modul GameUI
---   ServerScriptService > CoinmasterShop      Eier und Boosts kaufen (RemoteFunction ShopRemote)${data.AURAS ? `
+--   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü, Shop, Inventar, Welten) aus GameUI
+--   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
 --   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren

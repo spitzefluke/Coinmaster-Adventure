@@ -23,7 +23,7 @@ Roblox-Engine (`js/rbx/`):
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
 (Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
-Haustiere und von der Spiel-Oberfläche HUD, Menü und Shop. Die übrigen Fenster folgen.
+Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar und Welten. Die übrigen Fenster folgen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -272,11 +272,11 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
 
 ## Spiel-Oberfläche
 
-`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau. **HUD, Menü, Hinweise, Wetter-Ansage und Shop
-sind schon die echte Roblox-Oberfläche** (Etappe 1): das Modul `GameUI` aus dem Installer baut sie als
+`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau. **HUD, Menü, Hinweise, Wetter-Ansage, Shop,
+Inventar und Welten sind schon die echte Roblox-Oberfläche** (Etappen 1 und 2): das Modul `GameUI` aus dem Installer baut sie als
 ScreenGui, die Seite führt es aus und zeichnet die ScreenGuis über der Welt (`js/rbx/screen.js`, mit
 Roblox-Layout: UDim2, AnchorPoint, UIListLayout, UIGridLayout, UIPadding, UIScale, ScrollingFrame).
-Die übrigen Fenster (Welten, Skilltree, Inventar, Einstellungen, Wetter, Belohnungen) sind noch HTML
+Die übrigen Fenster (Skilltree, Einstellungen, Wetter, Belohnungen, Codes, Ranglisten) sind noch HTML
 und folgen in weiteren Etappen.
 
 - **HUD:** Level-Abzeichen, EP-Balken, Skillpunkte, Welt, Taler, Wetter mit Countdown, aktive Boosts,
@@ -284,10 +284,20 @@ und folgen in weiteren Etappen.
   Funde und Käufe erscheinen als Hinweise (`GameUI.Toast`).
 - **In Roblox:** `GameUI.Start()` läuft im LocalScript `CoinmasterUI`. Den Spielstand liest es aus
   Attributen am Spieler (`Taler` oder `leaderstats.Taler`, `Level`, `XP`, `XPMax`, `Points`, `WorldName`,
-  `Aura`, `OwnedAuras`, `Egg_<id>`, `Boost_<id>`), das Wetter aus `ReplicatedStorage`. Käufe gehen an die
-  RemoteFunctions `ShopRemote` (Server-Skript `CoinmasterShop`: Eier, Boosts) und `AuraRemote`. Knöpfe für
-  Fenster, die es in Roblox noch nicht gibt, melden sich am BindableEvent `UIAction`.
-- **Welten:** Teleport-Menü je Planet, Portale und Wiedergeburt (siehe oben).
+  `Aura`, `OwnedAuras`, `Egg_<id>`, `Boost_<id>`, dazu `Coins`, `Slots`, `World`, `Worlds`, `Portals`,
+  `Rebirths`), das Wetter aus `ReplicatedStorage`. Käufe und Aktionen gehen an die RemoteFunctions
+  `ShopRemote` (Server-Skript `CoinmasterShop`: Eier, Boosts, Münzen verkaufen, Welten kaufen,
+  Teleport, Portale, Wiedergeburt) und `AuraRemote`. Knöpfe für Fenster, die es in Roblox noch nicht
+  gibt, melden sich am BindableEvent `UIAction`.
+- **Inventar** (Taste I): Münzen sortieren (neu, Wert, selten, Name), nach Stufe filtern, nur Mutationen,
+  eine Münze ansehen und verkaufen oder alle normalen auf einmal; Eier mit Anzahl. Die Münzen stehen in
+  Roblox als JSON im Attribut `Coins` (`{ i = Münz-Id, m = Mutation, b = Fundbonus, t = Fundzeit }`);
+  der Wert kommt aus `CoinData.EntryValue`.
+- **Welten** (Taste W): Teleport-Menü je Planet mit Welt-Karten (kaufen, teleportieren), Portal-Banner
+  mit Bedingungen und Wiedergeburt (siehe oben). Die Regeln stehen einmal in `WorldData` (`CanBuy`,
+  `PortalChecks`, `CanOpenPortal`) und gelten für Server und Oberfläche. Der Teleport setzt in Roblox
+  das Attribut `World` und stellt die Figur an den Spawn des Modells `Welt_<Name>`. „+ Test-Taler“ gibt
+  es nur in der Vorschau.
 - **Skilltree** (`spiel/js/skills.js`): Kern plus vier Äste mit je fünf Skills (Erkundung,
   Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
   jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer
@@ -346,7 +356,7 @@ Dann <http://localhost:8000> öffnen.
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
-- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/panels/` (Fenster)
+- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/robloxUi.js` (Roblox-Oberfläche GameUI), `js/panels/` (Fenster, die noch HTML sind)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite

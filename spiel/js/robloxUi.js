@@ -1,27 +1,31 @@
-// Spiel-Oberfläche 1:1 wie in Roblox: Das Modul GameUI aus dem Installer baut HUD, Menü und Shop als
+// Spiel-Oberfläche 1:1 wie in Roblox: Das Modul GameUI aus dem Installer baut HUD, Menü, Shop, Inventar und Welten als
 // ScreenGui; die Seite führt es aus (Luau im Browser) und zeichnet die ScreenGuis über der Welt
 // (js/rbx/screen.js). Spielstand und Käufe kommen von der Seite (state.js) über Attribute und Rückrufe.
 
 import { createLua } from '../../js/rbx/lua.js';
 import { createScreen } from '../../js/rbx/screen.js';
-import { eggDataSource, mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
+import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI } from '../../roblox/js/uiLuau.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { BOOSTS, ROBUX } from './state.js';
+import { TIERS, COINS } from '../../muenzen/js/coins.js';
+import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 
 
 const q = (s) => JSON.stringify(String(s));
 
-export async function createRobloxUi(host, { onAction, onInvoke }) {
+export async function createRobloxUi(host, { onAction, onInvoke, devTools = false }) {
   const canvas = document.createElement('canvas');
   canvas.className = 'rbx-ui';
   canvas.setAttribute('aria-hidden', 'true');
   host.append(canvas);
   const lua = await createLua();
   lua.call('__addModule', 'EggData', eggDataSource({ EGGS }));
+  lua.call('__addModule', 'CoinData', coinDataSource({ TIERS, COINS }));
+  lua.call('__addModule', 'WorldData', worldDataSource({ PLANETS, WORLDS, REBIRTH }));
   lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
   lua.call('__addModule', 'AuraData', auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }));
   lua.call('__addModule', 'ShopData', shopDataSource({ BOOSTS, ROBUX }));
@@ -36,6 +40,7 @@ export async function createRobloxUi(host, { onAction, onInvoke }) {
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
+      DevTools = ${devTools ? 'true' : 'false'},
     })
   `, 'Spiel-Oberfläche');
   const playerGui = lua.get(9);
@@ -70,6 +75,7 @@ export async function createRobloxUi(host, { onAction, onInvoke }) {
   };
   for (const [type, fn] of Object.entries(handlers)) host.addEventListener(type, fn, { capture: true, passive: type !== 'wheel' });
 
+  let checks = 0;
   return {
     lua,
     screen,
@@ -77,6 +83,8 @@ export async function createRobloxUi(host, { onAction, onInvoke }) {
     frame(dt) {
       lua.frame(dt);
       screen.render();
+      // HTML-Teile über der Welt (Spawn-Leiste) ausblenden, solange ein Roblox-Fenster offen ist
+      if (++checks % 15 === 0) host.classList.toggle('rbx-window-open', this.isOpen());
     },
     setAttr(name, value) {
       lua.call('__setAttr', name, value);
@@ -91,17 +99,27 @@ export async function createRobloxUi(host, { onAction, onInvoke }) {
     toast(text, color = '#d9b26a') {
       lua.run(`__GameUI.Toast(${q(text)}, Color3.fromHex(${q(color)}))`, 'Hinweis');
     },
+    // Fenster: shop, inventar, welten
+    open(key, tab) {
+      lua.run(`__GameUI.Open(${q(key)}, ${tab ? q(tab) : 'nil'})`, 'Fenster');
+    },
+    close(key) {
+      lua.run(`__GameUI.Close(${key ? q(key) : 'nil'})`, 'Fenster');
+    },
+    isOpen(key) {
+      let open = false;
+      lua.register('__winState', (v) => (open = v === 1));
+      lua.run(`__winState(__GameUI.IsOpen(${key ? q(key) : 'nil'}) and 1 or 0)`, 'Fenster');
+      return open;
+    },
     openShop(tab) {
-      lua.run(`__GameUI.OpenShop(${tab ? q(tab) : 'nil'})`, 'Shop');
+      this.open('shop', tab);
     },
     closeShop() {
-      lua.run('__GameUI.CloseShop()', 'Shop');
+      this.close('shop');
     },
     shopOpen() {
-      let open = false;
-      lua.register('__shopState', (v) => (open = v === 1));
-      lua.run('__shopState(__GameUI.IsShopOpen() and 1 or 0)', 'Shop');
-      return open;
+      return this.isOpen('shop');
     },
   };
 }
