@@ -1,14 +1,14 @@
 // Münzkabinett: baut die Galerie auf und rendert alle Münzen über ein einziges WebGL-Canvas.
+// Jede Münze ist 1:1 die Roblox-Münze: CoinBuilder und MutationFx aus dem Installer laufen in der
+// Roblox-Engine der Seite (coinRoblox.js), das Motiv erscheint als Decal.
 //
 // Jede Karte hat ein leeres `.view`-Feld. Pro Frame wird für jede sichtbare Karte deren
 // Bildschirmbereich per Scissor-Test gerendert – so reicht ein WebGL-Kontext für 50 Münzen.
 // Münzen werden erst gebaut, wenn ihre Karte in die Nähe des sichtbaren Bereichs kommt.
 
 import * as THREE from 'three';
-import { pixelRatio } from '../../js/settings.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TIERS, COINS, tierById, rollCoin } from './coins.js';
-import { createCoin, makeEnvironment, makeScene } from './coinFactory.js';
+import { createRobloxCoin, coinLua, orbitCoin, rbxRenderer, COIN_CAMERA } from './coinRoblox.js';
 import { MUTATIONS, mutationById, mutatedValue, fmtMultiplier } from './mutations.js';
 
 // Die Umschrift wird auf Canvas gezeichnet – vorher die Schrift laden (mit Zeitlimit).
@@ -120,17 +120,10 @@ setFilter('all');
 // ── Galerie-Renderer ─────────────────────────────────────────────────────────
 
 const stage = document.getElementById('stage');
-const renderer = new THREE.WebGLRenderer({ canvas: stage, antialias: true, alpha: true });
-renderer.setPixelRatio(pixelRatio());
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-renderer.setClearColor(0x000000, 0);
-const env = makeEnvironment(renderer);
-const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-camera.position.set(0, 0, 8.4);
-
-// Niedrige Stufen haben keine Effekte drumherum und dürfen näher heran
-const CAMERA_DISTANCE = [5.2, 5.2, 5.4, 6.6, 6.8, 8, 8.2, 8.2, 8.2, 8];
+const renderer = rbxRenderer(stage);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 500);
+let lua = null;
+coinLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -147,7 +140,7 @@ const io = new IntersectionObserver(
       // weit weg gescrollt: Texturen freigeben, beim Zurückscrollen neu bauen
       if (!entry.near && entry.obj) {
         entry.obj.dispose();
-        entry.obj = entry.scene = null;
+        entry.obj = null;
       }
     }
   },
@@ -155,25 +148,21 @@ const io = new IntersectionObserver(
 );
 cards.forEach((c) => io.observe(c.view));
 
-let buildQueue = Promise.resolve();
-function ensureBuilt(entry) {
-  if (entry.obj || entry.building) return;
-  entry.building = true;
-  // nacheinander bauen, damit der Hauptthread nicht hängt
-  buildQueue = buildQueue.then(
-    () =>
-      new Promise((res) =>
-        requestAnimationFrame(() => {
-          entry.building = false;
-          if (entry.near && !entry.obj) {
-            entry.scene = makeScene(env);
-            entry.obj = createCoin(entry.coin, { resolution: 384 });
-            entry.scene.add(entry.obj.root);
-          }
-          res();
-        }),
-      ),
-  );
+// nacheinander bauen, damit der Hauptthread nicht hängt
+let building = false;
+async function buildNext() {
+  if (building) return;
+  const entry = cards.find((e) => e.near && !e.obj && !e.card.hidden);
+  if (!entry) return;
+  building = true;
+  try {
+    const obj = await createRobloxCoin(entry.coin);
+    if (entry.near) entry.obj = obj;
+    else obj.dispose();
+  } catch (err) {
+    console.error('Münze', entry.coin.name, err);
+  }
+  building = false;
 }
 
 const clock = new THREE.Clock();
@@ -182,29 +171,28 @@ let detailOpen = false;
 // Unterkante der Navigation (js/nav.js); die Leiste klebt beim Scrollen oben
 const navBottom = () => document.querySelector('.site-nav')?.getBoundingClientRect().bottom ?? 0;
 
-function renderGallery(t) {
+function renderGallery(t, dt) {
   renderer.setScissorTest(false);
   renderer.clear();
   if (detailOpen) return;
+  buildNext();
   renderer.setScissorTest(true);
   const H = stage.clientHeight;
   for (const entry of cards) {
-    if (!entry.near) continue;
-    ensureBuilt(entry);
-    if (!entry.obj) continue;
+    if (!entry.near || !entry.obj) continue;
     const r = entry.view.getBoundingClientRect();
     // nur unterhalb der klebenden Navigation zeichnen
     const top = Math.max(r.top, navBottom());
     if (r.bottom <= top || r.top > H || r.width === 0) continue;
-    const speed = reducedMotion ? 0.15 : entry.hover ? 2.2 : 0.55;
-    entry.spin = (entry.spin ?? entry.phase) + speed * entry.dt;
-    entry.obj.spinner.rotation.y = entry.spin;
-    entry.obj.spinner.rotation.x = Math.sin(t * 0.6 + entry.phase) * 0.12;
-    entry.obj.update(reducedMotion ? 0 : t + entry.phase);
-    camera.position.z = CAMERA_DISTANCE[entry.obj.tier.index];
+    const speed = reducedMotion ? 0 : entry.hover ? 2.2 : 0.55;
+    entry.spin = (entry.spin ?? entry.phase) + speed * dt;
+    entry.obj.step(dt);
+    camera.aspect = r.width / r.height;
+    camera.updateProjectionMatrix();
+    orbitCoin(camera, entry.spin, Math.sin(t * 0.6 + entry.phase) * 0.12, entry.obj.distance);
     renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
     renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
-    renderer.render(entry.scene, camera);
+    entry.obj.world.render(renderer, camera);
   }
 }
 
@@ -213,36 +201,42 @@ function renderGallery(t) {
 const detail = document.getElementById('detail');
 const detailCanvas = document.getElementById('detail-canvas');
 const detailPanel = detail.querySelector('.detail-panel');
-let dRenderer, dCamera, dControls, dScene, dCoin;
+let dRenderer, dCamera, dCoin, dToken = 0;
 let autoSpin = !reducedMotion;
 let flipTarget = null;
+// Kamera um die Münze: Winkel, Neigung, Abstand (Ziehen dreht, Mausrad zoomt)
+const view = { angle: 0, tilt: 0.05, dist: 12, drag: null };
 
 function initDetail() {
-  dRenderer = new THREE.WebGLRenderer({ canvas: detailCanvas, antialias: true, alpha: true });
-  dRenderer.setPixelRatio(pixelRatio());
-  dRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-  dRenderer.toneMappingExposure = 1.05;
-  dCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  dCamera.position.set(0, 0, 8.6);
-  dControls = new OrbitControls(dCamera, detailCanvas);
-  dControls.enableDamping = true;
-  dControls.enablePan = false;
-  dControls.minDistance = 4;
-  dControls.maxDistance = 14;
-  dScene = makeScene(makeEnvironment(dRenderer));
+  dRenderer = rbxRenderer(detailCanvas);
+  dCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 500);
+  detailCanvas.addEventListener('pointerdown', (e) => {
+    view.drag = { x: e.clientX, y: e.clientY };
+    flipTarget = null;
+    detailCanvas.setPointerCapture(e.pointerId);
+  });
+  detailCanvas.addEventListener('pointermove', (e) => {
+    if (!view.drag) return;
+    view.angle -= (e.clientX - view.drag.x) * 0.01;
+    view.tilt = Math.max(-1.2, Math.min(1.2, view.tilt + (e.clientY - view.drag.y) * 0.006));
+    view.drag = { x: e.clientX, y: e.clientY };
+  });
+  detailCanvas.addEventListener('pointerup', () => (view.drag = null));
+  detailCanvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    view.dist = Math.max(6, Math.min(30, view.dist + e.deltaY * 0.02));
+  }, { passive: false });
 }
 
 let dData = null, dMutation = null;
 
 function buildDetailCoin() {
-  const spin = dCoin ? dCoin.spinner.rotation.y : 0;
-  if (dCoin) {
-    dScene.remove(dCoin.root);
-    dCoin.dispose();
-  }
-  dCoin = createCoin(dData, { resolution: 1024, mutation: dMutation });
-  dCoin.spinner.rotation.y = spin;
-  dScene.add(dCoin.root);
+  const token = ++dToken;
+  createRobloxCoin(dData, { mutation: dMutation, shadows: false }).then((obj) => {
+    if (token !== dToken || !detailOpen) return obj.dispose();
+    dCoin?.dispose();
+    dCoin = obj;
+  });
   const tier = tierById[dData.tier];
   const m = dMutation && mutationById[dMutation];
   document.getElementById('detail-value').textContent = m ? `${mutatedValue(tier.value, m)} Taler (${fmtMultiplier(m)})` : `${tier.value} Taler`;
@@ -269,18 +263,14 @@ for (const m of [null, ...MUTATIONS]) {
 
 function openDetail(coin, drawn) {
   if (!dRenderer) initDetail();
-  if (dCoin) {
-    dScene.remove(dCoin.root);
-    dCoin.dispose();
-    dCoin = null;
-  }
+  dCoin?.dispose();
+  dCoin = null;
   const tier = tierById[coin.tier];
   dData = coin;
   dMutation = null;
+  detailOpen = true;
   buildDetailCoin();
-  dControls.reset();
-  dCamera.position.set(0, 0, CAMERA_DISTANCE[tier.index] + 0.4);
-  dControls.update();
+  Object.assign(view, { angle: 0, tilt: 0.05, dist: COIN_CAMERA[tier.index] + 1 });
   flipTarget = null;
 
   detailPanel.style.setProperty('--tier', tier.color);
@@ -302,6 +292,9 @@ function openDetail(coin, drawn) {
 function closeDetail() {
   detail.hidden = true;
   detailOpen = false;
+  dToken++;
+  dCoin?.dispose();
+  dCoin = null;
   document.body.style.overflow = '';
 }
 
@@ -330,9 +323,8 @@ document.getElementById('prev-btn').addEventListener('click', () => stepDetail(-
 document.getElementById('next-btn').addEventListener('click', () => stepDetail(1));
 
 document.getElementById('flip-btn').addEventListener('click', () => {
-  const y = dCoin.spinner.rotation.y;
-  // zur nächsten Seite: auf das nächste Vielfache von PI drehen, das die andere Seite zeigt
-  const sideNow = Math.round(y / Math.PI);
+  // zur anderen Seite: auf das nächste Vielfache von PI drehen, das die andere Seite zeigt
+  const sideNow = Math.round(view.angle / Math.PI);
   flipTarget = (sideNow + 1) * Math.PI;
 });
 const spinBtn = document.getElementById('spin-btn');
@@ -346,16 +338,15 @@ spinBtn.addEventListener('click', () => {
 
 function renderDetail(t, dt) {
   if (!detailOpen || !dCoin) return;
-  const s = dCoin.spinner;
   if (flipTarget !== null) {
-    s.rotation.y += (flipTarget - s.rotation.y) * Math.min(1, dt * 6);
-    if (Math.abs(flipTarget - s.rotation.y) < 0.002) flipTarget = null;
-  } else if (autoSpin) {
-    s.rotation.y += dt * 0.5;
+    view.angle += (flipTarget - view.angle) * Math.min(1, dt * 6);
+    if (Math.abs(flipTarget - view.angle) < 0.002) flipTarget = null;
+  } else if (autoSpin && !view.drag) {
+    view.angle += dt * 0.5;
   }
-  dCoin.update(reducedMotion ? 0 : t);
-  dControls.update();
-  dRenderer.render(dScene, dCamera);
+  dCoin.step(dt);
+  orbitCoin(dCamera, view.angle, view.tilt, view.dist);
+  dCoin.world.render(dRenderer, dCamera);
 }
 
 // ── Münze ziehen ─────────────────────────────────────────────────────────────
@@ -367,7 +358,7 @@ document.getElementById('draw-btn').addEventListener('click', () => openDetail(r
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
   const t = clock.elapsedTime;
-  for (const c of cards) c.dt = dt;
-  renderGallery(t);
+  lua?.frame(dt);
+  renderGallery(t, dt);
   renderDetail(t, dt);
 });

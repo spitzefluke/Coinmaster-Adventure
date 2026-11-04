@@ -193,6 +193,10 @@ const GEO = {
 
 // Gesicht (rbxasset://textures/face.png) und andere bekannte Bilder
 const IMAGES = new Map();
+// Bilder, die in Roblox als Decal hochgeladen werden (z. B. Münzmotive), für die Vorschau bekannt machen
+export function registerImage(url, canvas) {
+  IMAGES.set(url, canvas);
+}
 function knownImage(url) {
   if (!url) return null;
   if (IMAGES.has(url)) return IMAGES.get(url);

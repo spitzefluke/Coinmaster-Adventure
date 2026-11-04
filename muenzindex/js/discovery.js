@@ -16,7 +16,14 @@ import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, mutatedValue, fmtMultiplier } from '../../muenzen/js/mutations.js';
-import { createCoin, makeEnvironment, makeScene, glowSprite, raysTexture, sparkTexture } from '../../muenzen/js/coinFactory.js';
+import { makeEnvironment, makeScene, glowSprite, raysTexture, sparkTexture } from '../../muenzen/js/coinFactory.js';
+import { createRobloxCoin, coinLua } from '../../muenzen/js/coinRoblox.js';
+
+// Die enthüllte Münze ist 1:1 die Roblox-Münze (CoinBuilder und MutationFx, siehe coinRoblox.js).
+// Sie liegt in einer eigenen Roblox-Welt und wird über die Animation gezeichnet: Eine Einheit hier
+// entspricht 2,1 Studs (Radius der Roblox-Münze); ihre Seiten zeigen dort entlang X, hier entlang Z.
+const STUDS_PER_UNIT = 2.1;
+const COIN_FRAME = new THREE.Matrix4().makeRotationY(-Math.PI / 2).multiply(new THREE.Matrix4().makeScale(1 / STUDS_PER_UNIT, 1 / STUDS_PER_UNIT, 1 / STUDS_PER_UNIT));
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -366,13 +373,19 @@ export class Discovery {
     this.pulse = 0;
     this.extraFlashes = [];
 
-    if (this.coin) {
-      this.scene.remove(this.coin.root);
-      this.coin.dispose();
-    }
-    this.coin = createCoin(coin, { resolution: 1024, mutation });
+    this.rcoin?.dispose();
+    this.rcoin = null;
+    const token = (this.coinToken = (this.coinToken || 0) + 1);
+    coinLua().then((lua) => (this.lua = lua));
+    createRobloxCoin(coin, { mutation }).then((o) => {
+      if (token !== this.coinToken) return o.dispose();
+      this.rcoin = o;
+    });
+    // Lage der Münze in der Animation (Drehung und Größe), gezeichnet wird die Roblox-Münze
+    this.coin = { root: new THREE.Object3D(), spinner: new THREE.Object3D(), update() {} };
+    this.coin.root.add(this.coin.spinner);
     this.coin.root.visible = false;
-    this.scene.add(this.coin.root);
+    this.rcam ||= new THREE.PerspectiveCamera();
 
     this.mystery.visible = this.mysteryGlow.visible = true;
     this.mystery.position.set(0, 0, -18);
@@ -537,7 +550,6 @@ export class Discovery {
       this.coin.root.scale.setScalar(0.25 + 0.75 * pop);
       this.coin.spinner.rotation.y = (1 - outCubic(settle)) * TAU * (2 + k * 0.4) + (settle >= 1 ? Math.sin((since - 1.3 - k * 0.12) * 0.9) * 0.35 : 0);
       this.coin.spinner.rotation.x = Math.sin(since * 1.1) * 0.08;
-      this.coin.update(t);
 
       if (k >= 2) {
         const on = outCubic(clamp01(since / 0.6));
@@ -583,5 +595,32 @@ export class Discovery {
     this.camera.lookAt(0, -lift, 0);
 
     this.renderer.render(this.scene, this.camera);
+    this.renderCoin(dt);
+  }
+
+  // Roblox-Münze mit derselben Kamera zeichnen: Kamera in den Raum der Münze umrechnen
+  renderCoin(dt) {
+    if (!this.rcoin || !this.coin.root.visible) return;
+    this.lua?.frame(dt);
+    this.rcoin.step(dt);
+    this.coin.root.updateMatrixWorld(true);
+    this.camera.updateMatrixWorld();
+    const toCoin = this.coin.spinner.matrixWorld.clone().multiply(COIN_FRAME).invert();
+    const m = toCoin.multiply(this.camera.matrixWorld);
+    const c = this.rcam;
+    c.fov = this.camera.fov;
+    c.aspect = this.camera.aspect;
+    c.near = 0.1;
+    c.far = 500;
+    c.updateProjectionMatrix();
+    m.decompose(c.position, c.quaternion, c.scale);
+    c.updateMatrixWorld(true);
+    const r = this.renderer, auto = r.autoClear, tm = r.toneMapping;
+    r.autoClear = false;
+    r.toneMapping = THREE.NoToneMapping;
+    r.clearDepth();
+    this.rcoin.world.render(r, c);
+    r.autoClear = auto;
+    r.toneMapping = tm;
   }
 }
