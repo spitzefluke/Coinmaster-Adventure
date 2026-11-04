@@ -1,29 +1,37 @@
-// Haustier-Galerie: ein WebGL-Canvas rendert alle Karten per Scissor-Test (wie die Eierhalle),
-// dazu eine Detailansicht mit eigenem Renderer zum Drehen und Zoomen.
-import { THREE, makeEnvironment, makeScene } from './kit.js';
-import { createPet, STYLE } from './petFactory.js';
+// Haustier-Galerie 1:1 wie in Roblox: Jedes Tier besteht aus denselben Roblox-Teilen wie in
+// Haustiere.rbxmx (roblox/js/petParts.js) und wird mit der Roblox-Engine gezeichnet (js/rbx).
+// Ein WebGL-Canvas rendert alle Karten per Scissor-Test, die Detailansicht hat einen eigenen Renderer.
+import * as THREE from 'three';
+import { RbxWorld } from '../../js/rbx/engine.js';
+import { petToParts } from '../../roblox/js/petParts.js';
 import { petById } from './pets.js';
-import { pixelRatio } from '../../js/settings.js';
+import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 
 // Unterkante der klebenden Navigation (js/nav.js)
 const navBottom = () => document.querySelector('.site-nav')?.getBoundingClientRect().bottom ?? 0;
 
+function petWorld(pet) {
+  const { parts, height } = petToParts(pet);
+  const world = new RbxWorld({ shadows: false, sky: false });
+  world.addStaticParts(parts);
+  return { world, height };
+}
+// Kamera vor dem Tier (Roblox-Modelle schauen nach −Z)
+function orbit(cam, yaw, pitch, dist, height) {
+  const y = height * 0.5;
+  cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, y + Math.sin(pitch) * dist, -Math.cos(yaw) * Math.cos(pitch) * dist);
+  cam.lookAt(0, y, 0);
+  cam.updateMatrixWorld();
+}
+
 export function createGallery(stage) {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const renderer = new THREE.WebGLRenderer({ canvas: stage, antialias: true, alpha: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(pixelRatio());
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
-  renderer.setClearColor(0x000000, 0);
-  const env = makeEnvironment(renderer);
-  const camera = new THREE.PerspectiveCamera(30, 0.8, 0.1, 60);
-  camera.position.set(0, 0.3, 10.5);
-  camera.lookAt(0, -0.15, 0);
+  const renderer = rbxRenderer(stage);
+  const camera = new THREE.PerspectiveCamera(30, 0.8, 0.1, 500);
   const resize = () => renderer.setSize(innerWidth, innerHeight, false);
   addEventListener('resize', resize);
   resize();
 
-  const settings = { motion: 'Pendeln' };
   const entries = new Map();
   const io = new IntersectionObserver(
     (list) => list.forEach((e) => {
@@ -38,45 +46,20 @@ export function createGallery(stage) {
     for (const [el, en] of entries) {
       if (els.has(el)) continue;
       io.unobserve(el);
-      if (en.obj) en.obj.dispose();
+      en.obj?.world.dispose();
       entries.delete(el);
     }
     for (const el of els) {
       if (entries.has(el)) continue;
       const pet = petById[el.dataset.petView];
       if (!pet) continue;
-      const en = { pet, view: el, obj: null, scene: null, near: false, hover: false, spin: 0, ph: Math.random() * 6 };
+      const en = { pet, view: el, obj: null, near: false, hover: false, spin: 0, ph: Math.random() * 6 };
       const card = el.closest('[data-pet-card]') || el;
       card.addEventListener('pointerenter', () => (en.hover = true));
       card.addEventListener('pointerleave', () => (en.hover = false));
       entries.set(el, en);
       io.observe(el);
     }
-  }
-
-  let queue = Promise.resolve();
-  function ensureBuilt(en) {
-    if (en.obj || en.building) return;
-    en.building = true;
-    queue = queue.then(() => new Promise((res) => requestAnimationFrame(() => {
-      try {
-        if (entries.get(en.view) === en) {
-          en.scene = makeScene(env);
-          en.obj = createPet(en.pet);
-          en.scene.add(en.obj.root);
-        }
-      } catch (err) {
-        console.error('Haustier', en.pet.id, err);
-      }
-      res();
-    })));
-  }
-
-  function yaw(en, t, dt) {
-    if (reducedMotion || settings.motion === 'Still') return 0.5;
-    if (settings.motion === 'Drehen') return (en.spin += dt * (en.hover ? 1.4 : 0.45));
-    if (en.hover) en.spin += dt * 1.4;
-    return 0.5 + Math.sin(t * 0.45 + en.ph) * 0.6 + en.spin;
   }
 
   let overlay = false;
@@ -87,25 +70,29 @@ export function createGallery(stage) {
     if (overlay) return;
     renderer.setScissorTest(true);
     const H = stage.clientHeight;
+    let built = 0;
     for (const en of entries.values()) {
       if (!en.near) continue;
-      ensureBuilt(en);
-      if (!en.obj) continue;
+      if (!en.obj) {
+        if (built++ > 0) continue; // eins pro Bild bauen
+        try {
+          en.obj = petWorld(en.pet);
+        } catch (err) {
+          console.error('Haustier', en.pet.id, err);
+          en.near = false;
+          continue;
+        }
+      }
       const r = en.view.getBoundingClientRect();
-      // nur unterhalb der Navigation zeichnen
       const top = Math.max(r.top, navBottom());
       if (r.bottom <= top || r.top > H || r.width === 0) continue;
-      try {
-        en.obj.spinner.rotation.y = yaw(en, t, dt);
-        en.obj.update(reducedMotion ? 0 : t);
-      } catch (err) {
-        if (!en.err) console.error('Haustier', en.pet.id, (en.err = err));
-      }
+      en.spin += reducedMotion ? 0 : dt * (en.hover ? 1.4 : 0.35);
       camera.aspect = r.width / r.height;
       camera.updateProjectionMatrix();
+      orbit(camera, -0.5 + Math.sin(t * 0.45 + en.ph) * (reducedMotion ? 0 : 0.6) + en.spin, 0.18, 3.6 * en.obj.height + 0.6, en.obj.height);
       renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
       renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
-      renderer.render(en.scene, camera);
+      en.obj.world.render(renderer, camera);
     }
   }
 
@@ -113,11 +100,7 @@ export function createGallery(stage) {
   let d = null;
   function openDetail(pet, canvas) {
     if (!d || d.canvas !== canvas) {
-      if (d) d.renderer.dispose();
-      const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
-      r.setPixelRatio(pixelRatio());
-      r.toneMapping = THREE.ACESFilmicToneMapping;
-      d = { canvas, renderer: r, camera: new THREE.PerspectiveCamera(30, 1, 0.1, 60), scene: makeScene(makeEnvironment(r)), yaw: 0.5, pitch: 0.06, dist: 10, obj: null, drag: null };
+      d = { canvas, renderer: rbxRenderer(canvas), camera: new THREE.PerspectiveCamera(30, 1, 0.1, 500), yaw: -0.5, pitch: 0.18, dist: 9.5, obj: null, drag: null };
       canvas.addEventListener('pointerdown', (e) => {
         d.drag = { x: e.clientX, y: e.clientY };
         canvas.setPointerCapture(e.pointerId);
@@ -125,24 +108,18 @@ export function createGallery(stage) {
       canvas.addEventListener('pointermove', (e) => {
         if (!d.drag) return;
         d.yaw += (e.clientX - d.drag.x) * 0.01;
-        d.pitch = Math.max(-0.3, Math.min(0.9, d.pitch + (e.clientY - d.drag.y) * 0.006));
+        d.pitch = Math.max(-0.2, Math.min(1.1, d.pitch + (e.clientY - d.drag.y) * 0.006));
         d.drag = { x: e.clientX, y: e.clientY };
       });
       canvas.addEventListener('pointerup', () => (d.drag = null));
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
-        d.dist = Math.max(4.5, Math.min(15, d.dist + e.deltaY * 0.008));
+        d.dist = Math.max(4.5, Math.min(20, d.dist + e.deltaY * 0.01));
       }, { passive: false });
     }
-    if (d.obj) {
-      d.scene.remove(d.obj.root);
-      d.obj.dispose();
-    }
-    d.obj = createPet(pet);
-    d.scene.add(d.obj.root);
-    d.yaw = 0.5;
-    d.pitch = 0.06;
-    d.dist = 10;
+    d.obj?.world.dispose();
+    d.obj = petWorld(pet);
+    Object.assign(d, { yaw: -0.5, pitch: 0.18, dist: 9.5 });
     overlay = true;
     sizeDetail();
   }
@@ -156,11 +133,8 @@ export function createGallery(stage) {
   addEventListener('resize', () => overlay && sizeDetail());
   function closeDetail() {
     overlay = false;
-    if (d && d.obj) {
-      d.scene.remove(d.obj.root);
-      d.obj.dispose();
-      d.obj = null;
-    }
+    d?.obj?.world.dispose();
+    if (d) d.obj = null;
   }
 
   renderer.setAnimationLoop(() => {
@@ -168,27 +142,11 @@ export function createGallery(stage) {
     const t = clock.elapsedTime;
     renderGallery(t, dt);
     if (overlay && d && d.obj) {
-      if (!d.drag && !reducedMotion && settings.motion !== 'Still') d.yaw += dt * 0.3;
-      const c = d.camera;
-      c.position.set(Math.sin(d.yaw) * Math.cos(d.pitch) * d.dist, -0.15 + Math.sin(d.pitch) * d.dist, Math.cos(d.yaw) * Math.cos(d.pitch) * d.dist);
-      c.lookAt(0, -0.1, 0);
-      d.obj.update(reducedMotion ? 0 : t);
-      d.renderer.render(d.scene, c);
+      if (!d.drag && !reducedMotion) d.yaw += dt * 0.3;
+      orbit(d.camera, d.yaw, d.pitch, d.dist, d.obj.height);
+      d.obj.world.render(d.renderer, d.camera);
     }
   });
 
-  // Stil wechseln: alle Tiere neu bauen
-  function setStyle(s) {
-    if (STYLE.current === s) return;
-    STYLE.current = s;
-    for (const en of entries.values()) {
-      if (en.obj) en.obj.dispose();
-      en.obj = null;
-      en.scene = null;
-      en.building = false;
-    }
-    if (overlay && d && d.obj) openDetail(d.obj.pet, d.canvas);
-  }
-
-  return { scan, openDetail, closeDetail, settings, setStyle };
+  return { scan, openDetail, closeDetail };
 }

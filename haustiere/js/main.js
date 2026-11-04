@@ -1,5 +1,5 @@
 // Haustier-Seite: Filter nach Ei, je Ei fünf normale und zwei epische Karten, Detailansicht und
-// Export für Blender. Die 3D-Darstellung übernimmt gallery.js (ein Canvas für alle Karten).
+// Export für Blender. Die 3D-Darstellung übernimmt gallery.js: die Tiere 1:1 wie in Roblox.
 
 import { EGGS, PETS, petById, fmtChance } from './pets.js';
 import { createGallery } from './gallery.js';
@@ -117,21 +117,6 @@ async function runExport(btn, fn) {
 }
 document.getElementById('export-all').addEventListener('click', (e) => runExport(e.currentTarget, (m) => m.exportAll()));
 document.getElementById('export-one').addEventListener('click', (e) => current && runExport(e.currentTarget, (m) => m.exportPet(current)));
-
-// ── Stil: Roblox (Standard) oder Original ──
-const STYLE_KEY = 'coinmaster.haustiere.stil';
-function setStyle(id) {
-  gallery.setStyle(id);
-  document.querySelectorAll('[data-style]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === id)));
-  try {
-    localStorage.setItem(STYLE_KEY, id);
-  } catch {}
-}
-document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
-try {
-  const saved = localStorage.getItem(STYLE_KEY);
-  if (saved === 'orig' || saved === 'rbx') setStyle(saved);
-} catch {}
 
 // Direkt zu einem Ei springen, z. B. haustiere/#galaxie
 const fromHash = location.hash.slice(1);

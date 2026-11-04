@@ -588,7 +588,7 @@ Instance = {
 local waiting = {}
 local function resume(co, ...)
 	local ok, err = coroutine.resume(co, ...)
-	if not ok then print("Fehler:", err) end
+	if not ok then print("Fehler:", debug.traceback(co, err)) end
 end
 task = {}
 function task.spawn(fn, ...)

@@ -22,8 +22,8 @@ Roblox-Engine (`js/rbx/`):
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
-(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite). Eier, Haustiere und die
-Spiel-Oberfläche folgen.
+(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen und alle
+Haustiere. Die Spiel-Oberfläche folgt.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -121,43 +121,41 @@ häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesam
 
 ## Eierhalle
 
-Sieben Eier (`eier/js/eggs.js`), jedes mit eigener Schale und 3D-Extras:
+Sieben Eier (`eier/js/eggs.js`), 1:1 wie in Roblox: Jedes Ei baut das Modul `EggBuilder` aus dem
+Installer (Ei auf Sockel mit Leuchtband, Extras je Ei), die Seite führt es aus (`eier/js/eggRoblox.js`).
 
-| Ei | Stufe | Preis (Vorschlag) | Besonderheiten |
+| Ei | Stufe | Preis (Vorschlag) | Extras in Roblox |
 |---|---|---|---|
-| Normal Egg | Normal | 250 Münzen | Sprenkel, Zickzack-Band, Strohnest |
-| Wald Egg | Selten | 2.500 Münzen | Ranke mit Blättern, Moos, Pilze, Glühwürmchen |
-| Eis Egg | Episch | 15.000 Münzen | Eisblumen, Kristalle am Fuß, Schneefall |
-| Engels Egg | Engelsgleich | 75.000 Münzen | Perlmutt, Goldfiligran, Flügel, Heiligenschein |
-| Galaxie Egg | Galaktisch | 400.000 Münzen | bewegter Nebel, Sternbilder, Planetenring |
-| Admin Egg | Admin | nicht kaufbar | Hex-Panzer, rote Leiterbahnen, Holo-Ringe, Glitch |
-| Release Egg (Robux Egg) | Limitiert | R$ 199 | Gold mit Regenbogen-Emaille, Schleife, Konfetti |
+| Normal Egg | Normal | 250 Münzen | – |
+| Wald Egg | Selten | 2.500 Münzen | Moos-Material, Pilze am Sockel |
+| Eis Egg | Episch | 15.000 Münzen | Eis-Material, Kristalle |
+| Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Flügel |
+| Galaxie Egg | Galaktisch | 400.000 Münzen | Glas, Sternenring, Funkeln |
+| Admin Egg | Admin | nicht kaufbar | Diamond-Plate, Neonband |
+| Release Egg (Robux Egg) | Limitiert | R$ 199 | Folie, Schleife, Funkeln |
 
-Die Schale ist in Scherben aufgeteilt, die beim Schlüpfen echt auseinanderfliegen.
-Die Schlüpf-Animation (`eier/js/hatch.js`): Landung, Wackel-Stöße mit wachsenden Rissen,
-Aufladen mit Licht aus den Rissen, Explosion, dann erscheint das Haustier (vorerst ein
-Platzhalter). Je seltener das Ei, desto mehr Stöße und desto größer die Explosion:
-etwa 5 s beim Normal Egg bis 11 s beim Release Egg. Mit `#debug` in der Adresse ist die
-Animation zum Testen als `window.hatch` erreichbar.
+**Schlüpfen** zeigt das Roblox-Modul `HatchFx`: Das Ei wackelt immer stärker (seltene Eier länger), leuchtet
+auf und platzt mit Lichtblitz, Funken und Druckwelle. Dann wächst das Tier heraus, darüber stehen Name und
+Chance (BillboardGui); epische Tiere bekommen einen Lichtkranz. Das Tier wird nach Schlupfchance gewürfelt.
+Tippen spult vor. In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = … })`, am besten auf dem
+Client; das Tier zieht `PetData.Roll(eggId)`.
 
 ## Haustiere
 
 `haustiere/` zeigt alle 49 Haustiere aus den Claude-Design-Projekten „Haustiere“ und „Haustiere Roblox“, sieben pro Ei:
-fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %) mit eigenen Effekten
-(Strahlen, Runenkreis, Lichtsäule, Kraftschub mit Blitzen, Themen-Partikel, kreisende Objekte).
+fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
-- **Roblox-Stil** (Standard): glatte Kunststoff-Blöcke mit runden Kanten, große Köpfe, Knopfaugen,
-  Comic-Kontur und achteckiger Sockel. Der Knopf „Original“ schaltet auf die erste Fassung um
-  (Wahl wird gemerkt). Auch beim Schlüpfen in der Eierhalle erscheint der Roblox-Stil.
-- `haustiere/js/rbx-kit.js` – Roblox-Bausteine (Blöcke, Gesicht, Vierbeiner, Echse, Vogel, Zubehör),
-  `rbx-a/b/c.js` – je ein Roblox-Bauplan pro Tier
+- **1:1 wie in Roblox:** Jedes Tier besteht aus Roblox-Teilen (Blöcke, Kugeln, Zylinder), umgewandelt aus
+  den Roblox-Stil-Bauplänen (`roblox/js/petParts.js`). Genau diese Teile stehen in der Datei
+  `Haustiere.rbxmx` (Seite „Nach Roblox Studio“, Schritt 5). Normale Tiere sind 3 Studs hoch, epische 3,6.
+  Die runden Kanten, Konturen und Effekte der früheren Fassung gibt es so in Roblox nicht.
+- **Roblox:** `PetData` (Tiere, Chancen, `Roll`), `PetBuilder.Build(petId)` klont das Tier aus dem Ordner
+  `Haustiere` (fehlt er, gibt es eine Ersatzkugel). Ein neuer Import des Installers behält den Ordner.
+- `haustiere/js/rbx-kit.js`, `rbx-a/b/c.js` – Roblox-Baupläne, daraus werden die Teile
 - `haustiere/js/pets.js` – Daten, Schlupfchancen, `rollPet(eggId)`
-- `haustiere/js/kit.js`, `templates.js` – 3D-Bausteine (Fell, Augen, Vierbeiner, Echse, Flügel …)
-- `haustiere/js/builders-a/b/c.js` – je ein Bauplan pro Tier
-- `haustiere/js/petFactory.js` – baut ein Tier samt Sockel und Effekten
+- `haustiere/js/petFactory.js` und `builders-a/b/c.js` – 3D-Baupläne (auch die erste Fassung)
 - `haustiere/js/exportGlb.js` – Export als .glb für Blender (einzeln oder alle 49)
 
-In der Eierhalle schlüpft jetzt ein echtes Haustier, gewürfelt nach Schlupfchance.
 
 ## Welten
 
