@@ -6,7 +6,7 @@
 // Enum-Werte aus der Roblox-API
 const MATERIAL = {
   Plastic: 256, SmoothPlastic: 272, Neon: 288, Wood: 512, Marble: 784, Basalt: 788, Slate: 800, CrackedLava: 804,
-  Concrete: 816, Granite: 832, Pebble: 864, Rock: 896, Metal: 1088, Grass: 1280, Sand: 1296, Snow: 1328,
+  Concrete: 816, Granite: 832, Pebble: 864, Rock: 896, Metal: 1088, Grass: 1280, Ground: 1376, Sand: 1296, Snow: 1328,
   Ice: 1536, Glacier: 1552, Glass: 1568,
 };
 const SHAPE = { Ball: 0, Block: 1, Cylinder: 2 };
@@ -115,9 +115,14 @@ function lightFolder(L) {
     prop.float('Glare', a.Glare),
     prop.float('Haze', a.Haze),
   ]);
+  // Bloom: Neon und Lava leuchten weich nach
+  const bloom = L.bloom
+    ? item('BloomEffect', [prop.string('Name', 'Bloom'), prop.float('Intensity', L.bloom.Intensity), prop.float('Size', L.bloom.Size), prop.float('Threshold', L.bloom.Threshold)])
+    : '';
   return folder(
     'Licht',
     atmosphere +
+      bloom +
       [
         value('NumberValue', 'ClockTime', L.ClockTime),
         value('NumberValue', 'Brightness', L.Brightness),
@@ -131,7 +136,7 @@ function lightFolder(L) {
 }
 
 export function worldModel(w, offset = [0, 0, 0]) {
-  const { world, parts, sky, lights, emitter, lighting } = w;
+  const { world, parts, sky, lights, emitter, emitters, lighting } = w;
   const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
   for (const p of parts) {
     if (p.name === 'SpawnLocation') byFolder.Spawn.push(p);
@@ -156,10 +161,9 @@ export function worldModel(w, offset = [0, 0, 0]) {
     )
     .join('');
   let fx = '';
-  if (emitter) {
-    const e = emitter;
+  for (const e of emitters || (emitter ? [emitter] : [])) {
     const pe = item('ParticleEmitter', [
-      prop.string('Name', 'Weltpartikel'),
+      prop.string('Name', e.name || 'Weltpartikel'),
       prop.colorseq('Color', e.colors.slice(0, 3)),
       prop.numseq('Size', [[0, e.particleSize], [1, e.particleSize * 0.8]]),
       prop.numseq('Transparency', [[0, 0.1], [0.8, 0.3], [1, 1]]),
@@ -173,7 +177,7 @@ export function worldModel(w, offset = [0, 0, 0]) {
       prop.range('Rotation', [0, 360]),
       prop.content('Texture', e.squares ? 'rbxasset://textures/particles/sparkles_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
     ]);
-    fx = part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
+    fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
   }
   const settings = folder(
     'Einstellungen',

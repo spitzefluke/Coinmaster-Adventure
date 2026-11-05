@@ -1168,6 +1168,17 @@ local function apply(folder)
 			Lighting[v.Name] = v.Value
 		end
 	end
+	-- Bloom der Welt (Neon und Lava leuchten nach)
+	local bloomSource = folder:FindFirstChildOfClass("BloomEffect")
+	if bloomSource then
+		local bloom = Lighting:FindFirstChild("CoinmasterBloom")
+		if not bloom then
+			bloom = Instance.new("BloomEffect")
+			bloom.Name = "CoinmasterBloom"
+			bloom.Parent = Lighting
+		end
+		bloom.Intensity, bloom.Size, bloom.Threshold = bloomSource.Intensity, bloomSource.Size, bloomSource.Threshold
+	end
 	local source = folder:FindFirstChildOfClass("Atmosphere")
 	if source then
 		local atm = Lighting:FindFirstChildOfClass("Atmosphere")

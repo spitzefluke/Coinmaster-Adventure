@@ -141,8 +141,10 @@ const base = (g, s) => {
   g.fillRect(0, 0, s, s);
 };
 // Kachelgröße in Studs je Material
-export const MATERIAL_TILE = { Grass: 8, Slate: 8, Concrete: 6, Sand: 6, Rock: 8, Basalt: 8, CrackedLava: 8, Marble: 10, Snow: 8, Glacier: 8, Ice: 8, Wood: 4, WoodPlanks: 8, Brick: 6, Cobblestone: 6, Pebble: 4, Granite: 6, DiamondPlate: 3, Metal: 6, Foil: 4, Fabric: 2, Plastic: 4 };
+export const MATERIAL_TILE = { Ground: 8, Grass: 8, Slate: 8, Concrete: 6, Sand: 6, Rock: 8, Basalt: 8, CrackedLava: 8, Marble: 10, Snow: 8, Glacier: 8, Ice: 8, Wood: 4, WoodPlanks: 8, Brick: 6, Cobblestone: 6, Pebble: 4, Granite: 6, DiamondPlate: 3, Metal: 6, Foil: 4, Fabric: 2, Plastic: 4 };
 const MATERIAL = {
+  // Erde: Flecken, Krümel und kleine Steinchen
+  Ground: (g, s) => { base(g, s); blotches(g, s, 91, 26, s * 0.14, 0.14); noise(g, s, 92, 2600, 2, 0.3); noise(g, s, 93, 160, 5, 0.18); },
   Grass: (g, s) => { base(g, s); blotches(g, s, 11, 30, s * 0.12, 0.12); noise(g, s, 12, 2200, 2, 0.35); },
   Slate: (g, s) => { base(g, s); blotches(g, s, 21, 18, s * 0.2, 0.12); cracks(g, s, 22, 14, 2, 'rgba(0,0,0,.35)'); noise(g, s, 23, 800, 2, 0.15); },
   Concrete: (g, s) => { base(g, s); blotches(g, s, 31, 20, s * 0.15, 0.06); noise(g, s, 32, 3000, 1.5, 0.25); },

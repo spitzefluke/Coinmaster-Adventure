@@ -667,6 +667,34 @@ export function buildSpawnTown(ctx, K) {
     });
   });
 
+  // ── Simulator-Glanz ──
+  // leuchtender Goldrand um den Platz
+  {
+    const glow = E('#ffd76a', 1.4);
+    lampMats.push(glow);
+    const rim = at(new THREE.Mesh(new THREE.TorusGeometry(5.24, 0.07, 6, 64), glow), 0, y0 + 0.1, 0);
+    rim.rotation.x = Math.PI / 2;
+    root.add(rim);
+  }
+  // goldene Münzen schweben im Kreis um den Brunnen
+  {
+    const gold = M('#f2c14e', { metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU, r = 3.5, y = y0 + 2.3 + (i % 2) * 0.6;
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 24), gold);
+      c.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+      c.rotation.set(0, -a, Math.PI / 2);
+      root.add(c);
+      anims.push((t) => {
+        c.position.y = y + Math.sin(t * 1.2 + i) * 0.15;
+        c.rotation.set(0, -a + t * 0.8, Math.PI / 2);
+      });
+    }
+  }
+  // Blumenbeete zwischen Platz und Ringstraße
+  scatter(50, () => flower(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'][Math.floor(rand() * 5)]), 0.18, 5.5, 9.3);
+  scatter(14, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, 5.6, 9.2);
+
   // ── Grün ──
   scatter(12, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 11, 13.4);
   scatter(24, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 5.6, 13.4);
