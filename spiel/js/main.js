@@ -13,7 +13,7 @@ import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
 import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
-import { newGarden, gardenAct, lootById } from '../../garten/js/garden.js';
+import { newGarden, gardenAct, lootById, lootName } from '../../garten/js/garden.js';
 import { rollById, openRoll } from '../../rollen/js/rolls.js';
 import { Opener } from '../../rollen/js/open.js';
 import { icon } from './icons.js';
@@ -377,7 +377,7 @@ function invoke(action, a, b) {
     state.garden.Inv[item.id] = (state.garden.Inv[item.id] || 0) + 1;
     save();
     renderHud();
-    return [true, `${roll.name}: ${item.name}!`, item.id];
+    return [true, `${roll.name}: ${lootName(item)}!`, item.id];
   }
   const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig' };
   if (GARDEN_ACTIONS[action]) {

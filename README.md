@@ -144,12 +144,19 @@ Client; das Tier zieht `PetData.Roll(eggId)`.
 
 ## Münzrollen
 
-Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für den Münzbaumgarten. Beim Öffnen
-wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
-**rollt ein Band** mit Münzbäumen und Gartenwerkzeug von rechts nach links durch, wird langsamer und bleibt
-unter der Markierung auf **genau einer Sache** stehen (manchmal knapp neben etwas Seltenem). Jedes Feld zeigt
-seine Seltenheit als Leuchtstreifen. Die gewonnene Sache springt nach vorne, Seltenes mit Blitz und Druckwelle.
-Die Rollen kosten Taler aus dem Garten, die Sache landet im Inventar des Gartens.
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für den Münzbaumgarten.
+
+- **Zerreißen:** Die Rolle wackelt, hebt ab und dreht sich immer schneller. Dann teilt sie sich in zwei Hälften
+  mit Papierzacken, der Riss glüht, reißt in zwei Rucken auf (Konfetti, Licht), und die Hälften fliegen
+  auseinander. In der Rissfläche glänzen die Münzen, eine Lichtsäule schießt nach oben.
+- **Rollband:** Farbige Karten (Farbe der Seltenheit, seltene mit Ecken-Steinen) laufen von rechts nach links,
+  Lauflichter in Regenbogenfarben, Fahrtwind-Streifen. Rahmen, Markierung und Licht leuchten in der Farbe der
+  Karte unter der Markierung. Am Ende pocht das Licht, das Band kriecht, bleibt knapp neben der Mitte stehen
+  (oft neben etwas Seltenem) und rastet ein.
+- **Gewinn:** springt nach vorne, mit Strahlenkranz (ab Selten), Konfetti und Druckwellen, die mit der Seltenheit
+  wachsen; Göttlich mit Regenbogen-Strahlen und drei Wellen.
+- **Samen statt Bäume:** Aus der Rolle kommen Samentüten (`LootBuilder.Seed`). Gesät wachsen sie im Garten mit
+  sichtbarem Timer (Keimling, Jungbaum, ausgewachsen) zum Münzbaum.
 
 | Rolle | Stufe | Inhalt | Glück | Mindestens | Preis (Vorschlag) |
 |---|---|---|---|---|---|
@@ -205,8 +212,9 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
 | Talertruhe | Göttlich | +250.000 Taler |
 
 - **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
-  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Tool(tool)`, `Build(item)`) und
-  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume).
+  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Seed(tree)`, `Tool(tool)`, `Build(item)`) und
+  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume, Timer über
+  wachsenden Bäumen; `GardenBuilder.SetTimer` zählt sie weiter).
   Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
 
 ### Im Spiel (Roblox)

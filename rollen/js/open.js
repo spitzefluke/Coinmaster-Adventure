@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
-import { rarityById, loadState, saveState, addLoot } from '../../garten/js/garden.js';
+import { rarityById, loadState, saveState, addLoot, lootName, fmtTime } from '../../garten/js/garden.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { openRoll } from './rolls.js';
 
@@ -122,10 +122,10 @@ export class Opener {
     const u = this.ui;
     this.el.style.setProperty('--roll', roll.glow);
     u.eyebrow.textContent = `${roll.name} · ${tier.name}`;
-    u.name.textContent = item.name;
+    u.name.textContent = lootName(item);
     u.name.style.textShadow = `0 0 30px ${tier.color}`;
-    u.from.textContent = `${item.type === 'tree' ? 'Münzbaum' : 'Werkzeug'} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
-    u.loot.innerHTML = `<li style="--t:${tier.color}">${item.text}</li>`;
+    u.from.textContent = `${item.type === 'tree' ? 'Samen' : 'Werkzeug'} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
+    u.loot.innerHTML = `<li style="--t:${tier.color}">${item.type === 'tree' ? `Säen, und in ${fmtTime(item.grow)} wächst daraus ein ${item.name}.` : item.text}</li>`;
     u.again.disabled = !canPay(roll, state);
     u.again.textContent = u.again.disabled ? 'Zu wenig Taler' : 'Noch eine';
     u.text.classList.remove('is-shown');

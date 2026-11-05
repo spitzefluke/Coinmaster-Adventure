@@ -1700,7 +1700,7 @@ end
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
 -- gardenDig (Beet), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
 local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
-local STAGE_NAMES = { "Setzling", "Jungbaum", "Ausgewachsen" }
+local STAGE_NAMES = { "Keimling", "Jungbaum", "Ausgewachsen" }
 local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
 ui.gardenSel = nil -- ausgewählte Sache (Baum, Kanne, Dünger), die auf ein Beet soll
 ui.gardenLive = {}
@@ -1825,22 +1825,22 @@ fillGarden = function(w)
 				local r = GardenData.RarityById[item.Rarity]
 				local c = card(list, ui.gardenSel == item.Id and C.goldHi or r.Color)
 				c.LayoutOrder = n
-				text(c, 0, 46, lootIcon(item), 38, C.ink, EMOJI)
-				text(c, 50, 22, item.Name .. "  ×" .. count, 18, C.ink, FONT)
-				text(c, 74, 16, r.Name .. (item.Type == "Tree" and " · Münzbaum" or " · Werkzeug"), 12, r.Color)
-				local info = item.Type == "Tree" and (GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle) .. " · wächst " .. GardenData.FormatTime(item.Grow)) or item.Text
+				text(c, 0, 46, item.Type == "Tree" and "🌱" or lootIcon(item), 38, C.ink, EMOJI)
+				text(c, 50, 22, GardenData.LootName(item) .. "  ×" .. count, 17, C.ink, FONT)
+				text(c, 74, 16, r.Name .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
+				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle)) or item.Text
 				text(c, 94, 48, info, 12, C.muted, TEXT)
 				if item.Kind == "Taler" or item.Kind == "Bed" then
 					actionButton(c, "Benutzen", C.blue, true, function() gardenDo("gardenUse", item.Id) end)
 				else
-					local verb = item.Type == "Tree" and "Pflanzen" or (item.Kind == "Water" and "Gießen" or "Düngen")
+					local verb = item.Type == "Tree" and "Säen" or (item.Kind == "Water" and "Gießen" or "Düngen")
 					actionButton(c, ui.gardenSel == item.Id and "Abwählen" or verb, ui.gardenSel == item.Id and C.line or C.green, true, function()
 						if ui.gardenSel == item.Id then
 							ui.gardenSel = nil
 							GameUI.Refresh("garten")
 						else
 							ui.gardenSel = item.Id
-							GameUI.Toast(item.Name .. " gewählt: jetzt ein Beet antippen", r.Color)
+							GameUI.Toast(GardenData.LootName(item) .. " gewählt: jetzt ein Beet antippen", r.Color)
 							GameUI.Open("garten", "beete")
 						end
 					end)
@@ -1877,9 +1877,9 @@ fillGarden = function(w)
 			text(c, 20, 52, "🟫", 40, C.ink, EMOJI)
 			text(c, 76, 22, "Leer", 20, C.ink, FONT)
 			if sel and sel.Type == "Tree" then
-				actionButton(c, "Pflanzen: " .. sel.Name, C.green, true, function() gardenDo("gardenPlant", tostring(i), sel.Id) end)
+				actionButton(c, "Säen: " .. GardenData.LootName(sel), C.green, true, function() gardenDo("gardenPlant", tostring(i), sel.Id) end)
 			else
-				text(c, 102, 40, "Wähle unter „Sachen“ einen Baum zum Pflanzen.", 12, C.muted, TEXT)
+				text(c, 102, 40, "Wähle unter „Sachen“ Samen zum Säen.", 12, C.muted, TEXT)
 			end
 		else
 			local stage = GardenData.Stage(plot, now)
@@ -1891,8 +1891,9 @@ fillGarden = function(w)
 			if stage < 3 then
 				local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 0, 130), BackgroundColor3 = C.bg, Parent = c }, { corner(R.Round) })
 				local fillBar = new("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = C.green, Parent = bar }, { corner(R.Round) })
+				live.TextColor3 = C.ink
 				table.insert(ui.gardenLive, function(t)
-					live.Text = "fertig in " .. GardenData.FormatTime(GardenData.GrownAt(plot) - t)
+					live.Text = "⏳ " .. GardenData.FormatTime(GardenData.GrowLeft(plot, t))
 					fillBar.Size = UDim2.new(math.clamp((t - plot.Planted + plot.Bonus) / tree.Grow, 0, 1), 0, 1, 0)
 				end)
 			else

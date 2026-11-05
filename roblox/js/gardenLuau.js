@@ -28,6 +28,7 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }) {
       Id: str(t.id),
       Type: str('Tree'),
       Name: str(t.name),
+      SeedName: str(`${t.name}-Samen`),
       Rarity: str(t.rarity),
       Grow: num(t.grow),
       Cycle: num(t.cycle),
@@ -58,7 +59,8 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }) {
     }),
   );
   return `${HEADER('Münzbaumgarten')}
--- Den Garten kauft man mit Talern (Garden.Price). Bäume und Werkzeug gibt es aus Münzrollen (RollData).
+-- Den Garten kauft man mit Talern (Garden.Price). Samen und Werkzeug gibt es aus Münzrollen (RollData);
+-- ein Baum steckt als Samen (SeedName) im Inventar und wächst nach dem Säen mit Timer (Grow Sekunden).
 -- Ein Beet (Plot) im Spielstand: { Tree = id, Planted = os.time(), Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0 }
 --   Bonus     Sekunden, die der Baum durch Gießen schon gewachsen ist
 --   Harvested Zeit der letzten Ernte, Boost/BoostEnd Dünger
@@ -94,7 +96,17 @@ for _, group in ipairs({ GardenData.Trees, GardenData.Tools }) do
 	end
 end
 
--- 0 leer, 1 Setzling, 2 Jungbaum, 3 ausgewachsen
+-- Name im Inventar und beim Öffnen: Samen für Bäume, sonst der Name
+function GardenData.LootName(item)
+	return item.SeedName or item.Name
+end
+
+-- Sekunden, bis ein Beet ausgewachsen ist (0, wenn fertig)
+function GardenData.GrowLeft(plot, now)
+	return math.max(0, GardenData.GrownAt(plot) - now)
+end
+
+-- 0 leer, 1 Keimling, 2 Jungbaum, 3 ausgewachsen
 function GardenData.Stage(plot, now)
 	if not plot then
 		return 0
@@ -225,10 +237,10 @@ function GardenData.Act(g, action, a, b, now, taler)
 		local tree = GardenData.ById[b]
 		if not bed or bed < 1 or bed > g.Beds or bed ~= math.floor(bed) then return false, "Dieses Beet gibt es nicht", 0 end
 		if plotAt(bed) then return false, "Das Beet ist schon belegt", 0 end
-		if not tree or tree.Type ~= "Tree" or (g.Inv[b] or 0) < 1 then return false, "Diesen Baum hast du nicht", 0 end
+		if not tree or tree.Type ~= "Tree" or (g.Inv[b] or 0) < 1 then return false, "Diese Samen hast du nicht", 0 end
 		take(g, b)
 		g.Plots[tostring(bed)] = { Tree = b, Planted = now, Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0 }
-		return true, tree.Name .. " in Beet " .. bed .. " gepflanzt", 0
+		return true, tree.SeedName .. " in Beet " .. bed .. " gesät", 0
 	elseif action == "use" then
 		local tool = GardenData.ById[a]
 		if not tool or tool.Type ~= "Tool" or (g.Inv[a] or 0) < 1 then return false, "Das hast du nicht", 0 end
@@ -308,8 +320,8 @@ end
 
 export const LOOT_BUILDER = `${HEADER('Bäume und Gartenwerkzeug bauen')}
 -- LootBuilder.Tree(tree, stage, ripe) baut einen Münzbaum (Stufe 1 Setzling, 2 Jungbaum, 3 ausgewachsen;
--- ripe = Ernten am Baum). LootBuilder.Tool(tool) baut Gartenwerkzeug. LootBuilder.Build(item) baut,
--- was aus einer Münzrolle kommt (Bäume ausgewachsen). Der Ursprung liegt am Boden in der Mitte,
+-- ripe = Ernten am Baum). LootBuilder.Seed(tree) baut die Samentüte, LootBuilder.Tool(tool) Gartenwerkzeug.
+-- LootBuilder.Build(item) baut, was aus einer Münzrolle kommt (Samen oder Werkzeug). Der Ursprung liegt am Boden in der Mitte,
 -- das Attribut Height gibt die Höhe in Studs an.
 
 local GardenData = require(script.Parent.GardenData)
@@ -586,9 +598,66 @@ function LootBuilder.Tool(tool)
 end
 
 -- Was aus einer Münzrolle kommt
+-- Samentüte eines Baums: Papiertüte in den Farben des Baums mit Baum-Bild vorne, davor ein paar Samen.
+-- Seltene Samen leuchten (ab Episch) und funkeln (ab Legendär).
+local SEED_RANK = { gewoehnlich = 1, selten = 2, episch = 3, legendaer = 4, mythisch = 5, goettlich = 6 }
+-- Ellipsoid: Block mit Kugel-Mesh (ein Ball-Part bleibt in Roblox immer rund)
+local function ellipsoid(parent, name, size, cf, color, material)
+	local p = part("Part", { Name = name, Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic }, parent)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+function LootBuilder.Seed(tree)
+	local model = Instance.new("Model")
+	model.Name = tree.SeedName or (tree.Name .. "-Samen")
+	local rank = SEED_RANK[tree.Rarity] or 1
+	local paper = tree.Leaf:Lerp(Color3.new(1, 1, 1), 0.35)
+	local body = part("Part", { Name = "Body", Size = Vector3.new(1.5, 2, 0.32), CFrame = CFrame.new(0, 1.12, 0) * CFrame.Angles(math.rad(-6), 0, 0), Color = paper, Material = Enum.Material.SmoothPlastic }, model)
+	model.PrimaryPart = body
+	-- umgefalzter Rand oben, Zickzack wie abgerissen
+	part("Part", { Name = "Falz", Size = Vector3.new(1.52, 0.32, 0.36), CFrame = body.CFrame * CFrame.new(0, 0.9, 0), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
+	for i = 0, 5 do
+		part("Part", { Name = "Zacke", Size = Vector3.new(0.2, 0.2, 0.3), CFrame = body.CFrame * CFrame.new(-0.62 + i * 0.25, 1.06, 0) * CFrame.Angles(0, 0, math.rad(45)), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
+	end
+	-- Bild: kleiner Baum auf hellem Feld
+	local front = body.CFrame * CFrame.new(0, -0.05, -0.17)
+	part("Part", { Name = "Bildfeld", Size = Vector3.new(1.15, 1.2, 0.04), CFrame = front, Color = Color3.fromRGB(250, 244, 226), Material = Enum.Material.SmoothPlastic }, model)
+	part("Part", { Name = "Bildstamm", Size = Vector3.new(0.14, 0.42, 0.05), CFrame = front * CFrame.new(0, -0.32, -0.02), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
+	ellipsoid(model, "Bildkrone", Vector3.new(0.7, 0.58, 0.08), front * CFrame.new(0, 0.08, -0.03), tree.Leaf, rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	for i = -1, 1 do
+		part("Part", { Name = "Bildmuenze", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.04, 0.16, 0.16), CFrame = front * CFrame.new(i * 0.2, 0.05 + math.abs(i) * 0.08, -0.08) * FRONT, Color = tree.Fruit, Material = Enum.Material.Neon }, model)
+	end
+	-- Banderole unten in der Farbe der Seltenheit (Rang als Punkte)
+	part("Part", { Name = "Band", Size = Vector3.new(1.52, 0.22, 0.34), CFrame = body.CFrame * CFrame.new(0, -0.82, 0), Color = tree.Fruit, Material = rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic }, model)
+	-- Samen davor auf dem Boden
+	local rng = Random.new(#tree.Id)
+	for i = 1, 4 do
+		ellipsoid(model, "Samen", Vector3.new(0.26, 0.17, 0.2), CFrame.new(-0.5 + i * 0.22 + rng:NextNumber(-0.05, 0.05), 0.09, -0.55 - rng:NextNumber(0, 0.25)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), tree.Trunk:Lerp(tree.Fruit, 0.35), rank >= 4 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	end
+	if rank >= 3 then
+		local glow = Instance.new("PointLight")
+		glow.Color = tree.Leaf
+		glow.Brightness = 0.6 + rank * 0.3
+		glow.Range = 5 + rank
+		glow.Parent = body
+	end
+	if rank >= 4 then
+		local sp = Instance.new("Sparkles")
+		sp.SparkleColor = tree.Fruit
+		sp.Parent = body
+	end
+	measure(model)
+	model:SetAttribute("TreeId", tree.Id)
+	model:SetAttribute("Seed", true)
+	return model
+end
+
+-- Was aus einer Münzrolle kommt: Samen für Bäume, sonst das Werkzeug
 function LootBuilder.Build(item)
 	if item.Type == "Tree" then
-		return LootBuilder.Tree(item, 3, 0)
+		return LootBuilder.Seed(item)
 	end
 	return LootBuilder.Tool(item)
 end
@@ -600,6 +669,7 @@ export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- GardenBuilder.Build(garden) baut den Garten als Model: Wiese mit Zaun, Tor und Schild, darauf die Beete
 -- in Reihen zu je 4. garden = { Beds = Anzahl, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n } oder false } }
 -- (Stage und Ripe aus GardenData.Stage/Ripe). Beet 1 liegt vorne links (von der Kamera vor dem Tor aus).
+-- Über wachsenden Bäumen schwebt ein Timer; GardenBuilder.SetTimer(model, i, text, fortschritt) zählt ihn weiter.
 -- GardenBuilder.BedPosition(i, beds) gibt die Mitte eines Beets zurück.
 
 local GardenData = require(script.Parent.GardenData)
@@ -699,11 +769,62 @@ function GardenBuilder.Build(garden)
 			local t = LootBuilder.Tree(tree, plot.Stage or 1, plot.Ripe or 0)
 			moveModel(t, CFrame.new(pos + Vector3.new(0, 0.4, 0)))
 			t.Parent = model
+			-- Wachstums-Timer über dem Beet, solange der Baum wächst (Text setzt GardenBuilder.SetTimer)
+			if (plot.Stage or 1) < 3 then
+				local holder = part("Part", { Name = "Timer" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = CFrame.new(pos + Vector3.new(0, (plot.Stage or 1) == 1 and 2.6 or 4.6, 0)) }, model)
+				local gui = Instance.new("BillboardGui")
+				gui.Name = "Timer"
+				gui.Size = UDim2.new(3.4, 0, 1.15, 0)
+				gui.AlwaysOnTop = true
+				gui.Parent = holder
+				local bg = Instance.new("Frame")
+				bg.Size = UDim2.fromScale(1, 1)
+				bg.BackgroundColor3 = Color3.fromRGB(24, 21, 31)
+				bg.BackgroundTransparency = 0.15
+				bg.Parent = gui
+				local corner = Instance.new("UICorner")
+				corner.CornerRadius = UDim.new(0.3, 0)
+				corner.Parent = bg
+				local stroke = Instance.new("UIStroke")
+				stroke.Color = GardenData.RarityById[tree.Rarity].Color
+				stroke.Thickness = 2
+				stroke.Parent = bg
+				local text = Instance.new("TextLabel")
+				text.Name = "Zeit"
+				text.BackgroundTransparency = 1
+				text.Size = UDim2.new(1, 0, 0.62, 0)
+				text.Font = Enum.Font.GothamBlack
+				text.TextScaled = true
+				text.TextColor3 = Color3.new(1, 1, 1)
+				text.Text = plot.Timer or ""
+				text.Parent = bg
+				local bar = Instance.new("Frame")
+				bar.Name = "Balken"
+				bar.Position = UDim2.new(0.08, 0, 0.7, 0)
+				bar.Size = UDim2.new(0.84, 0, 0.16, 0)
+				bar.BackgroundColor3 = Color3.fromRGB(60, 52, 74)
+				bar.Parent = bg
+				local fill = Instance.new("Frame")
+				fill.Name = "Fuellung"
+				fill.Size = UDim2.new(plot.Progress or 0, 0, 1, 0)
+				fill.BackgroundColor3 = Color3.fromRGB(111, 191, 74)
+				fill.Parent = bar
+			end
 		end
 	end
 	model:SetAttribute("Width", width)
 	model:SetAttribute("Depth", depth)
 	return model
+end
+
+-- Timer eines Beets setzen (Text wie "2 min 5 s", Fortschritt 0–1), ohne den Garten neu zu bauen
+function GardenBuilder.SetTimer(model, i, text, progress)
+	local holder = model:FindFirstChild("Timer" .. i)
+	local gui = holder and holder:FindFirstChild("Timer")
+	if not gui then return end
+	local bg = gui:FindFirstChildOfClass("Frame")
+	bg.Zeit.Text = "⏳ " .. text
+	bg.Balken.Fuellung.Size = UDim2.new(math.clamp(progress, 0, 1), 0, 1, 0)
 end
 
 return GardenBuilder
@@ -826,7 +947,7 @@ remote.OnServerInvoke = function(player, action, a, b)
 		if taler.Value < roll.Price.Amount then return false, "Zu wenig Taler" end
 		taler.Value = taler.Value - roll.Price.Amount
 		local id, item = openRoll(player, entry, roll)
-		return true, roll.Name .. ": " .. item.Name .. "!", id
+		return true, roll.Name .. ": " .. GardenData.LootName(item) .. "!", id
 	end
 	local ok, text, delta = GardenData.Act(entry.Data, action, a, b, os.time(), taler.Value)
 	if ok then
@@ -872,6 +993,7 @@ export const GARDEN_CLIENT = `-- Coinmaster Adventure · Münzbaumgarten (Client
 -- Baut den Garten des Spielers aus dem Attribut Garden mit GardenBuilder (nur für ihn sichtbar).
 -- Platz: ein Part „GartenPlatz“ im Workspace (seine Oberseite ist der Boden), sonst neben dem Spawn.
 -- Wachsen und Reifen werden jede Sekunde geprüft; neu gebaut wird nur, wenn sich etwas ändert.
+-- Über wachsenden Bäumen zählt ein Timer die Zeit bis „ausgewachsen“ herunter.
 -- „Zum Garten“ im Garten-Fenster teleportiert hierher (UIAction gartenBesuchen).
 
 local Players = game:GetService("Players")
@@ -913,18 +1035,28 @@ local function update()
 		end
 	end
 	local sig = table.concat(parts, ",")
-	if sig == signature and model then return end
-	signature = sig
-	if model then model:Destroy() end
-	model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots })
-	model.Name = "MeinGarten"
-	local base = place()
-	for _, d in ipairs(model:GetDescendants()) do
-		if d:IsA("BasePart") then
-			d.CFrame = base * d.CFrame
+	if sig ~= signature or not model then
+		signature = sig
+		if model then model:Destroy() end
+		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots })
+		model.Name = "MeinGarten"
+		local base = place()
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CFrame = base * d.CFrame
+			end
+		end
+		model.Parent = workspace
+	end
+	-- Timer über wachsenden Bäumen jede Sekunde weiterzählen
+	for i = 1, g.Beds do
+		local p = g.Plots[tostring(i)]
+		if p and plots[i] and plots[i].Stage < 3 then
+			local tree = GardenData.ById[p.Tree]
+			local left = GardenData.GrowLeft(p, now)
+			GardenBuilder.SetTimer(model, i, GardenData.FormatTime(left), 1 - left / tree.Grow)
 		end
 	end
-	model.Parent = workspace
 end
 
 player:GetAttributeChangedSignal("Garden"):Connect(update)

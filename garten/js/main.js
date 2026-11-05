@@ -1,11 +1,11 @@
-// Münzbaumgarten: Garten kaufen, Beete, Pflanzen, Gießen, Düngen, Ernten.
+// Münzbaumgarten: Garten kaufen, Beete, Samen säen, Gießen, Düngen, Ernten. Wachsende Bäume zeigen einen Timer.
 // Der Garten in 3D ist GardenBuilder aus dem Installer (1:1 wie in Roblox), die Regeln stehen in
 // garden.js (wie GardenData). Taler und Inventar teilt sich die Seite mit den Münzrollen.
 
 import * as THREE from 'three';
 import {
   TREES, LOOT, GARDEN, lootById, rarityById, stage, ripe, grownAt, boostMult, harvestValue,
-  loadState, saveState, freshState, now, setSpeed, fmt, fmtTime,
+  loadState, saveState, freshState, now, setSpeed, fmt, fmtTime, lootName,
 } from './garden.js';
 import { createRobloxGarden, rollLua } from '../../rollen/js/rollRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
@@ -16,7 +16,7 @@ let state = loadState();
 let selected = null; // Id einer Sache aus dem Inventar, die man gerade auf ein Beet anwenden will
 
 const $ = (id) => document.getElementById(id);
-const STAGE_NAME = ['Leer', 'Setzling', 'Jungbaum', 'Ausgewachsen'];
+const STAGE_NAME = ['Leer', 'Keimling', 'Jungbaum', 'Ausgewachsen'];
 const ICON = { bush: '🌿', round: '🌳', oval: '🌳', cone: '🌲', blossom: '🌸', weeping: '🌳', palm: '🌴', star: '🌌', can: '💧', sack: '🌱', bag: '💰', spade: '⚒️', chest: '💎' };
 const icon = (item) => ICON[item.crown || item.model] || '🌳';
 
@@ -73,11 +73,11 @@ function useItem(id) {
     return save();
   }
   selected = selected === id ? null : id;
-  hint(selected ? `<strong>${item.name}</strong> ausgewählt. Tippe bei einem Beet auf „${actionName(item)}“.` : '');
+  hint(selected ? `<strong>${lootName(item)}</strong> ausgewählt. Tippe bei einem Beet auf „${actionName(item)}“.` : '');
   render();
 }
 
-const actionName = (item) => (item.type === 'tree' ? 'Pflanzen' : item.kind === 'water' ? 'Gießen' : 'Düngen');
+const actionName = (item) => (item.type === 'tree' ? 'Säen' : item.kind === 'water' ? 'Gießen' : 'Düngen');
 
 // Kann die ausgewählte Sache auf Beet i benutzt werden?
 function canApply(i, t) {
@@ -97,7 +97,7 @@ function apply(i) {
   const item = lootById[selected];
   if (item.type === 'tree') {
     state.plots[i] = { tree: item.id, planted: t, bonus: 0, harvested: 0, boost: 1, boostEnd: 0 };
-    hint(`${item.name} in Beet ${i + 1} gepflanzt.`);
+    hint(`${lootName(item)} in Beet ${i + 1} gesät. Der Timer zeigt, wann der Baum ausgewachsen ist.`);
   } else if (item.kind === 'water') {
     const plot = state.plots[i];
     const left = grownAt(plot) - t;
@@ -140,7 +140,7 @@ function dig(i) {
   harvest(i, true);
   state.inv[plot.tree] = (state.inv[plot.tree] || 0) + 1;
   state.plots[i] = null;
-  hint(`${lootById[plot.tree].name} ausgegraben und zurück ins Inventar gelegt.`);
+  hint(`${lootById[plot.tree].name} ausgegraben, die ${lootName(lootById[plot.tree])} liegen wieder im Inventar.`);
   save();
 }
 
@@ -198,12 +198,12 @@ function bedHtml(i, t) {
   const plot = state.plots[i];
   const target = canApply(i, t);
   const sel = selected && lootById[selected];
-  const applyBtn = target ? `<button class="btn gold small" data-apply="${i}">${actionName(sel)}: ${sel.name}</button>` : '';
+  const applyBtn = target ? `<button class="btn gold small" data-apply="${i}">${actionName(sel)}: ${lootName(sel)}</button>` : '';
   if (!plot) {
     return {
       key: `leer|${target ? selected : ''}`,
       html: `<div class="bed-head"><span class="bed-no">Beet ${i + 1}</span></div>
-        <p class="bed-empty">Leer. Pflanze einen Baum aus dem Inventar.</p>
+        <p class="bed-empty">Leer. Säe Samen aus dem Inventar.</p>
         <div class="bed-actions">${applyBtn}</div>`,
     };
   }
@@ -255,7 +255,7 @@ function renderInv() {
   };
   const ids = LOOT.map((l) => l.id).filter((id) => state.inv[id] > 0);
   if (!ids.length) {
-    set('<p class="inv-empty">Leer. Öffne <a href="../rollen/">Münzrollen</a>, um Bäume, Gießkannen und mehr zu bekommen.</p>');
+    set('<p class="inv-empty">Leer. Öffne <a href="../rollen/">Münzrollen</a>, um Samen, Gießkannen und mehr zu bekommen.</p>');
     return;
   }
   set(ids
@@ -264,11 +264,11 @@ function renderInv() {
       const rar = rarityById[item.rarity];
       const direct = item.kind === 'taler' || item.kind === 'bed';
       const label = direct ? 'Benutzen' : selected === id ? 'Abwählen' : `Auswählen zum ${actionName(item)}`;
-      const sub = item.type === 'tree' ? `${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)} · wächst ${fmtTime(item.grow)}` : item.text;
+      const sub = item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}, dann ${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}` : item.text;
       return `<article class="item${selected === id ? ' is-selected' : ''}" style="--t:${rar.color}">
-        <span class="item-icon" aria-hidden="true">${icon(item)}</span>
-        <p class="item-name">${item.name}<small>×${state.inv[id]}</small></p>
-        <p class="item-rar">${rar.name} · ${item.type === 'tree' ? 'Münzbaum' : 'Werkzeug'}</p>
+        <span class="item-icon" aria-hidden="true">${item.type === 'tree' ? '🌱' : icon(item)}</span>
+        <p class="item-name">${lootName(item)}<small>×${state.inv[id]}</small></p>
+        <p class="item-rar">${rar.name} · ${item.type === 'tree' ? 'Samen' : 'Werkzeug'}</p>
         <p class="item-text">${sub}</p>
         <button class="btn small${direct || selected === id ? '' : ' gold'}" data-use="${id}" ${state.owned || item.kind === 'taler' ? '' : 'disabled'}>${state.owned || item.kind === 'taler' ? label : 'Erst Garten kaufen'}</button>
       </article>`;
@@ -352,7 +352,7 @@ async function update3d(t) {
     return p ? { tree: p.tree, stage: stage(p, t), ripe: ripe(p, t) } : null;
   });
   const s = beds + '|' + plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe}` : '')).join(';');
-  if (s === sig) return;
+  if (s === sig) return updateTimers(t);
   building = true;
   try {
     const next = await createRobloxGarden(beds, plots);
@@ -360,10 +360,24 @@ async function update3d(t) {
     garden = next;
     garden.rows = Math.ceil(beds / 4);
     sig = s;
+    updateTimers(t);
   } catch (err) {
     console.error('Garten', err);
   }
   building = false;
+}
+
+// Timer über wachsenden Bäumen im 3D-Garten weiterzählen (GardenBuilder.SetTimer)
+function updateTimers(t) {
+  if (!garden || !state.owned) return;
+  const list = [];
+  state.plots.forEach((p, i) => {
+    if (!p || stage(p, t) >= 3) return;
+    const tree = lootById[p.tree];
+    const left = grownAt(p) - t;
+    list.push(`${i + 1},${fmtTime(left)},${Math.max(0, Math.min(1, 1 - left / tree.grow)).toFixed(3)}`);
+  });
+  if (list.length) garden.call('__gardenTimers', list.join(';'));
 }
 
 function resize() {

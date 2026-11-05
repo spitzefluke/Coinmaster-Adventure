@@ -227,10 +227,14 @@ export const ROLL_FX = `${HEADER('Münzrolle öffnen')}
 -- RollFx.Play(rollId, itemId, options) zeigt das Öffnen einer Rolle an einem Ort
 -- (options.CFrame = Boden unter der Rolle, options.Parent = Elternteil, Standard workspace,
 -- options.Window = halbe Breite des Rollbands in Studs, Standard RollFx.Window).
--- itemId: Id aus GardenData (Baum oder Werkzeug), am besten aus RollData.Open auf dem Server.
--- Die Rolle wackelt, hebt ab, dreht sich immer schneller und reißt auf. Dann läuft ein Band mit Sachen
--- durch (Rollanimation), wird langsamer und bleibt unter der Markierung auf der gewonnenen Sache stehen.
--- Die springt heraus; seltene mit Blitz und Druckwelle. Die Vorderseite zeigt nach −Z.
+-- itemId: Id aus GardenData (Samen eines Baums oder Werkzeug), am besten aus RollData.Open auf dem Server.
+-- Ablauf: Die Rolle wackelt, hebt ab und dreht sich immer schneller. Dann wird sie zerrissen: Sie teilt sich
+-- in zwei Hälften mit Papierzacken, der Riss glüht, reißt in zwei Rucken auf, und die Hälften fliegen mit
+-- Konfetti und einer Lichtsäule auseinander. Danach klappt ein Rollband auf: farbige Karten (Farbe der
+-- Seltenheit) laufen durch, Lauflichter in Regenbogenfarben, Fahrtwind, Rahmen und Markierung leuchten in
+-- der Farbe der Karte unter der Markierung. Das Band wird langsamer, pocht am Ende, bleibt knapp daneben
+-- stehen und rastet ein. Der Gewinn springt nach vorne, mit Strahlenkranz, Konfetti und Druckwellen, die mit
+-- der Seltenheit wachsen (Göttlich: Regenbogen-Strahlen). Die Vorderseite zeigt nach −Z.
 -- Läuft am besten auf dem Client (LocalScript). Gibt { Folder, Item } zurück, wenn alles steht.
 
 local TweenService = game:GetService("TweenService")
@@ -244,7 +248,7 @@ local RollFx = {}
 RollFx.ItemSize = 2.1 -- so hoch wird jede Sache im Band in Studs
 RollFx.Spacing = 3.3 -- Abstand der Felder im Band
 RollFx.Window = 12 -- halbe Breite des sichtbaren Bands
-RollFx.SpinTime = 5 -- Sekunden, bis das Band steht
+RollFx.SpinTime = 6.2 -- Sekunden, bis das Band steht
 RollFx.Slots = 30 -- Felder im Band; das gewonnene liegt bei Slots − 4
 
 local function tween(inst, time, goal, style, dir)
@@ -327,7 +331,7 @@ local function label(parent, item, tier)
 	title.TextColor3 = Color3.new(1, 1, 1)
 	title.TextStrokeTransparency = 0.2
 	title.TextStrokeColor3 = Color3.fromRGB(20, 16, 28)
-	title.Text = item.Name
+	title.Text = GardenData.LootName(item)
 	title.Parent = gui
 	local sub = Instance.new("TextLabel")
 	sub.BackgroundTransparency = 1
@@ -342,15 +346,63 @@ local function label(parent, item, tier)
 	return gui
 end
 
+-- Eine Hälfte der Rolle (oben oder unten) als eigenes Model, im Raum der Rolle (Boden = 0, y nach oben).
+-- Die Rissstelle bekommt Papierzacken, damit sie beim Auseinanderziehen wie abgerissen aussieht.
+local function half(roll, top)
+	local h, r = RollBuilder.Height, RollBuilder.Radius
+	local mid = h / 2
+	local UP = CFrame.Angles(0, 0, math.rad(90))
+	local m = Instance.new("Model")
+	m.Name = top and "Oben" or "Unten"
+	local function add(name, size, cf, color, material, shape)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material or Enum.Material.SmoothPlastic
+		if shape then p.Shape = shape end
+		p.Parent = m
+		return p
+	end
+	local paper = roll.Paper
+	local y0 = top and mid or 0
+	add("Huelle", Vector3.new(mid, r * 2, r * 2), CFrame.new(0, y0 + mid / 2, 0) * UP, paper, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	add("Falz", Vector3.new(0.2, r * 2 + 0.03, r * 2 + 0.03), CFrame.new(0, top and h - 0.12 or 0.12, 0) * UP, paper:Lerp(Color3.new(0, 0, 0), 0.15), nil, Enum.PartType.Cylinder)
+	add("Band", Vector3.new(0.55, r * 2 + 0.04, r * 2 + 0.04), CFrame.new(0, mid + (top and 0.275 or -0.275), 0) * UP, roll.Band, nil, Enum.PartType.Cylinder)
+	add("Streifen", Vector3.new(0.09, r * 2 + 0.03, r * 2 + 0.03), CFrame.new(0, mid + (top and 0.8 or -0.8), 0) * UP, roll.Band, nil, Enum.PartType.Cylinder)
+	if top then
+		add("Muenze", Vector3.new(0.16, r * 2 - 0.14, r * 2 - 0.14), CFrame.new(0, h + 0.02, 0) * UP, roll.Metal, Enum.Material.Metal, Enum.PartType.Cylinder)
+	end
+	-- Zacken: kleine gedrehte Papierstücke rund um die Rissstelle, oben und unten versetzt
+	local n = 16
+	for i = 0, n - 1 do
+		local a = (i + (top and 0.5 or 0)) / n * math.pi * 2
+		local cf = CFrame.new(math.sin(a) * (r + 0.01), mid + (top and -0.05 or 0.05), -math.cos(a) * (r + 0.01)) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.rad(45))
+		add("Zacke", Vector3.new(0.3, 0.3, 0.05), cf, i % 3 == 0 and roll.Band:Lerp(Color3.new(1, 1, 1), 0.25) or roll.Band)
+	end
+	-- an der Rissfläche glänzen die Münzen aus der Rolle
+	add("Innen", Vector3.new(0.06, r * 2 - 0.08, r * 2 - 0.08), CFrame.new(0, mid + (top and -0.03 or 0.03), 0) * UP, roll.Metal, Enum.Material.Metal, Enum.PartType.Cylinder)
+	add("InnenRelief", Vector3.new(0.07, r * 1.15, r * 1.15), CFrame.new(0, mid + (top and -0.035 or 0.035), 0) * UP, roll.Metal:Lerp(Color3.new(0, 0, 0), 0.2), Enum.Material.Metal, Enum.PartType.Cylinder)
+	return m
+end
+
 function RollFx.Play(rollId, itemId, options)
 	options = options or {}
 	local roll = RollData.ById[rollId]
 	local origin = options.CFrame or CFrame.new()
 	local rank = roll.Rank
 	local glow = roll.Glow
+	if type(itemId) == "table" then itemId = itemId[1] end
+	local item = GardenData.ById[itemId]
+	local tier = GardenData.RarityById[item.Rarity]
+	local rare = tier.Index - 1 -- 0 bei Gewöhnlich
 	local folder = Instance.new("Folder")
 	folder.Name = "Muenzrolle"
 	folder.Parent = options.Parent or workspace
+	local rng = Random.new()
 
 	-- Rolle auf ihrem Sockel; alles außer dem Sockel bewegt sich als Ganzes
 	local model = RollBuilder.Build(roll)
@@ -367,108 +419,143 @@ function RollFx.Play(rollId, itemId, options)
 	model.Parent = folder
 	moving.Parent = folder
 	local base = origin * CFrame.new(0, RollBuilder.Base, 0)
-	local pose, parts = rig(moving, base)
+	local pose = rig(moving, base)
 	local light = moving:FindFirstChild("Wrapper"):FindFirstChildOfClass("PointLight")
 
 	-- 1. Wackeln um die Unterkante, immer heftiger
-	local shakes = 3 + rank
+	local shakes = 2 + rank
 	for i = 1, shakes do
 		local k = i / shakes
 		local angle = math.rad(5 + k * 12) * (i % 2 == 0 and 1 or -1)
-		local time = 0.16 - k * 0.07
+		local time = 0.15 - k * 0.06
 		local steps = math.max(2, math.floor(time / 0.03))
 		for s = 1, steps do
-			local a = angle * math.sin(s / steps * math.pi)
-			pose(base * CFrame.Angles(0, 0, a))
+			pose(base * CFrame.Angles(0, 0, angle * math.sin(s / steps * math.pi)))
 			task.wait(time / steps)
 		end
-		if light then
-			light.Brightness = 1 + k * (3 + rank)
-		end
-		task.wait(0.1 * (1 - k))
+		if light then light.Brightness = 1 + k * (3 + rank) end
+		task.wait(0.08 * (1 - k))
 	end
-	pose(base)
 
 	-- 2. Abheben und immer schneller drehen
-	local spinTime = 0.7 + rank * 0.15
-	local frames = math.floor(spinTime / 0.03)
+	local lift = 1.4
+	local frames = math.floor((0.6 + rank * 0.1) / 0.03)
 	local turn = 0
 	for f = 1, frames do
 		local k = f / frames
 		turn = turn + (0.15 + k * k * 1.1)
-		pose(base * CFrame.new(0, k * 1.2, 0) * CFrame.Angles(0, turn, 0) * CFrame.Angles(0, 0, math.sin(f * 1.7) * 0.05 * k))
+		pose(base * CFrame.new(0, k * lift, 0) * CFrame.Angles(0, turn, 0))
 		task.wait(0.03)
 	end
-	for _, e in ipairs(parts) do
-		if e.Part.Name == "Wrapper" or e.Part.Name == "Band" then
-			tween(e.Part, 0.15, { Color = glow })
-			e.Part.Material = Enum.Material.Neon
+	local held = base * CFrame.new(0, lift, 0) * CFrame.Angles(0, turn, 0)
+	local mid = held * CFrame.new(0, RollBuilder.Height / 2, 0)
+
+	-- 3. Zerreißen: die Rolle wird zu zwei Hälften, die Rissstelle glüht, reißt in Rucken auf und fliegt auseinander
+	moving:Destroy()
+	local upper, lower = half(roll, true), half(roll, false)
+	upper.Parent, lower.Parent = folder, folder
+	local placeUp, partsUp = rig(upper, CFrame.new(0, RollBuilder.Height / 2, 0))
+	local placeDown, partsDown = rig(lower, CFrame.new(0, RollBuilder.Height / 2, 0))
+	local crack = Instance.new("Part")
+	crack.Name = "Riss"
+	crack.Anchored, crack.CanCollide = true, false
+	crack.Shape = Enum.PartType.Cylinder
+	crack.Material = Enum.Material.Neon
+	crack.Color = glow
+	crack.Transparency = 1
+	crack.Size = Vector3.new(0.05, RollBuilder.Radius * 2 - 0.05, RollBuilder.Radius * 2 - 0.05)
+	crack.CFrame = mid * CFrame.Angles(0, 0, math.rad(90))
+	crack.Parent = folder
+	local core = holder(folder, mid)
+	local coreLight = Instance.new("PointLight")
+	coreLight.Color = glow
+	coreLight.Brightness = 0
+	coreLight.Range = 10 + rank * 2
+	coreLight.Parent = core
+	local fizz = emitter(core, { Color = ColorSequence.new(glow, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(3, 7), SpreadAngle = Vector2.new(180, 15), Drag = 2, Size = NumberSequence.new(0.18, 0) })
+	local function apart(gap, tiltUp, tiltDown, shake)
+		local j = shake and Vector3.new(rng:NextNumber(-shake, shake), rng:NextNumber(-shake, shake), 0) or Vector3.new()
+		placeUp(mid * CFrame.new(j + Vector3.new(0, gap / 2, 0)) * CFrame.Angles(0, 0, tiltUp), 1)
+		placeDown(mid * CFrame.new(j + Vector3.new(0, -gap / 2, 0)) * CFrame.Angles(0, 0, tiltDown), 1)
+		crack.Size = Vector3.new(math.max(0.05, gap), crack.Size.Y, crack.Size.Z)
+	end
+	-- Spannung: zittern, der Riss glimmt auf
+	for f = 1, 16 do
+		local k = f / 16
+		apart(0.02 * k, 0, 0, 0.04 * k)
+		crack.Transparency = 1 - k * 0.8
+		coreLight.Brightness = k * 3
+		fizz.Rate = 30 * k
+		task.wait(0.03)
+	end
+	-- Ratsch – Ratsch: zwei Rucke, jedes Mal Papierfetzen und Licht
+	local confettiCore = emitter(core, { Color = ColorSequence.new(roll.Paper, roll.Band), LightEmission = 0.2, Lifetime = NumberRange.new(0.6, 1.1), Speed = NumberRange.new(6, 11), SpreadAngle = Vector2.new(180, 25), Drag = 2, Size = NumberSequence.new(0.28, 0.12), Acceleration = Vector3.new(0, -12, 0), RotSpeed = NumberRange.new(-300, 300) })
+	for step, gap in ipairs({ 0.22, 0.5 }) do
+		for f = 1, 4 do
+			apart(gap * f / 4, math.rad(3 * step) * f / 4, math.rad(-2 * step) * f / 4, 0.03)
+			task.wait(0.02)
+		end
+		confettiCore:Emit(10 + step * 6)
+		coreLight.Brightness = 5 + step * 2
+		crack.Transparency = 0
+		for f = 1, 9 do
+			apart(gap, math.rad(3 * step), math.rad(-2 * step), 0.05 * (1 - f / 9))
+			coreLight.Brightness = coreLight.Brightness * 0.94
+			task.wait(0.03)
 		end
 	end
-	task.wait(0.15)
-
-	-- 3. Aufreißen: Blitz, Konfetti, Papierfetzen, Druckwelle
-	local center = base * CFrame.new(0, 1.2 + RollBuilder.Height / 2, 0)
-	local burst = holder(folder, center)
+	-- ganz auseinander: Hälften fliegen weg, Licht bricht heraus
+	fizz.Rate = 0
+	local burst = holder(folder, mid)
 	burst.Name = "Blitz"
 	local confetti = emitter(burst, { Color = ColorSequence.new(roll.Paper, roll.Band), LightEmission = 0.3, Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(9, 16 + rank * 2), SpreadAngle = Vector2.new(180, 180), Drag = 2, Size = NumberSequence.new(0.35, 0.15), Acceleration = Vector3.new(0, -14, 0), RotSpeed = NumberRange.new(-300, 300) })
 	confetti:Emit(40 + rank * 15)
-	local sparks = emitter(burst, { Color = ColorSequence.new(glow, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(10, 18), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.5, 0) })
-	sparks:Emit(20 + rank * 10)
+	local sparks = emitter(burst, { Color = ColorSequence.new(glow, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(10, 20), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.5, 0) })
+	sparks:Emit(25 + rank * 10)
 	local flash = Instance.new("PointLight")
 	flash.Color = glow
-	flash.Brightness = 10
-	flash.Range = 18 + rank * 2
+	flash.Brightness = 12
+	flash.Range = 20 + rank * 2
 	flash.Parent = burst
 	tween(flash, 1.2, { Brightness = 0 })
-	shockwave(folder, center * CFrame.Angles(0, 0, math.rad(90)), glow, 10 + rank * 2, 0.8)
-	moving:Destroy()
-
-	local rng = Random.new()
-	local scraps = {}
-	for i = 1, 10 + rank * 2 do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local p = Instance.new("Part")
-		p.Name = "Fetzen"
-		p.Anchored = true
-		p.CanCollide = false
-		p.Size = Vector3.new(rng:NextNumber(0.5, 0.9), rng:NextNumber(0.4, 0.8), 0.05)
-		p.Color = i % 3 == 0 and roll.Band or roll.Paper
-		p.Material = Enum.Material.SmoothPlastic
-		p.CFrame = center * CFrame.new(math.cos(a) * 0.8, rng:NextNumber(-1.4, 1.4), math.sin(a) * 0.8) * CFrame.Angles(rng:NextNumber(0, 6), a, 0)
-		p.Parent = folder
-		table.insert(scraps, { Part = p, Vel = Vector3.new(math.cos(a), 0, math.sin(a)) * rng:NextNumber(7, 13) + Vector3.new(0, rng:NextNumber(5, 11), 0), Spin = CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.4, 0.4)) })
+	shockwave(folder, mid * CFrame.Angles(0, 0, math.rad(90)), glow, 11 + rank * 2, 0.8)
+	-- Lichtsäule schießt nach oben
+	local pillar = Instance.new("Part")
+	pillar.Name = "Lichtsaeule"
+	pillar.Anchored, pillar.CanCollide = true, false
+	pillar.Shape = Enum.PartType.Cylinder
+	pillar.Material = Enum.Material.Neon
+	pillar.Color = glow
+	pillar.Transparency = 0.15
+	pillar.Size = Vector3.new(0.5, 1.4, 1.4)
+	pillar.CFrame = mid * CFrame.Angles(0, 0, math.rad(90))
+	pillar.Parent = folder
+	tween(pillar, 0.5, { Size = Vector3.new(14, 0.5, 0.5), CFrame = mid * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.rad(90)), Transparency = 1 })
+	crack:Destroy()
+	local flyFrames = 20
+	for f = 1, flyFrames do
+		local k = f / flyFrames
+		local e = 1 - (1 - k) ^ 2
+		placeUp(mid * CFrame.new(1.6 * e, 0.25 + 3 * e, -0.4 * e) * CFrame.Angles(0, 0, -math.rad(55) * e), 1)
+		placeDown(mid * CFrame.new(-1.1 * e, -0.25 - 0.9 * e, -0.3 * e) * CFrame.Angles(0, 0, math.rad(35) * e), 1)
+		if f > 8 then
+			for _, e2 in ipairs(partsUp) do e2.Part.Transparency = (f - 8) / (flyFrames - 8) end
+			for _, e2 in ipairs(partsDown) do e2.Part.Transparency = (f - 8) / (flyFrames - 8) end
+		end
+		task.wait(0.03)
 	end
-	task.spawn(function()
-		for f = 1, 34 do
-			for _, s in ipairs(scraps) do
-				s.Vel = s.Vel + Vector3.new(0, -26 * 0.03, 0)
-				s.Vel = s.Vel * 0.97
-				s.Part.CFrame = (s.Part.CFrame + s.Vel * 0.03) * s.Spin
-				if f > 20 then
-					s.Part.Transparency = (f - 20) / 14
-				end
-			end
-			task.wait(0.03)
-		end
-		for _, s in ipairs(scraps) do
-			s.Part:Destroy()
-		end
-	end)
-	task.wait(0.2)
+	upper:Destroy()
+	lower:Destroy()
+	task.delay(0.6, function() pillar:Destroy() end)
 
-	-- 4. Rollband: Felder mit Sachen laufen von rechts nach links durch und bleiben auf dem Gewinn stehen
-	if type(itemId) == "table" then itemId = itemId[1] end
-	local item = GardenData.ById[itemId]
-	local tier = GardenData.RarityById[item.Rarity]
-	local rare = tier.Index - 1 -- 0 bei Gewöhnlich
+	-- 4. Rollband: farbige Karten laufen von rechts nach links und bleiben auf dem Gewinn stehen
 	local window = options.Window or RollFx.Window
 	local spacing = RollFx.Spacing
 	local reelC = origin * CFrame.new(0, 3.9, 0)
 	local reel = Instance.new("Model")
 	reel.Name = "Rollband"
 	reel.Parent = folder
-	local function block(name, size, cf, color, material, transparency)
+	local function block(name, size, cf, color, material, transparency, shape)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Anchored = true
@@ -478,33 +565,48 @@ function RollFx.Play(rollId, itemId, options)
 		p.Color = color
 		p.Material = material or Enum.Material.SmoothPlastic
 		p.Transparency = transparency or 0
+		if shape then p.Shape = shape end
 		p.Parent = reel
 		return p
 	end
 	local width = window * 2 + 2
-	local frameParts = {
-		block("Rueckwand", Vector3.new(width, 4.4, 0.3), reelC * CFrame.new(0, 0, 1), Color3.fromRGB(26, 22, 36)),
-		block("RandOben", Vector3.new(width, 0.18, 0.5), reelC * CFrame.new(0, 2.25, 0.4), glow, Enum.Material.Neon),
-		block("RandUnten", Vector3.new(width, 0.18, 0.5), reelC * CFrame.new(0, -2.25, 0.4), glow, Enum.Material.Neon),
+	local back = block("Rueckwand", Vector3.new(width, 4.6, 0.3), reelC * CFrame.new(0, 0, 1), Color3.fromRGB(18, 14, 28))
+	local rails = {
+		block("RandOben", Vector3.new(width, 0.22, 0.5), reelC * CFrame.new(0, 2.35, 0.4), glow, Enum.Material.Neon),
+		block("RandUnten", Vector3.new(width, 0.22, 0.5), reelC * CFrame.new(0, -2.35, 0.4), glow, Enum.Material.Neon),
 	}
-	local marker = block("Markierung", Vector3.new(0.09, 4.3, 0.09), reelC * CFrame.new(0, 0, -1.7), Color3.new(1, 1, 1), Enum.Material.Neon, 0.35)
-	table.insert(frameParts, marker)
-	for _, y in ipairs({ 2.45, -2.45 }) do
-		table.insert(frameParts, block("Zeiger", Vector3.new(0.5, 0.5, 0.2), reelC * CFrame.new(0, y, -1.7) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(255, 220, 120), Enum.Material.Neon))
-	end
-	-- Band aufrollen lassen: Rand wächst aus der Mitte
-	for _, p in ipairs(frameParts) do
-		if p.Name ~= "Markierung" and p.Name ~= "Zeiger" then
-			local size = p.Size
-			p.Size = Vector3.new(0.2, size.Y, size.Z)
-			tween(p, 0.35, { Size = size }, Enum.EasingStyle.Back)
+	-- Lauflichter: Lämpchen auf beiden Rändern, Regenbogen läuft durch
+	local lamps = {}
+	local count = math.floor(width / 1.1)
+	for i = 0, count - 1 do
+		local x = -width / 2 + 0.55 + i * 1.1
+		for _, y in ipairs({ 2.35, -2.35 }) do
+			table.insert(lamps, { Part = block("Lampe", Vector3.new(0.26, 0.26, 0.26), reelC * CFrame.new(x, y, -0.05), Color3.new(1, 1, 1), Enum.Material.Neon, 0, Enum.PartType.Ball), I = i })
 		end
 	end
+	local marker = block("Markierung", Vector3.new(0.12, 4.5, 0.12), reelC * CFrame.new(0, 0, -1.7), Color3.new(1, 1, 1), Enum.Material.Neon, 0.25)
+	local pointers = {}
+	for _, y in ipairs({ 2.65, -2.65 }) do
+		table.insert(pointers, block("Zeiger", Vector3.new(0.6, 0.6, 0.22), reelC * CFrame.new(0, y, -1.7) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(255, 220, 120), Enum.Material.Neon))
+	end
+	local backLight = Instance.new("PointLight")
+	backLight.Color = glow
+	backLight.Brightness = 2
+	backLight.Range = 16
+	backLight.Parent = marker
+	-- Band klappt aus der Mitte auf
+	for _, p in ipairs({ back, rails[1], rails[2] }) do
+		local size = p.Size
+		p.Size = Vector3.new(0.2, size.Y, size.Z)
+		tween(p, 0.4, { Size = size }, Enum.EasingStyle.Back)
+	end
+	-- Fahrtwind: Lichtstreifen fliegen am Band entlang, solange es schnell läuft
+	local streakSrc = holder(reel, reelC * CFrame.new(-window, 0, -0.8))
+	local streaks = emitter(streakSrc, { Color = ColorSequence.new(glow, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.25, 0.45), Speed = NumberRange.new(30, 45), SpreadAngle = Vector2.new(0, 12), Size = NumberSequence.new(0.22, 0), Rate = 0, EmissionDirection = Enum.NormalId.Right })
 
-	-- Felder: Sache plus Karte mit Streifen in der Farbe der Seltenheit. Gebaut wird erst, wenn sie ins Bild kommen.
+	-- Felder: farbige Karte (Farbe der Seltenheit) mit der Sache. Gebaut wird erst, wenn sie ins Bild kommen.
 	local n = RollFx.Slots
 	local win = n - 4
-	local rng = Random.new()
 	local slots = {}
 	for k = 1, n do
 		local thing = k == win and item or RollData.Pick(roll, rng)
@@ -516,12 +618,11 @@ function RollFx.Play(rollId, itemId, options)
 			end
 			thing = top[rng:NextInteger(1, #top)]
 		end
-		slots[k] = { Item = thing }
+		slots[k] = { Item = thing, Tier = GardenData.RarityById[thing.Rarity] }
 	end
 	local PARK = origin * CFrame.new(0, -500, 0)
 	local function build(slot)
-		local it = slot.Item
-		local r = GardenData.RarityById[it.Rarity]
+		local it, r = slot.Item, slot.Tier
 		local m = LootBuilder.Build(it)
 		m.Parent = reel
 		local h = m:GetAttribute("Height") or 2
@@ -530,32 +631,33 @@ function RollFx.Play(rollId, itemId, options)
 		slot.Model = m
 		local card = Instance.new("Model")
 		card.Name = "Karte"
-		local back = Instance.new("Part")
-		back.Anchored, back.CanCollide = true, false
-		back.Size = Vector3.new(spacing - 0.3, 3.8, 0.1)
-		back.CFrame = CFrame.new(0, 0, 0.55)
-		back.Color = Color3.fromRGB(44, 38, 58)
-		back.Material = Enum.Material.SmoothPlastic
-		back.Parent = card
-		local stripe = back:Clone()
-		stripe.Size = Vector3.new(spacing - 0.3, 0.26, 0.12)
-		stripe.CFrame = CFrame.new(0, -1.72, 0.48)
-		stripe.Color = r.Color
-		stripe.Material = Enum.Material.Neon
-		stripe.Parent = card
-		local glowBack = back:Clone()
-		glowBack.Size = Vector3.new(spacing - 0.9, 3, 0.05)
-		glowBack.CFrame = CFrame.new(0, 0.1, 0.48)
-		glowBack.Color = r.Color
-		glowBack.Transparency = 0.82
-		glowBack.Material = Enum.Material.Neon
-		glowBack.Parent = card
+		local function cardPart(name, size, cf, color, material, transparency)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Anchored, p.CanCollide = true, false
+			p.Size, p.CFrame, p.Color = size, cf, color
+			p.Material = material or Enum.Material.SmoothPlastic
+			p.Transparency = transparency or 0
+			p.Parent = card
+			return p
+		end
+		local w = spacing - 0.3
+		cardPart("Karte", Vector3.new(w, 4, 0.1), CFrame.new(0, 0, 0.55), r.Color:Lerp(Color3.new(0, 0, 0), 0.62))
+		cardPart("Schein", Vector3.new(w - 0.5, 3.2, 0.05), CFrame.new(0, 0.15, 0.48), r.Color, Enum.Material.Neon, 0.72)
+		cardPart("Streifen", Vector3.new(w, 0.32, 0.12), CFrame.new(0, -1.82, 0.46), r.Color, Enum.Material.Neon)
+		cardPart("Kante", Vector3.new(w, 0.08, 0.12), CFrame.new(0, 1.96, 0.46), r.Color, Enum.Material.Neon)
+		if r.Index >= 4 then
+			-- seltene Karten bekommen Ecken-Steine
+			for _, x in ipairs({ -w / 2 + 0.25, w / 2 - 0.25 }) do
+				cardPart("Stein", Vector3.new(0.24, 0.24, 0.12), CFrame.new(x, 1.65, 0.44) * CFrame.Angles(0, 0, math.rad(45)), Color3.new(1, 1, 1), Enum.Material.Neon)
+			end
+		end
 		card.Parent = reel
 		slot.Card = rig(card, CFrame.new())
 		slot.Visible = true
 	end
-	local lastTick = nil
-	local function layout(pos, spin)
+	local lastTick, clock = nil, 0
+	local function layout(pos, spin, speed)
 		for k, slot in ipairs(slots) do
 			local x = -(k - pos) * spacing
 			local visible = math.abs(x) <= window - spacing * 0.35
@@ -566,7 +668,9 @@ function RollFx.Play(rollId, itemId, options)
 				if visible then
 					local cf = reelC * CFrame.new(x, 0, 0)
 					slot.Card(cf, 1)
-					slot.Place(cf * CFrame.new(0, 0.15, -0.35) * CFrame.Angles(0, spin or 0, 0), slot.Scale)
+					-- Karten nahe der Mitte heben sich leicht nach vorne
+					local near = math.max(0, 1 - math.abs(x) / spacing)
+					slot.Place(cf * CFrame.new(0, 0.15, -0.35 - near * 0.4) * CFrame.Angles(0, spin or 0, 0), slot.Scale * (1 + near * 0.15))
 					slot.Visible = true
 				elseif slot.Visible then
 					slot.Card(PARK, 1)
@@ -575,35 +679,54 @@ function RollFx.Play(rollId, itemId, options)
 				end
 			end
 		end
-		-- jedes Feld, das die Markierung passiert, lässt sie kurz aufleuchten
-		local current = math.floor(pos + 0.5)
+		-- Rahmen und Markierung leuchten in der Farbe der Karte unter der Markierung
+		local current = math.clamp(math.floor(pos + 0.5), 1, n)
+		local color = slots[current].Tier.Color
 		if current ~= lastTick then
 			lastTick = current
 			marker.Transparency = 0
-			tween(marker, 0.12, { Transparency = 0.35 })
+			tween(marker, 0.12, { Transparency = 0.25 })
+			for _, r in ipairs(rails) do r.Color = color end
+			marker.Color = color:Lerp(Color3.new(1, 1, 1), 0.5)
+			backLight.Color = color
+			for _, p in ipairs(pointers) do p.Color = color:Lerp(Color3.new(1, 1, 1), 0.35) end
 		end
+		-- Lauflichter: schneller, je schneller das Band
+		clock = clock + 0.03 * (0.5 + (speed or 0) * 4)
+		for _, l in ipairs(lamps) do
+			l.Part.Color = Color3.fromHSV((l.I * 0.06 + clock) % 1, 0.7, 1)
+		end
+		streaks.Rate = math.clamp((speed or 0) * 120, 0, 90)
 	end
 
 	local start = 3
 	local jitter = rng:NextNumber(-0.38, 0.38) -- bleibt nicht genau in der Mitte stehen
 	local goal = win + jitter
 	local frames = math.floor(RollFx.SpinTime / 0.03)
+	local lastPos = start
 	for f = 1, frames do
 		local t = f / frames
-		local e = 1 - (1 - t) ^ 4
-		layout(start + (goal - start) * e, math.sin(f * 0.21) * 0.25 * (1 - t))
+		local e = 1 - (1 - t) ^ 5
+		local pos = start + (goal - start) * e
+		-- Herzschlag am Ende: das Licht pocht, während das Band kriecht
+		if t > 0.75 then
+			backLight.Brightness = 2 + math.abs(math.sin(f * 0.35)) * 4
+		end
+		layout(pos, math.sin(f * 0.21) * 0.25 * (1 - t), pos - lastPos)
+		lastPos = pos
 		task.wait(0.03)
 	end
 	-- einrasten
 	for f = 1, 10 do
 		local e = f / 10
-		layout(goal + (win - goal) * (1 - (1 - e) ^ 2))
+		layout(goal + (win - goal) * (1 - (1 - e) ^ 2), 0, 0)
 		task.wait(0.03)
 	end
-	layout(win)
-	task.wait(0.25)
+	layout(win, 0, 0)
+	streaks.Rate = 0
+	task.wait(0.3)
 
-	-- 5. Gewinn: alles andere verschwindet, die Sache springt nach vorne
+	-- 5. Gewinn: alles andere verschwindet, die Sache springt nach vorne; je seltener, desto größer der Auftritt
 	local winner = slots[win]
 	winner.Model.Parent = folder -- bleibt, wenn das Band verschwindet
 	for k, slot in ipairs(slots) do
@@ -613,45 +736,77 @@ function RollFx.Play(rollId, itemId, options)
 		end
 	end
 	winner.Card(PARK, 1)
-	for _, p in ipairs(frameParts) do
-		tween(p, 0.35, { Transparency = 1 })
+	for _, p in ipairs(reel:GetChildren()) do
+		if p:IsA("BasePart") then tween(p, 0.35, { Transparency = 1 }) end
 	end
-	local from = reelC * CFrame.new(0, 0.15, -0.35)
 	local to = reelC * CFrame.new(0, -0.3, -1.6)
-	local big = winner.Scale * 1.35
+	local from = reelC * CFrame.new(0, 0.15, -0.75)
+	local big = winner.Scale * 1.4
+	local anchor = holder(folder, to)
+	anchor.Name = GardenData.LootName(item)
+	-- Strahlenkranz hinter dem Gewinn (ab Selten), bei Göttlich in Regenbogenfarben
+	local rays = {}
+	if rare >= 1 then
+		local nRays = 6 + rare * 2
+		for i = 1, nRays do
+			local ray = Instance.new("Part")
+			ray.Name = "Strahl"
+			ray.Anchored, ray.CanCollide = true, false
+			ray.Material = Enum.Material.Neon
+			ray.Color = rare >= 5 and Color3.fromHSV(i / nRays, 0.6, 1) or tier.Color
+			ray.Transparency = 0.58
+			ray.Size = Vector3.new(0.05, 0.05, 0.05)
+			ray.Parent = folder
+			table.insert(rays, { Part = ray, A = i / nRays * math.pi * 2, L = 3.6 + rare * 0.9 })
+		end
+	end
+	local function placeRays(spinA, k)
+		for _, r in ipairs(rays) do
+			local a = r.A + spinA
+			r.Part.Size = Vector3.new(0.28 * k, r.L * k, 0.05)
+			r.Part.CFrame = to * CFrame.new(0, 0, 0.9) * CFrame.Angles(0, 0, a) * CFrame.new(0, r.L * k / 2, 0)
+		end
+	end
 	local steps = 16
 	for s = 1, steps do
 		local t = s / steps
-		local back = 1 + 2.7 * (t - 1) ^ 3 + 1.7 * (t - 1) ^ 2 -- Überschwingen wie Back-Out
-		winner.Place(from:Lerp(to, t) * CFrame.Angles(0, (1 - t) * math.pi * 2, 0), winner.Scale + (big - winner.Scale) * back)
+		local backOut = 1 + 2.7 * (t - 1) ^ 3 + 1.7 * (t - 1) ^ 2 -- Überschwingen wie Back-Out
+		winner.Place(from:Lerp(to, t) * CFrame.Angles(0, (1 - t) * math.pi * 2, 0), winner.Scale + (big - winner.Scale) * backOut)
+		placeRays(t, t)
 		task.wait(0.03)
 	end
 	winner.Place(to, big)
-	local anchor = holder(folder, to)
-	anchor.Name = item.Name
-	local gui = label(anchor, item, tier)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, RollFx.ItemSize * 1.35 / 2 + 0.7, 0)
-	local pop = emitter(anchor, { Color = ColorSequence.new(tier.Color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(4, 8 + rare * 2), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.35, 0) })
-	pop:Emit(14 + rare * 12)
+	label(anchor, item, tier).StudsOffsetWorldSpace = Vector3.new(0, RollFx.ItemSize * 1.4 / 2 + 0.7, 0)
+	local pop = emitter(anchor, { Color = ColorSequence.new(tier.Color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.6, 1.2), Speed = NumberRange.new(5, 10 + rare * 2), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.4, 0) })
+	pop:Emit(18 + rare * 14)
+	local winConfetti = emitter(anchor, { Color = ColorSequence.new(tier.Color, tier.Color:Lerp(Color3.new(1, 1, 1), 0.6)), LightEmission = 0.4, Lifetime = NumberRange.new(1, 1.8), Speed = NumberRange.new(8, 14), SpreadAngle = Vector2.new(60, 60), EmissionDirection = Enum.NormalId.Top, Acceleration = Vector3.new(0, -12, 0), Drag = 1, Size = NumberSequence.new(0.3, 0.15), RotSpeed = NumberRange.new(-300, 300) })
+	winConfetti:Emit(20 + rare * 15)
 	local l = Instance.new("PointLight")
 	l.Color = tier.Color
-	l.Brightness = 4 + rare * 1.5
-	l.Range = 8 + rare
+	l.Brightness = 6 + rare * 2
+	l.Range = 10 + rare * 2
 	l.Parent = anchor
-	tween(l, 1, { Brightness = 1 + rare * 0.3 })
-	if rare >= 2 then
-		shockwave(folder, to * CFrame.Angles(0, math.rad(90), 0), tier.Color, 5 + rare * 1.5, 0.6)
-	end
+	tween(l, 1.2, { Brightness = 1.5 + rare * 0.4 })
+	shockwave(folder, to * CFrame.Angles(0, math.rad(90), 0), tier.Color, 5 + rare * 2, 0.6)
 	if rare >= 3 then
 		shockwave(folder, origin * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), tier.Color, 14 + rare * 3, 1)
 		local sp = Instance.new("Sparkles")
 		sp.SparkleColor = tier.Color
 		sp.Parent = anchor
+		-- mehrere Wellen hintereinander, bei Göttlich drei
+		for wave = 1, rare - 2 do
+			task.delay(0.25 * wave, function()
+				if folder.Parent then
+					shockwave(folder, to * CFrame.Angles(0, math.rad(90), 0), wave % 2 == 0 and Color3.new(1, 1, 1) or tier.Color, 8 + rare * 2 + wave * 2, 0.7)
+					pop:Emit(12 + rare * 4)
+				end
+			end)
+		end
 	end
 	task.delay(0.4, function()
 		reel:Destroy()
 	end)
-	-- leicht schweben und drehen, solange der Ordner existiert
+	-- schweben und drehen, der Strahlenkranz dreht sich langsam mit
 	task.spawn(function()
 		local t = 0
 		while folder.Parent do
@@ -659,10 +814,11 @@ function RollFx.Play(rollId, itemId, options)
 			if winner.Model.Parent then
 				winner.Place(to * CFrame.new(0, math.sin(t * 2) * 0.1, 0) * CFrame.Angles(0, math.sin(t * 0.8) * 0.6, 0), big)
 			end
+			placeRays(1 + t * 0.25, 1 + math.sin(t * 3) * 0.05)
 			task.wait(0.05)
 		end
 	end)
-	task.wait(0.4)
+	task.wait(0.5)
 	return { Folder = folder, Item = item }
 end
 
