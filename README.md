@@ -212,11 +212,8 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
   Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig). Der Server würfelt, prüft
   Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
   zwei Aufrufen.
-- **Speichern:** DataStore `CoinmasterGarden`, Schlüssel `g_<UserId>`. Laden mit drei Versuchen. Schlägt das fehl,
-  bleibt der Garten gesperrt und wird **nicht** überschrieben. Gespeichert wird beim Verlassen, alle 60 Sekunden
-  bei Änderungen und beim Herunterfahren (`BindToClose`). Legt kein anderes Skript `leaderstats.Taler` an, macht
-  es dieses Skript und speichert die Taler mit. In Studio: *Game Settings › Security › Enable Studio Access to
-  API Services*.
+- **Speichern:** mit dem ganzen Spielstand (siehe „Spielstand speichern“). Garten-Aufträge gibt es erst, wenn der
+  Spielstand geladen ist. Robux-Rollen werden erst bestätigt, wenn der Kauf gespeichert ist.
 - **Robux-Rolle:** Developer Product anlegen und die Id oben im Skript in `ROLL_PRODUCTS` eintragen
   (`[ProductId] = "stern"`). Jeder Kauf wird mit seiner `PurchaseId` gemerkt und zählt nur einmal. Achtung:
   `ProcessReceipt` darf im Spiel nur ein Skript setzen.
@@ -353,7 +350,7 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
   samt Grundpaket je Seltenheit). Roblox zeigt höchstens 31 Highlights gleichzeitig; im Showcase fehlen
   Umriss und Glitch-Flackern deshalb. Dazu
   `Workspace › CoinmasterAuraShowcase` mit allen 50 Auras an Figuren. Zum Testen in Studio Play drücken
-  und im Chat `/aura krone` schreiben. Gekaufte Auras werden noch nicht gespeichert (DataStore fehlt).
+  und im Chat `/aura krone` schreiben. Gekaufte und angelegte Auras werden mit dem Spielstand gespeichert.
   Eigene Teilchenbilder (Münze, Herz, Note …) als Decal-IDs in `AuraData.Textures` eintragen.
 
 ## Spiel-Oberfläche
@@ -397,6 +394,31 @@ und folgen in weiteren Etappen.
   3D-Ansichten und „Animationen überspringen“ für Entdeckung und Schlüpfen.
 
 Tastenkürzel: K Skills, I Inventar, B Shop, O Einstellungen, F Münze suchen, Esc schließt.
+
+## Spielstand speichern (Roblox)
+
+`ServerScriptService › CoinmasterPlayerData` (ModuleScript) und `CoinmasterSave` (Script, startet es) speichern den
+ganzen Spielstand im DataStore **`CoinmasterPlayer`**, Schlüssel `p_<UserId>`
+(`roblox/js/saveLuau.js`).
+
+- **Was gespeichert wird:** `leaderstats.Taler` (legt das Modul an) und die Attribute am Spieler aus
+  `PlayerData.Keys`: Münzen (`Coins`), `Slots`, Welten (`Worlds`), Portale, Wiedergeburten, Auras (`Aura`,
+  `OwnedAuras`), Garten (`Garden`), dazu `Level`, `XP`, `Points`, `Skills`, `EggDiscount` für spätere Skripte, und
+  alles, was mit `Egg_` oder `Boost_` anfängt. Neue Werte: Namen in `PlayerData.Keys` eintragen. `World` (der
+  aktuelle Ort) bleibt draußen: Nach dem Beitreten steht man im Spawn.
+- **Laden:** Erst wenn alles gesetzt ist, kommt das Attribut `DataLoaded`. Shop, Auras und Garten nehmen vorher
+  keine Aufträge an („Dein Spielstand lädt noch“), damit nichts vom Laden überschrieben wird.
+- **Speichern:** beim Verlassen, jede Minute bei Änderungen (sonst alle 2,5 Minuten, um die Sperre aufzufrischen)
+  und beim Herunterfahren (`BindToClose`, wartet bis zu 25 Sekunden). Jeder Zugriff hat drei Versuche.
+- **Sitzungssperre:** Ist der Spielstand noch auf einem anderen Server offen, wird bis zu 30 Sekunden gewartet,
+  danach wird der Spieler mit einem Hinweis getrennt. Eine Sperre ohne Speichern seit 5 Minuten gilt als verwaist
+  (abgestürzter Server). Hat ein anderer Server übernommen, speichert der alte nicht mehr und trennt den Spieler.
+- **Fehler beim Laden:** Der Spieler wird getrennt („bitte später nochmal beitreten“), der alte Stand bleibt
+  unangetastet. In Studio ohne DataStore-Zugang spielt man stattdessen ohne Speichern weiter (Warnung im Output).
+  Fürs echte Speichern in Studio: *Game Settings › Security › Enable Studio Access to API Services*.
+- **Übernahme:** Ein Garten aus dem früheren DataStore `CoinmasterGarden` wird beim ersten Laden einmal übernommen.
+- Geprüft mit einem Roblox-Imitat in Lua: neu beitreten, Autosave, Verlassen, Serverwechsel, gleichzeitiger
+  Login, abgestürzter Server, Ladefehler, Studio ohne Zugang, Verlassen während des Ladens, Herunterfahren.
 
 ## Nach Roblox Studio übertragen
 

@@ -713,21 +713,19 @@ return GardenBuilder
 export const GARDEN_SERVER = `-- Coinmaster Adventure · Münzbaumgarten und Münzrollen (Server)
 -- RemoteFunction GardenRemote: openRoll (Rollen-Id) sowie die Garten-Aktionen aus GardenData.Act
 -- (buyGarden, buyBed, plant, use, harvest, dig). Der Server prüft alles und würfelt selbst.
--- Der Spielstand steht als JSON im Attribut Garden am Spieler und wird im DataStore „CoinmasterGarden“
--- gespeichert: beim Verlassen, alle 60 Sekunden bei Änderungen und beim Herunterfahren.
--- Taler kommen aus leaderstats.Taler. Legt kein anderes Skript leaderstats an, macht das dieses Skript
--- und speichert die Taler dann mit (Feld Taler im selben Eintrag).
+-- Der Garten steht als JSON im Attribut Garden am Spieler. Gespeichert wird er mit dem ganzen Spielstand
+-- (ServerScriptService > CoinmasterPlayerData); Aufträge gibt es erst, wenn der Spielstand geladen ist.
+-- Taler kommen aus leaderstats.Taler (legt CoinmasterPlayerData an).
 -- Robux-Rollen brauchen ein Developer Product: Id in ROLL_PRODUCTS eintragen.
--- Damit das Speichern in Studio klappt: Game Settings > Security > „Enable Studio Access to API Services“.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local DataStoreService = game:GetService("DataStoreService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local GardenData = require(root:WaitForChild("GardenData"))
 local RollData = require(root:WaitForChild("RollData"))
+local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterPlayerData"))
 
 -- Developer Products für Robux-Rollen: [ProductId] = "stern"
 local ROLL_PRODUCTS = {}
@@ -746,15 +744,7 @@ if not rollEvent then
 	rollEvent.Parent = root
 end
 
-local okStore, store = pcall(function()
-	return DataStoreService:GetDataStore("CoinmasterGarden")
-end)
-if not okStore then
-	warn("[Garten] DataStore nicht erreichbar, der Garten wird nicht gespeichert: " .. tostring(store))
-	store = nil
-end
-
-local gardens = {} -- [player] = { Data = garden, Loaded = bool, Dirty = bool, OwnTaler = bool }
+local gardens = {} -- [player] = { Data = garden, Loaded = bool }
 local lastCall = {}
 
 local function talerOf(player)
@@ -773,109 +763,28 @@ local function publish(player)
 	end
 end
 
-local function key(player)
-	return "g_" .. player.UserId
-end
-
--- mit Wiederholung: 3 Versuche, Wartezeit wächst
-local function retry(fn)
-	local ok, result
-	for attempt = 1, 3 do
-		ok, result = pcall(fn)
-		if ok then
-			return true, result
-		end
-		task.wait(attempt * 2)
-	end
-	return false, result
-end
-
-local function save(player)
-	local entry = gardens[player]
-	-- nie speichern, was nicht sauber geladen wurde: sonst würde ein Ladefehler den alten Stand überschreiben
-	if not store or not entry or not entry.Loaded then
-		return
-	end
-	local taler = entry.OwnTaler and talerOf(player)
-	local payload = { V = 1, Garden = entry.Data, Taler = taler and taler.Value or nil }
-	local ok, err = retry(function()
-		store:UpdateAsync(key(player), function()
-			return payload
-		end)
-	end)
-	if ok then
-		entry.Dirty = false
-	else
-		warn("[Garten] Speichern fehlgeschlagen für " .. player.Name .. ": " .. tostring(err))
-	end
-end
-
+-- Garten aus dem geladenen Spielstand übernehmen
 local function onJoin(player)
-	gardens[player] = { Data = GardenData.New(), Loaded = false, Dirty = false, OwnTaler = false }
-	-- leaderstats von einem anderen Skript abwarten, sonst selbst anlegen
-	local stats = player:WaitForChild("leaderstats", 5)
-	local saved = nil
-	if store then
-		local ok, result = retry(function()
-			return store:GetAsync(key(player))
-		end)
-		if not ok then
-			warn("[Garten] Laden fehlgeschlagen für " .. player.Name .. ": " .. tostring(result))
-			player:SetAttribute("GardenError", "Dein Garten konnte nicht geladen werden. Bitte später neu beitreten.")
-			publish(player)
-			return
-		end
-		saved = result
-	end
+	gardens[player] = { Data = GardenData.New(), Loaded = false }
+	if not PlayerData.WaitLoaded(player, 120) then return end
 	local entry = gardens[player]
 	if not entry then return end -- schon wieder weg
-	entry.Data = GardenData.Clean(saved and saved.Garden)
+	local ok, saved = pcall(function()
+		return HttpService:JSONDecode(player:GetAttribute("Garden") or "null")
+	end)
+	entry.Data = GardenData.Clean(ok and saved or nil)
 	entry.Loaded = true
-	if not stats then
-		stats = Instance.new("Folder")
-		stats.Name = "leaderstats"
-		local t = Instance.new("NumberValue")
-		t.Name = "Taler"
-		t.Value = saved and tonumber(saved.Taler) or 0
-		t.Parent = stats
-		stats.Parent = player
-		entry.OwnTaler = true
-		t.Changed:Connect(function()
-			entry.Dirty = true
-		end)
-	end
 	publish(player)
 end
 
-local function onLeave(player)
-	save(player)
+Players.PlayerAdded:Connect(onJoin)
+Players.PlayerRemoving:Connect(function(player)
 	gardens[player] = nil
 	lastCall[player] = nil
-end
-
-Players.PlayerAdded:Connect(onJoin)
-Players.PlayerRemoving:Connect(onLeave)
+end)
 for _, p in ipairs(Players:GetPlayers()) do
 	task.spawn(onJoin, p)
 end
-
-game:BindToClose(function()
-	for _, p in ipairs(Players:GetPlayers()) do
-		task.spawn(save, p)
-	end
-	task.wait(3)
-end)
-
-task.spawn(function()
-	while true do
-		task.wait(60)
-		for player, entry in pairs(gardens) do
-			if entry.Dirty then
-				task.spawn(save, player)
-			end
-		end
-	end
-end)
 
 -- Rolle öffnen: würfeln, ins Inventar legen; gibt die Ids mit Komma zurück
 local function openRoll(player, entry, roll)
@@ -885,7 +794,6 @@ local function openRoll(player, entry, roll)
 		entry.Data.Inv[item.Id] = (entry.Data.Inv[item.Id] or 0) + 1
 		table.insert(ids, item.Id)
 	end
-	entry.Dirty = true
 	publish(player)
 	local best = items[#items]
 	return table.concat(ids, ","), best
@@ -902,7 +810,7 @@ remote.OnServerInvoke = function(player, action, a, b)
 	end
 	local entry = gardens[player]
 	if not entry or not entry.Loaded then
-		return false, player:GetAttribute("GardenError") or "Dein Garten lädt noch"
+		return false, "Dein Spielstand lädt noch"
 	end
 	local taler = talerOf(player)
 	if not taler then
@@ -930,7 +838,6 @@ remote.OnServerInvoke = function(player, action, a, b)
 		if delta ~= 0 then
 			taler.Value = taler.Value + delta
 		end
-		entry.Dirty = true
 		publish(player)
 	end
 	return ok, text
@@ -956,8 +863,8 @@ if next(ROLL_PRODUCTS) then
 			local ids = openRoll(player, entry, RollData.ById[rollId])
 			rollEvent:FireClient(player, rollId, ids)
 		end
-		save(player)
-		if entry.Dirty then
+		-- erst bestätigen, wenn der Spielstand mit dem Kauf gespeichert ist
+		if not PlayerData.Save(player) then
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted

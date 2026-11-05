@@ -635,7 +635,7 @@ return AuraFx
 export const AURA_SERVER = `-- Coinmaster Adventure · Auras (Server)
 -- Kaufen und Anlegen. Der Client fragt nur, der Server prüft Preis, Besitz und Aura-Id.
 -- Taler kommen aus leaderstats.Taler (IntValue oder NumberValue), falls es das gibt.
--- Speichern (DataStore) fehlt noch: Gekauftes geht beim Verlassen verloren.
+-- Gespeichert werden OwnedAuras und Aura mit dem Spielstand (ServerScriptService > CoinmasterPlayerData).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -678,6 +678,9 @@ local function handle(player, action, id)
 	lastCall[player] = now
 	if type(action) ~= "string" then
 		return false, "Ungültig"
+	end
+	if not player:GetAttribute("DataLoaded") then
+		return false, "Dein Spielstand lädt noch"
 	end
 	if action == "unequip" then
 		player:SetAttribute("Aura", nil)

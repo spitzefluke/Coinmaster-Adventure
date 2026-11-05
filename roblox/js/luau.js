@@ -8,6 +8,7 @@ import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
 import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
 import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_CLIENT } from './gardenLuau.js';
+import { PLAYER_DATA, SAVE_SERVER } from './saveLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1254,12 +1255,15 @@ export function installerSource(data) {
 --   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS && data.TREES ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS && data.TREES ? `
 --   Münzrollen: auf dem Server RollData.Open(rollId) würfeln, auf dem Client RollFx.Play(rollId, ids) zeigen
 --   Workspace > CoinmasterGardenShowcase      Münzbaumgarten mit allen ${data.TREES.length} Münzbäumen (GardenBuilder)` : ''}
+--   ServerScriptService > CoinmasterSave + CoinmasterPlayerData   speichert den ganzen Spielstand im DataStore
+--                                             (Taler, Münzen, Welten, Eier, Boosts, Auras, Garten …).
+--                                             In Studio: Game Settings > Security > Enable Studio Access to API Services
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
 --   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü, Shop, Inventar, Welten) aus GameUI
 --   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)${data.ROLLS && data.TREES ? `
---   ServerScriptService > CoinmasterGarden    Münzbaumgarten und Münzrollen (GardenRemote), speichert im DataStore
+--   ServerScriptService > CoinmasterGarden    Münzbaumgarten und Münzrollen (GardenRemote)
 --   StarterPlayerScripts > CoinmasterGardenClient   baut den eigenen Garten (Part „GartenPlatz“ im Workspace)` : ''}${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
 --   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
@@ -1413,6 +1417,9 @@ local function addScript(className, parent, name, source)
 	s.Parent = parent
 	return s
 end
+-- Spielstand speichern: ModuleScript zuerst, die anderen Server-Skripte warten darauf
+addScript("ModuleScript", game:GetService("ServerScriptService"), "CoinmasterPlayerData", ${longString(PLAYER_DATA)})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterSave", ${longString(SAVE_SERVER)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})

@@ -1394,7 +1394,8 @@ export const SHOP_SERVER = `-- Coinmaster Adventure · Shop, Inventar und Welten
 -- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Taler und Regeln (WorldData).
 -- Ein gekauftes Ei zählt das Attribut Egg_<id> hoch, ein Boost setzt Boost_<id> auf sein Ende (os.time()).
 -- Münzen stehen als JSON im Attribut Coins, Welten und Portale als Ids mit Komma in Worlds und Portals,
--- die aktuelle Welt in World, Wiedergeburten in Rebirths. Speichern (DataStore) fehlt noch.
+-- die aktuelle Welt in World, Wiedergeburten in Rebirths. Gespeichert wird alles von
+-- ServerScriptService > CoinmasterPlayerData; Aufträge gibt es erst, wenn der Spielstand geladen ist.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -1509,6 +1510,9 @@ remote.OnServerInvoke = function(player, action, id)
 	lastCall[player] = now
 	if type(action) ~= "string" or (id ~= nil and (type(id) ~= "string" or #id > 2000)) then
 		return false, "Ungültig"
+	end
+	if not player:GetAttribute("DataLoaded") then
+		return false, "Dein Spielstand lädt noch"
 	end
 	id = id or ""
 	if action == "buyEgg" then
