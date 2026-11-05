@@ -436,6 +436,21 @@ function skyShield(sky, built, world) {
     }
 }
 
+// Himmelskörper (Erde, Neptun, Sonne …) stehen auf der Webseite weit draußen. In Roblox lägen sie hinter der
+// Himmelskuppel und wären unsichtbar: alle fernen Teile gemeinsam zur Mitte ziehen und im selben Maß
+// verkleinern. So sehen sie von der Insel aus gleich groß aus, und Planet und Ring bleiben beisammen.
+function pullInsideDome(sky) {
+  const far = sky.filter((p) => Math.hypot(...p.pos) > DOME_RADIUS * 0.92);
+  if (!far.length) return;
+  const reach = Math.max(...far.map((p) => Math.hypot(...p.pos) + Math.max(...p.size) / 2));
+  const f = Math.min(1, (DOME_RADIUS * 0.86) / reach);
+  if (f >= 1) return;
+  for (const p of far) {
+    p.pos = p.pos.map((v) => v * f);
+    p.size = p.size.map((v) => v * f);
+  }
+}
+
 // Partikel der Welt als ParticleEmitter-Einstellungen
 function emitterFor(world, R) {
   const cfg = FX[world.fx];
@@ -519,6 +534,7 @@ export function worldToParts(world) {
     if (o.material.blending === THREE.AdditiveBlending) return; // Lichtstrahlen, Strahl unter dem UFO
     convertMesh(rbx.sky ? sky : parts, o, world);
   });
+  pullInsideDome(sky);
   groundColumns(parts, built, world);
   rimLip(parts, built, world);
   underside(parts, world, built.radius);
