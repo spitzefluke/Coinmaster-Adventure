@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { WORLDS, planetById } from './worlds.js';
 import { buildSpawnTown } from './spawnTown.js';
 import { planet1Before, planet1After } from './planet1.js';
+import { planet2Before, planet2After } from './planet2.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -342,9 +343,11 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
+  planet2Before(ctx, kit); // Planet 2 ebenso
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
   planet1After(ctx, kit); // Planet 1: Kulisse, Bodendetails, Leben, Klänge
+  planet2After(ctx, kit);
 
   // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.

@@ -314,11 +314,26 @@ Glutfugen, Höhlensteine mit Leuchtpilzen, Schokolade mit Zuckerrand). An jedem 
 mit Steinkreis; dort kommen die ersten Münzplätze (`CoinSpawn`) hin. Die Kulisse steht 350–550 Studs
 entfernt innerhalb der Kuppel und ragt aus dem Wolkenmeer.
 
+**Planet 2 (`welten/js/planet2.js`):** dasselbe Muster im All.
+
+| Welt | Wahrzeichen | Kulisse (Ordner „Himmel“) | Leben und Himmel |
+| --- | --- | --- | --- |
+| Mond | Rakete auf der Startrampe | Kraterränder, schwebende Brocken | Sternschnuppen, Mondstaub |
+| Neptun | Eisturm mit drei kreisenden Ringen | Eisspitzen mit Leuchtkristallen | Sturmböen, Sternschnuppen |
+| Mars | Radarschüssel mit Solarfeld | Tafelberge in Schichten | Staubteufel, Sternschnuppen |
+| Saturn | Sternwarte mit Teleskop | Asteroidengürtel rund um die Insel | Goldstaub, Sternschnuppen |
+| Alien | Alien-Tor mit Ring und schwebender Kugel | Riesenpilze mit Leuchthüten, zwei UFOs | Leuchtsporen, Sternschnuppen |
+| Sonne | Sonnentempel mit schwebender Sonnenscheibe | Sonnenbögen aus dem Glutmeer | Funkenflug |
+
+Wege: Mondgestein, Eisglas, Metallplatten mit Glutfugen, Sandstein, Alien-Fliesen und Basalt mit
+Leuchtfugen. Die Himmelskörper (Erde, Neptun, Saturn, Sonne …) zieht der Export gemeinsam in die
+Himmelskuppel und verkleinert sie im selben Maß, so sehen sie gleich groß aus und bleiben sichtbar.
+
 **Klänge:** Jede Welt hat im Ordner `Klaenge` eine unsichtbare `Klangquelle` über der Inselmitte mit einem
 `Sound` je Platz (`Looped`, `Playing`, `RollOffMaxDistance` 700 Studs, also nur nahe der Insel hörbar).
 Die `SoundId` ist noch leer: in Roblox Studio eine Sound-ID aus der Toolbox eintragen, der `StringValue`
 „Vorschlag“ unter jedem Sound sagt, was passt (z. B. Normal: Vogelgezwitscher, Bach, Wind; Höhle: tropfendes
-Wasser mit Hall, Kristallklingen; Candy: Spieluhr-Musik). Die Vorschau spielt keine Klänge.
+Wasser mit Hall, Kristallklingen; Candy: Spieluhr-Musik; Mond: Weltraum-Summen und Funkpiepen; Alien: Zirpen und UFO-Brummen). Die Vorschau spielt keine Klänge.
 
 **Simulator-Stil (alle Inseln und der Spawn, `roblox/js/worldParts.js`):** Der Boden hat eine Grasdecke
 über einer Erdschicht (an Hängen sieht man die Schichten), das Gras liegt in Flecken aus drei Tönen statt
