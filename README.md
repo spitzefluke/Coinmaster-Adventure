@@ -155,8 +155,17 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
   (oft neben etwas Seltenem) und rastet ein.
 - **Gewinn:** springt nach vorne, mit Strahlenkranz (ab Selten), Konfetti und Druckwellen, die mit der Seltenheit
   wachsen; Göttlich mit Regenbogen-Strahlen und drei Wellen.
-- **Samen statt Bäume:** Aus der Rolle kommen Samentüten (`LootBuilder.Seed`). Gesät wachsen sie im Garten mit
+- **Samen statt Bäume:** Aus der Rolle kommen Samentüten (`LootBuilder.Seed`): bauchige Tüte mit Rand in der Farbe
+  der Seltenheit, Baum-Bild, Glanzstreifen, eingerissener Ecke und Samen davor. Gesät wachsen sie im Garten mit
   sichtbarem Timer (Keimling, Jungbaum, ausgewachsen) zum Münzbaum.
+- **Werkzeug-Design:** Gießkannen mit Schulter, Zierband, Nieten, Bügel, Brause mit Löchern und Tropfen; Dünger als
+  gebundener Sack mit Etikett und Körnern; Talerbeutel mit Rüschen, Schleife und Talern; Spaten mit T-Griff,
+  Edelstein-Manschette und runder Spitze; Truhe mit gewölbtem Deckel und Schatzberg. Akzente in der Farbe der
+  Seltenheit, ab Episch Licht, ab Legendär Funkeln.
+- **Animiertes Wachsen:** `GardenBuilder.Animate(model, zeit, dt)` jedes Bild: Bäume wachsen stufenlos mit dem
+  Fortschritt, wiegen sich im Wind, wachsende atmen leicht und lassen Blättchen aufsteigen; eine neue Stufe ploppt
+  mit Funken auf (`Plot.Fresh`). Der Timer schwebt über der Baumspitze mit. Den Garten an seinen Platz setzt
+  `GardenBuilder.Move`.
 
 | Rolle | Stufe | Inhalt | Glück | Mindestens | Preis (Vorschlag) |
 |---|---|---|---|---|---|
