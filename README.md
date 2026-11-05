@@ -144,27 +144,41 @@ Client; das Tier zieht `PetData.Roll(eggId)`.
 
 ## Münzrollen
 
-Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Schätze für den Münzbaumgarten. Beim Öffnen
-wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
-springen **Münzbäume und Gartenwerkzeug** einzeln heraus, das Seltenste zuletzt. Seltenes kommt mit Blitz und
-Druckwelle, vor einer legendären oder selteneren letzten Sache gibt es eine kurze Pause mit Lichtsog.
-Die Rollen kosten Taler aus dem Garten, der Inhalt landet im Inventar des Gartens.
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für den Münzbaumgarten.
 
-| Rolle | Stufe | Inhalt | Glück | Garantie (letzte Sache) | Preis (Vorschlag) |
+- **Zerreißen:** Die Rolle wackelt, hebt ab und dreht sich immer schneller. Dann teilt sie sich in zwei Hälften
+  mit Papierzacken, der Riss glüht, reißt in zwei Rucken auf (Konfetti, Licht), und die Hälften fliegen
+  auseinander. In der Rissfläche glänzen die Münzen, eine Lichtsäule schießt nach oben.
+- **Rollband:** Farbige Karten (Farbe der Seltenheit, seltene mit Ecken-Steinen) laufen von rechts nach links,
+  Lauflichter in Regenbogenfarben, Fahrtwind-Streifen. Rahmen, Markierung und Licht leuchten in der Farbe der
+  Karte unter der Markierung. Am Ende pocht das Licht, das Band kriecht, bleibt knapp neben der Mitte stehen
+  (oft neben etwas Seltenem) und rastet ein.
+- **Gewinn:** springt nach vorne, mit Strahlenkranz (ab Selten), Konfetti und Druckwellen, die mit der Seltenheit
+  wachsen; Göttlich mit Regenbogen-Strahlen und drei Wellen.
+- **Samen statt Bäume:** Aus der Rolle kommen Samentüten (`LootBuilder.Seed`). Gesät wachsen sie im Garten mit
+  sichtbarem Timer (Keimling, Jungbaum, ausgewachsen) zum Münzbaum.
+
+| Rolle | Stufe | Inhalt | Glück | Mindestens | Preis (Vorschlag) |
 |---|---|---|---|---|---|
-| Kupferrolle | Normal | 3 | ×1 | – | 500 Taler |
-| Silberrolle | Selten | 4 | ×1,6 | ab Selten | 5.000 Taler |
-| Goldrolle | Episch | 5 | ×2,5 | ab Episch | 40.000 Taler |
-| Juwelenrolle | Mystisch | 6 | ×4 | ab Legendär | 250.000 Taler |
-| Sternenrolle (Robux-Rolle) | Limitiert | 8 | ×6 | ab Legendär | R$ 149 |
+| Kupferrolle | Normal | 1 | ×1 | Gewöhnlich | 300 Taler |
+| Silberrolle | Selten | 1 | ×1,6 | Selten | 3.000 Taler |
+| Goldrolle | Episch | 1 | ×2,5 | Episch | 20.000 Taler |
+| Juwelenrolle | Mystisch | 1 | ×4 | Legendär | 120.000 Taler |
+| Sternenrolle (Robux-Rolle) | Limitiert | 1 | ×6 | Legendär | R$ 99 |
 
+- **Was in den Rollen steckt:** Unter den Rollen zeigt die Seite alle 18 Schätze (9 Münzbäume, 9 Werkzeuge) als
+  drehbare 3D-Vorschau aus `LootBuilder`, mit Seltenheit, Ertrag oder Wirkung. Ein Filter je Rolle zeigt die Chance
+  jedes Schatzes (Chance der Seltenheit geteilt durch die Anzahl Schätze dieser Seltenheit) und graut aus, was in
+  der Rolle nicht vorkommt.
 - **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
-  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Göttlich bekommt also den vollen Faktor (1,72 % bei der
-  Sternenrolle). Innerhalb einer Seltenheit ist jede Sache gleich wahrscheinlich. Die Garantie greift nur, wenn
-  vorher nichts so Seltenes kam. Rechnung: `rollen/js/rolls.js`.
-- **Roblox:** `RollData` (`TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
-  `RollFx.Play(rollId, itemIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
-  `RollData.Open(rollId)` würfeln, auf dem Client mit den Ids `RollFx.Play` zeigen.
+  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
+  Sternenrolle: Legendär 61,7 %, Mythisch 28,2 %, Göttlich 10,1 %. Innerhalb einer Seltenheit ist jede Sache
+  gleich wahrscheinlich. Rechnung: `rollen/js/rolls.js`.
+- **Roblox:** `RollData` (`TierChances`, `MinIndex`, `Pick`, `Open`), `RollBuilder.Build(roll)` (Rolle auf
+  Sockel) und `RollFx.Play(rollId, itemId, { CFrame = …, Parent = …, Window = … })` (`roblox/js/rollLuau.js`).
+  Auf dem Server `RollData.Open(rollId)` würfeln, auf dem Client mit der Id `RollFx.Play` zeigen. Die übrigen
+  Felder im Band würfelt der Client nur zur Show nach denselben Chancen. Einstellbar: `RollFx.SpinTime`
+  (5 Sekunden), `RollFx.Window` (halbe Bandbreite), `RollFx.Spacing`, `RollFx.Slots`.
 
 ## Münzbaumgarten
 
@@ -198,8 +212,9 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
 | Talertruhe | Göttlich | +250.000 Taler |
 
 - **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
-  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Tool(tool)`, `Build(item)`) und
-  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume).
+  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Seed(tree)`, `Tool(tool)`, `Build(item)`) und
+  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume, Timer über
+  wachsenden Bäumen; `GardenBuilder.SetTimer` zählt sie weiter).
   Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
 
 ### Im Spiel (Roblox)

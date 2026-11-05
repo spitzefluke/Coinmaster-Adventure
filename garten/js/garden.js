@@ -45,7 +45,10 @@ export const TOOLS = [
   { id: 'talertruhe', name: 'Talertruhe', rarity: 'goettlich', kind: 'taler', amount: 250000, model: 'chest', color: '#ffd45a', text: 'Eine ganze Truhe Taler. Selten wie ein Sternenbaum.' },
 ];
 
-export const LOOT = [...TREES.map((t) => ({ ...t, type: 'tree' })), ...TOOLS.map((t) => ({ ...t, type: 'tool' }))];
+// Aus den Rollen kommen von Bäumen nur die Samen (seed); gesät wachsen sie mit Timer zum Baum
+export const LOOT = [...TREES.map((t) => ({ ...t, type: 'tree', seed: `${t.name}-Samen` })), ...TOOLS.map((t) => ({ ...t, type: 'tool' }))];
+// Name, wie er im Inventar und beim Öffnen steht: Samen für Bäume, sonst der Name
+export const lootName = (item) => item.seed || item.name;
 export const lootById = Object.fromEntries(LOOT.map((l) => [l.id, l]));
 
 export const GARDEN = {
@@ -149,10 +152,10 @@ export function gardenAct(g, action, a, b, t, taler) {
     const tree = lootById[b];
     if (!Number.isInteger(bed) || bed < 1 || bed > g.Beds) return [false, 'Dieses Beet gibt es nicht', 0];
     if (g.Plots[bed]) return [false, 'Das Beet ist schon belegt', 0];
-    if (!tree || tree.type !== 'tree' || !(g.Inv[b] > 0)) return [false, 'Diesen Baum hast du nicht', 0];
+    if (!tree || tree.type !== 'tree' || !(g.Inv[b] > 0)) return [false, 'Diese Samen hast du nicht', 0];
     take(b);
     g.Plots[bed] = { Tree: b, Planted: t, Bonus: 0, Harvested: 0, Boost: 1, BoostEnd: 0 };
-    return [true, `${tree.name} in Beet ${bed} gepflanzt`, 0];
+    return [true, `${tree.seed} in Beet ${bed} gesät`, 0];
   }
   if (action === 'use') {
     const tool = lootById[a];

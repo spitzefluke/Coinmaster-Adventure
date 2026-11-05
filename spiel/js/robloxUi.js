@@ -67,7 +67,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
     function __applyInventory(kind, a, b) __GameUI.ApplyInventory(kind, a, b) end
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
-      PlayRoll = function(rollId, ids) __uiAction("playRoll", rollId .. "|" .. ids) end,
+      PlayRoll = function(rollId, itemId) __uiAction("playRoll", rollId .. "|" .. itemId) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
       DevTools = ${devTools ? 'true' : 'false'},
       CodeHint = ${codeHint ? q(codeHint) : 'nil'},
