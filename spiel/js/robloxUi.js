@@ -65,6 +65,13 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   `, 'Spiel-Oberfläche');
   const playerGui = lua.get(9);
   const screen = createScreen(canvas, playerGui, lua);
+  // Bildschirmgröße wie Camera.ViewportSize in Roblox (für die Handy-Anordnung)
+  const viewport = () => {
+    const r = canvas.getBoundingClientRect();
+    if (r.width && r.height) lua.call('__setViewport', Math.round(r.width), Math.round(r.height));
+  };
+  new ResizeObserver(viewport).observe(canvas);
+  viewport();
 
   // Zeiger: was die UI trifft, geht nicht an die Welt darunter
   const at = (e) => {

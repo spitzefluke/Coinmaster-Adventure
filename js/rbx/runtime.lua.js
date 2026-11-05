@@ -876,8 +876,17 @@ function methods.GetPartBoundsInBox() return {} end
 function methods.GetPartBoundsInRadius() return {} end
 
 -- Kamera: Lua-Tabelle, JS setzt CFrame und Sichtfeld jedes Bild
-__camera = setmetatable({ __props = { Name = "Camera", CFrame = CFrame.new(), FieldOfView = 70 }, __children = {}, __attrs = {}, __class = "Camera", __virtual = true, __id = -2 }, INST)
+__camera = setmetatable({ __props = { Name = "Camera", CFrame = CFrame.new(), FieldOfView = 70, ViewportSize = Vector2.new(1280, 720) }, __children = {}, __attrs = {}, __class = "Camera", __virtual = true, __id = -2 }, INST)
 rawset(__camera, "__set", function() return true end)
+-- Bildschirmgröße (Camera.ViewportSize) aus JS; meldet die Änderung wie in Roblox
+function __setViewport(w, h)
+	local c = rawget(__camera, "__props")
+	local old = c.ViewportSize
+	if old and old.X == w and old.Y == h then return end
+	c.ViewportSize = Vector2.new(w, h)
+	local ps = rawget(__camera, "__propSignals")
+	if ps and ps.ViewportSize then ps.ViewportSize:Fire() end
+end
 function __setCam(fov, ...)
 	local c = rawget(__camera, "__props")
 	c.CFrame = CFrame.new(...)

@@ -341,6 +341,17 @@ fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameU
 Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den Hinweis, „Weniger Partikel“
 weniger Funken.
 
+**Icons:** Alle Icons der Oberfläche liegen auf einem Bild (`roblox/js/iconSheet.js`, 47 Icons in Gold,
+1024 × 768). Auf der Roblox-Seite gibt es `Icons.png` zum Herunterladen (Schritt 6); nach dem Hochladen die
+Asset-ID in `UITheme.IconSheet` eintragen. `GameUI.Icon(name)` schneidet das Icon mit `ImageRectOffset`
+aus; ohne Bild-ID zeigt es das passende Emoji. Die Vorschau zeigt die Icons schon.
+
+**Handy zuerst:** Bei weniger als 900 × 560 Punkten (`Camera.ViewportSize`) ordnet sich die Oberfläche
+fürs Handy an: Menü als Leiste unten links, „Münze suchen“ groß unten rechts (Daumen), Fenster fast
+vollflächig und etwas kleiner skaliert, schmalere Kopfzeile. Hochkant rückt „Münze suchen“ über das Menü.
+Der HUD-ScreenGui nutzt `ScreenInsets = CoreUISafeInsets` (Notch). In der Vorschau zeigt der Knopf
+„Handy-Ansicht“ die Spielansicht in iPhone-Größe quer (844 × 390).
+
 Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
 Spielstand neu beginnen“.
 

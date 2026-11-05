@@ -293,7 +293,8 @@ end
 
 -- ── HUD ──
 local function buildHud(playerGui)
-	local gui = new("ScreenGui", { Name = "CoinmasterHUD", ResetOnSpawn = false, Parent = playerGui })
+	-- ScreenInsets: Inhalte bleiben aus Notch und abgerundeten Ecken heraus
+	local gui = new("ScreenGui", { Name = "CoinmasterHUD", ResetOnSpawn = false, ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets, Parent = playerGui })
 
 	-- Spieler: Level-Abzeichen, Name, Skillpunkte, Erfahrung
 	local level = new("TextButton", { Name = "Level", Size = UDim2.new(0, 64, 0, 64), Position = UDim2.new(0, 16, 0, 8), BackgroundColor3 = C.gold, Text = "", AutoButtonColor = false, Parent = gui }, {
@@ -303,6 +304,7 @@ local function buildHud(playerGui)
 	})
 	ui.levelText = label({ Size = UDim2.new(1, 0, 1, 0), Text = "1", Font = FONT, TextSize = 30, TextColor3 = C.goldInk, Parent = level })
 	pressable(level, function() GameUI.Toggle("skills") end)
+	ui.levelBadge = level
 	local info = new("Frame", { Name = "Spieler", Size = UDim2.new(0, 250, 0, 58), Position = UDim2.new(0, 72, 0, 11), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Parent = gui }, {
 		corner(R.M),
 		new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }),
@@ -322,6 +324,7 @@ local function buildHud(playerGui)
 	ui.worldText = label({ Size = UDim2.new(1, -20, 1, 0), Position = UDim2.new(0, 10, 0, 0), Text = "Spawn", Font = FONT, TextSize = T.Large, Parent = ui.world })
 
 	-- Taler, Wetter, Boosts oben rechts
+	ui.info = info
 	local right = new("Frame", { Name = "Rechts", Size = UDim2.new(0, 320, 0, 220), Position = UDim2.new(1, -16, 0, 8), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = gui }, {
 		new("UIListLayout", { Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
@@ -345,9 +348,10 @@ local function buildHud(playerGui)
 	})
 
 	-- Menü links
-	local menu = new("Frame", { Name = "Menue", Size = UDim2.new(0, 84, 0, 486), Position = UDim2.new(0, 16, 0.5, 20), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = gui }, {
-		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
-	})
+	local menu = new("Frame", { Name = "Menue", Size = UDim2.new(0, 84, 0, 486), Position = UDim2.new(0, 16, 0.5, 20), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = gui })
+	ui.menu = menu
+	ui.menuLayout = new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = menu })
+	ui.menuScale = new("UIScale", { Scale = 1, Parent = menu })
 	ui.badges = {}
 	local entries = {
 		{ "welten", "globe", "Welten" }, { "skills", "tree", "Skills" }, { "inventar", "bag", "Inventar" },
@@ -378,7 +382,7 @@ local function buildHud(playerGui)
 		gradient(C.greenHi, C.greenDeep),
 	})
 	icon("search", { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0, 28, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.find })
-	label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
+	ui.findLabel = label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
 	new("UIStroke", { Color = C.greenDark, Thickness = 2, Parent = ui.find })
 	pressable(ui.find, function() options.OnAction("find") end)
 	ui.findHint = label({ Size = UDim2.new(0, 320, 0, 18), Position = UDim2.new(0.5, 0, 1, -12), AnchorPoint = Vector2.new(0.5, 1), Text = "", TextSize = T.Tiny, TextColor3 = C.ink, TextStrokeTransparency = 0.5, Font = BODY, Parent = gui })
@@ -414,7 +418,7 @@ local function refreshHud()
 	if w then
 		local m = MutationData.ForWeather(wid)
 		local left = (ReplicatedStorage:GetAttribute("WeatherEnds") or os.time()) - os.time()
-		ui.weatherText.Text = "☁️ " .. w.Name .. (m and (" · " .. m.Name .. " " .. m.Chance .. " %") or "") .. "  " .. mmss(left)
+		ui.weatherText.Text = w.Name .. (m and (" · " .. m.Name .. " " .. m.Chance .. " %") or "") .. "  " .. mmss(left)
 		ui.weatherStroke.Color = w.Color
 	end
 	-- aktive Boosts: Zeilen bleiben stehen, nur die Zeit ändert sich
@@ -580,8 +584,10 @@ local function buildWindow(playerGui, key, iconName, title, tabs, fill)
 	local win = new("Frame", { Name = "Fenster", Size = UDim2.new(0.84, 0, 0.84, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.bg, Parent = gui }, {
 		corner(R.XL),
 		stroke(C.gold, 3),
-		new("UISizeConstraint", { MaxSize = Vector2.new(980, 640) }),
 	})
+	w.win = win
+	w.limit = new("UISizeConstraint", { MaxSize = Vector2.new(980, 640), Parent = win })
+	w.baseScale = 1 -- am Handy kleiner, damit mehr hineinpasst
 	w.scale = new("UIScale", { Scale = 1, Parent = win })
 	local head = new("Frame", { Name = "Kopf", Size = UDim2.new(1, -40, 0, 64), Position = UDim2.new(0, 20, 0, 14), BackgroundTransparency = 1, Parent = win })
 	new("Frame", { Size = UDim2.new(0, 56, 0, 56), BackgroundColor3 = C.gold, Parent = head }, {
@@ -734,9 +740,9 @@ function GameUI.Open(key, tab)
 	w.closing = false
 	w.gui.Enabled = true
 	if not wasOpen then
-		w.scale.Scale = 0.85
+		w.scale.Scale = 0.85 * w.baseScale
 		w.dim.BackgroundTransparency = 1
-		TweenService:Create(w.scale, M.Pop, { Scale = 1 }):Play()
+		TweenService:Create(w.scale, M.Pop, { Scale = w.baseScale }):Play()
 		TweenService:Create(w.dim, M.Normal, { BackgroundTransparency = 0.45 }):Play()
 	end
 	rebuild(w)
@@ -745,7 +751,7 @@ end
 local function hide(w)
 	if not w.gui.Enabled or w.closing then return end
 	w.closing = true
-	TweenService:Create(w.scale, M.Exit, { Scale = 0.9 }):Play()
+	TweenService:Create(w.scale, M.Exit, { Scale = 0.9 * w.baseScale }):Play()
 	TweenService:Create(w.dim, M.Exit, { BackgroundTransparency = 1 }):Play()
 	task.delay(Theme.ExitTime, function()
 		if w.closing then
@@ -1307,6 +1313,82 @@ end
 function GameUI.OpenWorlds(tab) GameUI.Open("welten", tab) end
 ${GAME_UI_MORE}
 
+-- ══ Anordnung je nach Bildschirm: am Handy Menü unten links, „Münze suchen“ groß unten rechts,
+-- Fenster fast vollflächig und etwas kleiner skaliert. Gilt bei weniger als 900 × 560 Punkten. ══
+local function applyLayout()
+	local camera = workspace.CurrentCamera
+	local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)
+	local compact = vp.X < 900 or vp.Y < 560
+	local tiny = vp.Y < 430
+	local narrow = vp.X < 600 -- hochkant (z. B. Vorschau am Handy)
+	local key = tostring(compact) .. tostring(tiny) .. tostring(narrow) .. (narrow and tostring(math.floor(vp.X)) or "")
+	if ui.layoutKey == key then return end
+	ui.layoutKey = key
+	ui.compact, ui.tiny = compact, tiny
+	GameUI.Compact = compact
+	-- Menü
+	if compact then
+		ui.menuLayout.FillDirection = Enum.FillDirection.Horizontal
+		ui.menu.Size = UDim2.new(0, 6 * 72 + 5 * 10, 0, 70)
+		ui.menu.Position = UDim2.new(0, 12, 1, -10)
+		ui.menu.AnchorPoint = Vector2.new(0, 1)
+		ui.menuScale.Scale = tiny and 0.78 or 0.88
+		if narrow then
+			-- ganze Breite nutzen
+			ui.menuScale.Scale = math.min(0.88, (vp.X - 24) / (6 * 72 + 5 * 10))
+		end
+	else
+		ui.menuLayout.FillDirection = Enum.FillDirection.Vertical
+		ui.menu.Size = UDim2.new(0, 84, 0, 486)
+		ui.menu.Position = UDim2.new(0, 16, 0.5, 20)
+		ui.menu.AnchorPoint = Vector2.new(0, 0.5)
+		ui.menuScale.Scale = 1
+	end
+	-- Münze suchen: groß unten rechts, gut mit dem Daumen erreichbar
+	if narrow then
+		-- über dem Menü in der Mitte
+		ui.find.Size = UDim2.new(0, 220, 0, 56)
+		ui.find.Position = UDim2.new(0.5, 0, 1, -(70 * ui.menuScale.Scale + 22))
+		ui.find.AnchorPoint = Vector2.new(0.5, 1)
+		ui.findHint.Visible = false
+	elseif compact then
+		ui.find.Size = UDim2.new(0, 210, 0, 60)
+		ui.find.Position = UDim2.new(1, -12, 1, -10)
+		ui.find.AnchorPoint = Vector2.new(1, 1)
+		ui.findHint.Visible = false
+	else
+		ui.find.Size = UDim2.new(0, 270, 0, 64)
+		ui.find.Position = UDim2.new(0.5, 0, 1, -34)
+		ui.find.AnchorPoint = Vector2.new(0.5, 1)
+		ui.findHint.Visible = true
+	end
+	ui.findLabel.TextSize = compact and T.Large or T.Title
+	ui.findLabel.Position = UDim2.new(0, compact and 62 or 70, 0, 0)
+	-- schmal: Welt-Name und Spieler-Feld ausblenden (das Level-Abzeichen bleibt)
+	ui.world.Visible = not narrow
+	ui.info.Visible = not narrow
+	-- Kopfzeile schmaler
+	ui.info.Size = UDim2.new(0, compact and 200 or 250, 0, 58)
+	ui.xpText.Visible = not tiny
+	ui.toasts.Position = compact and UDim2.new(0.5, 0, 1, -86) or UDim2.new(0.5, 0, 1, -118)
+	ui.toasts.Size = UDim2.new(0, compact and 360 or 420, 0, 200)
+	-- Fenster
+	for _, w in pairs(windows) do
+		if compact then
+			w.limit.MaxSize = Vector2.new(math.huge, math.huge)
+			w.baseScale = tiny and 0.78 or 0.9
+			-- skaliert wird um die Mitte, also das Fenster um den Faktor größer machen
+			w.win.Size = UDim2.new(1 / w.baseScale, -16 / w.baseScale, 1 / w.baseScale, -16 / w.baseScale)
+		else
+			w.win.Size = UDim2.new(0.84, 0, 0.84, 0)
+			w.limit.MaxSize = Vector2.new(980, 640)
+			w.baseScale = 1
+		end
+		if w.gui.Enabled and not w.closing then w.scale.Scale = w.baseScale end
+	end
+end
+GameUI.ApplyLayout = applyLayout
+
 -- ══ Spielgefühl: Zahlen zählen hoch, Münzen fliegen, Funde nach Seltenheit ══
 local function setting(name, default)
 	local v = player:GetAttribute("Set_" .. name)
@@ -1578,6 +1660,11 @@ function GameUI.Start(opts)
 	}
 	for key, deps in pairs(DEPS) do
 		if windows[key] then windows[key].deps = deps end
+	end
+	-- Anordnung nach Bildschirmgröße, auch beim Drehen oder Ändern der Fenstergröße
+	applyLayout()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(applyLayout)
 	end
 	refreshHud()
 	-- Änderungen am Spielstand: HUD und offenen Shop neu füllen
