@@ -20,7 +20,7 @@ import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { gardenDataSource } from '../../roblox/js/gardenLuau.js';
 import { rollDataSource } from '../../roblox/js/rollLuau.js';
-import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, GARDEN } from '../../garten/js/garden.js';
+import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN } from '../../garten/js/garden.js';
 import { ROLLS } from '../../rollen/js/rolls.js';
 
 
@@ -46,7 +46,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.call('__addModule', 'EggBuilder', EGG_BUILDER);
   lua.call('__addModule', 'MutationFx', MUTATION_FX);
   lua.call('__addModule', 'UITheme', UI_THEME);
-  lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }));
+  lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN }));
   lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);

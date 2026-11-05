@@ -6,7 +6,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { RbxWorld } from '../../js/rbx/engine.js';
 import { rollDataSource, ROLL_BUILDER, ROLL_FX } from '../../roblox/js/rollLuau.js';
 import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER } from '../../roblox/js/gardenLuau.js';
-import { RARITIES, TREES, TOOLS, GARDEN } from '../../garten/js/garden.js';
+import { RARITIES, TREES, TOOLS, FENCES, GARDEN } from '../../garten/js/garden.js';
 import { ROLLS } from './rolls.js';
 
 const PREVIEW = `
@@ -29,14 +29,14 @@ function __buildLoot(key, itemId)
 	previews[key] = model
 end
 -- plots: "baumId,stufe,reif,fortschritt,neu;;…" (leeres Feld = leeres Beet; neu = 1: Stufe gerade erreicht)
-function __buildGarden(key, beds, plots)
+function __buildGarden(key, beds, plots, fence)
 	local list, i = {}, 0
 	for entry in string.gmatch(plots .. ";", "([^;]*);") do
 		i = i + 1
 		local id, stage, ripe, progress, fresh = string.match(entry, "([%w-]+),(%d+),(%d+),([%d.]+),(%d)")
 		list[i] = id and { Tree = id, Stage = tonumber(stage), Ripe = tonumber(ripe), Progress = tonumber(progress), Fresh = fresh == "1" } or false
 	end
-	local model = GardenBuilder.Build({ Beds = beds, Plots = list })
+	local model = GardenBuilder.Build({ Beds = beds, Plots = list, Fence = fence ~= "" and fence or nil })
 	model.Parent = workspace
 	previews[key] = model
 end
@@ -73,7 +73,7 @@ let luaReady = null;
 export function rollLua() {
   luaReady ||= (async () => {
     const lua = await createLua();
-    lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES: RARITIES, TREES, TOOLS, GARDEN }));
+    lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES: RARITIES, TREES, TOOLS, FENCES, GARDEN }));
     lua.call('__addModule', 'LootBuilder', LOOT_BUILDER);
     lua.call('__addModule', 'GardenBuilder', GARDEN_BUILDER);
     lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));
@@ -119,8 +119,8 @@ export const createRobloxRoll = (roll, { shadows = false } = {}) => staticModel(
 // Baum oder Werkzeug (LootBuilder)
 export const createRobloxLoot = (item, { shadows = false } = {}) => staticModel('__buildLoot', [item.id], { shadows });
 // ganzer Garten (GardenBuilder); plots: [{ tree, stage, ripe, progress, fresh } | null]
-export const createRobloxGarden = (beds, plots, { shadows = true } = {}) =>
-  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe},${(p.progress ?? 1).toFixed(3)},${p.fresh ? 1 : 0}` : '')).join(';')], { shadows, area: 22 });
+export const createRobloxGarden = (beds, plots, { shadows = true, fence = '' } = {}) =>
+  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe},${(p.progress ?? 1).toFixed(3)},${p.fresh ? 1 : 0}` : '')).join(';'), fence], { shadows, area: 22 });
 
 // Öffnen: RollFx.Play wie im Spiel (die Sache ist vorher gezogen); window = halbe Breite des Rollbands
 const doneHandlers = new Map();

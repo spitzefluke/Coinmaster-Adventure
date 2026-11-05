@@ -124,8 +124,10 @@ export class Opener {
     u.eyebrow.textContent = `${roll.name} · ${tier.name}`;
     u.name.textContent = lootName(item);
     u.name.style.textShadow = `0 0 30px ${tier.color}`;
-    u.from.textContent = `${item.type === 'tree' ? 'Samen' : 'Werkzeug'} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
-    u.loot.innerHTML = `<li style="--t:${tier.color}">${item.type === 'tree' ? `Säen, und in ${fmtTime(item.grow)} wächst daraus ein ${item.name}.` : item.text}</li>`;
+    const kind = item.type === 'tree' ? 'Samen' : item.type === 'fence' ? 'Zaun' : 'Werkzeug';
+    u.from.textContent = `${kind} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
+    const how = item.type === 'tree' ? `Säen, und in ${fmtTime(item.grow)} wächst daraus ein ${item.name} (${item.harvests}× ernten).` : item.type === 'fence' ? `${item.text} Im Garten anbringen.` : item.text;
+    u.loot.innerHTML = `<li style="--t:${tier.color}">${how}</li>`;
     u.again.disabled = !canPay(roll, state);
     u.again.textContent = u.again.disabled ? 'Zu wenig Taler' : 'Noch eine';
     u.text.classList.remove('is-shown');

@@ -1698,7 +1698,7 @@ end
 -- ── Münzbaumgarten: Beete, Sachen aus Münzrollen, Rollen kaufen ──
 -- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
--- gardenDig (Beet), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
+-- gardenDig (Beet), gardenFence (Zaun), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
 local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
 local STAGE_NAMES = { "Keimling", "Jungbaum", "Ausgewachsen" }
 local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
@@ -1818,9 +1818,28 @@ fillGarden = function(w)
 
 	if w.tab == "sachen" then
 		local n = 0
+		-- anderer Zaun angebracht: Holzzaun zum Zurückwechseln
+		local items = {}
+		if g.Fence ~= GardenData.StandardFence then
+			table.insert(items, GardenData.ById[GardenData.StandardFence])
+		end
 		for _, item in ipairs(GardenData.Loot) do
-			local count = g.Inv[item.Id] or 0
-			if count > 0 then
+			table.insert(items, item)
+		end
+		for _, item in ipairs(items) do
+			local count = item.Standard and 1 or (g.Inv[item.Id] or 0)
+			if count > 0 and item.Type == "Fence" then
+				n = n + 1
+				local r = GardenData.RarityById[item.Rarity]
+				local on = g.Fence == item.Id
+				local c = card(list, on and C.goldHi or r.Color)
+				c.LayoutOrder = n
+				text(c, 0, 46, "🏡", 38, C.ink, EMOJI)
+				text(c, 50, 22, item.Name .. (item.Standard and "" or ("  ×" .. count)), 17, C.ink, FONT)
+				text(c, 74, 16, r.Name .. " · Zaun", 12, r.Color)
+				text(c, 94, 48, item.Text, 12, C.muted, TEXT)
+				actionButton(c, on and "Angebracht" or "Anbringen", on and C.line or C.green, not on, function() gardenDo("gardenFence", item.Id) end)
+			elseif count > 0 then
 				n = n + 1
 				local r = GardenData.RarityById[item.Rarity]
 				local c = card(list, ui.gardenSel == item.Id and C.goldHi or r.Color)
@@ -1828,7 +1847,7 @@ fillGarden = function(w)
 				text(c, 0, 46, item.Type == "Tree" and "🌱" or lootIcon(item), 38, C.ink, EMOJI)
 				text(c, 50, 22, GardenData.LootName(item) .. "  ×" .. count, 17, C.ink, FONT)
 				text(c, 74, 16, r.Name .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
-				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle)) or item.Text
+				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle) .. ", " .. item.Harvests .. "× ernten") or item.Text
 				text(c, 94, 48, info, 12, C.muted, TEXT)
 				if item.Kind == "Taler" or item.Kind == "Bed" then
 					actionButton(c, "Benutzen", C.blue, true, function() gardenDo("gardenUse", item.Id) end)
@@ -1886,7 +1905,8 @@ fillGarden = function(w)
 			local ripe = GardenData.Ripe(plot, now)
 			text(c, 20, 46, lootIcon(tree), stage == 1 and 26 or (stage == 2 and 34 or 42), C.ink, EMOJI)
 			text(c, 68, 22, tree.Name, 19, C.ink, FONT)
-			text(c, 90, 16, r.Name .. " · " .. STAGE_NAMES[stage], 12, r.Color)
+			local left = GardenData.HarvestsLeft(plot)
+			text(c, 90, 16, r.Name .. " · " .. STAGE_NAMES[stage] .. " · noch " .. left .. "× ernten", 12, left <= 2 and C.red or r.Color)
 			local live = text(c, 108, 16, "", 12, C.muted, MONO)
 			if stage < 3 then
 				local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 0, 130), BackgroundColor3 = C.bg, Parent = c }, { corner(R.Round) })
@@ -1979,7 +1999,7 @@ local function defaultInvoke(action, a, b)
 		local remote = root:FindFirstChild("GardenRemote")
 		if not remote then return false, "GardenRemote fehlt" end
 		-- gardenBuy → buyGarden usw. (Namen wie in GardenData.Act)
-		local map = { gardenBuy = "buyGarden", gardenBed = "buyBed", gardenPlant = "plant", gardenUse = "use", gardenHarvest = "harvest", gardenDig = "dig" }
+		local map = { gardenBuy = "buyGarden", gardenBed = "buyBed", gardenPlant = "plant", gardenUse = "use", gardenHarvest = "harvest", gardenDig = "dig", gardenFence = "fence" }
 		return remote:InvokeServer(map[action] or action, a, b)
 	end
 	if PLAYER_ACTIONS[action] then
