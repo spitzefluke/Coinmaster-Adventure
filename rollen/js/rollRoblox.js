@@ -28,17 +28,22 @@ function __buildLoot(key, itemId)
 	model.Parent = workspace
 	previews[key] = model
 end
--- plots: "baumId,stufe,reif;;baumId,stufe,reif" (leeres Feld = leeres Beet)
+-- plots: "baumId,stufe,reif,fortschritt,neu;;…" (leeres Feld = leeres Beet; neu = 1: Stufe gerade erreicht)
 function __buildGarden(key, beds, plots)
 	local list, i = {}, 0
 	for entry in string.gmatch(plots .. ";", "([^;]*);") do
 		i = i + 1
-		local id, stage, ripe = string.match(entry, "([%w-]+),(%d+),(%d+)")
-		list[i] = id and { Tree = id, Stage = tonumber(stage), Ripe = tonumber(ripe) } or false
+		local id, stage, ripe, progress, fresh = string.match(entry, "([%w-]+),(%d+),(%d+),([%d.]+),(%d)")
+		list[i] = id and { Tree = id, Stage = tonumber(stage), Ripe = tonumber(ripe), Progress = tonumber(progress), Fresh = fresh == "1" } or false
 	end
 	local model = GardenBuilder.Build({ Beds = beds, Plots = list })
 	model.Parent = workspace
 	previews[key] = model
+end
+-- Garten animieren (jedes Bild): Wachsen, Wiegen, Aufploppen
+function __gardenAnimate(key, t, dt)
+	local m = previews[key]
+	if m then GardenBuilder.Animate(m, t, dt) end
 end
 -- Timer über wachsenden Bäumen: "beet,text,fortschritt;…"
 function __gardenTimers(key, list)
@@ -113,9 +118,9 @@ async function staticModel(fn, args, opts = {}) {
 export const createRobloxRoll = (roll, { shadows = false } = {}) => staticModel('__buildRoll', [roll.id], { shadows });
 // Baum oder Werkzeug (LootBuilder)
 export const createRobloxLoot = (item, { shadows = false } = {}) => staticModel('__buildLoot', [item.id], { shadows });
-// ganzer Garten (GardenBuilder); plots: [{ tree, stage, ripe } | null]
+// ganzer Garten (GardenBuilder); plots: [{ tree, stage, ripe, progress, fresh } | null]
 export const createRobloxGarden = (beds, plots, { shadows = true } = {}) =>
-  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe}` : '')).join(';')], { shadows, area: 22 });
+  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe},${(p.progress ?? 1).toFixed(3)},${p.fresh ? 1 : 0}` : '')).join(';')], { shadows, area: 22 });
 
 // Öffnen: RollFx.Play wie im Spiel (die Sache ist vorher gezogen); window = halbe Breite des Rollbands
 const doneHandlers = new Map();

@@ -344,15 +344,24 @@ rollLua().then((l) => {
   update3d(now(state));
 });
 
+const lastStage = [];
 async function update3d(t) {
   if (!lua || building) return;
   const beds = state.owned ? state.beds : GARDEN.startBeds;
   const plots = Array.from({ length: beds }, (_, i) => {
     const p = state.owned && state.plots[i];
-    return p ? { tree: p.tree, stage: stage(p, t), ripe: ripe(p, t) } : null;
+    if (!p) return null;
+    const tree = lootById[p.tree];
+    return { tree: p.tree, stage: stage(p, t), ripe: ripe(p, t), progress: Math.max(0, Math.min(1, 1 - (grownAt(p) - t) / tree.grow)) };
   });
   const s = beds + '|' + plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe}` : '')).join(';');
   if (s === sig) return updateTimers(t);
+  // Beete mit neuer Stufe ploppen auf (nicht beim ersten Bau)
+  plots.forEach((p, i) => {
+    const key = p ? p.tree + p.stage : '-';
+    if (p && sig && lastStage[i] !== key) p.fresh = true;
+    lastStage[i] = key;
+  });
   building = true;
   try {
     const next = await createRobloxGarden(beds, plots);
@@ -421,6 +430,8 @@ renderer.setAnimationLoop(() => {
   }
   if (!garden) return;
   lua?.frame(dt);
+  // Bäume wachsen sanft, wiegen sich und ploppen bei neuer Stufe auf (GardenBuilder.Animate)
+  if (!reducedMotion) garden.call('__gardenAnimate', clock.elapsedTime, dt);
   garden.step(dt);
   if (!cam.drag && !reducedMotion) cam.angle = cam.angle * 0.995 + Math.sin(clock.elapsedTime * 0.15) * 0.0012;
   // so weit weg, dass der ganze Garten (31 Studs breit) ins Bild passt, auch im Hochformat
