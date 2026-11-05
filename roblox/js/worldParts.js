@@ -384,6 +384,57 @@ function clouds(out, built, world) {
   }
 }
 
+
+// ── Abschirmung: jede Insel ist eine eigene kleine Welt ──
+// Himmelskuppel (von innen sichtbare Kugel), darunter ein Wolkenmeer (Planet 1 und Spawn),
+// ein Nebelmeer (Weltraum) oder Sanddünen (Tiefsee), unter Wasser zusätzlich eine Wasseroberfläche.
+// Die Inseln stehen 1500 Studs auseinander; die Kuppel (Durchmesser 1280) verdeckt die Nachbarn.
+export const DOME_RADIUS = 640; // Studs
+function skyShield(sky, built, world) {
+  const top = new THREE.Color(world.sky[0]), horizon = new THREE.Color(world.sky[1]);
+  const lum = 0.3 * top.r + 0.59 * top.g + 0.11 * top.b;
+  const night = lum < 0.2, space = world.planet === 'p2', water = !!world.water;
+  const rand = seededRand(world.id + ':kuppel');
+  const D = DOME_RADIUS;
+  const id = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  // Kuppel: oben die Himmelsfarbe, zum Horizont hin hellt sie die Atmosphäre auf
+  sky.push({ shape: 'Ellipsoid', name: 'Himmelskuppel', inside: true, pos: [0, 0, 0], rot: id, size: [2 * D, 2 * D, 2 * D], color: '#' + top.getHexString(), material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true });
+  // ein zweiter, etwas kleinerer Ring in Horizontfarbe macht den Übergang weich
+  sky.push({ shape: 'Ellipsoid', name: 'Himmelskuppel', inside: true, pos: [0, -D * 0.5, 0], rot: id, size: [2 * D * 0.97, D * 0.9, 2 * D * 0.97], color: '#' + horizon.getHexString(), material: 'SmoothPlastic', transparency: 0.6, canCollide: false, castShadow: false, noShadow: true });
+  if (water) {
+    // Wasseroberfläche hoch über der Insel
+    sky.push({ shape: 'Block', name: 'Wasseroberflaeche', pos: [0, D * 0.62, 0], rot: id, size: [2 * D * 0.8, 2, 2 * D * 0.8], color: '#9fe8ff', material: 'Glass', transparency: 0.45, canCollide: false, castShadow: false, noShadow: true });
+  }
+  // Meer unter der Insel: Wolken, Nebel oder Dünen
+  const R = built.radius * STUDS, floor = -1 - 5.5 * (built.radius / 6);
+  const y0 = (floor - 6) * STUDS;
+  const kind = water ? 'duene' : space ? 'nebel' : 'wolke';
+  const colors = water
+    ? [vivid(world.side, 0.1), shade(vivid(world.side, 0.1), 0, 0.05), shade(vivid(world.side, 0.1), 0, -0.05)]
+    : space
+      ? ['#' + horizon.clone().lerp(new THREE.Color(world.accent), 0.4).getHexString(), '#' + horizon.getHexString(), '#' + top.clone().lerp(new THREE.Color(world.accent), 0.25).getHexString()]
+      : night
+        ? ['#3c3852', '#47425f', '#2f2c43']
+        : ['#ffffff', '#f2f6ff', '#e6eefc'];
+  const step = 92;
+  for (let x = -D; x <= D; x += step)
+    for (let z = -D; z <= D; z += step) {
+      const jx = x + (rand() - 0.5) * step * 0.6, jz = z + (rand() - 0.5) * step * 0.6;
+      if (Math.hypot(jx, jz) > D * 0.93) continue;
+      const w = step * (1.5 + rand() * 0.6), h = kind === 'duene' ? 22 + rand() * 18 : 34 + rand() * 30;
+      // nahe der Insel etwas höher, damit sie auf den Wolken zu liegen scheint
+      const near = Math.max(0, 1 - Math.hypot(jx, jz) / (R * 1.6));
+      sky.push({
+        shape: 'Ellipsoid', name: kind === 'duene' ? 'Duene' : kind === 'nebel' ? 'Nebel' : 'Wolkenmeer',
+        pos: [jx, y0 + rand() * 18 + near * 40, jz], rot: id,
+        size: [w, h, w * (0.8 + rand() * 0.4)],
+        color: colors[Math.floor(rand() * colors.length)],
+        material: kind === 'duene' ? 'Sand' : 'SmoothPlastic',
+        transparency: kind === 'nebel' ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
+      });
+    }
+}
+
 // Partikel der Welt als ParticleEmitter-Einstellungen
 function emitterFor(world, R) {
   const cfg = FX[world.fx];
@@ -423,9 +474,10 @@ export function worldLighting(world) {
     Ambient: night ? dim(horizon, 0.55) : '#585858',
     OutdoorAmbient: night ? dim(horizon, 0.9) : '#8c8c8c',
     FogColor: horizon,
-    FogStart: world.water ? 60 : 260,
-    FogEnd: world.water ? 520 : 1300,
-    atmosphere: { Density: world.water ? 0.42 : night ? 0.25 : 0.3, Offset: 0.2, Color: horizon, Decay: top, Glare: night ? 0 : 0.3, Haze: world.water ? 2.4 : 1 },
+    // dichter als zuvor: alles jenseits der Himmelskuppel verschwimmt in der Farbe der Welt
+    FogStart: world.water ? 60 : 220,
+    FogEnd: world.water ? 560 : 1000,
+    atmosphere: { Density: world.water ? 0.55 : night ? 0.4 : 0.42, Offset: 0.08, Color: horizon, Decay: top, Glare: night ? 0 : 0.25, Haze: world.water ? 2.6 : 1.8 },
     // Neon und Lava leuchten weich nach (nur in Roblox; die Vorschau zeigt kein Bloom)
     bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },
   };
@@ -470,6 +522,7 @@ export function worldToParts(world) {
   rimLip(parts, built, world);
   underside(parts, world, built.radius);
   clouds(sky, built, world);
+  skyShield(sky, built, world);
   const emitter = emitterFor(world, built.radius);
   const emitters = emitter ? [emitter] : [];
   waterfalls(parts, emitters, built, world);

@@ -459,15 +459,20 @@ export class RbxWorld {
     for (const p of list) {
       if ((p.transparency ?? 0) >= 1) continue;
       const shape = p.shape === 'Ellipsoid' ? 'Sphere' : p.shape;
-      const key = `${shape}|${p.material}|${p.transparency || 0}`;
+      // inside: von innen sichtbar (Himmelskuppel, in Roblox SpecialMesh mit negativer Skalierung)
+      const key = `${shape}|${p.material}|${p.transparency || 0}|${p.inside ? 1 : 0}`;
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push(p);
     }
     const group = new THREE.Group();
     const m4 = new THREE.Matrix4(), sc = new THREE.Matrix4();
     for (const [key, ps] of buckets) {
-      const [shape, material, tr] = key.split('|');
-      const mat = partMaterial(material, { instanced: true, transparency: Number(tr) });
+      const [shape, material, tr, inside] = key.split('|');
+      let mat = partMaterial(material, { instanced: true, transparency: Number(tr) });
+      if (inside === '1') {
+        mat = mat.clone();
+        mat.side = THREE.BackSide;
+      }
       const inst = new THREE.InstancedMesh(GEO[shape] || GEO.Block, mat, ps.length);
       ps.forEach((p, i) => {
         const r = p.rot;
@@ -481,8 +486,8 @@ export class RbxWorld {
       });
       inst.instanceMatrix.needsUpdate = true;
       if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
-      inst.castShadow = material !== 'Neon' && Number(tr) < 0.5;
-      inst.receiveShadow = material !== 'Neon';
+      inst.castShadow = material !== 'Neon' && Number(tr) < 0.5 && inside !== '1' && !ps[0].noShadow;
+      inst.receiveShadow = material !== 'Neon' && inside !== '1';
       inst.userData.parts = ps; // für Raycasts: Treffer → Teil
       group.add(inst);
     }

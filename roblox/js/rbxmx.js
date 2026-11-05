@@ -61,7 +61,8 @@ const item = (cls, props, children = '', ref = referent()) => `<Item class="${cl
 function part(p, offset = [0, 0, 0], extraChildren = '') {
   const size = p.size.map((v) => Math.max(0.05, v));
   const isEllipsoid = p.shape === 'Ellipsoid';
-  let children = (isEllipsoid ? item('SpecialMesh', [prop.string('Name', 'Mesh'), prop.token('MeshType', 3), prop.vec3('Scale', [1, 1, 1])]) : '') + extraChildren;
+  // inside: negative Skalierung dreht die Kugel um, sie ist dann von innen sichtbar (Himmelskuppel)
+  let children = (isEllipsoid ? item('SpecialMesh', [prop.string('Name', 'Mesh'), prop.token('MeshType', 3), prop.vec3('Scale', p.inside ? [-1, -1, -1] : [1, 1, 1])]) : '') + extraChildren;
   if (p.text) {
     // Schrift auf der Vorderseite (+z der Webseite = Back in Roblox)
     const label = item('TextLabel', [
@@ -82,6 +83,8 @@ function part(p, offset = [0, 0, 0], extraChildren = '') {
       prop.bool('Anchored', true),
       prop.bool('CanCollide', p.canCollide ?? true),
       prop.bool('CastShadow', p.castShadow ?? true),
+      // Kuppel und Wolkenmeer: von Klicks und Strahlen ignoriert
+      ...(p.noShadow ? [prop.bool('CanQuery', false), prop.bool('CanTouch', false)] : []),
       prop.cframe('CFrame', [p.pos[0] + offset[0], p.pos[1] + offset[1], p.pos[2] + offset[2]], p.rot),
       prop.color3uint8('Color3uint8', p.color),
       prop.token('Material', MATERIAL[p.material] ?? MATERIAL.SmoothPlastic),

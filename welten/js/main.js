@@ -35,7 +35,7 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.enablePan = false;
 controls.minDistance = 12 * CS;
-controls.maxDistance = 50 * CS;
+controls.maxDistance = 44 * CS; // innerhalb der Himmelskuppel (640 Studs)
 controls.maxPolarAngle = Math.PI * 0.62;
 controls.target.set(0, 0.6 * STUDS, 0);
 controls.autoRotate = !skipAnimations();

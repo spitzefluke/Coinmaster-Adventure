@@ -267,6 +267,13 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
+**Jede Insel eine eigene Welt:** Eine Himmelskuppel (Kugel mit 640 Studs Radius, in Roblox ein
+SpecialMesh mit negativer Skalierung, darum von innen sichtbar) in der Himmelsfarbe, ein weicher Ring in
+Horizontfarbe und eine dichtere Atmosphäre verdecken die Nachbarinseln (1500 Studs entfernt). Unter der
+Insel liegt ein Wolkenmeer (Planet 1 und Spawn, nachts dunkel), im Weltraum ein durchscheinendes
+Nebelmeer, in der Tiefsee Sanddünen und darüber eine Wasseroberfläche. Kuppel und Meer ignorieren Klicks
+(`CanQuery` aus). Die Kamera der Weltkarte bleibt innerhalb der Kuppel.
+
 **Simulator-Stil (alle Inseln und der Spawn, `roblox/js/worldParts.js`):** Der Boden hat eine Grasdecke
 über einer Erdschicht (an Hängen sieht man die Schichten), das Gras liegt in Flecken aus drei Tönen statt
 im Schachbrett. Ein runder Grasrand hängt über die Kante. Die Unterseite hat Felsschichten mit Kanten und
