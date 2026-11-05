@@ -6,7 +6,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { createScreen } from '../../js/rbx/screen.js';
 import { registerImage } from '../../js/rbx/engine.js';
 import { buildIconSheet } from '../../roblox/js/iconSheet.js';
-import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
+import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX, COIN_BUILDER, EGG_BUILDER, MUTATION_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI, UI_THEME } from '../../roblox/js/uiLuau.js';
 import { skillDataSource, rewardDataSource } from '../../roblox/js/uiMoreLuau.js';
@@ -41,6 +41,10 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.call('__addModule', 'SkillData', skillDataSource({ BRANCHES, SKILLS, pointsForLevel }));
   lua.call('__addModule', 'RewardData', rewardDataSource({ DAILY, WHEEL, GROUP_BONUS, BOARDS }));
   lua.call('__addModule', 'WeatherFx', WEATHER_FX);
+  // für 3D-Vorschauen in den Fenstern (ViewportFrame)
+  lua.call('__addModule', 'CoinBuilder', COIN_BUILDER);
+  lua.call('__addModule', 'EggBuilder', EGG_BUILDER);
+  lua.call('__addModule', 'MutationFx', MUTATION_FX);
   lua.call('__addModule', 'UITheme', UI_THEME);
   lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }));
   lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));

@@ -439,6 +439,15 @@ vollflächig und etwas kleiner skaliert, schmalere Kopfzeile. Hochkant rückt �
 Der HUD-ScreenGui nutzt `ScreenInsets = CoreUISafeInsets` (Notch). In der Vorschau zeigt der Knopf
 „Handy-Ansicht“ die Spielansicht in iPhone-Größe quer (844 × 390).
 
+**3D-Vorschauen** (`GameUI.ModelView`, ViewportFrame): Die gewählte Münze im Inventar und die Münze auf
+der Fundkarte drehen sich als echtes Modell aus `CoinBuilder` (mit Mutation), Eier im Shop und im Inventar
+kommen aus `EggBuilder`, die Welt-Karten zeigen eine kleine Insel in den Farben der Welt. Die Kamera rahmt
+jedes Modell nach seiner Größe ein; gedreht wird nur, wo es etwas bringt (Handy). Das Münz-Raster bleibt
+flach, damit es auch mit vielen Münzen flüssig bleibt. Die Mitte einer Münze zeigt ihr Motiv erst, wenn
+die Motive hochgeladen und in `CoinData` eingetragen sind (Schritt 3). Haustiere bekommen ihre Vorschau,
+sobald das Spiel geschlüpfte Tiere speichert. In der Vorschau hat jedes ViewportFrame eine eigene kleine
+Welt (`js/rbx/screen.js`), die nur neu gezeichnet wird, wenn sich darin etwas bewegt.
+
 Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
 Spielstand neu beginnen“.
 

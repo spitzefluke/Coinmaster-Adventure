@@ -9,7 +9,46 @@
 //   screen.pointer(type, x, y) → true, wenn die UI getroffen wurde
 
 import { sampleNumber, sampleColor } from './gui.js';
+import * as THREE from 'three';
 import { imageOf } from './engine.js';
+
+// ViewportFrame: alle teilen sich einen WebGL-Renderer; jedes Bild wird zwischengespeichert und nur neu
+// gezeichnet, wenn sich darin etwas bewegt (Versionszähler der kleinen Welt) oder die Kamera ändert.
+let vpRenderer = null, vpCamera = null;
+const vpCache = new WeakMap();
+function viewportImage(inst, w, h) {
+  const cam = inst.props.CurrentCamera;
+  if (!cam || !cam.props || !cam.props.CFrame) return null;
+  const key = `${inst.vpWorld.version || 0}|${cam.props.FieldOfView}|${cam.props.CFrame.elements.map((v) => v.toFixed(3)).join(',')}`;
+  let c = vpCache.get(inst);
+  if (c && c.key === key && c.canvas.width === w && c.canvas.height === h) return c.canvas;
+  if (!vpRenderer) {
+    vpRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    vpRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    vpRenderer.toneMapping = THREE.NoToneMapping;
+    vpRenderer.setClearColor(0x000000, 0);
+    vpCamera = new THREE.PerspectiveCamera(70, 1, 0.1, 2000);
+  }
+  vpRenderer.setPixelRatio(1);
+  vpRenderer.setSize(w, h, false);
+  vpCamera.fov = cam.props.FieldOfView;
+  vpCamera.aspect = w / h;
+  vpCamera.updateProjectionMatrix();
+  cam.props.CFrame.decompose(vpCamera.position, vpCamera.quaternion, vpCamera.scale);
+  vpCamera.updateMatrixWorld(true);
+  const P = inst.props;
+  inst.vpWorld.viewportLight = { ambient: P.Ambient.color, color: P.LightColor.color, direction: P.LightDirection };
+  inst.vpWorld.render(vpRenderer, vpCamera);
+  if (!c) c = { canvas: document.createElement('canvas') };
+  c.canvas.width = w;
+  c.canvas.height = h;
+  const cg = c.canvas.getContext('2d');
+  cg.clearRect(0, 0, w, h);
+  cg.drawImage(vpRenderer.domElement, 0, 0);
+  c.key = key;
+  vpCache.set(inst, c);
+  return c.canvas;
+}
 
 // Roblox-Leiste oben (Menü, Chat): Inhalte ohne IgnoreGuiInset beginnen darunter
 export const TOPBAR = 58;
@@ -28,7 +67,7 @@ const FONTS = {
 };
 const font = (name, size) => (FONTS[name] || FONTS.SourceSans).replace('{s}', Math.max(1, Math.round(size)));
 const rgba = (c, a = 1, k = 1) => `rgba(${Math.round(c.srgb[0] * 255 * k)},${Math.round(c.srgb[1] * 255 * k)},${Math.round(c.srgb[2] * 255 * k)},${Math.max(0, Math.min(1, a))})`;
-const isGui = (i) => i.props && i.props.Size && Array.isArray(i.props.Size) && ['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'CanvasGroup'].includes(i.ClassName);
+const isGui = (i) => i.props && i.props.Size && Array.isArray(i.props.Size) && ['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'ViewportFrame', 'CanvasGroup'].includes(i.ClassName);
 const isButton = (i) => i.ClassName === 'TextButton' || i.ClassName === 'ImageButton';
 const isText = (i) => i.ClassName === 'TextLabel' || i.ClassName === 'TextButton' || i.ClassName === 'TextBox';
 // Knöpfe und Eingabefelder nehmen Klicks an
@@ -224,6 +263,15 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
         }
         g.globalAlpha = (1 - (P.ImageTransparency ?? 0)) * alphaMul;
         g.drawImage(img, off[0], off[1], sw, sh, dx, dy, dw, dh);
+        g.globalAlpha = 1;
+      }
+    }
+    // ViewportFrame: 3D-Inhalt aus der eigenen kleinen Welt
+    if (i.ClassName === 'ViewportFrame' && i.vpWorld) {
+      const img = viewportImage(i, Math.max(1, Math.round(r.w * dpr)), Math.max(1, Math.round(r.h * dpr)));
+      if (img) {
+        g.globalAlpha = (1 - (P.ImageTransparency ?? 0)) * alphaMul;
+        g.drawImage(img, r.x, r.y, r.w, r.h);
         g.globalAlpha = 1;
       }
     }

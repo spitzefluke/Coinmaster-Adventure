@@ -493,12 +493,8 @@ local function fillShop()
 		for i, egg in ipairs(EggData.Eggs) do
 			local c = card(list, egg.Glow)
 			c.LayoutOrder = i
-			-- Ei: Oval mit Glanz
-			local shape = new("Frame", { Size = UDim2.new(0, 64, 0, 82), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = egg.Color, Parent = c }, {
-				corner(UDim.new(0.5, 0)),
-				stroke(egg.Glow, 3),
-				new("UIGradient", { Rotation = 35, Color = ColorSequence.new(Color3.new(1, 1, 1), C.shade) }),
-			})
+			-- Ei als 3D-Modell (EggBuilder), sonst ein Oval
+			GameUI.EggView(c, egg, UDim2.new(0, 110, 0, 86), UDim2.new(0.5, 0, 0, -2))
 			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 88), Text = egg.Name, Font = FONT, TextSize = T.Large, Parent = c })
 			local owned = attr("Egg_" .. egg.Id, 0)
 			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 112), Text = egg.RankName .. (owned > 0 and (" · im Inventar: " .. owned) or ""), TextSize = T.Tiny, TextColor3 = egg.Glow, Parent = c })
@@ -514,7 +510,6 @@ local function fillShop()
 			else
 				actionButton(c, egg.Availability, C.line, false, function() end)
 			end
-			shape.Name = "Ei"
 		end
 	elseif windows.shop.tab == "boosts" then
 		for i, b in ipairs(ShopData.Boosts) do
@@ -985,7 +980,7 @@ local function fillCoins(w, entries)
 		if e.Key == ui.invSel then sel = e end
 	end
 	if sel then
-		coinDisc(side, sel, 84, UDim2.new(0.5, 0, 0, 0))
+		GameUI.CoinView(side, sel, 92, UDim2.new(0.5, 0, 0, -6), true)
 		pill(side, sel.Tier.Name, sel.Tier.Color, 90)
 		label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = sel.Coin.Name, Font = FONT, TextScaled = true, Parent = side })
 		local y = 144
@@ -1038,11 +1033,7 @@ local function fillEggs(w)
 				corner(R.M),
 				stroke(egg.Glow, 2),
 			})
-			new("Frame", { Name = "Ei", Size = UDim2.new(0, 40, 0, 52), Position = UDim2.new(0, 18, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = egg.Color, Parent = row }, {
-				corner(UDim.new(0.5, 0)),
-				stroke(egg.Glow, 2),
-				new("UIGradient", { Rotation = 35, Color = ColorSequence.new(Color3.new(1, 1, 1), C.shade) }),
-			})
+			GameUI.EggView(row, egg, UDim2.new(0, 62, 0, 62), UDim2.new(0, 40, 0.5, -31), 1.35)
 			label({ Size = UDim2.new(0.6, 0, 0, 24), Position = UDim2.new(0, 76, 0, 12), Text = egg.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 			label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 76, 0, 38), Text = egg.RankName, TextSize = T.Small, TextColor3 = egg.Glow, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 			label({ Size = UDim2.new(0, 90, 1, 0), Position = UDim2.new(1, -106, 0, 0), Text = "×" .. n, Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
@@ -1124,7 +1115,7 @@ local function worldCard(parent, st, world, number, order, here)
 		return c
 	end
 	new("UIGradient", { Rotation = 120, Color = ColorSequence.new(world.Ground, accent), Parent = img })
-	icon(world.Planet == "hub" and "home" or "globe", { Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Parent = img })
+	GameUI.WorldView(img, world)
 	if here then
 		new("TextLabel", { Size = UDim2.new(0, 100, 0, 22), Position = UDim2.new(0, 8, 0, 8), BackgroundColor3 = C.gold, Text = "Du bist hier", Font = BODY, TextSize = T.Tiny, TextColor3 = C.goldInk, Parent = img }, { corner(R.Round) })
 	end
@@ -1419,6 +1410,114 @@ local function centerOf(object)
 	return object.AbsolutePosition + object.AbsoluteSize * 0.5
 end
 
+
+-- ══ 3D-Vorschauen: Modelle in einem ViewportFrame ══
+-- Die Kamera rahmt das Modell nach seiner Größe ein. Drehen nur, wo es etwas bringt (gewählte Münze,
+-- Fundkarte), damit das Spiel am Handy flüssig bleibt. Partikel zeigt ein ViewportFrame in Roblox nicht.
+local builders = {}
+local function builder(name)
+	if builders[name] == nil then
+		local module = root:FindFirstChild(name)
+		local ok, result = pcall(function() return module and require(module) end)
+		builders[name] = ok and result or false
+	end
+	return builders[name] or nil
+end
+
+-- options: Side = "X" (Münzen zeigen ihre Seite entlang X) oder "Z" (Modelle schauen nach −Z),
+-- Spin = Grad pro Sekunde, Tilt = Blick von oben in Grad, Zoom = Abstand (1 = knapp)
+function GameUI.ModelView(parent, props, model, opt)
+	opt = opt or {}
+	local base = { Name = "Vorschau", BackgroundTransparency = 1, Ambient = Color3.fromRGB(190, 185, 200), LightColor = Color3.fromRGB(255, 245, 230), LightDirection = Vector3.new(-0.4, -1, -0.6), Parent = parent }
+	for k, v in pairs(props) do base[k] = v end
+	local vf = new("ViewportFrame", base)
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 30
+	camera.Parent = vf
+	vf.CurrentCamera = camera
+	local pivot = model:GetPivot()
+	model.Parent = vf
+	local box, size = model:GetBoundingBox()
+	local center = box.Position
+	local spin = opt.Spin and not setting("skipAnimations", false)
+	-- beim Drehen zählt die Diagonale der Grundfläche
+	local wide = spin and math.sqrt(size.X * size.X + size.Z * size.Z) or math.max(size.X, size.Z)
+	local radius = math.max(size.Y, wide) * 0.5
+	local dist = radius / math.tan(math.rad(camera.FieldOfView / 2)) * (opt.Zoom or 1.15)
+	local dir = opt.Side == "X" and Vector3.new(1, 0, 0) or Vector3.new(0, 0, -1)
+	local tilt = math.rad(opt.Tilt or 12)
+	camera.CFrame = CFrame.lookAt(center + (dir * math.cos(tilt) + Vector3.new(0, math.sin(tilt), 0)) * dist, center)
+	if spin then
+		local angle = 0
+		local connection
+		connection = RunService.RenderStepped:Connect(function(dt)
+			if not vf.Parent then
+				connection:Disconnect()
+				return
+			end
+			angle = angle + math.rad(opt.Spin) * dt
+			model:PivotTo(CFrame.new(center) * CFrame.Angles(0, angle, 0) * CFrame.new(-center) * pivot)
+		end)
+		vf.Destroying:Connect(function() connection:Disconnect() end)
+	end
+	return vf
+end
+
+-- Münze aus CoinBuilder (mit Mutation), sonst die flache Münze aus Frames
+function GameUI.CoinView(parent, entry, size, position, spin)
+	local CoinBuilder = builder("CoinBuilder")
+	local ok, model = false, nil
+	if CoinBuilder then ok, model = pcall(CoinBuilder.Build, entry.Coin) end
+	if not ok or not model then return coinDisc(parent, entry, size, position) end
+	local MutationFx = entry.Mutation and builder("MutationFx")
+	if MutationFx then pcall(MutationFx.Apply, model, entry.Mutation.Id) end
+	return GameUI.ModelView(parent, { Size = UDim2.new(0, size, 0, size), Position = position, AnchorPoint = Vector2.new(0.5, 0), ZIndex = 3 }, model, { Side = "X", Spin = spin and 60 or nil, Tilt = 6, Zoom = 1.02 })
+end
+
+-- Ei aus EggBuilder (mit Sockel), sonst ein Oval
+function GameUI.EggView(parent, egg, size, position, zoom)
+	local EggBuilder = builder("EggBuilder")
+	local ok, model = false, nil
+	if EggBuilder then ok, model = pcall(EggBuilder.Build, egg) end
+	if ok and model then
+		return GameUI.ModelView(parent, { Name = "Ei", Size = size, Position = position, AnchorPoint = Vector2.new(0.5, 0) }, model, { Tilt = 14, Zoom = zoom or 1.05 })
+	end
+	return new("Frame", { Name = "Ei", Size = UDim2.new(0, 46, 0, 58), Position = position, AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = egg.Color, Parent = parent }, {
+		corner(UDim.new(0.5, 0)),
+		stroke(egg.Glow, 2),
+		new("UIGradient", { Rotation = 35, Color = ColorSequence.new(Color3.new(1, 1, 1), C.shade) }),
+	})
+end
+
+-- Welt als kleine Insel in ihren Farben: Wiese, Erdsockel, Bäume und ein Haus (wenige Teile)
+function GameUI.WorldView(parent, world)
+	local model = Instance.new("Model")
+	model.Name = world.Id
+	local function part(props)
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		for k, v in pairs(props) do p[k] = v end
+		p.Parent = model
+		return p
+	end
+	local ground = world.Ground or C.green
+	local accent = world.Accent or C.gold
+	local round = CFrame.Angles(0, 0, math.rad(90)) -- Zylinder liegen in Roblox entlang X
+	part({ Name = "Wiese", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 12, 12), Color = ground, Material = Enum.Material.Grass, CFrame = CFrame.new(0, 0, 0) * round })
+	part({ Name = "Erde", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 10.4, 10.4), Color = ground:Lerp(Color3.fromRGB(90, 60, 40), 0.7), Material = Enum.Material.Slate, CFrame = CFrame.new(0, -1.7, 0) * round })
+	part({ Name = "Fels", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 6.4, 6.4), Color = Color3.fromRGB(80, 64, 54), Material = Enum.Material.Slate, CFrame = CFrame.new(0, -3.7, 0) * round })
+	part({ Name = "Haus", Size = Vector3.new(2.4, 2, 2.4), Color = Color3.fromRGB(240, 232, 214), Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(1.4, 1.6, 0.6) })
+	part({ Name = "Dach", Size = Vector3.new(2.8, 1.2, 2.8), Color = accent, Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(1.4, 3.2, 0.6) * CFrame.Angles(0, math.rad(45), 0) })
+	for i, at in ipairs({ Vector3.new(-3, 0, -2), Vector3.new(-2.2, 0, 2.6), Vector3.new(3.4, 0, -3) }) do
+		part({ Name = "Stamm", Size = Vector3.new(0.5, 1.6, 0.5), Color = Color3.fromRGB(110, 76, 50), Material = Enum.Material.Wood, CFrame = CFrame.new(at + Vector3.new(0, 1.4, 0)) })
+		part({ Name = "Krone", Shape = Enum.PartType.Ball, Size = Vector3.new(2.2, 2.2, 2.2) * (i == 2 and 0.8 or 1), Color = i == 3 and accent or ground:Lerp(Color3.new(0, 0, 0), 0.25), Material = Enum.Material.Grass, CFrame = CFrame.new(at + Vector3.new(0, 2.9, 0)) })
+	end
+	model.PrimaryPart = model:FindFirstChild("Wiese")
+	return GameUI.ModelView(parent, { Size = UDim2.new(1, 0, 1, 0) }, model, { Tilt = 32, Zoom = 1.0 })
+end
+
 -- Taler: zählen hoch oder runter, bei Gewinn steigt „+1.250“ auf und das Feld wippt
 function GameUI._showTaler(target)
 	if ui.talerTarget == nil or setting("skipAnimations", false) then
@@ -1542,7 +1641,7 @@ local function foundCard(entry, text, value, hold)
 		stroke(entry.Mutation and entry.Mutation.Color or entry.Tier.Color, 3),
 	})
 	local scale = new("UIScale", { Scale = 0.6, Parent = card })
-	coinDisc(card, entry, 62, UDim2.new(0, 46, 0, 11))
+	GameUI.CoinView(card, entry, 72, UDim2.new(0, 46, 0, 6), true)
 	label({ Size = UDim2.new(1, -200, 0, 28), Position = UDim2.new(0, 86, 0, 12), Text = entry.Coin.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3, Parent = card })
 	label({ Size = UDim2.new(1, -200, 0, 20), Position = UDim2.new(0, 86, 0, 44), Text = text, TextSize = T.Small, TextColor3 = entry.Mutation and entry.Mutation.Color or entry.Tier.Color, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3, Parent = card })
 	label({ Size = UDim2.new(0, 104, 1, 0), Position = UDim2.new(1, -116, 0, 0), Text = "+" .. GameUI.Format(value), Font = FONT, TextSize = T.Large, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3, Parent = card })
