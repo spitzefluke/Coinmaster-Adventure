@@ -13,15 +13,19 @@ import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
 import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
+import { newGarden, gardenAct, lootById } from '../../garten/js/garden.js';
+import { rollById, openRoll } from '../../rollen/js/rolls.js';
+import { Opener } from '../../rollen/js/open.js';
 import { icon } from './icons.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
 const state = loadState();
+state.garden ||= newGarden();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
 // Fenster der Roblox-Oberfläche (GameUI)
-const WINDOWS = new Set(['shop', 'inventar', 'welten', 'skills', 'einstellungen', 'wetter', 'belohnung', 'codes', 'ranglisten']);
+const WINDOWS = new Set(['shop', 'inventar', 'welten', 'skills', 'einstellungen', 'wetter', 'belohnung', 'codes', 'ranglisten', 'garten']);
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +79,7 @@ function renderHud() {
   set('Worlds', state.worlds.join(','));
   set('Portals', state.portals.join(','));
   set('Rebirths', state.rebirths);
+  set('Garden', JSON.stringify(state.garden));
   // Skills, Belohnungen, Einstellungen
   set('Skills', Object.entries(state.skills).filter(([, n]) => n > 0).map(([id, n]) => `${id}:${n}`).join(','));
   set('DailyDay', state.daily?.lastDay ?? '');
@@ -362,6 +367,25 @@ function invoke(action, a, b) {
     return done(`${au.name} gekauft und angelegt`);
   }
   if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+  // Münzbaumgarten und Münzrollen (in Roblox: GardenRemote, Regeln aus GardenData.Act)
+  if (action === 'openRoll') {
+    const roll = rollById[a];
+    if (!roll) return [false, 'Diese Rolle gibt es nicht'];
+    if (roll.price.currency !== 'taler') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+    if (!pay(roll.price.amount)) return [false, 'Zu wenig Taler'];
+    const items = openRoll(roll);
+    for (const it of items) state.garden.Inv[it.id] = (state.garden.Inv[it.id] || 0) + 1;
+    save();
+    renderHud();
+    return [true, `${roll.name}: ${items[items.length - 1].name}!`, items.map((i) => i.id).join(',')];
+  }
+  const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig' };
+  if (GARDEN_ACTIONS[action]) {
+    const [ok, text, delta] = gardenAct(state.garden, GARDEN_ACTIONS[action], a, b, Date.now() / 1000, state.taler);
+    if (!ok) return [false, text];
+    state.taler = Math.round((state.taler + delta) * 100) / 100;
+    return done(text);
+  }
   // Inventar: Stapel-Schlüssel und Anzahl (oder alle normalen ohne Mutation)
   if (action === 'sell' || action === 'sellNormal') {
     const pick = new Set();
@@ -476,6 +500,7 @@ function invoke(action, a, b) {
   if (action === 'resetSave') {
     Object.keys(state).forEach((k) => delete state[k]);
     Object.assign(state, freshState());
+    state.garden = newGarden();
     teleport(state.world, true);
     return done('Neuer Spielstand mit Beispiel-Inventar');
   }
@@ -509,8 +534,20 @@ function query(kind, arg) {
   }
   return null;
 }
-function uiAction(name) {
+// Geöffnete Münzrolle: dieselbe Öffnen-Ansicht wie auf der Rollen-Seite (RollFx)
+let opener = null;
+function playRoll(arg) {
+  const [rollId, ids] = String(arg).split('|');
+  const roll = rollById[rollId];
+  const items = (ids || '').split(',').map((id) => lootById[id]).filter(Boolean);
+  if (!roll || !items.length) return;
+  opener ||= Opener.mount();
+  opener.play(roll, items).then(() => rui?.open('garten', 'sachen'));
+}
+function uiAction(name, arg) {
   if (name === 'find') return find();
+  if (name === 'playRoll') return playRoll(arg);
+  if (name === 'gartenBesuchen') return toast('Im Spiel geht es jetzt zum Garten. In 3D ansehen: Seite „Münzbaumgarten“.', '#6fbf4a');
   if (name === 'index') return (location.href = '../muenzindex/');
   if (WINDOWS.has(name)) openPanel(name);
 }

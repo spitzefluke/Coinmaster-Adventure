@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Münzbaumgarten · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Glück</p>
+    <h1>Münzbaumgarten</h1>
+    <p class="lede">Kauf dir mit Talern einen kleinen Garten und pflanze Münzbäume. Ausgewachsen tragen sie Münzen, die du als Taler erntest. Bäume, Gießkannen und Dünger gibt es nur aus <a href="../rollen/">Münzrollen</a>.</p>
+  </header>
+
+  <section class="bar" aria-label="Kasse und Zeit">
+    <div class="purse"><span class="purse-label">Deine Taler</span><strong id="taler">0</strong></div>
+    <div class="speed" role="group" aria-label="Zeitraffer der Vorschau">
+      <span class="speed-label">Zeit</span>
+      <button type="button" data-speed="1">×1</button>
+      <button type="button" data-speed="10">×10</button>
+      <button type="button" data-speed="60">×60</button>
+    </div>
+    <div class="bar-actions">
+      <a class="btn ghost" href="../rollen/">Münzrollen öffnen</a>
+      <button id="cheat" class="btn ghost" type="button">+100.000 Taler (Test)</button>
+      <button id="reset" class="btn ghost" type="button">Zurücksetzen</button>
+    </div>
+  </section>
+
+  <section class="garden" aria-label="Dein Garten">
+    <div class="view"><canvas id="garden-canvas"></canvas>
+      <div id="buy" class="buy" hidden>
+        <p class="buy-eyebrow">Zu verkaufen</p>
+        <h2>Kleiner Münzbaumgarten</h2>
+        <p id="buy-text"></p>
+        <button id="buy-btn" class="btn gold" type="button"></button>
+      </div>
+    </div>
+    <div class="garden-tools">
+      <button id="harvest-all" class="btn gold" type="button">Alles ernten</button>
+      <button id="buy-bed" class="btn" type="button"></button>
+      <p id="hint" class="hint" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section aria-labelledby="beds-title">
+    <h2 id="beds-title" class="section-title">Beete</h2>
+    <div id="beds" class="beds"></div>
+  </section>
+
+  <section aria-labelledby="inv-title">
+    <h2 id="inv-title" class="section-title">Inventar</h2>
+    <div id="inv" class="inv"></div>
+  </section>
+
+  <section aria-labelledby="cat-title">
+    <h2 id="cat-title" class="section-title">Alle Münzbäume</h2>
+    <div class="table-wrap">
+      <table class="cat">
+        <thead><tr><th>Baum</th><th>Seltenheit</th><th>Wachsen</th><th>Ernte</th><th>Taler je Ernte</th><th>Taler je Minute</th></tr></thead>
+        <tbody id="cat"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">Werte sind Vorschläge. Ein ausgewachsener Baum hält höchstens 3 Ernten vor, dann musst du ernten. Der Spielstand liegt nur in diesem Browser. Mit dem Zeitraffer läuft die Gartenzeit schneller, damit du alles ausprobieren kannst.</footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

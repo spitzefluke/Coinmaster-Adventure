@@ -1,0 +1,146 @@
+/* Münzbaumgarten – baut auf ../../css/theme.css auf. */
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
+  display: grid;
+  gap: 28px;
+}
+.masthead { max-width: 64ch; }
+.eyebrow { margin: 0 0 4px; font: 600 var(--step--1)/1.2 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.back { color: inherit; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: balance; }
+.lede { margin: 12px 0 0; color: var(--muted); }
+.lede a { color: var(--brass); }
+.section-title { margin: 0 0 12px; font: 700 var(--step-2)/1 var(--font-display); }
+.foot { color: var(--muted); font-size: var(--step--1); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+  background: var(--velvet-2);
+  color: var(--ink);
+  font: 700 var(--step--1)/1 var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--brass); }
+.btn.gold { border: 0; background: linear-gradient(180deg, #ffe7a3, #e2b54f); color: #1a1408; box-shadow: 0 8px 24px -12px #e2b54f; }
+.btn.ghost { background: transparent; }
+.btn:disabled { filter: grayscale(1); opacity: 0.55; cursor: not-allowed; }
+.btn.small { padding: 7px 12px; font-size: 0.75rem; }
+
+/* ── Leiste ── */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 12px 16px; border: 1px solid var(--seam); border-radius: 16px; background: var(--velvet); }
+.purse { display: grid; gap: 2px; }
+.purse-label, .speed-label { font: 600 0.6875rem/1 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.purse strong { font: 700 var(--step-2)/1 var(--font-data); color: var(--brass); font-variant-numeric: tabular-nums; }
+.speed { display: flex; align-items: center; gap: 6px; }
+.speed button { padding: 6px 10px; border: 1px solid var(--seam); border-radius: 8px; background: transparent; color: var(--muted); font: 600 0.75rem/1 var(--font-data); cursor: pointer; }
+.speed button[aria-pressed="true"] { border-color: var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 12%, transparent); }
+.bar-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+
+/* ── Garten ── */
+.garden { display: grid; gap: 12px; }
+.view {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
+  width: 100%;
+  border: 1px solid var(--seam);
+  border-radius: 20px;
+  overflow: hidden;
+  background: radial-gradient(90% 80% at 50% 30%, #2b3a2a, #0c0f0b 80%);
+  touch-action: pan-y;
+}
+.view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.buy {
+  position: absolute;
+  inset: auto 16px 16px 16px;
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  max-width: 420px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--brass) 40%, var(--seam));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--velvet) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+.buy h2 { margin: 0; font: 700 var(--step-2)/1 var(--font-display); }
+.buy p { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.buy .buy-eyebrow { font: 600 0.6875rem/1 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.buy .btn { margin-top: 6px; }
+.garden-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.hint { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.hint strong { color: var(--ink); }
+
+/* ── Beete ── */
+.beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.bed {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--t, #6b5a44) 35%, var(--seam));
+  border-radius: 14px;
+  background: radial-gradient(100% 70% at 50% 0%, color-mix(in srgb, var(--t, #6b5a44) 12%, transparent), transparent 70%), var(--velvet);
+}
+.bed.is-target { outline: 2px dashed var(--brass); outline-offset: 2px; }
+.bed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.bed-no { font: 600 0.6875rem/1 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.bed-name { margin: 0; font: 700 var(--step-1)/1.05 var(--font-display); }
+.bed-state { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.bed-empty { color: var(--muted); font-size: var(--step--1); margin: 0; }
+.meter { height: 8px; border-radius: 999px; background: var(--velvet-2); overflow: hidden; }
+.meter span { display: block; height: 100%; background: linear-gradient(90deg, #6fbf4a, #ffd45a); }
+.ripe { display: flex; gap: 4px; }
+.ripe i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #ffd45a66; }
+.ripe i.on { background: radial-gradient(circle at 35% 30%, #fff3c4, #ffd45a 50%, #a47410); border-color: #ffd45a; box-shadow: 0 0 8px #ffd45a88; }
+.badge { justify-self: start; padding: 3px 8px; border-radius: 999px; font: 600 0.6875rem/1.2 var(--font-data); background: #6f8f3a33; color: #b8e07a; }
+.bed-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Inventar ── */
+.inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.inv-empty { margin: 0; color: var(--muted); }
+.item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--t) 35%, var(--seam));
+  border-radius: 14px;
+  background: var(--velvet);
+}
+.item.is-selected { border-color: var(--t); box-shadow: 0 0 0 1px var(--t), 0 8px 30px -14px var(--t); }
+.item-icon { grid-row: span 3; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, var(--t) 20%, var(--velvet-2)); }
+.item-name { margin: 0; font: 700 var(--step-0)/1.1 var(--font-body); }
+.item-name small { font: 600 0.75rem/1 var(--font-data); color: var(--muted); margin-left: 4px; }
+.item-text { margin: 0; color: var(--muted); font-size: 0.8125rem; line-height: 1.4; }
+.item-rar { margin: 0; font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--t); }
+.item .btn { grid-column: 2; justify-self: start; margin-top: 4px; }
+
+/* ── Katalog ── */
+.table-wrap { overflow-x: auto; border: 1px solid var(--seam); border-radius: 14px; }
+.cat { width: 100%; border-collapse: collapse; font-size: var(--step--1); min-width: 560px; }
+.cat th, .cat td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--seam); white-space: nowrap; }
+.cat th { font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cat td { font-variant-numeric: tabular-nums; }
+.cat tr:last-child td { border-bottom: 0; }
+.cat .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--t); margin-right: 6px; }
+
+@media (max-width: 640px) {
+  .view { aspect-ratio: 4 / 5; }
+  .bar-actions { margin-left: 0; }
+}

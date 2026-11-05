@@ -77,6 +77,8 @@
             <li><code>ReplicatedStorage › CoinmasterAdventure</code> mit allen Modulen und fertigen Modellen in <code>Coins</code> und <code>Eggs</code></li>
             <li><code>Workspace › CoinmasterShowcase</code> mit allen Münzen und Eiern zum Ansehen</li>
             <li><code>ServerScriptService › CoinmasterWeather</code> wechselt alle drei Minuten das Wetter, <code>StarterPlayerScripts › CoinmasterWeatherClient</code> zeigt Regen, Blitze, Schnee, Blutmond & Co. und die Ansage beim Wechsel</li>
+            <li><code>ServerScriptService › CoinmasterData</code> mit dem Modul <code>CoinmasterServer › PlayerData</code> speichert den ganzen Spielstand im DataStore (Taler, Münzen, Welten, Eier, Boosts, Auras, Skills, Garten). Damit das in Studio klappt: <strong>Game Settings › Security › Enable Studio Access to API Services</strong>.</li>
+            <li><code>ServerScriptService › CoinmasterGarden</code> für Münzbaumgarten und Münzrollen, <code>StarterPlayerScripts › CoinmasterGardenClient</code> baut den eigenen Garten auf einem Part <code>GartenPlatz</code>.</li>
             <li><code>Workspace › CoinmasterAuraShowcase</code> mit allen 50 Auras an Figuren, <code>ServerScriptService › CoinmasterAuras</code> fürs Kaufen und Anlegen und <code>StarterPlayerScripts › CoinmasterAuraClient</code>, das die Aura jedes Spielers zeichnet. Zum Testen <strong>Play</strong> drücken und im Chat <code>/aura krone</code> schreiben.</li>
           </ul>
           <p class="muted-note">Ein erneuter Import ersetzt beides. <kbd>Strg</kbd>+<kbd>Z</kbd> macht ihn rückgängig.</p>

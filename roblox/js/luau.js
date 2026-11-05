@@ -8,6 +8,8 @@ import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
 import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
+import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
+import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_CLIENT } from './gardenLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1226,6 +1228,8 @@ export function moduleSources(data) {
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
+    ...(data.TREES ? [{ name: 'GardenData', source: gardenDataSource(data) }, { name: 'LootBuilder', source: LOOT_BUILDER }, { name: 'GardenBuilder', source: GARDEN_BUILDER }] : []),
+    ...(data.ROLLS && data.TREES ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
     ...(data.BOOSTS && data.AURAS && data.SKILLS
       ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'UITheme', source: UI_THEME }, { name: 'GameUI', source: GAME_UI }]
       : []),
@@ -1251,7 +1255,10 @@ export function installerSource(data) {
 -- Danach gibt es:
 --   ReplicatedStorage > CoinmasterAdventure   alle Daten und Module (${modules.length} ModuleScripts)
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
---   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier zum Ansehen
+--   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS && data.TREES ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS && data.TREES ? `
+--   Workspace > CoinmasterGardenShowcase      Münzbaumgarten mit allen ${data.TREES.length} Münzbäumen (GardenBuilder)
+--   ServerScriptService > CoinmasterGarden    Münzbaumgarten und Münzrollen (GardenRemote)
+--   StarterPlayerScripts > CoinmasterGardenClient   baut den eigenen Garten (Part „GartenPlatz“ im Workspace)` : ''}
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
@@ -1369,7 +1376,36 @@ for i, egg in ipairs(EggData.Eggs) do
 	model.Parent = showcase
 end
 
-showcase.Parent = workspace
+${data.ROLLS && data.TREES ? `-- Münzrollen in einer Reihe vor den Eiern
+local RollData = require(root.RollData)
+local RollBuilder = require(root.RollBuilder)
+local rollFolder = Instance.new("Folder")
+rollFolder.Name = "Rolls"
+rollFolder.Parent = root
+for i, roll in ipairs(RollData.Rolls) do
+	local model = RollBuilder.Build(roll)
+	model:Clone().Parent = rollFolder
+	model:PivotTo(CFrame.new((i - (#RollData.Rolls + 1) / 2) * 7, 0, 32) * model:GetPivot().Rotation)
+	nameTag(model, roll.Name, roll.Glow)
+	model.Parent = showcase
+end
+
+-- Münzbaumgarten mit allen Bäumen, ausgewachsen und reif
+local GardenData = require(root.GardenData)
+local GardenBuilder = require(root.GardenBuilder)
+local oldGarden = workspace:FindFirstChild("CoinmasterGardenShowcase")
+if oldGarden then
+	oldGarden:Destroy()
+end
+local plots = {}
+for i, tree in ipairs(GardenData.Trees) do
+	plots[i] = { Tree = tree.Id, Stage = 3, Ripe = 1 }
+end
+local garden = GardenBuilder.Build({ Beds = math.min(GardenData.Garden.MaxBeds, math.ceil(#plots / 4) * 4), Plots = plots })
+garden.Name = "CoinmasterGardenShowcase"
+garden:PivotTo(CFrame.new(0, 0, 70))
+garden.Parent = workspace
+` : ''}showcase.Parent = workspace
 ${data.AURAS ? AURA_SHOWCASE : ''}
 -- Wetter: Server-Skript und Client-Skript (alte Fassungen ersetzen)
 local function addScript(className, parent, name, source)
@@ -1402,7 +1438,9 @@ addScript("Script", game:GetService("ServerScriptService"), "CoinmasterData", ${
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterPlayer", ${longString(playerServerSource(data))})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterUI", ${longString(UI_CLIENT)})
-` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
+${data.ROLLS && data.TREES ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterGarden", ${longString(GARDEN_SERVER)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterGardenClient", ${longString(GARDEN_CLIENT)})
+` : ''}` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterAuraClient", ${longString(AURA_CLIENT)})
 ` : ''}
 pcall(function()
