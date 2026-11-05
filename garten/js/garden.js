@@ -14,6 +14,10 @@ export const RARITIES = [
   { id: 'legendaer', name: 'Legendär', color: '#ffb02e', chance: 5 },
   { id: 'mythisch', name: 'Mythisch', color: '#ff5f8a', chance: 1.6 },
   { id: 'goettlich', name: 'Göttlich', color: '#fff2a0', chance: 0.4 },
+  { id: 'kosmisch', name: 'Kosmisch', color: '#7c86ff', chance: 0.15 },
+  { id: 'himmlisch', name: 'Himmlisch', color: '#9ff4ff', chance: 0.06 },
+  // ???: die geheime Seltenheit. Nur die seltensten Schätze, alles in Regenbogenfarben (rainbow)
+  { id: 'geheim', name: '???', color: '#ff4fd8', chance: 0.02, rainbow: true },
 ];
 export const rarityById = Object.fromEntries(RARITIES.map((r, i) => [r.id, { ...r, index: i }]));
 
@@ -29,7 +33,15 @@ export const TREES = [
   { id: 'dukatenkirsche', name: 'Dukatenkirsche', rarity: 'episch', grow: 540, cycle: 80, yield: 1300, harvests: 10, crown: 'blossom', trunk: '#4a2c22', leaf: '#ff9ec8', fruit: '#ffcf4a', look: 'SmoothPlastic', text: 'Blüht rosa und trägt statt Kirschen kleine Golddukaten.' },
   { id: 'kristallweide', name: 'Kristallweide', rarity: 'legendaer', grow: 1200, cycle: 120, yield: 6000, harvests: 12, crown: 'weeping', trunk: '#6a7f96', leaf: '#8fe8ff', fruit: '#e6fbff', look: 'Glass', text: 'Ihre Zweige hängen wie Eiszapfen herab und klingen beim Ernten.' },
   { id: 'drachenpalme', name: 'Drachenpalme', rarity: 'mythisch', grow: 2400, cycle: 150, yield: 25000, harvests: 15, crown: 'palm', trunk: '#5a2a1a', leaf: '#ff5a2a', fruit: '#ffb02e', look: 'Neon', text: 'Wächst nur, wo es heiß ist. Ihre Früchte glühen wie Drachenschuppen.' },
+  { id: 'glueckspilz', name: 'Glückspilz', rarity: 'gewoehnlich', grow: 90, cycle: 40, yield: 60, harvests: 6, crown: 'mushroom', trunk: '#efe6d2', leaf: '#e0453a', fruit: '#ffd45a', look: 'SmoothPlastic', text: 'Ein riesiger Pilz mit Tupfen. Unter dem Hut wachsen Groschen.' },
+  { id: 'ahorngroschen', name: 'Ahorngroschen', rarity: 'selten', grow: 270, cycle: 70, yield: 380, harvests: 8, crown: 'round', trunk: '#5a3a22', leaf: '#e8742a', fruit: '#ffcf4a', look: 'Grass', text: 'Immer im Herbst: orangerotes Laub und goldene Groschen.' },
+  { id: 'frosttanne', name: 'Frosttanne', rarity: 'episch', grow: 660, cycle: 95, yield: 1650, harvests: 10, crown: 'cone', trunk: '#6a5a50', leaf: '#bfefff', fruit: '#e8f6ff', look: 'Ice', text: 'Mit Raureif überzogen. Ihre Taler sind kalt wie Eis.' },
+  { id: 'wolkenbaum', name: 'Wolkenbaum', rarity: 'legendaer', grow: 1300, cycle: 125, yield: 6500, harvests: 12, crown: 'cloud', trunk: '#c9c2d6', leaf: '#ffffff', fruit: '#ffe9a0', look: 'SmoothPlastic', text: 'Seine Krone ist eine weiche Wolke, aus der es Taler regnet.' },
+  { id: 'kristallbaum', name: 'Kristallbaum', rarity: 'mythisch', grow: 2600, cycle: 155, yield: 27000, harvests: 15, crown: 'crystal', trunk: '#4a3a6a', leaf: '#d27bff', fruit: '#ffd6ff', look: 'Glass', text: 'Statt Blättern wachsen leuchtende Kristalle aus den Ästen.' },
   { id: 'sternenbaum', name: 'Sternenbaum', rarity: 'goettlich', grow: 3600, cycle: 180, yield: 120000, harvests: 20, crown: 'star', trunk: '#2a1f4a', leaf: '#3b2a8a', fruit: '#fff2a0', look: 'Glass', text: 'Seine Krone ist ein Stück Nachthimmel. Jede Frucht ist ein kleiner Stern.' },
+  { id: 'planetenbaum', name: 'Planetenbaum', rarity: 'kosmisch', grow: 5400, cycle: 200, yield: 400000, harvests: 25, crown: 'planet', trunk: '#1b1640', leaf: '#ff9a3c', fruit: '#9ad8ff', look: 'SmoothPlastic', text: 'Trägt einen ganzen Planeten mit Ring. Monde kreisen als Taler.' },
+  { id: 'engelsbaum', name: 'Engelsbaum', rarity: 'himmlisch', grow: 7200, cycle: 220, yield: 1200000, harvests: 30, crown: 'angel', trunk: '#f4ecd8', leaf: '#fff6e0', fruit: '#ffe680', look: 'SmoothPlastic', text: 'Weiße Krone mit Heiligenschein und Flügeln. Er summt leise.' },
+  { id: 'regenbogenbaum', name: 'Regenbogenbaum', rarity: 'geheim', grow: 10800, cycle: 240, yield: 5000000, harvests: 40, crown: 'rainbow', trunk: '#ffffff', leaf: '#ff5fd2', fruit: '#ffffff', look: 'Neon', text: 'Niemand weiß, woher er kommt. Er leuchtet in allen Farben.' },
 ];
 
 // kind: water (seconds schneller wachsen, Infinity = sofort fertig) · boost (mult × Ernte für seconds)
@@ -44,6 +56,8 @@ export const TOOLS = [
   { id: 'regenbogenkanne', name: 'Regenbogenkanne', rarity: 'legendaer', kind: 'water', seconds: Infinity, model: 'can', color: '#ff7ad9', rainbow: true, text: 'Einmal gießen: Der Baum ist sofort ausgewachsen.' },
   { id: 'zauberduenger', name: 'Zauberdünger', rarity: 'mythisch', kind: 'boost', mult: 3, seconds: 1800, model: 'sack', color: '#8a4bd8', text: 'Dreifache Ernte an einem Baum, 30 Minuten lang.' },
   { id: 'talertruhe', name: 'Talertruhe', rarity: 'goettlich', kind: 'taler', amount: 250000, model: 'chest', color: '#ffd45a', text: 'Eine ganze Truhe Taler. Selten wie ein Sternenbaum.' },
+  { id: 'kometenduenger', name: 'Kometendünger', rarity: 'kosmisch', kind: 'boost', mult: 5, seconds: 3600, model: 'sack', color: '#3a2a8a', text: 'Fünffache Ernte an einem Baum, eine ganze Stunde lang.' },
+  { id: 'himmelstruhe', name: 'Himmelstruhe', rarity: 'himmlisch', kind: 'taler', amount: 3000000, model: 'chest', color: '#fff6c8', text: 'Eine Truhe aus den Wolken, randvoll mit Talern.' },
 ];
 
 // Zäune zum Personalisieren: aus den Rollen, bleiben im Inventar und lassen sich jederzeit anbringen.
@@ -57,6 +71,8 @@ export const FENCES = [
   { id: 'kristallzaun', name: 'Kristallzaun', rarity: 'legendaer', color: '#8fe8ff', text: 'Pfosten aus Kristall, verbunden mit leuchtenden Bändern. Funkelt.' },
   { id: 'lavazaun', name: 'Lavazaun', rarity: 'mythisch', color: '#ff6a2a', text: 'Basalt mit glühenden Adern. Auf den Pfosten brennt Feuer.' },
   { id: 'sternenzaun', name: 'Sternenzaun', rarity: 'goettlich', color: '#b49cff', text: 'Nachtblaue Pfosten mit leuchtenden Sternen, dazwischen Bänder aus Licht.' },
+  { id: 'wolkenzaun', name: 'Wolkenzaun', rarity: 'himmlisch', color: '#f4f8ff', text: 'Goldene Pfosten, dazwischen schweben weiche Wolken.' },
+  { id: 'regenbogenzaun', name: 'Regenbogenzaun', rarity: 'geheim', color: '#ff4fd8', text: 'Bögen in allen Farben des Regenbogens. Gibt es nur bei ???.' },
 ];
 export const fenceById = Object.fromEntries(FENCES.map((f) => [f.id, f]));
 

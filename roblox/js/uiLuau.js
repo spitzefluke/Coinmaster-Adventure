@@ -1699,6 +1699,10 @@ end
 -- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
 -- gardenDig (Beet), gardenFence (Zaun), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
+-- Name einer Seltenheit; ??? bekommt einen Regenbogen davor
+local function rarityName(r)
+	return (r.Rainbow and "🌈 " or "") .. r.Name
+end
 local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
 local STAGE_NAMES = { "Keimling", "Jungbaum", "Ausgewachsen" }
 local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
@@ -1836,7 +1840,7 @@ fillGarden = function(w)
 				c.LayoutOrder = n
 				text(c, 0, 46, "🏡", 38, C.ink, EMOJI)
 				text(c, 50, 22, item.Name .. (item.Standard and "" or ("  ×" .. count)), 17, C.ink, FONT)
-				text(c, 74, 16, r.Name .. " · Zaun", 12, r.Color)
+				text(c, 74, 16, rarityName(r) .. " · Zaun", 12, r.Color)
 				text(c, 94, 48, item.Text, 12, C.muted, TEXT)
 				actionButton(c, on and "Angebracht" or "Anbringen", on and C.line or C.green, not on, function() gardenDo("gardenFence", item.Id) end)
 			elseif count > 0 then
@@ -1846,7 +1850,7 @@ fillGarden = function(w)
 				c.LayoutOrder = n
 				text(c, 0, 46, item.Type == "Tree" and "🌱" or lootIcon(item), 38, C.ink, EMOJI)
 				text(c, 50, 22, GardenData.LootName(item) .. "  ×" .. count, 17, C.ink, FONT)
-				text(c, 74, 16, r.Name .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
+				text(c, 74, 16, rarityName(r) .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
 				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle) .. ", " .. item.Harvests .. "× ernten") or item.Text
 				text(c, 94, 48, info, 12, C.muted, TEXT)
 				if item.Kind == "Taler" or item.Kind == "Bed" then
@@ -1906,7 +1910,7 @@ fillGarden = function(w)
 			text(c, 20, 46, lootIcon(tree), stage == 1 and 26 or (stage == 2 and 34 or 42), C.ink, EMOJI)
 			text(c, 68, 22, tree.Name, 19, C.ink, FONT)
 			local left = GardenData.HarvestsLeft(plot)
-			text(c, 90, 16, r.Name .. " · " .. STAGE_NAMES[stage] .. " · noch " .. left .. "× ernten", 12, left <= 2 and C.red or r.Color)
+			text(c, 90, 16, rarityName(r) .. " · " .. STAGE_NAMES[stage] .. " · noch " .. left .. "× ernten", 12, left <= 2 and C.red or r.Color)
 			local live = text(c, 108, 16, "", 12, C.muted, MONO)
 			if stage < 3 then
 				local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 0, 130), BackgroundColor3 = C.bg, Parent = c }, { corner(R.Round) })

@@ -26,10 +26,10 @@ const guaranteeText = (roll) => (roll.guarantee ? rarityById[roll.guarantee].nam
 // Chancen-Leiste: Anteil jeder möglichen Seltenheit, darunter mit Prozent
 function oddsHtml(roll) {
   const ch = rollChances(roll);
-  const bar = RARITIES.map((t, i) => `<span style="--t:${t.color};flex:${ch[i]}" title="${t.name} ${pct(ch[i])}"></span>`).join('');
+  const bar = RARITIES.map((t, i) => `<span class="${t.rainbow ? 'rainbow-fill' : ''}" style="--t:${t.color};flex:${ch[i]}" title="${t.name} ${pct(ch[i])}"></span>`).join('');
   const rare = RARITIES.map((t, i) => [t, ch[i]]).filter(([, c]) => c > 0);
   return `<div class="odds-bar" aria-hidden="true">${bar}</div>
-    <ul class="odds-list" aria-label="Chance je Sache">${rare.map(([t, c]) => `<li style="--t:${t.color}">${t.name} ${pct(c)}</li>`).join('')}</ul>`;
+    <ul class="odds-list" aria-label="Chance je Sache">${rare.map(([t, c]) => `<li style="--t:${t.color}"><span class="${t.rainbow ? 'rainbow-text' : ''}">${t.name}</span> ${pct(c)}</li>`).join('')}</ul>`;
 }
 
 // ── Karten ───────────────────────────────────────────────────────────────────
@@ -84,12 +84,12 @@ const sortedLoot = [...LOOT].sort((a, b) => rarityById[a.rarity].index - rarityB
 const lootCards = sortedLoot.map((item) => {
   const rar = rarityById[item.rarity];
   const card = document.createElement('article');
-  card.className = 'loot-card';
+  card.className = 'loot-card' + (rar.rainbow ? ' is-rainbow' : '');
   card.style.setProperty('--t', rar.color);
   card.innerHTML = `
     <div class="loot-view view" role="img" aria-label="${lootName(item)} in 3D"></div>
     <div class="loot-body">
-      <p class="loot-kind">${rar.name} · ${item.type === 'tree' ? 'Samen' : item.type === 'fence' ? 'Zaun' : 'Werkzeug'}</p>
+      <p class="loot-kind${rar.rainbow ? ' rainbow-text' : ''}">${rar.name} · ${item.type === 'tree' ? 'Samen' : item.type === 'fence' ? 'Zaun' : 'Werkzeug'}</p>
       <h3 class="loot-name">${lootName(item)}</h3>
       <p class="loot-text">${lootInfo(item)}</p>
       <p class="loot-chance"></p>

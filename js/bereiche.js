@@ -30,14 +30,14 @@ export const BEREICHE = [
     text: 'Papierrollen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Ein Band mit Münzbäumen, Gießkannen und Dünger rollt durch und bleibt auf einem Schatz für den Münzbaumgarten stehen.',
     href: 'rollen/',
     status: 'vorschau',
-    eckdaten: ['5 Rollen', '25 Schätze', 'Rollanimation'],
+    eckdaten: ['5 Rollen', '37 Schätze', '9 Seltenheiten'],
   },
   {
     titel: 'Münzbaumgarten',
     text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen pflanzen, gießen, düngen und ihre Münzen als Taler ernten.',
     href: 'garten/',
     status: 'vorschau',
-    eckdaten: ['9 Münzbäume', 'bis 12 Beete', '3D'],
+    eckdaten: ['17 Münzbäume', '9 Zäune', 'bis 12 Beete'],
   },
   {
     titel: 'Haustiere',

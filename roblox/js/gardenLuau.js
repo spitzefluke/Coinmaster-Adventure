@@ -22,7 +22,7 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 const KIND = { water: 'Water', boost: 'Boost', taler: 'Taler', bed: 'Bed' };
 
 export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], GARDEN }) {
-  const rarities = GARDEN_RARITIES.map((r, i) => fields({ Id: str(r.id), Name: str(r.name), Index: num(i + 1), Chance: num(r.chance), Color: color(r.color) }));
+  const rarities = GARDEN_RARITIES.map((r, i) => fields({ Id: str(r.id), Name: str(r.name), Index: num(i + 1), Chance: num(r.chance), Color: color(r.color), Rainbow: r.rainbow ? 'true' : undefined }));
   const trees = TREES.map((t) =>
     fields({
       Id: str(t.id),
@@ -481,6 +481,102 @@ function CROWNS.star(m, t, leaf, h)
 	return c, 2.25, 0
 end
 
+-- Ellipsoid als Krone (Block mit Kugel-Mesh; in den Kronen-Funktionen gleich nutzbar)
+local function blob(m, name, size, cf, color, material, transparency)
+	local p = part("Part", { Name = name, Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 }, m)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+-- Glückspilz: dicker Stiel, roter Hut mit weißen Tupfen, Lamellen darunter
+function CROWNS.mushroom(m, t, leaf, h)
+	local c = Vector3.new(0, h + 0.45, 0)
+	blob(m, "Crown", Vector3.new(3.8, 1.7, 3.8), CFrame.new(c), t.Leaf, leaf)
+	part("Part", { Name = "Lamellen", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 3.3, 3.3), CFrame = CFrame.new(0, h + 0.05, 0) * UP, Color = Color3.fromRGB(240, 226, 200), Material = Enum.Material.SmoothPlastic }, m)
+	for i = 0, 9 do
+		local a = i * 2.39996
+		local r = 0.5 + (i % 3) * 0.45
+		local y = 0.75 - r * r * 0.2
+		ball(m, "Tupfen", 0.42 - (i % 3) * 0.06, c + Vector3.new(math.cos(a) * r, y, math.sin(a) * r), Color3.fromRGB(255, 252, 240))
+	end
+	return Vector3.new(0, h + 0.15, 0), 1.9, 0
+end
+-- Wolkenbaum: weiche Wolkenkugeln, darunter fallen Taler wie Regen
+function CROWNS.cloud(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.5, 0)
+	for _, o in ipairs({ { 0, 0.3, 0, 3 }, { -1.3, 0, 0.2, 2.3 }, { 1.3, -0.1, -0.1, 2.4 }, { 0.2, -0.2, 1.2, 2.2 }, { -0.2, 0.1, -1.2, 2.3 }, { 0.6, 0.9, 0.3, 1.8 } }) do
+		ball(m, "Crown", o[4], c + Vector3.new(o[1], o[2], o[3]), t.Leaf, leaf)
+	end
+	for i = 0, 5 do
+		local a = i * 1.05
+		part("Part", { Name = "Regentaler", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.08, 0.36, 0.36), CFrame = CFrame.new(c + Vector3.new(math.cos(a) * 1.2, -1.6 - (i % 3) * 0.45, math.sin(a) * 1.2)) * CFrame.Angles(0, a, math.rad(20)), Color = t.Fruit, Material = Enum.Material.Neon }, m)
+	end
+	return c, 2.1, 0
+end
+-- Kristallbaum: Kristallspitzen strahlen aus einem leuchtenden Kern
+function CROWNS.crystal(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.4, 0)
+	ball(m, "Kern", 1.4, c, t.Fruit, Enum.Material.Neon)
+	local rng = Random.new(11)
+	for i = 0, 10 do
+		local a = i * 2.39996
+		local up = rng:NextNumber(-0.3, 1.1)
+		local len = rng:NextNumber(1.4, 2.4)
+		local dir = Vector3.new(math.cos(a), up, math.sin(a)).Unit
+		local mid = c + dir * (len / 2 + 0.3)
+		part("Part", { Name = "Crown", Size = Vector3.new(0.45, len, 0.45), CFrame = CFrame.lookAt(mid, mid + dir) * CFrame.Angles(math.rad(90), 0, 0) * CFrame.Angles(0, math.rad(45), 0), Color = t.Leaf, Material = leaf, Transparency = 0.15 }, m)
+	end
+	local s = Instance.new("Sparkles")
+	s.SparkleColor = t.Leaf
+	s.Parent = m:FindFirstChild("Kern")
+	return c, 1.5, 0
+end
+-- Planetenbaum: ein Planet mit Ring, zwei Monde kreisen
+function CROWNS.planet(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.7, 0)
+	ball(m, "Crown", 3.4, c, t.Leaf, leaf)
+	for i, y in ipairs({ -0.6, 0.15, 0.85 }) do
+		part("Part", { Name = "Streifen", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.18, 3.42 - math.abs(y) * 0.6, 3.42 - math.abs(y) * 0.6), CFrame = CFrame.new(c + Vector3.new(0, y, 0)) * UP, Color = t.Leaf:Lerp(Color3.new(1, 1, 1), 0.25 * i), Material = leaf }, m)
+	end
+	part("Part", { Name = "Ring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.06, 5.8, 5.8), CFrame = CFrame.new(c) * CFrame.Angles(0, 0, math.rad(90 - 18)), Color = t.Fruit, Material = Enum.Material.Neon, Transparency = 0.35 }, m)
+	ball(m, "Mond", 0.6, c + Vector3.new(2.6, 0.9, 0.6), Color3.fromRGB(220, 220, 235), Enum.Material.Slate)
+	ball(m, "Mond", 0.4, c + Vector3.new(-2.2, -0.4, -1.4), Color3.fromRGB(200, 220, 255), Enum.Material.Neon)
+	return c, 1.75, 0
+end
+-- Engelsbaum: weiße Krone, Heiligenschein und zwei Flügel
+function CROWNS.angel(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.6, 0)
+	ball(m, "Crown", 3.6, c, t.Leaf, leaf)
+	for i = 0, 17 do
+		local a = math.rad(i * 20)
+		ball(m, "Heiligenschein", 0.2, c + Vector3.new(math.cos(a) * 1.1, 2.3, math.sin(a) * 1.1), Color3.fromRGB(255, 224, 120), Enum.Material.Neon)
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		blob(m, "Fluegel", Vector3.new(2.6, 1.3, 0.25), CFrame.new(c + Vector3.new(side * 2.2, 0.5, 0.3)) * CFrame.Angles(0, 0, side * math.rad(-25)), Color3.fromRGB(255, 255, 255), Enum.Material.SmoothPlastic)
+		blob(m, "Fluegel", Vector3.new(1.8, 0.9, 0.22), CFrame.new(c + Vector3.new(side * 2.0, -0.1, 0.35)) * CFrame.Angles(0, 0, side * math.rad(-10)), Color3.fromRGB(245, 245, 255), Enum.Material.SmoothPlastic)
+	end
+	local l = Instance.new("PointLight")
+	l.Color = Color3.fromRGB(255, 236, 170)
+	l.Brightness = 1.5
+	l.Range = 10
+	l.Parent = m:FindFirstChild("Crown")
+	return c, 1.85, 0
+end
+-- Regenbogenbaum: geschichtete Krone in allen Farben, leuchtet und funkelt
+function CROWNS.rainbow(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.5, 0)
+	for i = 0, 6 do
+		local w = 3.8 - i * 0.42
+		blob(m, "Crown", Vector3.new(w, 0.7, w), CFrame.new(c + Vector3.new(0, -1 + i * 0.5, 0)), Color3.fromHSV(i / 7, 0.65, 1), Enum.Material.Neon)
+	end
+	ball(m, "Spitze", 0.6, c + Vector3.new(0, 2.6, 0), Color3.new(1, 1, 1), Enum.Material.Neon)
+	local s = Instance.new("Sparkles")
+	s.SparkleColor = Color3.new(1, 1, 1)
+	s.Parent = m:FindFirstChild("Spitze")
+	return c, 1.75, 0
+end
+
 local function trunk(m, t, h, w, bend)
 	if bend then
 		-- Palme: gebogener Stamm aus Stücken
@@ -524,8 +620,8 @@ function LootBuilder.Tree(tree, stage, ripe, full)
 		model:SetAttribute("TreeId", tree.Id)
 		return model
 	end
-	local h = ({ bush = 1.3, cone = 2.2, palm = 4.8 })[tree.Crown] or (tree.Big and 3.6 or 3.2)
-	local w = tree.Big and 1.05 or (tree.Crown == "bush" and 0.5 or 0.75)
+	local h = ({ bush = 1.3, cone = 2.2, palm = 4.8, mushroom = 1.9, cloud = 3, crystal = 2.8, angel = 3, rainbow = 3 })[tree.Crown] or (tree.Big and 3.6 or 3.2)
+	local w = tree.Big and 1.05 or (tree.Crown == "bush" and 0.5 or (tree.Crown == "mushroom" and 1.1 or 0.75))
 	trunk(model, tree, h, w, tree.Crown == "palm")
 	local center, radius, low = (CROWNS[tree.Crown] or CROWNS.round)(model, tree, leaf, h)
 
@@ -560,7 +656,7 @@ end
 
 -- ── Werkzeug ──
 -- Jedes Stück bekommt Akzente in der Farbe seiner Seltenheit; ab Episch leuchtet es, ab Legendär funkelt es.
-local RANK = { gewoehnlich = 1, selten = 2, episch = 3, legendaer = 4, mythisch = 5, goettlich = 6 }
+local RANK = { gewoehnlich = 1, selten = 2, episch = 3, legendaer = 4, mythisch = 5, goettlich = 6, kosmisch = 7, himmlisch = 8, geheim = 9 }
 local DARK = Color3.fromRGB(28, 22, 34)
 
 local function cyl(parent, name, len, dia, cf, color, material)
@@ -767,8 +863,10 @@ function LootBuilder.Seed(tree)
 	-- Rand in der Farbe der Seltenheit (vier Leisten)
 	local front = tilt * CFrame.new(0, 0, -0.13)
 	local edge = rank >= 3 and Enum.Material.Neon or Enum.Material.Foil
-	for _, e in ipairs({ { 0, 0.97, 1.5, 0.07 }, { 0, -0.97, 1.5, 0.07 }, { -0.72, 0, 0.07, 2 }, { 0.72, 0, 0.07, 2 } }) do
-		box(model, "Rand", Vector3.new(e[3], e[4], 0.04), front * CFrame.new(e[1], e[2], 0), accent, edge)
+	for k, e in ipairs({ { 0, 0.97, 1.5, 0.07 }, { 0, -0.97, 1.5, 0.07 }, { -0.72, 0, 0.07, 2 }, { 0.72, 0, 0.07, 2 } }) do
+		-- ???: Rand in Regenbogenfarben
+		local c = rarity and rarity.Rainbow and Color3.fromHSV(k / 4, 0.7, 1) or accent
+		box(model, "Rand", Vector3.new(e[3], e[4], 0.04), front * CFrame.new(e[1], e[2], 0), c, edge)
 	end
 	-- oben gefalzt und eingerissen (Zacken), Samen rieseln heraus
 	box(model, "Falz", Vector3.new(1.52, 0.3, 0.3), tilt * CFrame.new(0, 0.86, 0), tree.Trunk)
@@ -974,6 +1072,35 @@ FENCE.sternenzaun = {
 	end,
 }
 
+FENCE.wolkenzaun = {
+	every = 3,
+	post = function(m, cf, h)
+		cyl(m, "Pfosten", h, 0.26, cf * CFrame.new(0, h / 2, 0) * UP, Color3.fromRGB(240, 200, 100), Enum.Material.Foil)
+		ball(m, "Kappe", 0.36, (cf * CFrame.new(0, h + 0.12, 0)).Position, Color3.fromRGB(255, 240, 180), Enum.Material.Neon)
+	end,
+	fill = function(m, cf, len)
+		box(m, "Kette", Vector3.new(len, 0.07, 0.07), cf * CFrame.new(len / 2, 0.4, 0), Color3.fromRGB(240, 200, 100), Enum.Material.Foil)
+		local n = math.max(1, math.floor(len / 0.9))
+		for i = 0, n do
+			local x = len * (i + 0.5) / (n + 1)
+			ball(m, "Wolke", 0.85 + (i % 2) * 0.3, (cf * CFrame.new(x, 1.0 + (i % 2) * 0.15, 0)).Position, Color3.fromRGB(250, 252, 255))
+		end
+	end,
+}
+FENCE.regenbogenzaun = {
+	every = 3,
+	post = function(m, cf, h, i)
+		box(m, "Pfosten", Vector3.new(0.3, h + 0.2, 0.3), cf * CFrame.new(0, (h + 0.2) / 2, 0), Color3.new(1, 1, 1), Enum.Material.Glass, 0.2)
+		ball(m, "Kappe", 0.4, (cf * CFrame.new(0, h + 0.4, 0)).Position, Color3.fromHSV(((i or 0) % 7) / 7, 0.6, 1), Enum.Material.Neon)
+	end,
+	fill = function(m, cf, len)
+		-- sechs Bänder übereinander in den Farben des Regenbogens
+		for k = 0, 5 do
+			box(m, "Band", Vector3.new(len, 0.12, 0.08), cf * CFrame.new(len / 2, 0.35 + k * 0.22, 0), Color3.fromHSV(k / 6, 0.7, 1), Enum.Material.Neon)
+		end
+	end,
+}
+
 -- Zaun von a nach b (Bodenpunkte); Pfosten im Abstand des Stils, n = feste Anzahl Felder (optional)
 function LootBuilder.FenceRun(parent, fenceId, a, b, n)
 	local st = FENCE[fenceId] or FENCE.holzzaun
@@ -1039,6 +1166,7 @@ export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- Animation: GardenBuilder.Animate(model, zeit, dt) jedes Bild aufrufen. Bäume wachsen dann stufenlos mit dem
 -- Fortschritt (Plot.Progress bzw. SetTimer), wiegen sich im Wind, wachsende atmen leicht und lassen Blättchen
 -- aufsteigen. Plot.Fresh = true: Das Beet hat gerade eine neue Stufe erreicht, der Baum ploppt mit Funken auf.
+-- Zaunwechsel: garden.FenceFrom = alter Zaun → der alte versinkt, der neue wächst vom Tor aus rundherum (in Animate).
 -- GardenBuilder.BedPosition(i, beds) gibt die Mitte eines Beets zurück.
 
 local GardenData = require(script.Parent.GardenData)
@@ -1048,6 +1176,7 @@ local GardenBuilder = {}
 
 -- Animations-Daten je gebautem Garten (schwache Schlüssel: verschwindet mit dem Model)
 local animated = setmetatable({}, { __mode = "k" })
+local fenceAnim = setmetatable({}, { __mode = "k" }) -- Zaunwechsel
 
 -- Teile eines Baums relativ zu seinem Fußpunkt merken; gibt eine Funktion zum Setzen (Ort, Größe) zurück
 local function rigTree(tree, base)
@@ -1131,16 +1260,67 @@ function GardenBuilder.Build(garden)
 	-- Weg vom Tor
 	part("Part", { Name = "Weg", Size = Vector3.new(2.6, 1, 4), CFrame = CFrame.new(0, -0.48, -depth / 2 - 1.5), Color = Color3.fromRGB(196, 170, 120), Material = Enum.Material.Sand }, model)
 
-	-- Zaun rundherum im gewählten Stil (garden.Fence), vorne mit Tor in der Mitte
-	local fenceId = garden.Fence or "holzzaun"
+	-- Zaun rundherum im gewählten Stil (garden.Fence), vorne mit Tor in der Mitte. Eigenes Model „Zaun“,
+	-- damit ein Wechsel animiert werden kann (garden.FenceFrom = vorheriger Zaun).
 	local hx, hz, gate = width / 2, depth / 2, 1.6
-	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, hz), Vector3.new(hx, 0, hz))
-	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-hx, 0, hz))
-	LootBuilder.FenceRun(model, fenceId, Vector3.new(hx, 0, -hz), Vector3.new(hx, 0, hz))
-	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-gate, 0, -hz))
-	LootBuilder.FenceRun(model, fenceId, Vector3.new(gate, 0, -hz), Vector3.new(hx, 0, -hz))
-	for i, x in ipairs({ -gate, gate }) do
-		LootBuilder.FencePost(model, fenceId, Vector3.new(x, 0, -hz), 3.2, i)
+	local function buildFence(fenceId, name)
+		local f = Instance.new("Model")
+		f.Name = name
+		LootBuilder.FenceRun(f, fenceId, Vector3.new(-hx, 0, hz), Vector3.new(hx, 0, hz))
+		LootBuilder.FenceRun(f, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-hx, 0, hz))
+		LootBuilder.FenceRun(f, fenceId, Vector3.new(hx, 0, -hz), Vector3.new(hx, 0, hz))
+		LootBuilder.FenceRun(f, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-gate, 0, -hz))
+		LootBuilder.FenceRun(f, fenceId, Vector3.new(gate, 0, -hz), Vector3.new(hx, 0, -hz))
+		for i, x in ipairs({ -gate, gate }) do
+			LootBuilder.FencePost(f, fenceId, Vector3.new(x, 0, -hz), 3.2, i)
+		end
+		f.Parent = model
+		return f
+	end
+	local fenceId = garden.Fence or "holzzaun"
+	local fence = buildFence(fenceId, "Zaun")
+	if garden.FenceFrom and garden.FenceFrom ~= fenceId then
+		-- Wechsel: der alte Zaun versinkt, der neue wächst vom Tor aus rundherum aus dem Boden
+		local old = buildFence(garden.FenceFrom, "AlterZaun")
+		local function entries(f, delayed)
+			local list = {}
+			for _, p in ipairs(f:GetDescendants()) do
+				if p:IsA("BasePart") then
+					-- Abstand vom Tor rund um den Garten (0 am Tor, 1 hinten)
+					local x, z = p.Position.X, -p.Position.Z
+					local a = z ~= 0 and math.atan(x / z) or (x >= 0 and math.pi / 2 or -math.pi / 2)
+					if z < 0 then a = a + (x >= 0 and math.pi or -math.pi) end
+					local along = math.abs(a) / math.pi
+					-- Effekte am Teil (Feuer, Funkeln, Licht): beim alten sofort aus, beim neuen erst, wenn er auftaucht
+					local fx = {}
+					for _, c in ipairs(p:GetChildren()) do
+						if c:IsA("Fire") or c:IsA("Sparkles") or c:IsA("ParticleEmitter") or c:IsA("PointLight") then
+							table.insert(fx, c)
+							c.Enabled = false
+						end
+					end
+					table.insert(list, { Part = p, CF = p.CFrame, T = p.Transparency, Delay = delayed and along * 1.4 or along * 0.5, Fx = fx })
+					if delayed then
+						p.CFrame = p.CFrame * CFrame.new(0, -2.4, 0)
+						p.Transparency = 1
+					end
+				end
+			end
+			return list
+		end
+		local burst = part("Part", { Name = "ZaunFunken", Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = CFrame.new(0, 0.5, -hz) }, model)
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		local fc = GardenData.ById[fenceId] and GardenData.ById[fenceId].Color or Color3.new(1, 1, 1)
+		sparks.Color = ColorSequence.new(fc, Color3.new(1, 1, 1))
+		sparks.LightEmission = 1
+		sparks.Lifetime = NumberRange.new(0.6, 1.2)
+		sparks.Speed = NumberRange.new(4, 9)
+		sparks.SpreadAngle = Vector2.new(70, 70)
+		sparks.Size = NumberSequence.new(0.4, 0)
+		sparks.Rate = 0
+		sparks.Parent = burst
+		fenceAnim[model] = { New = entries(fence, true), Old = entries(old, false), OldModel = old, Burst = sparks, Start = nil }
 	end
 	sign(model, "Münzbaumgarten", CFrame.new(0, 3.3, -hz), Vector3.new(4.4, 1, 0.2), wood, Color3.fromRGB(255, 222, 120))
 
@@ -1252,6 +1432,53 @@ function GardenBuilder.Move(model, cf)
 			e.Base = cf * e.Base
 		end
 	end
+	local fa = fenceAnim[model]
+	if fa then
+		for _, list in ipairs({ fa.New, fa.Old }) do
+			for _, e in ipairs(list) do
+				e.CF = cf * e.CF
+			end
+		end
+	end
+end
+
+-- Zaunwechsel abspielen: alter Zaun versinkt und verblasst, neuer wächst in einer Welle mit Überschwingen
+local function animateFence(model, t)
+	local fa = fenceAnim[model]
+	if not fa then return end
+	fa.Start = fa.Start or t
+	local age = t - fa.Start
+	if not fa.Burst.Parent then return end
+	if not fa.Popped then
+		fa.Popped = true
+		fa.Burst:Emit(40)
+	end
+	for _, e in ipairs(fa.Old) do
+		local k = math.clamp((age - e.Delay) / 0.45, 0, 1)
+		e.Part.CFrame = e.CF * CFrame.new(0, -2.2 * k * k, 0)
+		e.Part.Transparency = e.T + (1 - e.T) * k
+	end
+	local done = true
+	for _, e in ipairs(fa.New) do
+		local k = math.clamp((age - 0.35 - e.Delay) / 0.4, 0, 1)
+		if k < 1 then done = false end
+		local back = 1 + 2.7 * (k - 1) ^ 3 + 1.7 * (k - 1) ^ 2 -- Überschwingen wie Back-Out
+		e.Part.CFrame = e.CF * CFrame.new(0, -2.4 * (1 - back), 0)
+		if k > 0.6 and not e.Lit then
+			e.Lit = true
+			for _, c in ipairs(e.Fx) do c.Enabled = true end
+		end
+		e.Part.Transparency = e.T + (1 - e.T) * (1 - math.min(1, k * 2))
+	end
+	if done and age > 2.5 then
+		for _, e in ipairs(fa.New) do
+			e.Part.CFrame = e.CF
+			e.Part.Transparency = e.T
+			for _, c in ipairs(e.Fx) do c.Enabled = true end
+		end
+		if fa.OldModel.Parent then fa.OldModel:Destroy() end
+		fenceAnim[model] = nil
+	end
 end
 
 -- Fortschritt eines Beets (0–1) setzen; der Baum wächst in Animate sanft auf die neue Größe
@@ -1264,6 +1491,7 @@ end
 
 -- Jedes Bild aufrufen: Bäume wachsen sanft, wiegen sich, wachsende atmen; neue Stufen ploppen auf
 function GardenBuilder.Animate(model, t, dt)
+	animateFence(model, t)
 	local anim = animated[model]
 	if not anim then return end
 	for _, e in pairs(anim) do
@@ -1495,6 +1723,7 @@ end
 
 local model, signature = nil, ""
 local lastStage = {} -- Stufe je Beet beim letzten Bau (für das Aufploppen bei neuer Stufe)
+local lastFence = nil -- Zaun beim letzten Bau (für die Wechsel-Animation)
 local function update()
 	local ok, g = pcall(function()
 		return HttpService:JSONDecode(player:GetAttribute("Garden") or "null")
@@ -1529,7 +1758,10 @@ local function update()
 			lastStage[i] = key
 		end
 		if model then model:Destroy() end
-		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots, Fence = g.Fence })
+		-- neuer Zaun: alter versinkt, neuer wächst aus dem Boden
+		local fenceFrom = (not first and lastFence and lastFence ~= g.Fence) and lastFence or nil
+		lastFence = g.Fence
+		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots, Fence = g.Fence, FenceFrom = fenceFrom })
 		model.Name = "MeinGarten"
 		GardenBuilder.Move(model, place())
 		model.Parent = workspace
