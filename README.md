@@ -182,7 +182,7 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
 - **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
   Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
   Sternenrolle: Legendär 61,7 %, Mythisch 28,2 %, Göttlich 10,1 %. Innerhalb einer Seltenheit ist jede Sache
-  gleich wahrscheinlich. Rechnung: `rollen/js/rolls.js`.
+  gleich wahrscheinlich (Samen, Werkzeug und Zäune zusammen). Rechnung: `rollen/js/rolls.js`.
 - **Roblox:** `RollData` (`TierChances`, `MinIndex`, `Pick`, `Open`), `RollBuilder.Build(roll)` (Rolle auf
   Sockel) und `RollFx.Play(rollId, itemId, { CFrame = …, Parent = …, Window = … })` (`roblox/js/rollLuau.js`).
   Auf dem Server `RollData.Open(rollId)` würfeln, auf dem Client mit der Id `RollFx.Play` zeigen. Die übrigen
@@ -196,17 +196,17 @@ kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. 
 (Setzling, Jungbaum, ausgewachsen) und tragen dann Münzen. Jede Ernte bringt Taler, höchstens 3 Ernten warten am
 Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Browser.
 
-| Münzbaum | Seltenheit | Wachsen | Ernte | Taler je Ernte |
-|---|---|---|---|---|
-| Pfennigbusch | Gewöhnlich | 1 min | alle 30 s | 40 |
-| Kupferbaum | Gewöhnlich | 2 min | alle 45 s | 90 |
-| Silberbirke | Selten | 4 min | alle 1 min | 300 |
-| Talertanne | Selten | 5 min | alle 1 min 15 s | 420 |
-| Goldeiche | Episch | 10 min | alle 1 min 30 s | 1.500 |
-| Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 |
-| Kristallweide | Legendär | 20 min | alle 2 min | 6.000 |
-| Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 |
-| Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 |
+| Münzbaum | Seltenheit | Wachsen | Ernte | Taler je Ernte | Ernten |
+|---|---|---|---|---|---|
+| Pfennigbusch | Gewöhnlich | 1 min | alle 30 s | 40 | 6× |
+| Kupferbaum | Gewöhnlich | 2 min | alle 45 s | 90 | 6× |
+| Silberbirke | Selten | 4 min | alle 1 min | 300 | 8× |
+| Talertanne | Selten | 5 min | alle 1 min 15 s | 420 | 8× |
+| Goldeiche | Episch | 10 min | alle 1 min 30 s | 1.500 | 10× |
+| Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 | 10× |
+| Kristallweide | Legendär | 20 min | alle 2 min | 6.000 | 12× |
+| Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 | 15× |
+| Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 | 20× |
 
 | Werkzeug & mehr | Seltenheit | Wirkung |
 |---|---|---|
@@ -219,6 +219,28 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
 | Regenbogenkanne | Legendär | Baum sofort ausgewachsen |
 | Zauberdünger | Mythisch | ×3 Ernte für 30 min |
 | Talertruhe | Göttlich | +250.000 Taler |
+
+**Begrenztes Ernten:** Jeder Baum lässt sich nur so oft abernten, wie die Spalte „Ernten“ sagt (geerntet werden
+höchstens die Ernten, die er noch hergibt). Dann ist er abgeerntet und verschwindet, das Beet ist frei für neue
+Samen. Ausgraben gibt die Samen nur zurück, solange der Baum noch nicht ausgewachsen ist; danach wird er
+ausgerissen (sonst ließe sich die Grenze umgehen). Im Spielstand zählt `Plot.Count` die Ernten.
+
+**Zäune zum Personalisieren:** kommen aus den Münzrollen, bleiben im Inventar und lassen sich jederzeit anbringen
+(`fence`-Aktion, `Garden.Fence`). Der Holzzaun ist immer da.
+
+| Zaun | Seltenheit | Aussehen |
+|---|---|---|
+| Holzzaun | Standard | Pfosten mit zwei Latten |
+| Weißer Lattenzaun | Gewöhnlich | spitze weiße Latten, Kugeln auf den Pfosten |
+| Steinmauer | Selten | Feldsteine in zwei Reihen, Säulen, Moos obenauf |
+| Bambuszaun | Selten | Bambusrohre mit Knoten, Schnur |
+| Eisengitter | Episch | schwarze Stäbe mit goldenen Spitzen, Laternen |
+| Kristallzaun | Legendär | Kristallpfosten mit Leuchtkern, Lichtbänder, Funkeln |
+| Lavazaun | Mythisch | Basalt mit Glutadern, Lavamauer, Feuer |
+| Sternenzaun | Göttlich | nachtblaue Pfosten mit Sternen, farbige Lichtbänder |
+
+In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und Füllung je Stil),
+`LootBuilder.Fence` das Zaunstück, das aus der Rolle kommt.
 
 - **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
   `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Seed(tree)`, `Tool(tool)`, `Build(item)`) und

@@ -21,7 +21,7 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 
 const KIND = { water: 'Water', boost: 'Boost', taler: 'Taler', bed: 'Bed' };
 
-export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }) {
+export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], GARDEN }) {
   const rarities = GARDEN_RARITIES.map((r, i) => fields({ Id: str(r.id), Name: str(r.name), Index: num(i + 1), Chance: num(r.chance), Color: color(r.color) }));
   const trees = TREES.map((t) =>
     fields({
@@ -33,6 +33,7 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }) {
       Grow: num(t.grow),
       Cycle: num(t.cycle),
       Yield: num(t.yield),
+      Harvests: num(t.harvests),
       Crown: str(t.crown),
       Trunk: color(t.trunk),
       Leaf: color(t.leaf),
@@ -58,6 +59,9 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }) {
       Text: str(t.text),
     }),
   );
+  const fences = FENCES.map((f) =>
+    fields({ Id: str(f.id), Type: str('Fence'), Name: str(f.name), Rarity: str(f.rarity), Standard: f.standard ? 'true' : undefined, Color: color(f.color), Text: str(f.text) }),
+  );
   return `${HEADER('Münzbaumgarten')}
 -- Den Garten kauft man mit Talern (Garden.Price). Samen und Werkzeug gibt es aus Münzrollen (RollData);
 -- ein Baum steckt als Samen (SeedName) im Inventar und wächst nach dem Säen mit Timer (Grow Sekunden).
@@ -76,6 +80,9 @@ GardenData.Trees = ${list(trees)}
 
 GardenData.Tools = ${list(tools)}
 
+-- Zäune: Standard = immer da; die anderen kommen aus Münzrollen und bleiben im Inventar (anbringen kostet nichts)
+GardenData.Fences = ${fences.length ? list(fences) : '{}'}
+
 GardenData.Garden = { Price = ${num(GARDEN.price)}, StartBeds = ${num(GARDEN.startBeds)}, MaxBeds = ${num(GARDEN.maxBeds)}, MaxRipe = ${num(GARDEN.maxRipe)} }
 
 -- Preis für das nächste Beet, wenn man schon beds Beete hat
@@ -89,12 +96,15 @@ for _, r in ipairs(GardenData.Rarities) do
 end
 GardenData.Loot = {}
 GardenData.ById = {}
-for _, group in ipairs({ GardenData.Trees, GardenData.Tools }) do
+for _, group in ipairs({ GardenData.Trees, GardenData.Tools, GardenData.Fences }) do
 	for _, item in ipairs(group) do
-		table.insert(GardenData.Loot, item)
+		if not item.Standard then
+			table.insert(GardenData.Loot, item)
+		end
 		GardenData.ById[item.Id] = item
 	end
 end
+GardenData.StandardFence = "holzzaun"
 
 -- Name im Inventar und beim Öffnen: Samen für Bäume, sonst der Name
 function GardenData.LootName(item)
@@ -125,14 +135,19 @@ function GardenData.GrownAt(plot)
 	return plot.Planted - plot.Bonus + GardenData.ById[plot.Tree].Grow
 end
 
--- Wie viele Ernten am Baum hängen (höchstens Garden.MaxRipe)
+-- Ernten, die ein Baum noch hergibt (Harvests minus schon geerntete); danach ist er abgeerntet
+function GardenData.HarvestsLeft(plot)
+	return math.max(0, GardenData.ById[plot.Tree].Harvests - (plot.Count or 0))
+end
+
+-- Wie viele Ernten am Baum hängen (höchstens Garden.MaxRipe und höchstens, was er noch hergibt)
 function GardenData.Ripe(plot, now)
 	if GardenData.Stage(plot, now) < 3 then
 		return 0
 	end
 	local tree = GardenData.ById[plot.Tree]
 	local since = math.max(GardenData.GrownAt(plot), plot.Harvested or 0)
-	return math.min(GardenData.Garden.MaxRipe, math.floor((now - since) / tree.Cycle))
+	return math.min(GardenData.Garden.MaxRipe, GardenData.HarvestsLeft(plot), math.floor((now - since) / tree.Cycle))
 end
 
 function GardenData.HarvestValue(plot, now)
@@ -141,11 +156,12 @@ function GardenData.HarvestValue(plot, now)
 end
 
 -- ── Spielstand eines Spielers ──
--- garden = { Owned = bool, Beds = n, Plots = { ["1"] = Plot, … }, Inv = { [id] = Anzahl }, Receipts = { PurchaseIds } }
+-- garden = { Owned = bool, Beds = n, Fence = Zaun-Id, Plots = { ["1"] = Plot, … }, Inv = { [id] = Anzahl }, Receipts = { PurchaseIds } }
+-- Plot.Count: wie oft der Baum schon abgeerntet wurde (Grenze: Tree.Harvests)
 -- Liegt als JSON im Attribut Garden am Spieler (schreibt nur der Server).
 
 function GardenData.New()
-	return { Owned = false, Beds = GardenData.Garden.StartBeds, Plots = {}, Inv = {}, Receipts = {} }
+	return { Owned = false, Beds = GardenData.Garden.StartBeds, Fence = "holzzaun", Plots = {}, Inv = {}, Receipts = {} }
 end
 
 -- Repariert geladene oder fremde Daten (fehlende Felder, falsche Typen, unbekannte Ids)
@@ -155,6 +171,9 @@ function GardenData.Clean(g)
 		return out
 	end
 	out.Owned = g.Owned == true
+	if type(g.Fence) == "string" and GardenData.ById[g.Fence] and GardenData.ById[g.Fence].Type == "Fence" then
+		out.Fence = g.Fence
+	end
 	out.Beds = math.clamp(math.floor(tonumber(g.Beds) or out.Beds), 1, GardenData.Garden.MaxBeds)
 	if type(g.Receipts) == "table" then
 		for _, r in ipairs(g.Receipts) do
@@ -176,6 +195,7 @@ function GardenData.Clean(g)
 				out.Plots[tostring(i)] = {
 					Tree = p.Tree, Planted = tonumber(p.Planted) or 0, Bonus = tonumber(p.Bonus) or 0,
 					Harvested = tonumber(p.Harvested) or 0, Boost = tonumber(p.Boost) or 1, BoostEnd = tonumber(p.BoostEnd) or 0,
+					Count = math.max(0, math.floor(tonumber(p.Count) or 0)),
 				}
 			end
 		end
@@ -211,6 +231,7 @@ GardenData.FormatNumber = fmtNum
 -- Eine Aktion auf dem Spielstand ausführen. Ändert g, rechnet aber keine Taler ab:
 -- gibt ok, Text und die Taler-Änderung zurück (negativ = kostet). taler = Taler, die der Spieler hat.
 --   buyGarden · buyBed · plant (Beet, Baum-Id) · use (Werkzeug-Id, Beet) · harvest (Beet oder "all") · dig (Beet)
+--   fence (Zaun-Id): Zaun anbringen (aus dem Inventar oder der Standard-Holzzaun)
 function GardenData.Act(g, action, a, b, now, taler)
 	local G = GardenData.Garden
 	local bed = tonumber(a)
@@ -270,25 +291,44 @@ function GardenData.Act(g, action, a, b, now, taler)
 		end
 		return false, "Das geht nicht", 0
 	elseif action == "harvest" then
-		local total = 0
+		local total, gone = 0, {}
 		for key, plot in pairs(g.Plots) do
 			if a == "all" or key == tostring(bed) then
+				local n = GardenData.Ripe(plot, now)
 				local value = GardenData.HarvestValue(plot, now)
 				if value > 0 then
 					total = total + value
 					plot.Harvested = now
+					plot.Count = (plot.Count or 0) + n
+					-- Grenze erreicht: der Baum ist abgeerntet und verschwindet
+					if plot.Count >= GardenData.ById[plot.Tree].Harvests then
+						table.insert(gone, GardenData.ById[plot.Tree].Name)
+						g.Plots[key] = nil
+					end
 				end
 			end
 		end
 		if total <= 0 then return false, "Noch nichts reif", 0 end
-		return true, "+" .. fmtNum(total) .. " Taler geerntet", total
+		local extra = #gone > 0 and (" · " .. table.concat(gone, ", ") .. " abgeerntet, das Beet ist frei") or ""
+		return true, "+" .. fmtNum(total) .. " Taler geerntet" .. extra, total
 	elseif action == "dig" then
 		local plot = plotAt(bed)
 		if not plot then return false, "Auf dem Beet wächst nichts", 0 end
 		local value = GardenData.HarvestValue(plot, now)
-		g.Inv[plot.Tree] = (g.Inv[plot.Tree] or 0) + 1
+		local tree = GardenData.ById[plot.Tree]
 		g.Plots[tostring(bed)] = nil
-		return true, GardenData.ById[plot.Tree].Name .. " ausgegraben und ins Inventar gelegt", value
+		-- nur ein noch nicht ausgewachsener Baum gibt seine Samen zurück (sonst ließe sich die Erntegrenze umgehen)
+		if GardenData.Stage(plot, now) < 3 then
+			g.Inv[plot.Tree] = (g.Inv[plot.Tree] or 0) + 1
+			return true, tree.Name .. " ausgegraben, die " .. tree.SeedName .. " liegen wieder im Inventar", value
+		end
+		return true, tree.Name .. " ausgerissen, das Beet ist frei", value
+	elseif action == "fence" then
+		local fence = GardenData.ById[a]
+		if not fence or fence.Type ~= "Fence" then return false, "Diesen Zaun gibt es nicht", 0 end
+		if not fence.Standard and (g.Inv[a] or 0) < 1 then return false, "Diesen Zaun hast du nicht", 0 end
+		g.Fence = a
+		return true, fence.Name .. " angebracht", 0
 	end
 	return false, "Ungültig", 0
 end
@@ -778,10 +818,212 @@ function LootBuilder.Seed(tree)
 	return model
 end
 
--- Was aus einer Münzrolle kommt: Samen für Bäume, sonst das Werkzeug
+-- ── Zäune ──
+-- Jeder Stil hat Pfosten (post) und eine Füllung zwischen zwei Pfosten (fill), every = Pfostenabstand.
+-- Ein Abschnitt liegt im Raum „run“: Ursprung am Startpfosten, x entlang des Zauns, y nach oben.
+local function runFrame(a, b)
+	local horizontal = math.abs(b.X - a.X) > math.abs(b.Z - a.Z)
+	local dir = horizontal and (b.X >= a.X and 1 or -1) or (b.Z >= a.Z and 1 or -1)
+	local yaw = horizontal and (dir > 0 and 0 or math.pi) or (dir > 0 and -math.pi / 2 or math.pi / 2)
+	return CFrame.new(a) * CFrame.Angles(0, yaw, 0), (b - a).Magnitude
+end
+local function shade(c, k) return c:Lerp(Color3.new(0, 0, 0), k) end
+
+local FENCE = {}
+FENCE.holzzaun = {
+	every = 3,
+	post = function(m, cf, h)
+		box(m, "Pfosten", Vector3.new(0.32, h, 0.32), cf * CFrame.new(0, h / 2, 0), Color3.fromRGB(128, 88, 52), Enum.Material.Wood)
+	end,
+	fill = function(m, cf, len)
+		for _, y in ipairs({ 0.55, 1.15 }) do
+			box(m, "Latte", Vector3.new(len, 0.18, 0.14), cf * CFrame.new(len / 2, y, 0), Color3.fromRGB(150, 104, 62), Enum.Material.Wood)
+		end
+	end,
+}
+FENCE.lattenzaun = {
+	every = 3,
+	post = function(m, cf, h)
+		box(m, "Pfosten", Vector3.new(0.34, h, 0.34), cf * CFrame.new(0, h / 2, 0), Color3.fromRGB(246, 244, 238))
+		ball(m, "Kappe", 0.3, (cf * CFrame.new(0, h + 0.1, 0)).Position, Color3.fromRGB(236, 232, 222))
+	end,
+	fill = function(m, cf, len)
+		for _, y in ipairs({ 0.4, 1.0 }) do
+			box(m, "Riegel", Vector3.new(len, 0.14, 0.1), cf * CFrame.new(len / 2, y, 0.06), Color3.fromRGB(226, 222, 212))
+		end
+		local n = math.max(1, math.floor(len / 0.5))
+		for i = 1, n - 1 do
+			local x = len * i / n
+			box(m, "Latte", Vector3.new(0.26, 1.2, 0.07), cf * CFrame.new(x, 0.65, -0.03), Color3.fromRGB(250, 248, 242))
+			box(m, "Spitze", Vector3.new(0.19, 0.19, 0.07), cf * CFrame.new(x, 1.25, -0.03) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(250, 248, 242))
+		end
+	end,
+}
+FENCE.steinmauer = {
+	every = 4,
+	post = function(m, cf, h)
+		box(m, "Saeule", Vector3.new(0.72, h * 0.8, 0.72), cf * CFrame.new(0, h * 0.4, 0), Color3.fromRGB(132, 136, 146), Enum.Material.Slate)
+		box(m, "Deckstein", Vector3.new(0.86, 0.16, 0.86), cf * CFrame.new(0, h * 0.8 + 0.08, 0), Color3.fromRGB(104, 108, 118), Enum.Material.Slate)
+	end,
+	fill = function(m, cf, len)
+		local rng = Random.new(math.floor(len * 10))
+		for row = 0, 1 do
+			local x = row == 1 and -0.45 or 0
+			while x < len do
+				local l = math.min(0.9, len - math.max(x, 0))
+				local x0 = math.max(x, 0)
+				if l > 0.1 then
+					box(m, "Stein", Vector3.new(l - 0.04, 0.4, 0.48), cf * CFrame.new(x0 + l / 2, 0.21 + row * 0.42, 0), Color3.fromRGB(120, 124, 134):Lerp(Color3.fromRGB(160, 156, 150), rng:NextNumber(0, 0.6)), Enum.Material.Slate)
+				end
+				x = x + 0.9
+			end
+		end
+		box(m, "Moos", Vector3.new(len, 0.1, 0.52), cf * CFrame.new(len / 2, 0.89, 0), Color3.fromRGB(96, 150, 70), Enum.Material.Grass)
+	end,
+}
+FENCE.bambuszaun = {
+	every = 3,
+	post = function(m, cf, h)
+		cyl(m, "Rohr", h + 0.3, 0.36, cf * CFrame.new(0, (h + 0.3) / 2, 0) * UP, Color3.fromRGB(150, 186, 80))
+		cyl(m, "Knoten", 0.08, 0.4, cf * CFrame.new(0, 1.0, 0) * UP, Color3.fromRGB(110, 140, 56))
+	end,
+	fill = function(m, cf, len)
+		local n = math.max(1, math.floor(len / 0.42))
+		for i = 1, n - 1 do
+			local x = len * i / n
+			local h = i % 2 == 0 and 1.55 or 1.35
+			local c = Color3.fromRGB(141, 184, 74):Lerp(Color3.fromRGB(190, 200, 100), (i % 3) * 0.2)
+			cyl(m, "Rohr", h, 0.27, cf * CFrame.new(x, h / 2, 0) * UP, c)
+			cyl(m, "Knoten", 0.06, 0.31, cf * CFrame.new(x, h * 0.55, 0) * UP, shade(c, 0.25))
+		end
+		box(m, "Schnur", Vector3.new(len, 0.07, 0.34), cf * CFrame.new(len / 2, 1.05, 0), Color3.fromRGB(150, 110, 60), Enum.Material.Fabric)
+	end,
+}
+FENCE.eisengitter = {
+	every = 2.5,
+	post = function(m, cf, h)
+		box(m, "Pfosten", Vector3.new(0.28, h + 0.2, 0.28), cf * CFrame.new(0, (h + 0.2) / 2, 0), Color3.fromRGB(36, 36, 44), Enum.Material.Metal)
+		box(m, "Laternenfuss", Vector3.new(0.36, 0.08, 0.36), cf * CFrame.new(0, h + 0.24, 0), Color3.fromRGB(200, 160, 70), Enum.Material.Foil)
+		ball(m, "Laterne", 0.3, (cf * CFrame.new(0, h + 0.45, 0)).Position, Color3.fromRGB(255, 214, 120), Enum.Material.Neon)
+	end,
+	fill = function(m, cf, len)
+		for _, y in ipairs({ 0.25, 1.45 }) do
+			box(m, "Querstange", Vector3.new(len, 0.1, 0.1), cf * CFrame.new(len / 2, y, 0), Color3.fromRGB(36, 36, 44), Enum.Material.Metal)
+		end
+		local n = math.max(1, math.floor(len / 0.42))
+		for i = 1, n - 1 do
+			local x = len * i / n
+			cyl(m, "Stab", 1.55, 0.08, cf * CFrame.new(x, 0.85, 0) * UP, Color3.fromRGB(36, 36, 44), Enum.Material.Metal)
+			ball(m, "Spitze", 0.14, (cf * CFrame.new(x, 1.66, 0)).Position, Color3.fromRGB(230, 186, 80), Enum.Material.Foil)
+		end
+	end,
+}
+FENCE.kristallzaun = {
+	every = 2.4,
+	post = function(m, cf, h, i)
+		box(m, "Kristall", Vector3.new(0.4, h + 0.2, 0.4), cf * CFrame.new(0, (h + 0.2) / 2, 0) * CFrame.Angles(0, math.rad(45), 0), Color3.fromRGB(150, 230, 255), Enum.Material.Glass, 0.25)
+		local core = box(m, "Kern", Vector3.new(0.12, h, 0.12), cf * CFrame.new(0, h / 2, 0), Color3.fromRGB(120, 230, 255), Enum.Material.Neon)
+		box(m, "Splitter", Vector3.new(0.22, 0.5, 0.22), cf * CFrame.new(0, h + 0.4, 0) * CFrame.Angles(math.rad(45), math.rad(45), 0), Color3.fromRGB(200, 245, 255), Enum.Material.Glass, 0.15)
+		if (i or 0) % 2 == 0 then
+			local sp = Instance.new("Sparkles")
+			sp.SparkleColor = Color3.fromRGB(160, 240, 255)
+			sp.Parent = core
+		end
+	end,
+	fill = function(m, cf, len)
+		for _, y in ipairs({ 0.6, 1.2 }) do
+			box(m, "Lichtband", Vector3.new(len, 0.08, 0.08), cf * CFrame.new(len / 2, y, 0), Color3.fromRGB(110, 225, 255), Enum.Material.Neon, 0.2)
+		end
+	end,
+}
+FENCE.lavazaun = {
+	every = 3,
+	post = function(m, cf, h, i)
+		local post = box(m, "Pfosten", Vector3.new(0.46, h, 0.46), cf * CFrame.new(0, h / 2, 0), Color3.fromRGB(46, 36, 34), Enum.Material.Basalt)
+		box(m, "Glutader", Vector3.new(0.08, h - 0.2, 0.48), cf * CFrame.new(0, h / 2, 0), Color3.fromRGB(255, 110, 40), Enum.Material.Neon)
+		if (i or 0) % 2 == 0 then
+			local fire = Instance.new("Fire")
+			fire.Size = 1.6
+			fire.Heat = 4
+			fire.Color = Color3.fromRGB(255, 140, 40)
+			fire.SecondaryColor = Color3.fromRGB(255, 60, 20)
+			fire.Parent = post
+		end
+	end,
+	fill = function(m, cf, len)
+		box(m, "Mauer", Vector3.new(len, 0.72, 0.34), cf * CFrame.new(len / 2, 0.36, 0), Color3.fromRGB(80, 40, 30), Enum.Material.CrackedLava)
+		box(m, "Glut", Vector3.new(len, 0.06, 0.36), cf * CFrame.new(len / 2, 0.73, 0), Color3.fromRGB(255, 120, 40), Enum.Material.Neon)
+	end,
+}
+FENCE.sternenzaun = {
+	every = 3,
+	post = function(m, cf, h)
+		box(m, "Pfosten", Vector3.new(0.3, h + 0.2, 0.3), cf * CFrame.new(0, (h + 0.2) / 2, 0), Color3.fromRGB(30, 24, 70))
+		for _, r in ipairs({ 0, 45 }) do
+			box(m, "Stern", Vector3.new(0.34, 0.34, 0.08), cf * CFrame.new(0, h + 0.5, 0) * CFrame.Angles(0, 0, math.rad(r)), Color3.fromRGB(255, 236, 140), Enum.Material.Neon)
+		end
+	end,
+	fill = function(m, cf, len)
+		for k, y in ipairs({ 0.5, 0.95, 1.4 }) do
+			box(m, "Lichtband", Vector3.new(len, 0.06, 0.06), cf * CFrame.new(len / 2, y, 0), Color3.fromHSV(0.68 + k * 0.04, 0.55, 1), Enum.Material.Neon, 0.15)
+		end
+		local rng = Random.new(math.floor(len * 7))
+		for x = 0.6, len - 0.3, 0.8 do
+			ball(m, "Funkel", 0.1, (cf * CFrame.new(x, rng:NextNumber(0.4, 1.5), 0)).Position, Color3.fromRGB(255, 244, 200), Enum.Material.Neon)
+		end
+	end,
+}
+
+-- Zaun von a nach b (Bodenpunkte); Pfosten im Abstand des Stils, n = feste Anzahl Felder (optional)
+function LootBuilder.FenceRun(parent, fenceId, a, b, n)
+	local st = FENCE[fenceId] or FENCE.holzzaun
+	local cf, len = runFrame(a, b)
+	n = n or math.max(1, math.floor(len / st.every + 0.5))
+	for i = 0, n do
+		st.post(parent, cf * CFrame.new(len * i / n, 0, 0), 1.6, i)
+	end
+	for i = 0, n - 1 do
+		st.fill(parent, cf * CFrame.new(len * i / n, 0, 0), len / n)
+	end
+end
+
+-- einzelner Pfosten in einem Stil (z. B. die hohen Torpfosten)
+function LootBuilder.FencePost(parent, fenceId, pos, h, i)
+	local st = FENCE[fenceId] or FENCE.holzzaun
+	st.post(parent, CFrame.new(pos), h, i or 0)
+end
+
+-- Zaun als Schatz aus der Rolle: ein Stück auf einem Rasenstreifen
+function LootBuilder.Fence(fence)
+	local model = Instance.new("Model")
+	model.Name = fence.Name
+	local base = box(model, "Rasen", Vector3.new(3.8, 0.14, 1.1), CFrame.new(0, 0.07, 0), Color3.fromRGB(96, 156, 66), Enum.Material.Grass)
+	model.PrimaryPart = base
+	local holder = Instance.new("Model")
+	LootBuilder.FenceRun(holder, fence.Id, Vector3.new(-1.6, 0.14, 0), Vector3.new(1.6, 0.14, 0), 2)
+	for _, p in ipairs(holder:GetChildren()) do
+		p.Parent = model
+	end
+	local rarity = GardenData.RarityById[fence.Rarity]
+	local rank = RANK[fence.Rarity] or 1
+	if rank >= 3 then
+		local glow = Instance.new("PointLight")
+		glow.Color = rarity.Color
+		glow.Brightness = 0.6 + rank * 0.3
+		glow.Range = 6 + rank
+		glow.Parent = base
+	end
+	measure(model)
+	model:SetAttribute("FenceId", fence.Id)
+	return model
+end
+
+-- Was aus einer Münzrolle kommt: Samen für Bäume, Zaunstück für Zäune, sonst das Werkzeug
 function LootBuilder.Build(item)
 	if item.Type == "Tree" then
 		return LootBuilder.Seed(item)
+	elseif item.Type == "Fence" then
+		return LootBuilder.Fence(item)
 	end
 	return LootBuilder.Tool(item)
 end
@@ -791,7 +1033,7 @@ return LootBuilder
 
 export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- GardenBuilder.Build(garden) baut den Garten als Model: Wiese mit Zaun, Tor und Schild, darauf die Beete
--- in Reihen zu je 4. garden = { Beds = Anzahl, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n } oder false } }
+-- in Reihen zu je 4. garden = { Beds = Anzahl, Fence = Zaun-Id, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n } oder false } }
 -- (Stage und Ripe aus GardenData.Stage/Ripe). Beet 1 liegt vorne links (von der Kamera vor dem Tor aus).
 -- Über wachsenden Bäumen schwebt ein Timer; GardenBuilder.SetTimer(model, i, text, fortschritt) zählt ihn weiter.
 -- Animation: GardenBuilder.Animate(model, zeit, dt) jedes Bild aufrufen. Bäume wachsen dann stufenlos mit dem
@@ -889,28 +1131,16 @@ function GardenBuilder.Build(garden)
 	-- Weg vom Tor
 	part("Part", { Name = "Weg", Size = Vector3.new(2.6, 1, 4), CFrame = CFrame.new(0, -0.48, -depth / 2 - 1.5), Color = Color3.fromRGB(196, 170, 120), Material = Enum.Material.Sand }, model)
 
-	-- Zaun rundherum, vorne mit Tor in der Mitte
-	local function rail(a, b)
-		local mid = (a + b) / 2
-		local len = (b - a).Magnitude
-		local horizontal = math.abs(b.X - a.X) > 0.01
-		for _, y in ipairs({ 0.55, 1.15 }) do
-			part("Part", { Name = "Latte", Size = horizontal and Vector3.new(len, 0.18, 0.14) or Vector3.new(0.14, 0.18, len), CFrame = CFrame.new(mid.X, y, mid.Z), Color = wood, Material = Enum.Material.Wood }, model)
-		end
-		local n = math.max(1, math.floor(len / 3))
-		for i = 0, n do
-			local p = a:Lerp(b, i / n)
-			part("Part", { Name = "Pfosten", Size = Vector3.new(0.32, 1.6, 0.32), CFrame = CFrame.new(p.X, 0.8, p.Z), Color = wood:Lerp(Color3.new(0, 0, 0), 0.15), Material = Enum.Material.Wood }, model)
-		end
-	end
+	-- Zaun rundherum im gewählten Stil (garden.Fence), vorne mit Tor in der Mitte
+	local fenceId = garden.Fence or "holzzaun"
 	local hx, hz, gate = width / 2, depth / 2, 1.6
-	rail(Vector3.new(-hx, 0, hz), Vector3.new(hx, 0, hz))
-	rail(Vector3.new(-hx, 0, -hz), Vector3.new(-hx, 0, hz))
-	rail(Vector3.new(hx, 0, -hz), Vector3.new(hx, 0, hz))
-	rail(Vector3.new(-hx, 0, -hz), Vector3.new(-gate, 0, -hz))
-	rail(Vector3.new(gate, 0, -hz), Vector3.new(hx, 0, -hz))
-	for _, x in ipairs({ -gate, gate }) do
-		part("Part", { Name = "Torpfosten", Size = Vector3.new(0.45, 3.2, 0.45), CFrame = CFrame.new(x, 1.6, -hz), Color = wood, Material = Enum.Material.Wood }, model)
+	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, hz), Vector3.new(hx, 0, hz))
+	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-hx, 0, hz))
+	LootBuilder.FenceRun(model, fenceId, Vector3.new(hx, 0, -hz), Vector3.new(hx, 0, hz))
+	LootBuilder.FenceRun(model, fenceId, Vector3.new(-hx, 0, -hz), Vector3.new(-gate, 0, -hz))
+	LootBuilder.FenceRun(model, fenceId, Vector3.new(gate, 0, -hz), Vector3.new(hx, 0, -hz))
+	for i, x in ipairs({ -gate, gate }) do
+		LootBuilder.FencePost(model, fenceId, Vector3.new(x, 0, -hz), 3.2, i)
 	end
 	sign(model, "Münzbaumgarten", CFrame.new(0, 3.3, -hz), Vector3.new(4.4, 1, 0.2), wood, Color3.fromRGB(255, 222, 120))
 
@@ -1275,7 +1505,7 @@ local function update()
 		return
 	end
 	local now = os.time()
-	local plots, parts = {}, { tostring(g.Beds) }
+	local plots, parts = {}, { tostring(g.Beds), g.Fence }
 	for i = 1, g.Beds do
 		local p = g.Plots[tostring(i)]
 		if p then
@@ -1299,7 +1529,7 @@ local function update()
 			lastStage[i] = key
 		end
 		if model then model:Destroy() end
-		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots })
+		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots, Fence = g.Fence })
 		model.Name = "MeinGarten"
 		GardenBuilder.Move(model, place())
 		model.Parent = workspace
