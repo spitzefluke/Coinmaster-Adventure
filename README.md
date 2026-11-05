@@ -159,6 +159,10 @@ Die Rollen kosten Taler aus dem Garten, die Sache landet im Inventar des Gartens
 | Juwelenrolle | Mystisch | 1 | ×4 | Legendär | 120.000 Taler |
 | Sternenrolle (Robux-Rolle) | Limitiert | 1 | ×6 | Legendär | R$ 99 |
 
+- **Was in den Rollen steckt:** Unter den Rollen zeigt die Seite alle 18 Schätze (9 Münzbäume, 9 Werkzeuge) als
+  drehbare 3D-Vorschau aus `LootBuilder`, mit Seltenheit, Ertrag oder Wirkung. Ein Filter je Rolle zeigt die Chance
+  jedes Schatzes (Chance der Seltenheit geteilt durch die Anzahl Schätze dieser Seltenheit) und graut aus, was in
+  der Rolle nicht vorkommt.
 - **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
   Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
   Sternenrolle: Legendär 61,7 %, Mythisch 28,2 %, Göttlich 10,1 %. Innerhalb einer Seltenheit ist jede Sache

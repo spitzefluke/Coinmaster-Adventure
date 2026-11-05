@@ -5,10 +5,10 @@
 
 import * as THREE from 'three';
 import { ROLLS, fmtPrice, rollChances } from './rolls.js';
-import { createRobloxRoll, rollLua } from './rollRoblox.js';
+import { createRobloxRoll, createRobloxLoot, rollLua } from './rollRoblox.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
-import { RARITIES, rarityById, loadState, fmt } from '../../garten/js/garden.js';
+import { RARITIES, LOOT, rarityById, loadState, fmt, fmtTime } from '../../garten/js/garden.js';
 import { Opener, canPay } from './open.js';
 
 await Promise.race([
@@ -21,7 +21,7 @@ const opener = new Opener(document.getElementById('open'));
 // Zum Testen: mit #debug in der Adresse ist die Animation als window.opener erreichbar
 if (location.hash === '#debug') window.rollOpener = opener;
 
-const pct = (x) => (x >= 10 ? x.toFixed(0) : x >= 1 ? x.toFixed(1) : x.toFixed(2)).replace('.', ',') + ' %';
+const pct = (x) => (x >= 10 ? x.toFixed(0) : x >= 1 ? x.toFixed(1) : x.toFixed(2)).replace('.', ',') + '\u00a0%';
 const guaranteeText = (roll) => (roll.guarantee ? rarityById[roll.guarantee].name : 'Gewöhnlich');
 // Chancen-Leiste: Anteil jeder möglichen Seltenheit, darunter mit Prozent
 function oddsHtml(roll) {
@@ -59,7 +59,7 @@ const cards = ROLLS.map((roll) => {
       </div>
     </div>`;
   list.append(card);
-  const entry = { roll, card, view: card.querySelector('.view'), obj: null, scene: null, near: false, hover: false, spin: Math.random() * 6 };
+  const entry = { roll, card, view: card.querySelector('.view'), obj: null, near: false, hover: false, spin: Math.random() * 6, make: () => createRobloxRoll(roll), cam: { dist: 15, y: 2.4 } };
   card.addEventListener('pointerenter', () => (entry.hover = true));
   card.addEventListener('pointerleave', () => (entry.hover = false));
   entry.view.addEventListener('click', () => openDetail(roll));
@@ -67,6 +67,66 @@ const cards = ROLLS.map((roll) => {
   card.querySelector('.open-btn').addEventListener('click', () => startOpen(roll));
   return entry;
 });
+
+// ── Was in den Rollen steckt: alle Schätze als 3D-Vorschau ───────────────────
+
+// Kamera je Form: Bäume sind größer als Werkzeug
+const LOOT_CAM = { bush: { dist: 10, y: 2 }, palm: { dist: 19, y: 4.2 }, cone: { dist: 13.5, y: 3.4 }, oval: { dist: 16, y: 4.4 }, weeping: { dist: 15, y: 3.6 }, spade: { dist: 8.5, y: 1.8 }, chest: { dist: 7, y: 1 } };
+const lootCam = (item) => (item.big ? { dist: 19, y: 4.6 } : LOOT_CAM[item.crown || item.model] || (item.type === 'tree' ? { dist: 15, y: 3.8 } : { dist: 7.5, y: 1.2 }));
+// Chance einer Sache in einer Rolle: Chance ihrer Seltenheit geteilt durch die Anzahl Sachen dieser Seltenheit
+const poolSize = Object.fromEntries(RARITIES.map((r) => [r.id, LOOT.filter((l) => l.rarity === r.id).length]));
+const itemChance = (roll, item) => rollChances(roll)[rarityById[item.rarity].index] / poolSize[item.rarity];
+const lootInfo = (item) => (item.type === 'tree' ? `${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}, wächst ${fmtTime(item.grow)}. ${item.text}` : item.text);
+
+const lootList = document.getElementById('loot');
+const sortedLoot = [...LOOT].sort((a, b) => rarityById[a.rarity].index - rarityById[b.rarity].index || (a.type === b.type ? 0 : a.type === 'tree' ? -1 : 1));
+const lootCards = sortedLoot.map((item) => {
+  const rar = rarityById[item.rarity];
+  const card = document.createElement('article');
+  card.className = 'loot-card';
+  card.style.setProperty('--t', rar.color);
+  card.innerHTML = `
+    <div class="loot-view view" role="img" aria-label="${item.name} in 3D"></div>
+    <div class="loot-body">
+      <p class="loot-kind">${rar.name} · ${item.type === 'tree' ? 'Münzbaum' : 'Werkzeug'}</p>
+      <h3 class="loot-name">${item.name}</h3>
+      <p class="loot-text">${lootInfo(item)}</p>
+      <p class="loot-chance"></p>
+    </div>`;
+  lootList.append(card);
+  const entry = { item, card, view: card.querySelector('.loot-view'), obj: null, near: false, hover: false, spin: Math.random() * 6, make: () => createRobloxLoot(item), cam: lootCam(item) };
+  card.addEventListener('pointerenter', () => (entry.hover = true));
+  card.addEventListener('pointerleave', () => (entry.hover = false));
+  return entry;
+});
+
+// Filter: Chancen für eine Rolle oder Überblick, in welchen Rollen eine Sache vorkommt
+let lootRoll = null;
+const SHORT = { kupfer: 'Kupfer', silber: 'Silber', gold: 'Gold', juwel: 'Juwelen', stern: 'Sterne' };
+const filter = document.getElementById('loot-filter');
+filter.innerHTML = [`<button type="button" data-roll="">Alle Rollen</button>`, ...ROLLS.map((r) => `<button type="button" data-roll="${r.id}" style="--t:${r.glow}">${r.name}</button>`)].join('');
+function renderLootChances() {
+  for (const b of filter.children) b.setAttribute('aria-pressed', String((b.dataset.roll || null) === (lootRoll?.id ?? null)));
+  for (const { item, card } of lootCards) {
+    const el = card.querySelector('.loot-chance');
+    if (lootRoll) {
+      const c = itemChance(lootRoll, item);
+      card.classList.toggle('is-out', c === 0);
+      el.textContent = c > 0 ? `Chance: ${pct(c)}` : `Nicht in der ${lootRoll.name}`;
+    } else {
+      card.classList.remove('is-out');
+      const where = ROLLS.filter((r) => itemChance(r, item) > 0);
+      el.textContent = where.length === ROLLS.length ? 'In allen Rollen' : `In: ${where.map((r) => SHORT[r.id] || r.name).join(', ')}`;
+    }
+  }
+}
+filter.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  lootRoll = ROLLS.find((r) => r.id === b.dataset.roll) || null;
+  renderLootChances();
+});
+renderLootChances();
 
 // ── Galerie-Renderer ─────────────────────────────────────────────────────────
 
@@ -80,28 +140,30 @@ const resize = () => renderer.setSize(innerWidth, innerHeight, false);
 addEventListener('resize', resize);
 resize();
 
+const allCards = [...cards, ...lootCards];
 const io = new IntersectionObserver(
   (entries) => {
     for (const e of entries) {
-      const entry = cards.find((c) => c.view === e.target);
+      const entry = allCards.find((c) => c.view === e.target);
       entry.near = e.isIntersecting;
     }
   },
   { rootMargin: '600px 0px' },
 );
-cards.forEach((c) => io.observe(c.view));
+allCards.forEach((c) => io.observe(c.view));
 
 // nacheinander bauen, damit der Hauptthread nicht hängt
 let building = false;
 async function buildNext() {
   if (building) return;
-  const entry = cards.find((e) => e.near && !e.obj);
+  const entry = allCards.find((e) => e.near && !e.obj);
   if (!entry) return;
   building = true;
   try {
-    entry.obj = await createRobloxRoll(entry.roll);
+    entry.obj = await entry.make();
   } catch (err) {
-    console.error('Rolle', entry.roll.id, err);
+    console.error('Vorschau', (entry.roll || entry.item).id, err);
+    entry.obj = { failed: true };
   }
   building = false;
 }
@@ -119,8 +181,8 @@ function renderGallery(t, dt) {
   buildNext();
   renderer.setScissorTest(true);
   const H = stage.clientHeight;
-  for (const entry of cards) {
-    if (!entry.near || !entry.obj) continue;
+  for (const entry of allCards) {
+    if (!entry.near || !entry.obj || entry.obj.failed) continue;
     const r = entry.view.getBoundingClientRect();
     // nur unterhalb der klebenden Navigation zeichnen
     const top = Math.max(r.top, navBottom());
@@ -129,7 +191,7 @@ function renderGallery(t, dt) {
     entry.obj.step(dt);
     camera.aspect = r.width / r.height;
     camera.updateProjectionMatrix();
-    orbitEgg(camera, entry.spin, 0.12, 15, 2.4);
+    orbitEgg(camera, entry.spin, 0.12, entry.cam.dist, entry.cam.y);
     renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
     renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
     entry.obj.world.render(renderer, camera);
