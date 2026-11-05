@@ -26,6 +26,20 @@ export const BEREICHE = [
     eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
   },
   {
+    titel: 'Münzrollen',
+    text: 'Papierrollen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Heraus springen Münzbäume, Gießkannen, Dünger und mehr für den Münzbaumgarten.',
+    href: 'rollen/',
+    status: 'vorschau',
+    eckdaten: ['5 Rollen', '18 Sachen', 'Öffnen-Animation'],
+  },
+  {
+    titel: 'Münzbaumgarten',
+    text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen pflanzen, gießen, düngen und ihre Münzen als Taler ernten.',
+    href: 'garten/',
+    status: 'vorschau',
+    eckdaten: ['9 Münzbäume', 'bis 12 Beete', '3D'],
+  },
+  {
     titel: 'Haustiere',
     text: '49 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
     href: 'haustiere/',
@@ -55,7 +69,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Spiel-Oberfläche',
-    text: 'HUD über der aktuellen 3D-Welt, Teleport-Menü, Skilltree mit vier Ästen, Inventar, Shop und Einstellungen. Mit simulierten Funden zum Ausprobieren.',
+    text: 'HUD über der aktuellen 3D-Welt, Teleport-Menü, Skilltree mit vier Ästen, Inventar, Shop, Münzbaumgarten und Einstellungen. Mit simulierten Funden zum Ausprobieren.',
     href: 'spiel/',
     status: 'vorschau',
     eckdaten: ['21 Skills', 'HUD', '5 Fenster'],

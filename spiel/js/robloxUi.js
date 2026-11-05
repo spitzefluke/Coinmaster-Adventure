@@ -18,6 +18,10 @@ import { BRANCHES, SKILLS } from './skills.js';
 import { DAILY, WHEEL, GROUP_BONUS, BOARDS } from './rewards.js';
 import { TIERS, COINS } from '../../muenzen/js/coins.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
+import { gardenDataSource } from '../../roblox/js/gardenLuau.js';
+import { rollDataSource } from '../../roblox/js/rollLuau.js';
+import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, GARDEN } from '../../garten/js/garden.js';
+import { ROLLS } from '../../rollen/js/rolls.js';
 
 
 const q = (s) => JSON.stringify(String(s));
@@ -38,6 +42,8 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.call('__addModule', 'RewardData', rewardDataSource({ DAILY, WHEEL, GROUP_BONUS, BOARDS }));
   lua.call('__addModule', 'WeatherFx', WEATHER_FX);
   lua.call('__addModule', 'UITheme', UI_THEME);
+  lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, GARDEN }));
+  lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
@@ -57,6 +63,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
     function __applyInventory(kind, a, b) __GameUI.ApplyInventory(kind, a, b) end
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
+      PlayRoll = function(rollId, ids) __uiAction("playRoll", rollId .. "|" .. ids) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
       DevTools = ${devTools ? 'true' : 'false'},
       CodeHint = ${codeHint ? q(codeHint) : 'nil'},

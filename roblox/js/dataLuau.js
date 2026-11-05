@@ -28,10 +28,10 @@ PlayerData.STORE = "CoinmasterAdventure"
 PlayerData.AUTOSAVE = 120 -- Sekunden
 PlayerData.LOCK_TIMEOUT = 900 -- Sekunden
 
--- Attribute, die gespeichert werden (dazu alle mit Egg_, Boost_ und Set_ am Anfang)
+-- Attribute, die gespeichert werden (dazu alle mit Egg_, Boost_ und Set_ am Anfang). Garden: Münzbaumgarten als JSON
 local KEEP = {
 	"Level", "XP", "World", "Worlds", "Portals", "Rebirths", "Aura", "OwnedAuras", "Skills",
-	"DailyDay", "DailyStreak", "WheelDay", "Group", "Codes", "CoinsFound",
+	"DailyDay", "DailyStreak", "WheelDay", "Group", "Codes", "CoinsFound", "Garden",
 }
 local KEEP_PREFIX = { "Egg_", "Boost_", "Set_" }
 

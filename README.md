@@ -21,7 +21,7 @@ Roblox-Engine (`js/rbx/`):
 - Grenzen: Die Teilchenbilder (`rbxasset://…`) sind nachgezeichnet, weil die Originale nur in Studio
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
-Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund und alle Münzen
+Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
 (Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
 Haustiere und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster.
 
@@ -30,6 +30,8 @@ Haustiere und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster.
 | Münzkabinett | `muenzen/` | Vorschau |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
+| Münzrollen | `rollen/` | Vorschau |
+| Münzbaumgarten | `garten/` | Vorschau |
 | Haustiere | `haustiere/` | Vorschau |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
@@ -139,6 +141,88 @@ auf und platzt mit Lichtblitz, Funken und Druckwelle. Dann wächst das Tier hera
 Chance (BillboardGui); epische Tiere bekommen einen Lichtkranz. Das Tier wird nach Schlupfchance gewürfelt.
 Tippen spult vor. In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = … })`, am besten auf dem
 Client; das Tier zieht `PetData.Roll(eggId)`.
+
+## Münzrollen
+
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Schätze für den Münzbaumgarten. Beim Öffnen
+wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
+springen **Münzbäume und Gartenwerkzeug** einzeln heraus, das Seltenste zuletzt. Seltenes kommt mit Blitz und
+Druckwelle, vor einer legendären oder selteneren letzten Sache gibt es eine kurze Pause mit Lichtsog.
+Die Rollen kosten Taler aus dem Garten, der Inhalt landet im Inventar des Gartens.
+
+| Rolle | Stufe | Inhalt | Glück | Garantie (letzte Sache) | Preis (Vorschlag) |
+|---|---|---|---|---|---|
+| Kupferrolle | Normal | 3 | ×1 | – | 500 Taler |
+| Silberrolle | Selten | 4 | ×1,6 | ab Selten | 5.000 Taler |
+| Goldrolle | Episch | 5 | ×2,5 | ab Episch | 40.000 Taler |
+| Juwelenrolle | Mystisch | 6 | ×4 | ab Legendär | 250.000 Taler |
+| Sternenrolle (Robux-Rolle) | Limitiert | 8 | ×6 | ab Legendär | R$ 149 |
+
+- **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
+  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Göttlich bekommt also den vollen Faktor (1,72 % bei der
+  Sternenrolle). Innerhalb einer Seltenheit ist jede Sache gleich wahrscheinlich. Die Garantie greift nur, wenn
+  vorher nichts so Seltenes kam. Rechnung: `rollen/js/rolls.js`.
+- **Roblox:** `RollData` (`TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
+  `RollFx.Play(rollId, itemIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
+  `RollData.Open(rollId)` würfeln, auf dem Client mit den Ids `RollFx.Play` zeigen.
+
+## Münzbaumgarten
+
+`garten/`: Ein kleiner Garten, den man für **25.000 Taler** kauft (4 Beete, erweiterbar bis 12; jedes weitere Beet
+kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in drei Stufen
+(Setzling, Jungbaum, ausgewachsen) und tragen dann Münzen. Jede Ernte bringt Taler, höchstens 3 Ernten warten am
+Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Browser.
+
+| Münzbaum | Seltenheit | Wachsen | Ernte | Taler je Ernte |
+|---|---|---|---|---|
+| Pfennigbusch | Gewöhnlich | 1 min | alle 30 s | 40 |
+| Kupferbaum | Gewöhnlich | 2 min | alle 45 s | 90 |
+| Silberbirke | Selten | 4 min | alle 1 min | 300 |
+| Talertanne | Selten | 5 min | alle 1 min 15 s | 420 |
+| Goldeiche | Episch | 10 min | alle 1 min 30 s | 1.500 |
+| Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 |
+| Kristallweide | Legendär | 20 min | alle 2 min | 6.000 |
+| Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 |
+| Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 |
+
+| Werkzeug & mehr | Seltenheit | Wirkung |
+|---|---|---|
+| Talerbeutel | Gewöhnlich | +750 Taler |
+| Blechkanne | Gewöhnlich | Baum wächst 1 min schneller |
+| Kupferkanne | Selten | 5 min schneller |
+| Dünger | Selten | ×2 Ernte für 10 min |
+| Goldkanne | Episch | 30 min schneller |
+| Goldener Spaten | Legendär | +1 Beet |
+| Regenbogenkanne | Legendär | Baum sofort ausgewachsen |
+| Zauberdünger | Mythisch | ×3 Ernte für 30 min |
+| Talertruhe | Göttlich | +250.000 Taler |
+
+- **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
+  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Tool(tool)`, `Build(item)`) und
+  `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume).
+  Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
+
+### Im Spiel (Roblox)
+
+- **Spiel-Oberfläche:** Menüknopf **🌱 Garten** öffnet das Fenster mit drei Reitern: *Beete* (Wachstum, Countdown,
+  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
+  und dann ein Beet antippen, Talerbeutel und Spaten direkt benutzen) und *Rollen* (kaufen und öffnen). Nach dem
+  Öffnen spielt `GameUI.PlayRoll` die Animation `RollFx` vor dem Spieler. „🚪 Zum Garten“ teleportiert zum Garten.
+- **Server** (`ServerScriptService > CoinmasterGarden`): RemoteFunction `GardenRemote` mit `openRoll` und den
+  Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig). Der Server würfelt, prüft
+  Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
+  zwei Aufrufen.
+- **Speichern:** mit dem ganzen Spielstand über `PlayerData` (Attribut `Garden`, siehe „Speichern in Roblox“).
+  Garten-Aufträge gibt es erst, wenn der Spielstand geladen ist. Robux-Rollen werden erst bestätigt, wenn der
+  Kauf gespeichert ist.
+- **Robux-Rolle:** Developer Product anlegen und die Id oben im Skript in `ROLL_PRODUCTS` eintragen
+  (`[ProductId] = "stern"`). Jeder Kauf wird mit seiner `PurchaseId` gemerkt und zählt nur einmal. Achtung:
+  `ProcessReceipt` darf im Spiel nur ein Skript setzen.
+- **Garten in der Welt** (`StarterPlayerScripts > CoinmasterGardenClient`): baut den eigenen Garten mit
+  `GardenBuilder` (nur für den Spieler sichtbar) auf einem Part **`GartenPlatz`** im Workspace, sonst bei
+  (0, 0, −160). Neu gebaut wird, wenn ein Baum wächst oder reift.
+- **Vorschau:** Die Spiel-Oberfläche (`spiel/`) zeigt dasselbe Fenster. Käufe rechnet dort `gardenAct` in
+  `garten/js/garden.js`, die JS-Fassung von `GardenData.Act`.
 
 ## Haustiere
 
@@ -369,7 +453,7 @@ lädt und speichert den Spielstand im DataStore `CoinmasterAdventure` (ein Profi
   Verlassen und beim Herunterfahren (`BindToClose`).
 - **Versionsnummer:** `PlayerData.Migrate` bringt ältere Profile auf den neuesten Stand.
 - **Was gespeichert wird:** `leaderstats.Taler`, die Münz-Stapel und die Attribute (Level, EP, Welten,
-  Portale, Wiedergeburten, Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen).
+  Portale, Wiedergeburten, Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen, Münzbaumgarten).
 - Level-Aufstieg, Skillpunkte, Inventarplätze und Eier-Rabatt rechnet der Server daraus.
 
 In Studio speichert es nur mit „Enable Studio Access to API Services“ (Game Settings > Security);

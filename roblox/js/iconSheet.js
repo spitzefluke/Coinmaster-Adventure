@@ -15,7 +15,7 @@ export const ICON_EMOJI = {
   numbers: '🔢', boot: '👟', magnet: '🧲', jump: '🦘', radar: '📡', compass: '🧭', clover: '🍀', gem: '💎',
   double: '✌️', cloud: '☁️', hand: '✋', tag: '🏷️', flame: '🔥', paw: '🐾', eggs: '🥚', nest: '🪺', moon: '🌙',
   auto: '🤖', trophy: '🏆', gift: '🎁', key: '🔑', pin: '📍', globe: '🌍', rocket: '🚀', rebirth: '♻️',
-  bolt: '⚡', wind: '💨', home: '🏛️', portal: '🌀',
+  sprout: '🌱', bolt: '⚡', wind: '💨', home: '🏛️', portal: '🌀',
 };
 
 export const iconOffset = (name) => {

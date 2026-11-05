@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Münzrollen · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/open.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Glück</p>
+    <h1>Münzrollen</h1>
+    <p class="lede">Papierrollen voller Schätze für deinen <a href="../garten/">Münzbaumgarten</a>: Münzbäume, Gießkannen, Dünger und mehr. Reiß eine auf, und alles springt einzeln heraus, das Seltenste zuletzt. Teurere Rollen haben mehr drin, mehr Glück und eine Garantie.</p>
+    <p class="wallet-line"><span class="wallet-label">Deine Taler</span> <strong id="wallet">0</strong> <a class="wallet-link" href="../garten/">Zum Garten →</a></p>
+  </header>
+
+  <main id="rolls" class="rolls"></main>
+
+  <footer class="foot">Preise und Chancen sind Vorschläge. Die Taler und das Inventar teilt sich diese Seite mit dem <a href="../garten/">Münzbaumgarten</a> (gespeichert im Browser). Robux-Käufe sind in der Vorschau nur simuliert.</footer>
+</div>
+
+<canvas id="stage" class="stage" aria-hidden="true"></canvas>
+
+<div id="detail" class="detail" hidden>
+  <div class="detail-backdrop" data-close></div>
+  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-name">
+    <button class="detail-close" type="button" data-close aria-label="Schließen">×</button>
+    <div class="detail-view"><canvas id="detail-canvas"></canvas></div>
+    <div class="detail-info">
+      <p id="detail-rank" class="rank-pill"></p>
+      <h2 id="detail-name"></h2>
+      <p id="detail-text" class="detail-text"></p>
+      <dl class="detail-facts">
+        <div><dt>Inhalt</dt><dd id="detail-coins"></dd></div>
+        <div><dt>Garantie</dt><dd id="detail-guarantee"></dd></div>
+        <div><dt>Preis</dt><dd id="detail-price"></dd></div>
+        <div><dt>Erhältlich</dt><dd id="detail-avail"></dd></div>
+      </dl>
+      <div id="detail-odds" class="odds detail-odds"></div>
+      <div class="detail-actions">
+        <button id="detail-open" class="open-btn" type="button">Aufreißen</button>
+        <button id="detail-prev" class="look-btn" type="button" aria-label="Vorherige Rolle">‹</button>
+        <button id="detail-next" class="look-btn" type="button" aria-label="Nächste Rolle">›</button>
+      </div>
+      <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen. Pfeiltasten wechseln die Rolle.</p>
+    </div>
+  </div>
+</div>
+
+<div id="open" class="open" hidden>
+  <canvas class="open-canvas"></canvas>
+  <div class="open-text" role="dialog" aria-modal="true" aria-labelledby="open-name">
+    <p class="open-eyebrow">Aufgerissen!</p>
+    <h2 id="open-name" class="open-name">???</h2>
+    <p class="open-from"></p>
+    <ul class="open-loot"></ul>
+    <div class="open-buttons">
+      <button class="open-again" type="button" hidden>Noch eine</button>
+      <button class="open-done" type="button" hidden>Fertig</button>
+    </div>
+  </div>
+  <a class="open-garden" href="../garten/">Zum Garten →</a>
+  <p class="open-hint">Tippen zum Überspringen</p>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

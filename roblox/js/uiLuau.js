@@ -135,6 +135,8 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- Inventar: Münzen als Stapel über das RemoteEvent InventoryEvent ("full", Liste) und ("set", Schlüssel, Stapel);
 -- in der Vorschau ruft die Seite GameUI.ApplyInventory direkt auf. Plätze im Attribut Slots.
 -- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths.
+-- Garten: Garden (JSON, siehe GardenData), Aktionen garden… und openRoll gehen an GardenRemote.
+-- options.PlayRoll(rollId, ids)            zeigt eine geöffnete Rolle (Standard: RollFx vor dem Spieler)
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
 --                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
 -- options.OnAction(name, arg)               Menü-Knöpfe für Fenster, die es hier noch nicht gibt
@@ -157,6 +159,8 @@ local AuraData = require(root:WaitForChild("AuraData"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local CoinData = require(root:WaitForChild("CoinData"))
 local WorldData = require(root:WaitForChild("WorldData"))
+local GardenData = require(root:WaitForChild("GardenData"))
+local RollData = require(root:WaitForChild("RollData"))
 local HttpService = game:GetService("HttpService")
 
 local GameUI = {}
@@ -350,19 +354,20 @@ local function buildHud(playerGui)
 	-- Menü links
 	local menu = new("Frame", { Name = "Menue", Size = UDim2.new(0, 84, 0, 486), Position = UDim2.new(0, 16, 0.5, 20), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = gui })
 	ui.menu = menu
-	ui.menuLayout = new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = menu })
+	ui.menuLayout = new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = menu })
 	ui.menuScale = new("UIScale", { Scale = 1, Parent = menu })
 	ui.badges = {}
+	-- 7 Knöpfe à 62 + 6 × 8 Abstand = 482: passt in dieselbe Höhe wie früher 6 Knöpfe
 	local entries = {
 		{ "welten", "globe", "Welten" }, { "skills", "tree", "Skills" }, { "inventar", "bag", "Inventar" },
-		{ "shop", "shop", "Shop" }, { "index", "book", "Index" }, { "einstellungen", "gear", "Optionen" },
+		{ "shop", "shop", "Shop" }, { "garten", "sprout", "Garten" }, { "index", "book", "Index" }, { "einstellungen", "gear", "Optionen" },
 	}
 	for i, e in ipairs(entries) do
-		local b = new("TextButton", { Name = e[1], Size = UDim2.new(0, 72, 0, 70), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, Text = "", LayoutOrder = i, Parent = menu }, {
+		local b = new("TextButton", { Name = e[1], Size = UDim2.new(0, 72, 0, 62), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, Text = "", LayoutOrder = i, Parent = menu }, {
 			corner(R.M),
 			stroke(C.gold, 2),
-			icon(e[2], { Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0.5, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0) }),
-			label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, -22), Text = e[3], TextSize = T.Tiny, Font = BODY }),
+			icon(e[2], { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0.5, 0, 0, 6), AnchorPoint = Vector2.new(0.5, 0) }),
+			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -20), Text = e[3], TextSize = T.Tiny, Font = BODY }),
 		})
 		local badge = new("TextLabel", { Name = "Zahl", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -14, 0, -8), BackgroundColor3 = C.red, Text = "", Font = BODY, TextSize = T.Small, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 2, Parent = b }, { corner(R.Round), stroke(C.bg, 2) })
 		ui.badges[e[1]] = badge
@@ -507,7 +512,7 @@ local function fillShop()
 					result(options.Invoke("robux", egg.Id))
 				end)
 			else
-				actionButton(c, "🔒 " .. egg.Availability, C.line, false, function() end)
+				actionButton(c, egg.Availability, C.line, false, function() end)
 			end
 			shape.Name = "Ei"
 		end
@@ -1329,13 +1334,13 @@ local function applyLayout()
 	-- Menü
 	if compact then
 		ui.menuLayout.FillDirection = Enum.FillDirection.Horizontal
-		ui.menu.Size = UDim2.new(0, 6 * 72 + 5 * 10, 0, 70)
+		ui.menu.Size = UDim2.new(0, 7 * 72 + 6 * 8, 0, 62)
 		ui.menu.Position = UDim2.new(0, 12, 1, -10)
 		ui.menu.AnchorPoint = Vector2.new(0, 1)
 		ui.menuScale.Scale = tiny and 0.78 or 0.88
 		if narrow then
 			-- ganze Breite nutzen
-			ui.menuScale.Scale = math.min(0.88, (vp.X - 24) / (6 * 72 + 5 * 10))
+			ui.menuScale.Scale = math.min(0.88, (vp.X - 24) / (7 * 72 + 6 * 8))
 		end
 	else
 		ui.menuLayout.FillDirection = Enum.FillDirection.Vertical
@@ -1348,7 +1353,7 @@ local function applyLayout()
 	if narrow then
 		-- über dem Menü in der Mitte
 		ui.find.Size = UDim2.new(0, 220, 0, 56)
-		ui.find.Position = UDim2.new(0.5, 0, 1, -(70 * ui.menuScale.Scale + 22))
+		ui.find.Position = UDim2.new(0.5, 0, 1, -(62 * ui.menuScale.Scale + 22))
 		ui.find.AnchorPoint = Vector2.new(0.5, 1)
 		ui.findHint.Visible = false
 	elseif compact then
@@ -1591,12 +1596,292 @@ function GameUI.Found(info)
 end
 
 -- Standard-Verbindungen in Roblox: Käufe über RemoteFunctions, fremde Fenster als BindableEvent
+-- ── Münzbaumgarten: Beete, Sachen aus Münzrollen, Rollen kaufen ──
+-- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
+-- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
+-- gardenDig (Beet), openRoll (Rolle) → ok, Text, Ids. Danach spielt GameUI.PlayRoll die Animation.
+local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
+local STAGE_NAMES = { "Setzling", "Jungbaum", "Ausgewachsen" }
+local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
+ui.gardenSel = nil -- ausgewählte Sache (Baum, Kanne, Dünger), die auf ein Beet soll
+ui.gardenLive = {}
+
+local function gardenState()
+	local ok, g = pcall(function()
+		return HttpService:JSONDecode(attr("Garden", "null"))
+	end)
+	return GardenData.Clean(ok and g or nil)
+end
+local function lootIcon(item)
+	return LOOT_ICON[item.Crown or item.Model] or "🌳"
+end
+local function gardenSignature(g, now)
+	local parts = { tostring(g.Owned), g.Beds, ui.gardenSel or "" }
+	for i = 1, g.Beds do
+		local p = g.Plots[tostring(i)]
+		table.insert(parts, p and (p.Tree .. GardenData.Stage(p, now) .. GardenData.Ripe(p, now) .. ((p.BoostEnd or 0) > now and "d" or "")) or "-")
+	end
+	return table.concat(parts, ",")
+end
+local function gardenDo(action, a, b)
+	local ok, text = options.Invoke(action, a, b)
+	if ok and (action == "gardenPlant" or action == "gardenUse") then
+		ui.gardenSel = nil
+	end
+	result(ok, text, C.green)
+	GameUI.Refresh("garten")
+end
+
+local fillGarden
+local function gardenTick(w)
+	return function()
+		if w.tab == "rollen" then return end
+		local now = os.time()
+		if gardenSignature(gardenState(), now) ~= ui.gardenSig then
+			GameUI.Refresh("garten")
+		else
+			for _, fn in ipairs(ui.gardenLive) do fn(now) end
+		end
+	end
+end
+fillGarden = function(w)
+	ui.gardenLive = {}
+	w.tick = gardenTick(w)
+	clear(w.body)
+	clear(w.tools)
+	local g = gardenState()
+	local now = os.time()
+	local money = taler()
+	ui.gardenSig = gardenSignature(g, now)
+	w.sub.Text = GameUI.Format(money) .. " Taler · " .. (g.Owned and (g.Beds .. " Beete") or "noch kein Garten")
+	if g.Owned then
+		local go = new("TextButton", { Name = "Besuchen", Size = UDim2.new(0, 150, 1, 0), BackgroundColor3 = C.blue, Text = "🚪 Zum Garten", Font = FONT, TextSize = 16, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 1, Parent = w.tools }, { corner(R.Round) })
+		pressable(go, function()
+			GameUI.Close("garten")
+			options.OnAction("gartenBesuchen")
+		end)
+	end
+	local list = scroller(w, w.body, "Liste", { Size = UDim2.new(1, 16, 1, 0), Position = UDim2.new(0, -8, 0, 0) }, {
+		new("UIGridLayout", { CellSize = UDim2.new(0, 200, 0, 236), CellPadding = UDim2.new(0, 12, 0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }),
+	})
+	local function text(c, y, h, t, size, color, font)
+		return label({ Size = UDim2.new(1, 0, 0, h), Position = UDim2.new(0, 0, 0, y), Text = t, TextSize = size, TextColor3 = color or C.ink, TextWrapped = true, Font = font or BODY, Parent = c })
+	end
+
+	if w.tab == "rollen" then
+		for i, roll in ipairs(RollData.Rolls) do
+			local c = card(list, roll.Glow)
+			c.LayoutOrder = i
+			-- Rolle: Papier mit Banderole
+			new("Frame", { Name = "Rolle", Size = UDim2.new(0, 34, 0, 64), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = roll.Paper, Parent = c }, {
+				corner(R.S),
+				stroke(roll.Glow, 2),
+				new("Frame", { Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0.5, -9), BackgroundColor3 = roll.Band, BorderSizePixel = 0 }),
+			})
+			text(c, 70, 22, roll.Name, 20, C.ink, FONT)
+			text(c, 94, 16, roll.RankName .. " · " .. roll.Items .. " Sachen", 12, roll.Glow)
+			local guarantee = roll.Guarantee and ("Garantie ab " .. GardenData.RarityById[roll.Guarantee].Name) or "Ohne Garantie"
+			text(c, 114, 32, guarantee .. " · Glück ×" .. roll.Luck, 12, C.muted, TEXT)
+			if roll.Price.Currency == "Coins" then
+				actionButton(c, "Öffnen · " .. GameUI.Format(roll.Price.Amount), C.green, money >= roll.Price.Amount, function()
+					local ok, msg, ids = options.Invoke("openRoll", roll.Id)
+					if ok and ids then
+						GameUI.Close("garten")
+						GameUI.PlayRoll(roll.Id, ids)
+					end
+					result(ok, msg, roll.Glow)
+				end)
+			else
+				actionButton(c, "R$ " .. roll.Price.Amount, C.green, true, function()
+					local ok, msg, ids = options.Invoke("openRoll", roll.Id)
+					if ok and ids then
+						GameUI.Close("garten")
+						GameUI.PlayRoll(roll.Id, ids)
+					end
+					result(ok, msg, roll.Glow)
+				end)
+			end
+		end
+		return
+	end
+
+	if not g.Owned then
+		local c = card(list, C.gold)
+		text(c, 0, 52, "🌳", 44, C.ink, EMOJI)
+		text(c, 56, 22, "Münzbaumgarten", 20, C.ink, FONT)
+		text(c, 80, 70, GardenData.Garden.StartBeds .. " Beete für Münzbäume aus Münzrollen. Ausgewachsen tragen sie Taler.", 12, C.muted, TEXT)
+		actionButton(c, "Kaufen · " .. GameUI.Format(GardenData.Garden.Price), C.green, money >= GardenData.Garden.Price, function()
+			gardenDo("gardenBuy")
+		end)
+		return
+	end
+
+	if w.tab == "sachen" then
+		local n = 0
+		for _, item in ipairs(GardenData.Loot) do
+			local count = g.Inv[item.Id] or 0
+			if count > 0 then
+				n = n + 1
+				local r = GardenData.RarityById[item.Rarity]
+				local c = card(list, ui.gardenSel == item.Id and C.goldHi or r.Color)
+				c.LayoutOrder = n
+				text(c, 0, 46, lootIcon(item), 38, C.ink, EMOJI)
+				text(c, 50, 22, item.Name .. "  ×" .. count, 18, C.ink, FONT)
+				text(c, 74, 16, r.Name .. (item.Type == "Tree" and " · Münzbaum" or " · Werkzeug"), 12, r.Color)
+				local info = item.Type == "Tree" and (GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle) .. " · wächst " .. GardenData.FormatTime(item.Grow)) or item.Text
+				text(c, 94, 48, info, 12, C.muted, TEXT)
+				if item.Kind == "Taler" or item.Kind == "Bed" then
+					actionButton(c, "Benutzen", C.blue, true, function() gardenDo("gardenUse", item.Id) end)
+				else
+					local verb = item.Type == "Tree" and "Pflanzen" or (item.Kind == "Water" and "Gießen" or "Düngen")
+					actionButton(c, ui.gardenSel == item.Id and "Abwählen" or verb, ui.gardenSel == item.Id and C.line or C.green, true, function()
+						if ui.gardenSel == item.Id then
+							ui.gardenSel = nil
+							GameUI.Refresh("garten")
+						else
+							ui.gardenSel = item.Id
+							GameUI.Toast(item.Name .. " gewählt: jetzt ein Beet antippen", r.Color)
+							GameUI.Open("garten", "beete")
+						end
+					end)
+				end
+			end
+		end
+		if n == 0 then
+			local c = card(list)
+			text(c, 0, 52, "📜", 44, C.ink, EMOJI)
+			text(c, 56, 22, "Noch leer", 20, C.ink, FONT)
+			text(c, 80, 70, "Öffne Münzrollen, um Bäume, Gießkannen und Dünger zu bekommen.", 12, C.muted, TEXT)
+			actionButton(c, "Zu den Rollen", C.green, true, function() GameUI.Open("garten", "rollen") end)
+		end
+		return
+	end
+
+	-- Beete
+	local sel = ui.gardenSel and GardenData.ById[ui.gardenSel]
+	local any = false
+	for i = 1, g.Beds do
+		local plot = g.Plots[tostring(i)]
+		if plot and GardenData.Ripe(plot, now) > 0 then any = true end
+	end
+	local top = new("TextButton", { Name = "AllesErnten", Size = UDim2.new(0, 150, 1, 0), BackgroundColor3 = any and C.green or C.line, Text = "🧺 Alles ernten", Font = FONT, TextSize = 16, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 2, Parent = w.tools }, { corner(R.Round) })
+	pressable(top, function() if any then gardenDo("gardenHarvest", "all") end end)
+	for i = 1, g.Beds do
+		local plot = g.Plots[tostring(i)]
+		local tree = plot and GardenData.ById[plot.Tree]
+		local r = tree and GardenData.RarityById[tree.Rarity]
+		local c = card(list, r and r.Color or Color3.fromRGB(110, 80, 50))
+		c.LayoutOrder = i
+		text(c, 0, 16, "BEET " .. i, 12, C.muted, MONO)
+		if not plot then
+			text(c, 20, 52, "🟫", 40, C.ink, EMOJI)
+			text(c, 76, 22, "Leer", 20, C.ink, FONT)
+			if sel and sel.Type == "Tree" then
+				actionButton(c, "Pflanzen: " .. sel.Name, C.green, true, function() gardenDo("gardenPlant", tostring(i), sel.Id) end)
+			else
+				text(c, 102, 40, "Wähle unter „Sachen“ einen Baum zum Pflanzen.", 12, C.muted, TEXT)
+			end
+		else
+			local stage = GardenData.Stage(plot, now)
+			local ripe = GardenData.Ripe(plot, now)
+			text(c, 20, 46, lootIcon(tree), stage == 1 and 26 or (stage == 2 and 34 or 42), C.ink, EMOJI)
+			text(c, 68, 22, tree.Name, 19, C.ink, FONT)
+			text(c, 90, 16, r.Name .. " · " .. STAGE_NAMES[stage], 12, r.Color)
+			local live = text(c, 108, 16, "", 12, C.muted, MONO)
+			if stage < 3 then
+				local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 0, 130), BackgroundColor3 = C.bg, Parent = c }, { corner(R.Round) })
+				local fillBar = new("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = C.green, Parent = bar }, { corner(R.Round) })
+				table.insert(ui.gardenLive, function(t)
+					live.Text = "fertig in " .. GardenData.FormatTime(GardenData.GrownAt(plot) - t)
+					fillBar.Size = UDim2.new(math.clamp((t - plot.Planted + plot.Bonus) / tree.Grow, 0, 1), 0, 1, 0)
+				end)
+			else
+				local dots = {}
+				for k = 1, GardenData.Garden.MaxRipe do
+					table.insert(dots, k <= ripe and "🪙" or "⚪")
+				end
+				text(c, 128, 18, table.concat(dots, " "), 14, C.ink, EMOJI)
+				table.insert(ui.gardenLive, function(t)
+					local since = math.max(GardenData.GrownAt(plot), plot.Harvested or 0)
+					local r2 = GardenData.Ripe(plot, t)
+					live.Text = r2 >= GardenData.Garden.MaxRipe and "voll, bitte ernten" or ("nächste in " .. GardenData.FormatTime(tree.Cycle - (t - since) % tree.Cycle))
+				end)
+			end
+			if (plot.BoostEnd or 0) > now then
+				local boost = text(c, 148, 16, "", 12, Color3.fromRGB(184, 224, 122), MONO)
+				table.insert(ui.gardenLive, function(t)
+					boost.Text = "Dünger ×" .. plot.Boost .. " · " .. GardenData.FormatTime(plot.BoostEnd - t)
+				end)
+			end
+			-- Knöpfe: Auswahl anwenden, ernten oder ausgraben
+			local canUse = sel and sel.Type == "Tool" and ((sel.Kind == "Water" and stage < 3) or sel.Kind == "Boost")
+			if canUse then
+				actionButton(c, (sel.Kind == "Water" and "Gießen: " or "Düngen: ") .. sel.Name, C.blue, true, function() gardenDo("gardenUse", sel.Id, tostring(i)) end)
+			elseif ripe > 0 then
+				actionButton(c, "Ernten · +" .. GameUI.Format(GardenData.HarvestValue(plot, now)), C.green, true, function() gardenDo("gardenHarvest", tostring(i)) end)
+			else
+				local dig = actionButton(c, "Ausgraben", C.line, true, function() gardenDo("gardenDig", tostring(i)) end)
+				dig.TextSize = 14
+			end
+		end
+	end
+	if g.Beds < GardenData.Garden.MaxBeds then
+		local price = GardenData.BedPrice(g.Beds)
+		local c = card(list, C.line)
+		c.LayoutOrder = 1000
+		text(c, 0, 52, "➕", 40, C.ink, EMOJI)
+		text(c, 56, 22, "Neues Beet", 20, C.ink, FONT)
+		text(c, 80, 40, "Beet " .. (g.Beds + 1) .. " von " .. GardenData.Garden.MaxBeds, 12, C.muted, TEXT)
+		actionButton(c, "Kaufen · " .. GameUI.Format(price), C.green, money >= price, function() gardenDo("gardenBed") end)
+	end
+	for _, fn in ipairs(ui.gardenLive) do fn(now) end
+end
+
+local function buildGarden(playerGui)
+	local w = buildWindow(playerGui, "garten", "sprout", "Garten", GARDEN_TABS, fillGarden)
+	-- Neu bauen, wenn sich Garten oder Taler ändern; jede Sekunde nur Countdowns, bei neuer Stufe oder Ernte neu
+	w.deps = { "Garden", "@taler" }
+end
+function GameUI.OpenGarden(tab) GameUI.Open("garten", tab) end
+
+-- Animation einer geöffneten Rolle vor dem Spieler (RollFx). ids: Sachen mit Komma.
+-- In der Webseiten-Vorschau übernimmt das options.PlayRoll.
+function GameUI.PlayRoll(rollId, ids)
+	if options.PlayRoll then
+		return options.PlayRoll(rollId, ids)
+	end
+	local list = {}
+	for id in string.gmatch(ids or "", "[%w-]+") do
+		table.insert(list, id)
+	end
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local RollFx = require(root:WaitForChild("RollFx"))
+	local front = hrp.CFrame * CFrame.new(0, -3, -12)
+	-- Vorderseite (−Z) der Animation zeigt zum Spieler
+	local origin = CFrame.lookAt(front.Position, Vector3.new(hrp.Position.X, front.Position.Y, hrp.Position.Z))
+	task.spawn(function()
+		local fx = RollFx.Play(rollId, list, { CFrame = origin })
+		task.wait(5)
+		fx.Folder:Destroy()
+	end)
+end
+
 local PLAYER_ACTIONS = { learn = true, resetSkills = true, daily = true, spin = true, group = true, code = true, setting = true, resetSettings = true }
 local function defaultInvoke(action, a, b)
 	if action == "aura" then
 		local remote = root:FindFirstChild("AuraRemote")
 		if remote then return remote:InvokeServer(a, b) end
 		return false, "AuraRemote fehlt"
+	end
+	if action == "openRoll" or action:sub(1, 6) == "garden" then
+		local remote = root:FindFirstChild("GardenRemote")
+		if not remote then return false, "GardenRemote fehlt" end
+		-- gardenBuy → buyGarden usw. (Namen wie in GardenData.Act)
+		local map = { gardenBuy = "buyGarden", gardenBed = "buyBed", gardenPlant = "plant", gardenUse = "use", gardenHarvest = "harvest", gardenDig = "dig" }
+		return remote:InvokeServer(map[action] or action, a, b)
 	end
 	if PLAYER_ACTIONS[action] then
 		local remote = root:FindFirstChild("PlayerRemote")
@@ -1638,6 +1923,7 @@ function GameUI.Start(opts)
 	options.Query = opts.Query or defaultQuery
 	options.CodeHint = opts.CodeHint
 	options.Sound = opts.Sound
+	options.PlayRoll = opts.PlayRoll
 	local playerGui = player:WaitForChild("PlayerGui")
 	buildHud(playerGui)
 	-- Ebenen für Effekte: über allen Fenstern; der Blitz deckt auch die Roblox-Leiste ab
@@ -1647,6 +1933,7 @@ function GameUI.Start(opts)
 	buildInventory(playerGui)
 	buildWorlds(playerGui)
 	buildMore(playerGui)
+	buildGarden(playerGui)
 	local DEPS = {
 		shop = { "@taler", "EggDiscount", "Egg_", "Boost_", "OwnedAuras", "Aura" },
 		inventar = { "Slots", "Egg_", "@inventory" },
