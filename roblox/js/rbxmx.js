@@ -138,8 +138,26 @@ function lightFolder(L) {
   );
 }
 
+// Ordner „Klaenge“: eine unsichtbare Klangquelle über der Inselmitte mit einem Sound je Platz, noch ohne
+// SoundId. In Roblox Studio eine Sound-ID aus der Toolbox eintragen; der StringValue „Vorschlag“ sagt, welcher
+// Klang hierher passt. Die Sounds laufen von selbst (Playing, Looped) und sind nur in der Nähe der Insel
+// zu hören (RollOffMaxDistance 700 Studs, die Inseln liegen 1500 Studs auseinander).
+function soundFolder(list, offset) {
+  const sounds = list
+    .map((s) =>
+      item(
+        'Sound',
+        [prop.string('Name', s.name), '<Content name="SoundId"><null></null></Content>', prop.float('Volume', s.volume), prop.bool('Looped', true), prop.bool('Playing', true), prop.float('RollOffMaxDistance', 700), prop.float('RollOffMinDistance', 80)],
+        value('StringValue', 'Vorschlag', s.hint),
+      ),
+    )
+    .join('');
+  const src = { shape: 'Block', name: 'Klangquelle', pos: [0, 40, 0], rot: ID.x, size: [1, 1, 1], color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false, noShadow: true };
+  return folder('Klaenge', part(src, offset, sounds));
+}
+
 export function worldModel(w, offset = [0, 0, 0]) {
-  const { world, parts, sky, lights, emitter, emitters, lighting } = w;
+  const { world, parts, sky, lights, emitter, emitters, lighting, sounds } = w;
   const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
   for (const p of parts) {
     if (p.name === 'SpawnLocation') byFolder.Spawn.push(p);
@@ -209,6 +227,7 @@ export function worldModel(w, offset = [0, 0, 0]) {
       (byFolder.Ranglisten.length ? folder('Ranglisten', list(byFolder.Ranglisten)) : '') +
       folder('Himmel', list(sky)) +
       folder('Effekte', lightParts + fx) +
+      (sounds?.length ? soundFolder(sounds, offset) : '') +
       (lighting ? lightFolder(lighting) : ''),
   );
 }

@@ -132,7 +132,8 @@ export function convertMesh(out, mesh, world) {
       return;
     }
     case 'ConeGeometry': {
-      const r = P.radius, h = P.height, n = 4;
+      // große Kegel (Berge der Kulisse) mit mehr Stufen, damit sie nicht wie eine Torte aussehen
+      const r = P.radius, h = P.height, n = mesh.userData.rbx?.tiers || 4;
       for (let i = 0; i < n; i++) {
         const k = (i + 0.5) / n, ri = r * (1 - k);
         emit(out, mesh, 'Cylinder', mul(T(0, -h / 2 + k * h, 0), RZ90.clone(), S(h / n, 2 * Math.max(ri, 0.02), 2 * Math.max(ri, 0.02))), lk, ex);
@@ -526,13 +527,30 @@ export function worldToParts(world) {
   const emitter = emitterFor(world, built.radius);
   const emitters = emitter ? [emitter] : [];
   waterfalls(parts, emitters, built, world);
+  // weitere Partikel der Welt (Schmetterlinge, Vögel, Blätter, Polarlicht …) von Einheiten in Studs
+  for (const e of built.emitters || [])
+    emitters.push({
+      name: e.name,
+      pos: e.pos.map((v) => v * STUDS),
+      size: e.size.map((v) => Math.max(1, v * STUDS)),
+      direction: e.direction,
+      colors: e.colors,
+      particleSize: e.particleSize * STUDS,
+      rate: e.rate,
+      speed: e.speed.map((v) => v * STUDS),
+      lifetime: e.lifetime,
+      spread: e.spread,
+      lightEmission: e.lightEmission,
+      squares: false,
+    });
   // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur
   const spot = compareSpot(built).multiplyScalar(STUDS);
   const meta = {
     radius: built.radius * STUDS,
     spot: [spot.x, spot.y, spot.z],
+    sounds: (built.sounds || []).map((x) => ({ ...x })),
     areas: (built.areas || []).map((a) => ({ id: a.id, name: a.name, pos: [a.pos.x * STUDS, a.pos.y * STUDS, a.pos.z * STUDS] })),
   };
   built.dispose();
-  return { world, parts, sky, lights, emitter, emitters, meta, lighting: worldLighting(world) };
+  return { world, parts, sky, lights, emitter, emitters, meta, sounds: meta.sounds, lighting: worldLighting(world) };
 }

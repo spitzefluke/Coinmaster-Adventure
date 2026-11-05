@@ -296,6 +296,30 @@ Insel liegt ein Wolkenmeer (Planet 1 und Spawn, nachts dunkel), im Weltraum ein 
 Nebelmeer, in der Tiefsee Sanddünen und darüber eine Wasseroberfläche. Kuppel und Meer ignorieren Klicks
 (`CanQuery` aus). Die Kamera der Weltkarte bleibt innerhalb der Kuppel.
 
+**Planet 1 (`welten/js/planet1.js`):** Jede Welt hat ein Wahrzeichen, eine Kulisse in der Ferne, Wege mit
+Münz-Lichtungen, mehr Bodendetails, eigene Partikel und Plätze für Klänge.
+
+| Welt | Wahrzeichen | Kulisse (Ordner „Himmel“) | Leben und Himmel |
+| --- | --- | --- | --- |
+| Normal | Windmühle (Flügel drehen sich) | grüne Hügel, Berge mit Schneekappe | Schmetterlinge, Vögel |
+| Wald | Riesenbaum mit Baumhaus und Laternen | Tannenberge | fallende Blätter, Vögel |
+| Stadt | Wolkenkratzer mit Leuchtbändern und Antenne | Skyline mit Warnlichtern | Vögel, schwebende Lichter |
+| Eis | Eispalast mit vier Türmen | Schneegipfel, Polarlicht-Bänder | Polarlicht-Schimmer |
+| Lava | Lavatempel mit Feuerschale | Vulkane mit glühenden Kratern | Asche, Rauchfahne |
+| Höhle | Riesenkristall | Felssäulen, Tropfsteine, Leuchtsteine | Leuchtfalter |
+| Candy | Zuckerschloss mit Lolli-Türmen | Eisberge (Waffel und Kugeln) | Zuckerfunkeln |
+
+Drei geschwungene Wege führen von der Mitte zum Rand (Steinplatten, Holzplanken, Eis, Lavafliesen mit
+Glutfugen, Höhlensteine mit Leuchtpilzen, Schokolade mit Zuckerrand). An jedem Weg liegen zwei Lichtungen
+mit Steinkreis; dort kommen die ersten Münzplätze (`CoinSpawn`) hin. Die Kulisse steht 350–550 Studs
+entfernt innerhalb der Kuppel und ragt aus dem Wolkenmeer.
+
+**Klänge:** Jede Welt hat im Ordner `Klaenge` eine unsichtbare `Klangquelle` über der Inselmitte mit einem
+`Sound` je Platz (`Looped`, `Playing`, `RollOffMaxDistance` 700 Studs, also nur nahe der Insel hörbar).
+Die `SoundId` ist noch leer: in Roblox Studio eine Sound-ID aus der Toolbox eintragen, der `StringValue`
+„Vorschlag“ unter jedem Sound sagt, was passt (z. B. Normal: Vogelgezwitscher, Bach, Wind; Höhle: tropfendes
+Wasser mit Hall, Kristallklingen; Candy: Spieluhr-Musik). Die Vorschau spielt keine Klänge.
+
 **Simulator-Stil (alle Inseln und der Spawn, `roblox/js/worldParts.js`):** Der Boden hat eine Grasdecke
 über einer Erdschicht (an Hängen sieht man die Schichten), das Gras liegt in Flecken aus drei Tönen statt
 im Schachbrett. Ein runder Grasrand hängt über die Kante. Die Unterseite hat Felsschichten mit Kanten und
