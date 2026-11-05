@@ -19,6 +19,32 @@ const GROUND = {
   korallenriff: 'Sand', muschelland: 'Sand', atlantis: 'Marble',
 };
 const ROCK = { lava: 'Basalt', eis: 'Glacier', sonne: 'CrackedLava', mond: 'Rock', hoehle: 'Slate' };
+// Material der Erdschicht unter der Grasdecke (sichtbar an Hängen)
+const BODY = { Grass: 'Ground', Snow: 'Glacier', Sand: 'Sand', Concrete: 'Concrete', Basalt: 'Basalt', Slate: 'Slate', Rock: 'Rock', Ice: 'Ice', CrackedLava: 'Basalt', Marble: 'Marble', SmoothPlastic: 'SmoothPlastic' };
+
+// Simulator-Stil: kräftigere Farben (Grau und Weiß bleiben, wie sie sind)
+export function vivid(hex, k = 0.2) {
+  const c = new THREE.Color(hex), hsl = {};
+  c.getHSL(hsl);
+  if (hsl.s < 0.06) return '#' + c.getHexString();
+  c.setHSL(hsl.h, Math.min(1, hsl.s * (1 + k) + 0.02), hsl.l);
+  return '#' + c.getHexString();
+}
+const shade = (hex, s, l) => '#' + new THREE.Color(hex).offsetHSL(0, s, l).getHexString();
+
+// fester Zufall je Welt (gleiche Welt, gleiche Deko)
+function seededRand(str) {
+  let h = 2166136261;
+  for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+const UP = [0, -1, 0, 1, 0, 0, 0, 0, 1]; // Zylinder-Achse X → Y
+// Drehung, deren X-Achse entlang des Rands und Z-Achse nach außen zeigt
+const around = (a) => [-Math.sin(a), 0, Math.cos(a), 0, 1, 0, Math.cos(a), 0, Math.sin(a)];
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const RZ90 = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
@@ -31,7 +57,7 @@ function hex(c) {
 // Material eines three.js-Materials in Roblox-Begriffen
 function look(mesh, world) {
   const m = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material, rbx = mesh.userData.rbx || {};
-  const color = rbx.color ? hex(rbx.color) : hex(m.color);
+  const color = vivid(rbx.color ? hex(rbx.color) : hex(m.color));
   let material = 'SmoothPlastic', transparency = rbx.transparency ?? 0;
   const glow = m.emissive ? m.emissiveIntensity * Math.max(m.emissive.r, m.emissive.g, m.emissive.b) : 0;
   if (rbx.neon || glow > 0.45) material = 'Neon';
@@ -167,46 +193,194 @@ export function convertMesh(out, mesh, world) {
   }
 }
 
-// Boden als Säulen-Raster entlang der Hügel
+// Boden als Säulen-Raster entlang der Hügel: oben eine Grasdecke in Flecken aus drei Tönen,
+// darunter Erde – an jedem Hang sieht man die Schicht wie in Roblox-Simulatoren
 function groundColumns(out, built, world) {
   const R = built.radius, cell = 1.1, material = GROUND[world.id] || 'SmoothPlastic';
   const base = -1.2; // unter dem tiefsten Tal, damit jede Säule bis zum Boden reicht
-  const light = '#' + new THREE.Color(world.ground).offsetHSL(0, 0, 0.03).getHexString();
+  const cap = 0.34;
+  const g = vivid(world.ground, 0.25);
+  const tones = [g, shade(g, 0.03, 0.05), shade(g, 0.02, -0.04)];
+  const dirt = vivid(world.side, 0.15), body = BODY[material] || material;
+  const rand = seededRand(world.id + ':boden');
   for (let x = -R + cell / 2; x < R; x += cell)
     for (let z = -R + cell / 2; z < R; z += cell) {
       if (Math.hypot(x, z) > R - cell * 0.3) continue;
       const top = built.height(x, z);
-      const h = top - base;
+      // weiche Flecken plus ein paar einzelne Kacheln
+      const n = Math.sin(x * 0.45 + 1.3) * Math.cos(z * 0.38 - 0.7) + Math.sin((x - z) * 0.23) * 0.6 + (rand() - 0.5) * 0.5;
+      const tone = n > 0.5 ? tones[1] : n < -0.55 ? tones[2] : tones[0];
+      const capBottom = Math.max(base, top - cap);
       out.push({
         shape: 'Block', name: 'Boden',
-        pos: [x * STUDS, (base + h / 2) * STUDS, z * STUDS],
+        pos: [x * STUDS, ((capBottom + top) / 2) * STUDS, z * STUDS],
         rot: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-        size: [cell * STUDS, h * STUDS, cell * STUDS],
-        color: (Math.round(x / cell) + Math.round(z / cell)) % 2 ? light : world.ground, material, transparency: 0,
+        size: [cell * STUDS, (top - capBottom) * STUDS, cell * STUDS],
+        color: tone, material, transparency: 0,
       });
+      if (capBottom > base + 0.01)
+        out.push({
+          shape: 'Block', name: 'Boden',
+          pos: [x * STUDS, ((base + capBottom) / 2) * STUDS, z * STUDS],
+          rot: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+          size: [cell * STUDS, (capBottom - base) * STUDS, cell * STUDS],
+          color: dirt, material: body, transparency: 0,
+        });
     }
 }
 
-// Unterseite: gestufte Zylinder, die nach unten schmaler werden
+// Runder Grasrand, der etwas über die Kante hängt
+function rimLip(out, built, world) {
+  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.2);
+  const material = GROUND[world.id] || 'SmoothPlastic';
+  const light = shade(vivid(world.ground, 0.25), 0.03, 0.06);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, r = R - 0.15;
+    const y = Math.max(built.height(Math.cos(a) * (R - 0.5), Math.sin(a) * (R - 0.5)), 0.1);
+    out.push({
+      shape: 'Ellipsoid', name: 'Rand',
+      pos: [Math.cos(a) * r * STUDS, (y - 0.06) * STUDS, Math.sin(a) * r * STUDS],
+      rot: around(a),
+      size: [1.55 * STUDS, 0.55 * STUDS, 1.15 * STUDS],
+      color: light, material, transparency: 0,
+    });
+  }
+}
+
+// Unterseite: gestufte Felsschichten mit Kanten, hängende Felsspitzen, an grünen Inseln Ranken
 function underside(out, world, R) {
   const material = ROCK[world.id] || 'Slate', layers = 7, depth = 5.5 * (R / 6);
+  const side = vivid(world.side, 0.15), rock = vivid(world.rock, 0.15), mid = '#' + new THREE.Color(side).lerp(new THREE.Color(rock), 0.5).getHexString();
+  const tones = [side, mid, rock];
+  const rand = seededRand(world.id + ':fels');
   // Erdschicht direkt unter dem Boden
   out.push({
     shape: 'Cylinder', name: 'Fels',
     pos: [0, -0.62 * STUDS, 0],
-    rot: [0, -1, 0, 1, 0, 0, 0, 0, 1],
+    rot: UP,
     size: [0.76 * STUDS, 2 * R * 0.985 * STUDS, 2 * R * 0.985 * STUDS],
-    color: world.side, material: 'SmoothPlastic', transparency: 0,
+    color: side, material: 'SmoothPlastic', transparency: 0,
   });
   for (let i = 0; i < layers; i++) {
     const k = i / layers, r = R * 0.96 * (1 - k) + 0.25, y = -1 - (i + 0.5) * (depth / layers);
     out.push({
       shape: 'Cylinder', name: 'Fels',
       pos: [0, y * STUDS, 0],
-      rot: [0, -1, 0, 1, 0, 0, 0, 0, 1], // Achse X → Y
+      rot: UP,
       size: [(depth / layers) * STUDS, 2 * r * STUDS, 2 * r * STUDS],
-      color: i % 2 ? world.rock : world.side, material, transparency: 0,
+      color: tones[i % 3], material, transparency: 0,
     });
+    // schmale Kante zwischen zwei Schichten
+    out.push({
+      shape: 'Cylinder', name: 'Fels',
+      pos: [0, (y + depth / layers / 2) * STUDS, 0],
+      rot: UP,
+      size: [0.14 * STUDS, 2 * (r + 0.22) * STUDS, 2 * (r + 0.22) * STUDS],
+      color: shade(tones[i % 3], 0, -0.06), material, transparency: 0,
+    });
+  }
+  // hängende Felsspitzen: je drei schmaler werdende Stücke
+  for (let i = 0; i < 16; i++) {
+    const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * R * 0.72;
+    const top = -1 - depth * (1 - r / (R * 0.96)) + 0.4;
+    const len = 1.4 + rand() * 3.4, w = 0.45 + rand() * 0.5;
+    for (let j = 0; j < 3; j++) {
+      const h = len / 3, rw = w * (1 - j * 0.3);
+      out.push({
+        shape: 'Cylinder', name: 'Fels',
+        pos: [Math.cos(a) * r * STUDS, (top - h * (j + 0.5)) * STUDS, Math.sin(a) * r * STUDS],
+        rot: UP,
+        size: [h * STUDS, 2 * rw * STUDS, 2 * rw * STUDS],
+        color: tones[(i + j) % 3], material, transparency: 0,
+      });
+    }
+  }
+  // Ranken an grünen Inseln
+  if (['normal', 'wald', 'spawn'].includes(world.id)) {
+    for (let i = 0; i < 30; i++) {
+      const a = (i / 30) * Math.PI * 2 + rand() * 0.15, r = R + 0.04;
+      const len = 1 + rand() * 2.8;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      out.push({ shape: 'Cylinder', name: 'Ranke', pos: [x * STUDS, (-0.3 - len / 2) * STUDS, z * STUDS], rot: UP, size: [len * STUDS, 0.14 * STUDS, 0.14 * STUDS], color: '#3d8a37', material: 'Grass', transparency: 0 });
+      for (let j = 0; j < 2; j++) {
+        const y = -0.5 - len * (0.35 + j * 0.45);
+        out.push({ shape: 'Ellipsoid', name: 'Ranke', pos: [x * STUDS, y * STUDS, z * STUDS], rot: around(a), size: [0.5 * STUDS, 0.32 * STUDS, 0.36 * STUDS], color: j ? '#6fd04f' : '#58b843', material: 'Grass', transparency: 0 });
+      }
+    }
+  }
+}
+
+// Wasserfälle über die Inselkante: Wasser, Lava, Sirup – mit Gischt unten
+const FALLS = {
+  normal: { color: '#3fb0ff', light: '#d2f1ff', material: 'SmoothPlastic', transparency: 0.12, count: 2 },
+  wald: { color: '#349fe6', light: '#c6ecff', material: 'SmoothPlastic', transparency: 0.12, count: 1 },
+  eis: { color: '#9fe8ff', light: '#ffffff', material: 'Ice', transparency: 0.15, count: 1 },
+  lava: { color: '#ff5512', light: '#ffb052', material: 'Neon', transparency: 0, count: 2 },
+  sonne: { color: '#ffa41c', light: '#fff09a', material: 'Neon', transparency: 0, count: 2 },
+  candy: { color: '#ff78c6', light: '#ffd4ee', material: 'SmoothPlastic', transparency: 0, count: 2 },
+  hoehle: { color: '#3ee6ff', light: '#c8fbff', material: 'Neon', transparency: 0, count: 1 },
+  alien: { color: '#86ff52', light: '#e2ffc8', material: 'Neon', transparency: 0, count: 1 },
+};
+function waterfalls(out, emitters, built, world) {
+  const f = FALLS[world.id];
+  if (!f) return;
+  const R = built.radius, depth = 5.5 * (R / 6), rand = seededRand(world.id + ':fall');
+  const start = rand() * Math.PI * 2;
+  for (let i = 0; i < f.count; i++) {
+    const a = start + i * 2.4;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const top = Math.max(built.height(ca * (R - 0.6), sa * (R - 0.6)), 0.1);
+    // fällt bis etwa zur Mitte der Unterseite und zerstäubt dort
+    const bottom = -depth * 0.62, h = top - bottom, W = 2.1;
+    const rot = around(a);
+    const at = (r, y) => [ca * r * STUDS, y * STUDS, sa * r * STUDS];
+    // Rinne oben auf der Insel
+    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R - 1.3, top + 0.04), rot, size: [W * STUDS, 0.12 * STUDS, 2.6 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
+    // fallender Vorhang und heller Streifen davor
+    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R + 0.25, top - h / 2), rot, size: [W * STUDS, h * STUDS, 0.3 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
+    // zwei helle Streifen im fallenden Wasser
+    for (const off of [-0.45, 0.4]) {
+      const p = at(R + 0.42, top - h / 2);
+      out.push({ shape: 'Block', name: 'Wasserfall', pos: [p[0] - sa * off * STUDS, p[1], p[2] + ca * off * STUDS], rot, size: [0.32 * STUDS, h * STUDS, 0.06 * STUDS], color: f.light, material: f.material, transparency: f.material === 'Neon' ? 0 : 0.2 });
+    }
+    // Schaum an der Kante und eine Gischtwolke unten
+    out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(R + 0.15, top), rot, size: [(W + 0.6) * STUDS, 0.5 * STUDS, 0.9 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.05 });
+    for (let j = 0; j < 4; j++) {
+      const p = at(R + 0.4 + (j % 2) * 0.4, bottom - 0.2 + j * 0.25);
+      const off = (j - 1.5) * 0.7;
+      out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: [p[0] - sa * off * STUDS, p[1], p[2] + ca * off * STUDS], rot, size: [1.6 * STUDS, 1.2 * STUDS, 1.6 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.18 });
+    }
+    emitters.push({
+      name: 'Gischt',
+      pos: at(R + 0.3, bottom + 0.2), size: [1.2 * STUDS, 1, 1.2 * STUDS], direction: 'Top',
+      colors: [f.light, '#ffffff'], particleSize: 0.9 * STUDS, rate: 22,
+      speed: [0.4 * STUDS, 1.1 * STUDS], lifetime: [1.2, 2.4], spread: [40, 40],
+      lightEmission: f.material === 'Neon' ? 1 : 0.3, squares: false,
+    });
+  }
+}
+
+// Wolken um Inseln mit Tageshimmel
+function clouds(out, built, world) {
+  const c = new THREE.Color(world.sky[0]);
+  const day = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b > 0.2;
+  if (!day || world.water || world.planet === 'p2') return;
+  const R = built.radius, rand = seededRand(world.id + ':wolken');
+  const tint = '#ffffff';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + rand() * 0.4, r = R + 2 + rand() * 5, y = -6 + rand() * 7.5;
+    const n = 3 + Math.floor(rand() * 3);
+    for (let j = 0; j < n; j++) {
+      const s = 1.6 + rand() * 1.8;
+      const off = (j - (n - 1) / 2) * 1.3;
+      out.push({
+        shape: 'Ellipsoid', name: 'Wolke',
+        pos: [(Math.cos(a) * r - Math.sin(a) * off) * STUDS, (y + rand() * 0.6) * STUDS, (Math.sin(a) * r + Math.cos(a) * off) * STUDS],
+        rot: around(a),
+        size: [s * 1.3 * STUDS, s * 0.8 * STUDS, s * STUDS],
+        color: tint, material: 'SmoothPlastic', transparency: 0,
+      });
+    }
   }
 }
 
@@ -252,6 +426,8 @@ export function worldLighting(world) {
     FogStart: world.water ? 60 : 260,
     FogEnd: world.water ? 520 : 1300,
     atmosphere: { Density: world.water ? 0.42 : night ? 0.25 : 0.3, Offset: 0.2, Color: horizon, Decay: top, Glare: night ? 0 : 0.3, Haze: world.water ? 2.4 : 1 },
+    // Neon und Lava leuchten weich nach (nur in Roblox; die Vorschau zeigt kein Bloom)
+    bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },
   };
 }
 
@@ -291,8 +467,12 @@ export function worldToParts(world) {
     convertMesh(rbx.sky ? sky : parts, o, world);
   });
   groundColumns(parts, built, world);
+  rimLip(parts, built, world);
   underside(parts, world, built.radius);
+  clouds(sky, built, world);
   const emitter = emitterFor(world, built.radius);
+  const emitters = emitter ? [emitter] : [];
+  waterfalls(parts, emitters, built, world);
   // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur
   const spot = compareSpot(built).multiplyScalar(STUDS);
   const meta = {
@@ -301,5 +481,5 @@ export function worldToParts(world) {
     areas: (built.areas || []).map((a) => ({ id: a.id, name: a.name, pos: [a.pos.x * STUDS, a.pos.y * STUDS, a.pos.z * STUDS] })),
   };
   built.dispose();
-  return { world, parts, sky, lights, emitter, meta, lighting: worldLighting(world) };
+  return { world, parts, sky, lights, emitter, emitters, meta, lighting: worldLighting(world) };
 }

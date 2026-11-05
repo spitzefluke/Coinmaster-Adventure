@@ -68,12 +68,11 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     const holder = inst('Part', { Name: 'Licht', Size: v3([1, 1, 1]), CFrame: cframe(l.pos, ID), Transparency: 1, Anchored: true, CanCollide: false }, model);
     inst('PointLight', { Color: hexColor(l.color), Brightness: l.brightness, Range: l.range }, holder);
   }
-  if (data.emitter) {
-    const e = data.emitter;
+  for (const e of data.emitters || (data.emitter ? [data.emitter] : [])) {
     const holder = inst('Part', { Name: 'Partikelquelle', Size: v3(e.size), CFrame: cframe(e.pos, ID), Transparency: 1, Anchored: true, CanCollide: false }, model);
     const cols = e.colors.slice(0, 3).map(hexColor);
     inst('ParticleEmitter', {
-      Name: 'Weltpartikel',
+      Name: e.name || 'Weltpartikel',
       Color: cols.length === 1 ? [[0, cols[0]], [1, cols[0]]] : cols.map((c, i) => [i / (cols.length - 1), c]),
       Size: [[0, e.particleSize], [1, e.particleSize * 0.8]],
       Transparency: [[0, 0.1], [0.8, 0.3], [1, 1]],

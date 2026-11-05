@@ -258,6 +258,15 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
+**Simulator-Stil (alle Inseln und der Spawn, `roblox/js/worldParts.js`):** Der Boden hat eine Grasdecke
+über einer Erdschicht (an Hängen sieht man die Schichten), das Gras liegt in Flecken aus drei Tönen statt
+im Schachbrett. Ein runder Grasrand hängt über die Kante. Die Unterseite hat Felsschichten mit Kanten und
+hängende Felsspitzen, grüne Inseln Ranken. Wasserfälle stürzen über den Rand (Wasser in Normal und Wald,
+Eis, leuchtende Lava in Lava und Sonne, Sirup in Candy, leuchtend in Höhle und Alien) und zerstäuben mit
+Gischt-Partikeln. Inseln mit Tageshimmel haben Wolken. Alle Farben sind kräftiger, und in Roblox lässt
+ein `BloomEffect` Neon und Lava weich nachleuchten (die Vorschau zeigt kein Bloom). Am Spawn leuchtet ein
+Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumenbeete.
+
 **Spawn (Münzstadt, `welten/js/spawnTown.js`):** Hier starten neue Spieler.
 - **Marktplatz** mit Pflaster, Springbrunnen mit Fontänen und Münzstatue, Spawn-Pad
 - **Stadtmauer** mit acht Türmen, Fahnen und vier Torbögen; vier Hauptstraßen mit Laternen und Lichterketten, dazu eine Ringstraße
@@ -502,11 +511,11 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
 - **Welten als Modelle** (`roblox/js/worldParts.js`, `roblox/js/rbxmx.js`): Schritt 4 auf der
   Seite lädt ein ZIP mit allen 16 Inseln als `.rbxmx`-Dateien (in Studio: Rechtsklick auf
   Workspace → *Insert from File…*). Jede Form wird auf Roblox-Grundformen zurückgeführt (Block,
-  Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen entlang der Hügel. Pro Welt ein
+  Zylinder, Kugel per SpecialMesh), der Boden wird zu Säulen aus Gras und Erde entlang der Hügel. Pro Welt ein
   Model mit den Ordnern `Insel`, `Deko`, `Muenzen` (Teile „CoinSpawn“), `Teleport`
   („TeleportPad“), `Himmel`, `Effekte` (PointLights, ParticleEmitter) und `Einstellungen`.
-  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 256 Studs breit. Dazu der Ordner `Licht` (Atmosphere und
-  Lighting-Werte). Animationen fehlen in Studio noch.
+  Maßstab: 1 Einheit = 8 Studs, eine Insel ist rund 256 Studs breit. Dazu der Ordner `Licht` (Atmosphere,
+  BloomEffect und Lighting-Werte). Animationen fehlen in Studio noch.
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 

@@ -13,7 +13,7 @@ const LOOK = {
   Grass: [0.95, 0, 0.9], Slate: [0.85, 0, 0.8], Concrete: [0.9, 0, 0.7], Sand: [0.95, 0, 0.6], Rock: [0.9, 0, 0.8],
   Basalt: [0.85, 0, 0.8], CrackedLava: [0.8, 0, 0.9], Marble: [0.3, 0, 0.6], Snow: [0.9, 0, 0.5], Glacier: [0.25, 0, 0.6],
   Ice: [0.1, 0, 0.4], Wood: [0.75, 0, 0.7], WoodPlanks: [0.75, 0, 0.8], Brick: [0.9, 0, 0.8], Cobblestone: [0.9, 0, 0.9],
-  Pebble: [0.85, 0, 0.8], Granite: [0.8, 0, 0.7], Fabric: [0.95, 0, 0.6],
+  Pebble: [0.85, 0, 0.8], Granite: [0.8, 0, 0.7], Fabric: [0.95, 0, 0.6], Ground: [0.95, 0, 0.75],
 };
 
 function triplanar(mat, name) {
