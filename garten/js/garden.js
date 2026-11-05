@@ -18,17 +18,18 @@ export const RARITIES = [
 export const rarityById = Object.fromEntries(RARITIES.map((r, i) => [r.id, { ...r, index: i }]));
 
 // grow: Sekunden bis ausgewachsen · cycle: Sekunden je Ernte · yield: Taler je Ernte
+// harvests: so oft lässt sich der Baum abernten, dann ist er abgeerntet und verschwindet
 // crown: Form der Krone · trunk/leaf/fruit: Farben · look: Material der Krone
 export const TREES = [
-  { id: 'pfennigbusch', name: 'Pfennigbusch', rarity: 'gewoehnlich', grow: 60, cycle: 30, yield: 40, crown: 'bush', trunk: '#7a5230', leaf: '#5fae4a', fruit: '#c8743a', look: 'Grass', text: 'Klein, rund und genügsam. Wächst überall, wo man ihn lässt.' },
-  { id: 'kupferbaum', name: 'Kupferbaum', rarity: 'gewoehnlich', grow: 120, cycle: 45, yield: 90, crown: 'round', trunk: '#6b4428', leaf: '#4f9a3c', fruit: '#d4834a', look: 'Grass', text: 'Der Klassiker. Zwischen den Blättern klimpern Kupfermünzen.' },
-  { id: 'silberbirke', name: 'Silberbirke', rarity: 'selten', grow: 240, cycle: 60, yield: 300, crown: 'oval', trunk: '#e8e4dc', leaf: '#9fd06a', fruit: '#d6dde8', look: 'Grass', text: 'Weiße Rinde, helles Laub und Silberlinge, die im Wind glitzern.' },
-  { id: 'talertanne', name: 'Talertanne', rarity: 'selten', grow: 300, cycle: 75, yield: 420, crown: 'cone', trunk: '#5a3a22', leaf: '#2f7a4a', fruit: '#ffd45a', look: 'Grass', text: 'Das ganze Jahr grün und behängt mit goldenen Talern wie mit Kugeln.' },
-  { id: 'goldeiche', name: 'Goldeiche', rarity: 'episch', grow: 600, cycle: 90, yield: 1500, crown: 'round', trunk: '#5b3b1f', leaf: '#e8b830', fruit: '#fff0a0', look: 'Foil', big: true, text: 'Uralt und mächtig. Ihre Blätter sind aus Blattgold.' },
-  { id: 'dukatenkirsche', name: 'Dukatenkirsche', rarity: 'episch', grow: 540, cycle: 80, yield: 1300, crown: 'blossom', trunk: '#4a2c22', leaf: '#ff9ec8', fruit: '#ffcf4a', look: 'SmoothPlastic', text: 'Blüht rosa und trägt statt Kirschen kleine Golddukaten.' },
-  { id: 'kristallweide', name: 'Kristallweide', rarity: 'legendaer', grow: 1200, cycle: 120, yield: 6000, crown: 'weeping', trunk: '#6a7f96', leaf: '#8fe8ff', fruit: '#e6fbff', look: 'Glass', text: 'Ihre Zweige hängen wie Eiszapfen herab und klingen beim Ernten.' },
-  { id: 'drachenpalme', name: 'Drachenpalme', rarity: 'mythisch', grow: 2400, cycle: 150, yield: 25000, crown: 'palm', trunk: '#5a2a1a', leaf: '#ff5a2a', fruit: '#ffb02e', look: 'Neon', text: 'Wächst nur, wo es heiß ist. Ihre Früchte glühen wie Drachenschuppen.' },
-  { id: 'sternenbaum', name: 'Sternenbaum', rarity: 'goettlich', grow: 3600, cycle: 180, yield: 120000, crown: 'star', trunk: '#2a1f4a', leaf: '#3b2a8a', fruit: '#fff2a0', look: 'Glass', text: 'Seine Krone ist ein Stück Nachthimmel. Jede Frucht ist ein kleiner Stern.' },
+  { id: 'pfennigbusch', name: 'Pfennigbusch', rarity: 'gewoehnlich', grow: 60, cycle: 30, yield: 40, harvests: 6, crown: 'bush', trunk: '#7a5230', leaf: '#5fae4a', fruit: '#c8743a', look: 'Grass', text: 'Klein, rund und genügsam. Wächst überall, wo man ihn lässt.' },
+  { id: 'kupferbaum', name: 'Kupferbaum', rarity: 'gewoehnlich', grow: 120, cycle: 45, yield: 90, harvests: 6, crown: 'round', trunk: '#6b4428', leaf: '#4f9a3c', fruit: '#d4834a', look: 'Grass', text: 'Der Klassiker. Zwischen den Blättern klimpern Kupfermünzen.' },
+  { id: 'silberbirke', name: 'Silberbirke', rarity: 'selten', grow: 240, cycle: 60, yield: 300, harvests: 8, crown: 'oval', trunk: '#e8e4dc', leaf: '#9fd06a', fruit: '#d6dde8', look: 'Grass', text: 'Weiße Rinde, helles Laub und Silberlinge, die im Wind glitzern.' },
+  { id: 'talertanne', name: 'Talertanne', rarity: 'selten', grow: 300, cycle: 75, yield: 420, harvests: 8, crown: 'cone', trunk: '#5a3a22', leaf: '#2f7a4a', fruit: '#ffd45a', look: 'Grass', text: 'Das ganze Jahr grün und behängt mit goldenen Talern wie mit Kugeln.' },
+  { id: 'goldeiche', name: 'Goldeiche', rarity: 'episch', grow: 600, cycle: 90, yield: 1500, harvests: 10, crown: 'round', trunk: '#5b3b1f', leaf: '#e8b830', fruit: '#fff0a0', look: 'Foil', big: true, text: 'Uralt und mächtig. Ihre Blätter sind aus Blattgold.' },
+  { id: 'dukatenkirsche', name: 'Dukatenkirsche', rarity: 'episch', grow: 540, cycle: 80, yield: 1300, harvests: 10, crown: 'blossom', trunk: '#4a2c22', leaf: '#ff9ec8', fruit: '#ffcf4a', look: 'SmoothPlastic', text: 'Blüht rosa und trägt statt Kirschen kleine Golddukaten.' },
+  { id: 'kristallweide', name: 'Kristallweide', rarity: 'legendaer', grow: 1200, cycle: 120, yield: 6000, harvests: 12, crown: 'weeping', trunk: '#6a7f96', leaf: '#8fe8ff', fruit: '#e6fbff', look: 'Glass', text: 'Ihre Zweige hängen wie Eiszapfen herab und klingen beim Ernten.' },
+  { id: 'drachenpalme', name: 'Drachenpalme', rarity: 'mythisch', grow: 2400, cycle: 150, yield: 25000, harvests: 15, crown: 'palm', trunk: '#5a2a1a', leaf: '#ff5a2a', fruit: '#ffb02e', look: 'Neon', text: 'Wächst nur, wo es heiß ist. Ihre Früchte glühen wie Drachenschuppen.' },
+  { id: 'sternenbaum', name: 'Sternenbaum', rarity: 'goettlich', grow: 3600, cycle: 180, yield: 120000, harvests: 20, crown: 'star', trunk: '#2a1f4a', leaf: '#3b2a8a', fruit: '#fff2a0', look: 'Glass', text: 'Seine Krone ist ein Stück Nachthimmel. Jede Frucht ist ein kleiner Stern.' },
 ];
 
 // kind: water (seconds schneller wachsen, Infinity = sofort fertig) · boost (mult × Ernte für seconds)
@@ -45,8 +46,26 @@ export const TOOLS = [
   { id: 'talertruhe', name: 'Talertruhe', rarity: 'goettlich', kind: 'taler', amount: 250000, model: 'chest', color: '#ffd45a', text: 'Eine ganze Truhe Taler. Selten wie ein Sternenbaum.' },
 ];
 
+// Zäune zum Personalisieren: aus den Rollen, bleiben im Inventar und lassen sich jederzeit anbringen.
+// Der Holzzaun ist immer da (Standard) und kommt nicht aus Rollen. color: Farbe für Symbole in der Oberfläche.
+export const FENCES = [
+  { id: 'holzzaun', name: 'Holzzaun', rarity: 'gewoehnlich', standard: true, color: '#96683e', text: 'Der gute alte Holzzaun. Gehört zu jedem Garten.' },
+  { id: 'lattenzaun', name: 'Weißer Lattenzaun', rarity: 'gewoehnlich', color: '#f2efe6', text: 'Spitze weiße Latten wie vor einem Landhaus.' },
+  { id: 'steinmauer', name: 'Steinmauer', rarity: 'selten', color: '#8a8f99', text: 'Niedrige Mauer aus Feldsteinen, oben mit Moos bewachsen.' },
+  { id: 'bambuszaun', name: 'Bambuszaun', rarity: 'selten', color: '#8db84a', text: 'Dicht an dicht gestellte Bambusrohre mit Knoten.' },
+  { id: 'eisengitter', name: 'Eisengitter', rarity: 'episch', color: '#2b2b33', text: 'Schwarzes Gitter mit goldenen Spitzen und Laternen auf den Pfosten.' },
+  { id: 'kristallzaun', name: 'Kristallzaun', rarity: 'legendaer', color: '#8fe8ff', text: 'Pfosten aus Kristall, verbunden mit leuchtenden Bändern. Funkelt.' },
+  { id: 'lavazaun', name: 'Lavazaun', rarity: 'mythisch', color: '#ff6a2a', text: 'Basalt mit glühenden Adern. Auf den Pfosten brennt Feuer.' },
+  { id: 'sternenzaun', name: 'Sternenzaun', rarity: 'goettlich', color: '#b49cff', text: 'Nachtblaue Pfosten mit leuchtenden Sternen, dazwischen Bänder aus Licht.' },
+];
+export const fenceById = Object.fromEntries(FENCES.map((f) => [f.id, f]));
+
 // Aus den Rollen kommen von Bäumen nur die Samen (seed); gesät wachsen sie mit Timer zum Baum
-export const LOOT = [...TREES.map((t) => ({ ...t, type: 'tree', seed: `${t.name}-Samen` })), ...TOOLS.map((t) => ({ ...t, type: 'tool' }))];
+export const LOOT = [
+  ...TREES.map((t) => ({ ...t, type: 'tree', seed: `${t.name}-Samen` })),
+  ...TOOLS.map((t) => ({ ...t, type: 'tool' })),
+  ...FENCES.filter((f) => !f.standard).map((f) => ({ ...f, type: 'fence' })),
+];
 // Name, wie er im Inventar und beim Öffnen steht: Samen für Bäume, sonst der Name
 export const lootName = (item) => item.seed || item.name;
 export const lootById = Object.fromEntries(LOOT.map((l) => [l.id, l]));
@@ -69,10 +88,12 @@ export function stage(plot, now) {
   return p >= 1 ? 3 : p >= 0.34 ? 2 : 1;
 }
 export const grownAt = (plot) => plot.planted - plot.bonus + lootById[plot.tree].grow;
+// Ernten, die ein Baum noch hergibt (danach ist er abgeerntet)
+export const harvestsLeft = (plot) => Math.max(0, lootById[plot.tree].harvests - (plot.count || 0));
 export function ripe(plot, now) {
   if (stage(plot, now) < 3) return 0;
   const tree = lootById[plot.tree];
-  return Math.min(GARDEN.maxRipe, Math.floor((now - Math.max(grownAt(plot), plot.harvested)) / tree.cycle));
+  return Math.min(GARDEN.maxRipe, harvestsLeft(plot), Math.floor((now - Math.max(grownAt(plot), plot.harvested)) / tree.cycle));
 }
 export const boostMult = (plot, now) => (plot.boostEnd > now ? plot.boost : 1);
 // Taler einer Ernte jetzt
@@ -84,7 +105,7 @@ const KEY = 'coinmaster.garten';
 export const START_TALER = 50000;
 
 export function freshState() {
-  return { taler: START_TALER, owned: false, beds: GARDEN.startBeds, plots: [], inv: {}, clock: { vt: 0, real: Date.now(), speed: 1 } };
+  return { taler: START_TALER, owned: false, beds: GARDEN.startBeds, fence: 'holzzaun', plots: [], inv: {}, clock: { vt: 0, real: Date.now(), speed: 1 } };
 }
 export function loadState() {
   try {
@@ -119,11 +140,11 @@ export function fmtTime(sec) {
 }
 
 // ── Spielstand wie im Spiel (Attribut Garden, siehe GardenData in Luau) ──────
-// { Owned, Beds, Plots: { "1": { Tree, Planted, Bonus, Harvested, Boost, BoostEnd } }, Inv: { id: n } }
+// { Owned, Beds, Fence, Plots: { "1": { Tree, Planted, Bonus, Harvested, Boost, BoostEnd, Count } }, Inv: { id: n } }
 // Zeiten in Sekunden (os.time()). gardenAct ist dieselbe Regel wie GardenData.Act.
 
-export const newGarden = () => ({ Owned: false, Beds: GARDEN.startBeds, Plots: {}, Inv: {}, Receipts: [] });
-const asPlot = (p) => ({ tree: p.Tree, planted: p.Planted, bonus: p.Bonus, harvested: p.Harvested, boost: p.Boost, boostEnd: p.BoostEnd });
+export const newGarden = () => ({ Owned: false, Beds: GARDEN.startBeds, Fence: 'holzzaun', Plots: {}, Inv: {}, Receipts: [] });
+const asPlot = (p) => ({ tree: p.Tree, planted: p.Planted, bonus: p.Bonus, harvested: p.Harvested, boost: p.Boost, boostEnd: p.BoostEnd, count: p.Count || 0 });
 const kindName = { water: 'Water', boost: 'Boost', taler: 'Taler', bed: 'Bed' };
 
 // → [ok, text, Taler-Änderung]
@@ -188,24 +209,46 @@ export function gardenAct(g, action, a, b, t, taler) {
   }
   if (action === 'harvest') {
     let total = 0;
+    const gone = [];
     for (const [key, plot] of Object.entries(g.Plots)) {
       if (a !== 'all' && Number(key) !== bed) continue;
-      const value = harvestValue(asPlot(plot), t);
+      const pl = asPlot(plot);
+      const n = ripe(pl, t);
+      const value = harvestValue(pl, t);
       if (value > 0) {
         total += value;
         plot.Harvested = t;
+        plot.Count = (plot.Count || 0) + n;
+        // Grenze erreicht: der Baum ist abgeerntet und verschwindet
+        if (plot.Count >= lootById[plot.Tree].harvests) {
+          gone.push(lootById[plot.Tree].name);
+          delete g.Plots[key];
+        }
       }
     }
     if (total <= 0) return [false, 'Noch nichts reif', 0];
-    return [true, `+${fmt(total)} Taler geerntet`, total];
+    return [true, `+${fmt(total)} Taler geerntet${gone.length ? ` · ${gone.join(', ')} abgeerntet, das Beet ist frei` : ''}`, total];
   }
   if (action === 'dig') {
     const plot = g.Plots[bed];
     if (!plot) return [false, 'Auf dem Beet wächst nichts', 0];
-    const value = harvestValue(asPlot(plot), t);
-    g.Inv[plot.Tree] = (g.Inv[plot.Tree] || 0) + 1;
+    const pl = asPlot(plot);
+    const value = harvestValue(pl, t);
+    const tree = lootById[plot.Tree];
     delete g.Plots[bed];
-    return [true, `${lootById[plot.Tree].name} ausgegraben und ins Inventar gelegt`, value];
+    // nur ein noch nicht ausgewachsener Baum gibt seine Samen zurück
+    if (stage(pl, t) < 3) {
+      g.Inv[plot.Tree] = (g.Inv[plot.Tree] || 0) + 1;
+      return [true, `${tree.name} ausgegraben, die ${tree.seed} liegen wieder im Inventar`, value];
+    }
+    return [true, `${tree.name} ausgerissen, das Beet ist frei`, value];
+  }
+  if (action === 'fence') {
+    const fence = fenceById[a];
+    if (!fence) return [false, 'Diesen Zaun gibt es nicht', 0];
+    if (!fence.standard && !(g.Inv[a] > 0)) return [false, 'Diesen Zaun hast du nicht', 0];
+    g.Fence = a;
+    return [true, `${fence.name} angebracht`, 0];
   }
   return [false, 'Ungültig', 0];
 }

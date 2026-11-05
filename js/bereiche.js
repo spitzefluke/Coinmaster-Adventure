@@ -30,7 +30,7 @@ export const BEREICHE = [
     text: 'Papierrollen zum Aufreißen, von der Kupferrolle bis zur Sternenrolle. Ein Band mit Münzbäumen, Gießkannen und Dünger rollt durch und bleibt auf einem Schatz für den Münzbaumgarten stehen.',
     href: 'rollen/',
     status: 'vorschau',
-    eckdaten: ['5 Rollen', '18 Schätze', 'Rollanimation'],
+    eckdaten: ['5 Rollen', '25 Schätze', 'Rollanimation'],
   },
   {
     titel: 'Münzbaumgarten',

@@ -9,7 +9,7 @@ import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 import { renderEmblem } from '../../muenzen/js/emblems.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { ROLLS } from '../../rollen/js/rolls.js';
-import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, GARDEN } from '../../garten/js/garden.js';
+import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN } from '../../garten/js/garden.js';
 import { PLANETS, WORLDS, REBIRTH } from '../../welten/js/worlds.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { PETS } from '../../haustiere/js/pets.js';
@@ -85,7 +85,7 @@ document.getElementById('lock-btn').addEventListener('click', () => {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, ROLLS, GARDEN_RARITIES, TREES, TOOLS, GARDEN, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS, BOOSTS, ROBUX, BRANCHES, SKILLS, pointsForLevel, DAILY, WHEEL, GROUP_BONUS, BOARDS, CODES };
+const data = { TIERS, COINS, MUTATIONS, WEATHER, WEATHER_MS, EGGS, ROLLS, GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN, PLANETS, WORLDS, REBIRTH, AURAS, RARITIES, THEMES, BONUSES, PETS, BOOSTS, ROBUX, BRANCHES, SKILLS, pointsForLevel, DAILY, WHEEL, GROUP_BONUS, BOARDS, CODES };
 let built = null;
 
 function unlock() {
