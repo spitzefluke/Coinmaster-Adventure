@@ -4,7 +4,7 @@
 // Alles 1:1 wie in Roblox: RollBuilder und RollFx aus dem Installer (rollRoblox.js).
 
 import * as THREE from 'three';
-import { ROLLS, fmtPrice, tierChances } from './rolls.js';
+import { ROLLS, fmtPrice, rollChances } from './rolls.js';
 import { createRobloxRoll, rollLua } from './rollRoblox.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
@@ -22,12 +22,12 @@ const opener = new Opener(document.getElementById('open'));
 if (location.hash === '#debug') window.rollOpener = opener;
 
 const pct = (x) => (x >= 10 ? x.toFixed(0) : x >= 1 ? x.toFixed(1) : x.toFixed(2)).replace('.', ',') + ' %';
-const guaranteeText = (roll) => (roll.guarantee ? `ab ${rarityById[roll.guarantee].name}` : 'keine');
-// Chancen-Leiste: Anteil jeder Seltenheit, darunter alle mit Prozent
+const guaranteeText = (roll) => (roll.guarantee ? rarityById[roll.guarantee].name : 'Gewöhnlich');
+// Chancen-Leiste: Anteil jeder möglichen Seltenheit, darunter mit Prozent
 function oddsHtml(roll) {
-  const ch = tierChances(roll);
+  const ch = rollChances(roll);
   const bar = RARITIES.map((t, i) => `<span style="--t:${t.color};flex:${ch[i]}" title="${t.name} ${pct(ch[i])}"></span>`).join('');
-  const rare = RARITIES.map((t, i) => [t, ch[i]]);
+  const rare = RARITIES.map((t, i) => [t, ch[i]]).filter(([, c]) => c > 0);
   return `<div class="odds-bar" aria-hidden="true">${bar}</div>
     <ul class="odds-list" aria-label="Chance je Sache">${rare.map(([t, c]) => `<li style="--t:${t.color}">${t.name} ${pct(c)}</li>`).join('')}</ul>`;
 }
@@ -47,8 +47,8 @@ const cards = ROLLS.map((roll) => {
       <h2 class="card-name">${roll.name}${roll.alias ? ` <span class="alias">${roll.alias}</span>` : ''}</h2>
       <p class="card-text">${roll.text}</p>
       <dl class="card-facts">
-        <div><dt>Inhalt</dt><dd>${roll.items} Sachen</dd></div>
-        <div><dt>Garantie</dt><dd>${guaranteeText(roll)}</dd></div>
+        <div><dt>Inhalt</dt><dd>1 Sache</dd></div>
+        <div><dt>Mindestens</dt><dd>${guaranteeText(roll)}</dd></div>
         <div><dt>Preis</dt><dd class="${roll.price ? '' : 'is-locked'}">${fmtPrice(roll.price)}</dd></div>
         <div><dt>Glück</dt><dd>×${String(roll.luck).replace('.', ',')}</dd></div>
       </dl>
@@ -177,7 +177,7 @@ function openDetail(roll) {
   document.getElementById('detail-rank').textContent = roll.rankName;
   document.getElementById('detail-name').textContent = roll.alias ? `${roll.name} (${roll.alias})` : roll.name;
   document.getElementById('detail-text').textContent = roll.text;
-  document.getElementById('detail-coins').textContent = `${roll.items} Sachen`;
+  document.getElementById('detail-coins').textContent = '1 Sache';
   document.getElementById('detail-guarantee').textContent = guaranteeText(roll);
   document.getElementById('detail-price').textContent = fmtPrice(roll.price);
   document.getElementById('detail-avail').textContent = roll.availability;

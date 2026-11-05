@@ -144,27 +144,30 @@ Client; das Tier zieht `PetData.Roll(eggId)`.
 
 ## Münzrollen
 
-Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen voller Schätze für den Münzbaumgarten. Beim Öffnen
+Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für den Münzbaumgarten. Beim Öffnen
 wackelt die Rolle, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen und Konfetti fliegen, dann
-springen **Münzbäume und Gartenwerkzeug** einzeln heraus, das Seltenste zuletzt. Seltenes kommt mit Blitz und
-Druckwelle, vor einer legendären oder selteneren letzten Sache gibt es eine kurze Pause mit Lichtsog.
-Die Rollen kosten Taler aus dem Garten, der Inhalt landet im Inventar des Gartens.
+**rollt ein Band** mit Münzbäumen und Gartenwerkzeug von rechts nach links durch, wird langsamer und bleibt
+unter der Markierung auf **genau einer Sache** stehen (manchmal knapp neben etwas Seltenem). Jedes Feld zeigt
+seine Seltenheit als Leuchtstreifen. Die gewonnene Sache springt nach vorne, Seltenes mit Blitz und Druckwelle.
+Die Rollen kosten Taler aus dem Garten, die Sache landet im Inventar des Gartens.
 
-| Rolle | Stufe | Inhalt | Glück | Garantie (letzte Sache) | Preis (Vorschlag) |
+| Rolle | Stufe | Inhalt | Glück | Mindestens | Preis (Vorschlag) |
 |---|---|---|---|---|---|
-| Kupferrolle | Normal | 3 | ×1 | – | 500 Taler |
-| Silberrolle | Selten | 4 | ×1,6 | ab Selten | 5.000 Taler |
-| Goldrolle | Episch | 5 | ×2,5 | ab Episch | 40.000 Taler |
-| Juwelenrolle | Mystisch | 6 | ×4 | ab Legendär | 250.000 Taler |
-| Sternenrolle (Robux-Rolle) | Limitiert | 8 | ×6 | ab Legendär | R$ 149 |
+| Kupferrolle | Normal | 1 | ×1 | Gewöhnlich | 300 Taler |
+| Silberrolle | Selten | 1 | ×1,6 | Selten | 3.000 Taler |
+| Goldrolle | Episch | 1 | ×2,5 | Episch | 20.000 Taler |
+| Juwelenrolle | Mystisch | 1 | ×4 | Legendär | 120.000 Taler |
+| Sternenrolle (Robux-Rolle) | Limitiert | 1 | ×6 | Legendär | R$ 99 |
 
 - **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
-  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Göttlich bekommt also den vollen Faktor (1,72 % bei der
-  Sternenrolle). Innerhalb einer Seltenheit ist jede Sache gleich wahrscheinlich. Die Garantie greift nur, wenn
-  vorher nichts so Seltenes kam. Rechnung: `rollen/js/rolls.js`.
-- **Roblox:** `RollData` (`TierChances`, `Open`), `RollBuilder.Build(roll)` (Rolle auf Sockel) und
-  `RollFx.Play(rollId, itemIds, { CFrame = …, Parent = … })` (`roblox/js/rollLuau.js`). Auf dem Server
-  `RollData.Open(rollId)` würfeln, auf dem Client mit den Ids `RollFx.Play` zeigen.
+  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
+  Sternenrolle: Legendär 61,7 %, Mythisch 28,2 %, Göttlich 10,1 %. Innerhalb einer Seltenheit ist jede Sache
+  gleich wahrscheinlich. Rechnung: `rollen/js/rolls.js`.
+- **Roblox:** `RollData` (`TierChances`, `MinIndex`, `Pick`, `Open`), `RollBuilder.Build(roll)` (Rolle auf
+  Sockel) und `RollFx.Play(rollId, itemId, { CFrame = …, Parent = …, Window = … })` (`roblox/js/rollLuau.js`).
+  Auf dem Server `RollData.Open(rollId)` würfeln, auf dem Client mit der Id `RollFx.Play` zeigen. Die übrigen
+  Felder im Band würfelt der Client nur zur Show nach denselben Chancen. Einstellbar: `RollFx.SpinTime`
+  (5 Sekunden), `RollFx.Window` (halbe Bandbreite), `RollFx.Spacing`, `RollFx.Slots`.
 
 ## Münzbaumgarten
 
