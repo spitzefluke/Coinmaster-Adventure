@@ -176,6 +176,7 @@ CFrame = {
 		return cf(a, b, c)
 	end,
 	Angles = angles,
+	lookAt = function(a, b) return lookAt(a, b) end,
 	fromEulerAnglesXYZ = angles,
 	fromEulerAnglesYXZ = function(rx, ry, rz) return angles(0, ry, 0) * angles(rx, 0, 0) * angles(0, 0, rz) end,
 	fromOrientation = function(rx, ry, rz) return angles(0, ry, 0) * angles(rx, 0, 0) * angles(0, 0, rz) end,
@@ -475,7 +476,7 @@ end
 function methods.IsDescendantOf(self, other) local p = rawget(self, "__parent") while p do if p == other then return true end p = rawget(p, "__parent") end return false end
 function methods.IsAncestorOf(self, other) return other:IsDescendantOf(self) end
 local PART = { Part = true, WedgePart = true, SpawnLocation = true, MeshPart = true, TrussPart = true, Seat = true }
-local GUI = { Frame = true, TextLabel = true, TextButton = true, TextBox = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true }
+local GUI = { Frame = true, TextLabel = true, TextButton = true, TextBox = true, ViewportFrame = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true }
 local VALUES = { IntValue = true, NumberValue = true, StringValue = true, BoolValue = true, Color3Value = true, ObjectValue = true, Vector3Value = true, CFrameValue = true }
 function methods.IsA(self, cls)
 	local c = rawget(self, "__class")
