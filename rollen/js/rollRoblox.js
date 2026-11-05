@@ -40,6 +40,14 @@ function __buildGarden(key, beds, plots)
 	model.Parent = workspace
 	previews[key] = model
 end
+-- Timer über wachsenden Bäumen: "beet,text,fortschritt;…"
+function __gardenTimers(key, list)
+	local m = previews[key]
+	if not m then return end
+	for i, text, progress in string.gmatch(list, "(%d+),([^,;]*),([%d.]+)") do
+		GardenBuilder.SetTimer(m, tonumber(i), text, tonumber(progress))
+	end
+end
 function __open(key, rollId, itemId, window)
 	local holder = Instance.new("Folder")
 	holder.Name = "Vorschau"
@@ -89,6 +97,10 @@ async function staticModel(fn, args, opts = {}) {
     world,
     step(dt) {
       world.update(dt);
+    },
+    // Lua-Funktion für dieses Modell aufrufen (erstes Argument ist sein Schlüssel)
+    call(fn, ...rest) {
+      lua.call(fn, key, ...rest);
     },
     dispose() {
       lua.call('__drop', key);

@@ -8,7 +8,7 @@ import { ROLLS, fmtPrice, rollChances } from './rolls.js';
 import { createRobloxRoll, createRobloxLoot, rollLua } from './rollRoblox.js';
 import { orbitEgg } from '../../eier/js/eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
-import { RARITIES, LOOT, rarityById, loadState, fmt, fmtTime } from '../../garten/js/garden.js';
+import { RARITIES, LOOT, rarityById, loadState, fmt, fmtTime, lootName } from '../../garten/js/garden.js';
 import { Opener, canPay } from './open.js';
 
 await Promise.race([
@@ -71,12 +71,13 @@ const cards = ROLLS.map((roll) => {
 // ── Was in den Rollen steckt: alle Schätze als 3D-Vorschau ───────────────────
 
 // Kamera je Form: Bäume sind größer als Werkzeug
-const LOOT_CAM = { bush: { dist: 10, y: 2 }, palm: { dist: 19, y: 4.2 }, cone: { dist: 13.5, y: 3.4 }, oval: { dist: 16, y: 4.4 }, weeping: { dist: 15, y: 3.6 }, spade: { dist: 8.5, y: 1.8 }, chest: { dist: 7, y: 1 } };
-const lootCam = (item) => (item.big ? { dist: 19, y: 4.6 } : LOOT_CAM[item.crown || item.model] || (item.type === 'tree' ? { dist: 15, y: 3.8 } : { dist: 7.5, y: 1.2 }));
+const LOOT_CAM = { spade: { dist: 8.5, y: 1.8 }, chest: { dist: 7, y: 1 } };
+// Samentüten und Werkzeug sind etwa gleich groß
+const lootCam = (item) => (item.type === 'tree' ? { dist: 7, y: 1.15 } : LOOT_CAM[item.model] || { dist: 7.5, y: 1.2 });
 // Chance einer Sache in einer Rolle: Chance ihrer Seltenheit geteilt durch die Anzahl Sachen dieser Seltenheit
 const poolSize = Object.fromEntries(RARITIES.map((r) => [r.id, LOOT.filter((l) => l.rarity === r.id).length]));
 const itemChance = (roll, item) => rollChances(roll)[rarityById[item.rarity].index] / poolSize[item.rarity];
-const lootInfo = (item) => (item.type === 'tree' ? `${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}, wächst ${fmtTime(item.grow)}. ${item.text}` : item.text);
+const lootInfo = (item) => (item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}: ${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}. ${item.text}` : item.text);
 
 const lootList = document.getElementById('loot');
 const sortedLoot = [...LOOT].sort((a, b) => rarityById[a.rarity].index - rarityById[b.rarity].index || (a.type === b.type ? 0 : a.type === 'tree' ? -1 : 1));
@@ -86,10 +87,10 @@ const lootCards = sortedLoot.map((item) => {
   card.className = 'loot-card';
   card.style.setProperty('--t', rar.color);
   card.innerHTML = `
-    <div class="loot-view view" role="img" aria-label="${item.name} in 3D"></div>
+    <div class="loot-view view" role="img" aria-label="${lootName(item)} in 3D"></div>
     <div class="loot-body">
-      <p class="loot-kind">${rar.name} · ${item.type === 'tree' ? 'Münzbaum' : 'Werkzeug'}</p>
-      <h3 class="loot-name">${item.name}</h3>
+      <p class="loot-kind">${rar.name} · ${item.type === 'tree' ? 'Samen' : 'Werkzeug'}</p>
+      <h3 class="loot-name">${lootName(item)}</h3>
       <p class="loot-text">${lootInfo(item)}</p>
       <p class="loot-chance"></p>
     </div>`;
