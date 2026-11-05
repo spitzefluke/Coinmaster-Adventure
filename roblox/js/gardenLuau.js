@@ -592,11 +592,53 @@ local function trunk(m, t, h, w, bend)
 		end
 		return
 	end
-	part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, w, w), CFrame = CFrame.new(0, h / 2, 0) * UP, Color = t.Trunk, Material = Enum.Material.Wood }, m)
-	-- Wurzeln
-	for i = 0, 2 do
-		local a = math.rad(i * 120 + 30)
-		part("Part", { Name = "Wurzel", Size = Vector3.new(w * 0.9, 0.3, w * 0.45), CFrame = CFrame.new(math.cos(a) * w * 0.6, 0.12, math.sin(a) * w * 0.6) * CFrame.Angles(0, -a, 0), Color = t.Trunk, Material = Enum.Material.Wood }, m)
+	-- Stamm in zwei Stücken: unten dicker, oben schlanker
+	part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.55, w * 1.08, w * 1.08), CFrame = CFrame.new(0, h * 0.275, 0) * UP, Color = t.Trunk, Material = Enum.Material.Wood }, m)
+	part("Part", { Name = "StammOben", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.5, w * 0.86, w * 0.86), CFrame = CFrame.new(0, h * 0.75, 0) * UP, Color = t.Trunk:Lerp(Color3.new(1, 1, 1), 0.06), Material = Enum.Material.Wood }, m)
+	-- Rindenstreifen
+	local bark = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.28)
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2 + 0.4
+		local r = w * (i % 2 == 0 and 0.54 or 0.44)
+		part("Part", { Name = "Rinde", Size = Vector3.new(w * 0.14, h * (i % 2 == 0 and 0.5 or 0.35), 0.05), CFrame = CFrame.new(math.cos(a) * r, h * (0.3 + (i % 3) * 0.12), math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = bark, Material = Enum.Material.Wood }, m)
+	end
+	-- Wurzeln: schräg aus der Erde, zur Spitze dünner
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2 + 0.2
+		local len = w * (1.1 + (i % 2) * 0.4)
+		part("Part", { Name = "Wurzel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len, w * 0.34, w * 0.34), CFrame = CFrame.new(math.cos(a) * w * 0.62, 0.16, math.sin(a) * w * 0.62) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.rad(-24)), Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.12), Material = Enum.Material.Wood }, m)
+		part("Part", { Name = "Wurzel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len * 0.7, w * 0.2, w * 0.2), CFrame = CFrame.new(math.cos(a) * (w * 0.62 + len * 0.55), 0.04, math.sin(a) * (w * 0.62 + len * 0.55)) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.rad(-8)), Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.18), Material = Enum.Material.Wood }, m)
+	end
+end
+
+-- Ast zwischen zwei Punkten (Zylinder entlang der Verbindung)
+local function branch(m, t, a, b, dia)
+	local mid = (a + b) / 2
+	part("Part", { Name = "Ast", Shape = Enum.PartType.Cylinder, Size = Vector3.new((b - a).Magnitude, dia, dia), CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.rad(90), 0), Color = t.Trunk, Material = Enum.Material.Wood }, m)
+end
+
+-- Low-Poly-Laub: facettierte Büschel auf der Krone, oben heller, unten dunkler; Kronen-Kugeln schattiert
+local LEAFY = { round = 14, bush = 9, oval = 11, blossom = 12, cone = 8, cloud = 10, angel = 10, weeping = 8 }
+local function foliage(m, t, leaf, center, radius)
+	local count = LEAFY[t.Crown]
+	if not count then return end
+	if t.Big then count = count + 4 end
+	for _, p in ipairs(m:GetChildren()) do
+		if p:IsA("BasePart") and p.Name == "Crown" then
+			local dy = p.Position.Y - center.Y
+			p.Color = dy < -0.2 and t.Leaf:Lerp(Color3.new(0, 0, 0), 0.16) or (dy > 0.4 and t.Leaf:Lerp(Color3.new(1, 1, 1), 0.08) or t.Leaf)
+		end
+	end
+	local rng = Random.new(#t.Id * 7 + count)
+	for i = 1, count do
+		local a = i * 2.39996 + rng:NextNumber(-0.3, 0.3)
+		local phi = rng:NextNumber(0.15, 1.45) -- 0 = oben, π/2 = seitlich
+		local dir = Vector3.new(math.cos(a) * math.sin(phi), math.cos(phi), math.sin(a) * math.sin(phi))
+		local up = dir.Y
+		local shadeK = up > 0.5 and rng:NextNumber(0.1, 0.26) or rng:NextNumber(-0.22, 0.05)
+		local c = shadeK >= 0 and t.Leaf:Lerp(Color3.new(1, 1, 1), shadeK) or t.Leaf:Lerp(Color3.new(0, 0, 0), -shadeK)
+		local size = rng:NextNumber(0.55, 0.95) * (t.Big and 1.25 or 1)
+		part("Part", { Name = "Laub", Size = Vector3.new(size, size * 0.8, size), CFrame = CFrame.new(center + dir * radius * 0.92) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)), Color = c, Material = leaf }, m)
 	end
 end
 
@@ -624,16 +666,31 @@ function LootBuilder.Tree(tree, stage, ripe, full)
 	local w = tree.Big and 1.05 or (tree.Crown == "bush" and 0.5 or (tree.Crown == "mushroom" and 1.1 or 0.75))
 	trunk(model, tree, h, w, tree.Crown == "palm")
 	local center, radius, low = (CROWNS[tree.Crown] or CROWNS.round)(model, tree, leaf, h)
+	-- Äste vom Stamm in die Krone (nur bei Kronen, durch die man sie sieht)
+	local BRANCHY = { round = 4, blossom = 4, oval = 3, cloud = 4, angel = 3, weeping = 3 }
+	if BRANCHY[tree.Crown] then
+		local top = Vector3.new(0, h * 0.82, 0)
+		for i = 1, BRANCHY[tree.Crown] do
+			local a = i / BRANCHY[tree.Crown] * math.pi * 2 + 0.5
+			local tip = center + Vector3.new(math.cos(a) * radius * 0.75, -radius * 0.25, math.sin(a) * radius * 0.75)
+			branch(model, tree, top, tip, w * 0.32)
+			branch(model, tree, tip, tip + Vector3.new(math.cos(a + 0.6) * 0.5, 0.45, math.sin(a + 0.6) * 0.5), w * 0.18)
+		end
+	end
+	foliage(model, tree, leaf, center, radius)
 
 	if stage >= 3 then
-		-- Münzen als Früchte: mehr, je mehr Ernten warten; reif leuchten sie
+		-- Münzen als Früchte an kleinen Stielen: mehr, je mehr Ernten warten; die reifen leuchten
 		local count = 8 + ripe * 3
 		local fruit = tree.Look == "Neon" and Enum.Material.Neon or Enum.Material.Metal
 		for i = 1, count do
 			local a = i * 2.39996 -- goldener Winkel
 			local y = -0.4 + ((i * 0.618) % 1) * 1.2 - (low or 0) * 0.3
-			local pos = center + Vector3.new(math.cos(a) * (radius + 0.05), y, math.sin(a) * (radius + 0.05))
-			part("Part", { Name = "Muenze", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 0.72, 0.72), CFrame = CFrame.new(pos) * CFrame.Angles(0, -a, 0), Color = tree.Fruit, Material = fruit, Reflectance = 0.1 }, model)
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			local pos = center + out * (radius + 0.28) + Vector3.new(0, y - 0.15, 0)
+			local isRipe = i <= ripe * 3
+			part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.42, 0.06, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0) - out * 0.12) * UP * CFrame.Angles(0, 0, 0), Color = tree.Trunk:Lerp(tree.Leaf, 0.5), Material = Enum.Material.Wood }, model)
+			part("Part", { Name = "Muenze", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 0.72, 0.72), CFrame = CFrame.new(pos) * CFrame.Angles(0, -a, 0), Color = isRipe and tree.Fruit:Lerp(Color3.new(1, 1, 1), 0.15) or tree.Fruit, Material = isRipe and Enum.Material.Neon or fruit, Reflectance = 0.1 }, model)
 		end
 		if ripe > 0 then
 			local glow = Instance.new("PointLight")
@@ -1181,19 +1238,25 @@ local fenceAnim = setmetatable({}, { __mode = "k" }) -- Zaunwechsel
 -- Teile eines Baums relativ zu seinem Fußpunkt merken; gibt eine Funktion zum Setzen (Ort, Größe) zurück
 local function rigTree(tree, base)
 	local parts = {}
-	for _, p in ipairs(tree:GetDescendants()) do
+	for n, p in ipairs(tree:GetDescendants()) do
 		if p:IsA("BasePart") then
-			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size })
+			-- Münzen drehen sich langsam um die senkrechte Achse (jede etwas versetzt)
+			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size, Spin = p.Name == "Muenze" and n * 0.7 or nil })
 		end
 	end
-	return function(cf, k)
+	return function(cf, k, t)
 		for _, e in ipairs(parts) do
 			local o = e.Offset
 			e.Part.Size = e.Size * math.max(k, 0.01)
-			e.Part.CFrame = cf * CFrame.new(o.Position * k) * o.Rotation
+			if e.Spin and t then
+				e.Part.CFrame = cf * CFrame.new(o.Position * k) * CFrame.Angles(0, t * 1.4 + e.Spin, 0) * o.Rotation
+			else
+				e.Part.CFrame = cf * CFrame.new(o.Position * k) * o.Rotation
+			end
 		end
 	end
 end
+
 
 -- Zielgröße eines Baums aus Stufe und Fortschritt (0–1 bis ausgewachsen)
 local function growScale(stage, progress)
@@ -1209,6 +1272,44 @@ GardenBuilder.Columns = 4
 GardenBuilder.Spacing = 7
 
 ${PART}
+-- Seltenheits-Effekte am Beet (wachsen nicht mit): ab Episch Lichtpunkte, ab Legendär Aura und Licht,
+-- ab Göttlich ein Leuchtring im Beet; ??? schillert in allen Farben (Farbe setzt Animate)
+local function rarityFx(model, tree, base, height, entry)
+	local rarity = GardenData.RarityById[tree.Rarity]
+	local rank = rarity.Index
+	if rank < 3 then return end
+	local color = rarity.Color
+	local function emitter(parent, props)
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		e.LightEmission = 1
+		for key, value in pairs(props) do e[key] = value end
+		e.Parent = parent
+		return e
+	end
+	local holder = part("Part", { Name = "Aura", Size = Vector3.new(3, height * 0.6, 3), Transparency = 1, CFrame = base * CFrame.new(0, height * 0.55, 0) }, model)
+	local motes = emitter(holder, { Color = ColorSequence.new(color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(2, 3.2), Speed = NumberRange.new(0.2, 0.7), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.28, 0), Rate = 2 + rank, Acceleration = Vector3.new(0, 0.4, 0) })
+	entry.Fx = { motes }
+	if rank >= 4 then
+		local glow = emitter(holder, { Color = ColorSequence.new(color), Lifetime = NumberRange.new(1.5, 2.5), Speed = NumberRange.new(0, 0.2), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(1.4, 0), Transparency = NumberSequence.new(0.7, 1), Rate = 2 + rank * 0.5 })
+		table.insert(entry.Fx, glow)
+		local l = Instance.new("PointLight")
+		l.Color = color
+		l.Brightness = 1 + (rank - 4) * 0.4
+		l.Range = 9 + rank
+		l.Parent = holder
+		entry.Light = l
+	end
+	if rank >= 6 then
+		-- Leuchtring: Neon-Scheibe, deren Mitte von Erde verdeckt wird
+		local ringCf = base * CFrame.new(0, 0.03, 0) * CFrame.Angles(0, 0, math.rad(90))
+		local ring = part("Part", { Name = "Leuchtring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.06, 4.7, 4.7), CFrame = ringCf, Color = color, Material = Enum.Material.Neon, Transparency = 0.25 }, model)
+		part("Part", { Name = "RingMitte", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.07, 4.1, 4.1), CFrame = ringCf, Color = Color3.fromRGB(96, 64, 40), Material = Enum.Material.Pebble }, model)
+		entry.Ring = ring
+	end
+	entry.Rainbow = rarity.Rainbow
+end
+
 local function moveModel(model, offset)
 	for _, p in ipairs(model:GetDescendants()) do
 		if p:IsA("BasePart") then
@@ -1344,6 +1445,28 @@ function GardenBuilder.Build(garden)
 			local entry = { Place = rigTree(t, base), Base = base, Stage = stage, Progress = progress, Shown = growScale(stage, progress), Phase = i * 1.7, Fresh = plot.Fresh, Born = nil, Height = t:GetAttribute("Height") or 2 }
 			entry.Place(base, entry.Shown)
 			anim[i] = entry
+			rarityFx(model, tree, base, entry.Height, entry)
+			-- reif: Münzregen aus der Krone und ein paar Taler liegen schon im Beet
+			if (plot.Ripe or 0) > 0 then
+				local rain = part("Part", { Name = "Muenzregen", Size = Vector3.new(2.6, 0.2, 2.6), Transparency = 1, CFrame = base * CFrame.new(0, entry.Height * 0.6, 0) }, model)
+				local drop = Instance.new("ParticleEmitter")
+				drop.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				drop.Color = ColorSequence.new(tree.Fruit, Color3.fromRGB(255, 240, 180))
+				drop.LightEmission = 0.8
+				drop.Lifetime = NumberRange.new(1, 1.5)
+				drop.Speed = NumberRange.new(0, 0.6)
+				drop.SpreadAngle = Vector2.new(20, 20)
+				drop.Acceleration = Vector3.new(0, -9, 0)
+				drop.Size = NumberSequence.new(0.34, 0.2)
+				drop.Rate = 1.5 + plot.Ripe * 1.5
+				drop.Parent = rain
+				local rng = Random.new(i * 13)
+				for c = 1, plot.Ripe * 2 do
+					local a = rng:NextNumber(0, math.pi * 2)
+					local r = rng:NextNumber(0.9, 1.9)
+					part("Part", { Name = "Bodentaler", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.08, 0.5, 0.5), CFrame = base * CFrame.new(math.cos(a) * r, 0.04, math.sin(a) * r) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), 0, 0), Color = tree.Fruit, Material = Enum.Material.Neon }, model)
+				end
+			end
 			local fx = part("Part", { Name = "Wachsen" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = base * CFrame.new(0, 0.3, 0) }, model)
 			if stage < 3 then
 				-- Blättchen steigen auf, solange der Baum wächst
@@ -1515,7 +1638,16 @@ function GardenBuilder.Animate(model, t, dt)
 			k = k * (1 + math.sin(t * 2.2 + e.Phase) * 0.02)
 		end
 		local rot = CFrame.Angles(math.sin(t * 1.3 + e.Phase) * 0.03 * sway, 0, math.cos(t * 1.1 + e.Phase) * 0.04 * sway)
-		e.Place(e.Base * rot, k)
+		e.Place(e.Base * rot, k, t)
+		-- ???: Ring, Lichtpunkte und Licht laufen durch alle Farben
+		if e.Rainbow then
+			local hue = Color3.fromHSV((t * 0.25 + e.Phase) % 1, 0.7, 1)
+			if e.Ring then e.Ring.Color = hue end
+			if e.Light then e.Light.Color = hue end
+			if e.Fx and math.floor(t * 10) % 3 == 0 then
+				for _, f in ipairs(e.Fx) do f.Color = ColorSequence.new(hue, Color3.new(1, 1, 1)) end
+			end
+		end
 		if e.Timer then
 			-- der Timer schwebt über der Spitze und wächst mit
 			e.Timer.CFrame = e.Base * CFrame.new(0, e.Height * e.Shown + 1, 0)
