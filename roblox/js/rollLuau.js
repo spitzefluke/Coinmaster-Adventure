@@ -644,7 +644,15 @@ function RollFx.Play(rollId, itemId, options)
 		local w = spacing - 0.3
 		cardPart("Karte", Vector3.new(w, 4, 0.1), CFrame.new(0, 0, 0.55), r.Color:Lerp(Color3.new(0, 0, 0), 0.62))
 		cardPart("Schein", Vector3.new(w - 0.5, 3.2, 0.05), CFrame.new(0, 0.15, 0.48), r.Color, Enum.Material.Neon, 0.72)
-		cardPart("Streifen", Vector3.new(w, 0.32, 0.12), CFrame.new(0, -1.82, 0.46), r.Color, Enum.Material.Neon)
+		if r.Rainbow then
+			-- ???: Streifen und Schein in Regenbogenfarben
+			for k = 0, 5 do
+				cardPart("Streifen", Vector3.new(w / 6, 0.32, 0.12), CFrame.new(-w / 2 + w / 12 + k * w / 6, -1.82, 0.46), Color3.fromHSV(k / 6, 0.7, 1), Enum.Material.Neon)
+				cardPart("Regenbogen", Vector3.new(w - 0.5, 0.16, 0.06), CFrame.new(0, 1.5 - k * 0.2, 0.47), Color3.fromHSV(k / 6, 0.6, 1), Enum.Material.Neon, 0.55)
+			end
+		else
+			cardPart("Streifen", Vector3.new(w, 0.32, 0.12), CFrame.new(0, -1.82, 0.46), r.Color, Enum.Material.Neon)
+		end
 		cardPart("Kante", Vector3.new(w, 0.08, 0.12), CFrame.new(0, 1.96, 0.46), r.Color, Enum.Material.Neon)
 		if r.Index >= 4 then
 			-- seltene Karten bekommen Ecken-Steine
@@ -697,6 +705,13 @@ function RollFx.Play(rollId, itemId, options)
 			l.Part.Color = Color3.fromHSV((l.I * 0.06 + clock) % 1, 0.7, 1)
 		end
 		streaks.Rate = math.clamp((speed or 0) * 120, 0, 90)
+		-- ??? unter der Markierung: Rahmen schillert in allen Farben
+		if slots[current].Tier.Rainbow then
+			local hue = Color3.fromHSV(clock % 1, 0.7, 1)
+			for _, r in ipairs(rails) do r.Color = hue end
+			marker.Color = hue
+			backLight.Color = hue
+		end
 	end
 
 	local start = 3
@@ -794,7 +809,7 @@ function RollFx.Play(rollId, itemId, options)
 		sp.SparkleColor = tier.Color
 		sp.Parent = anchor
 		-- mehrere Wellen hintereinander, bei Göttlich drei
-		for wave = 1, rare - 2 do
+		for wave = 1, math.min(rare - 2, 4) do
 			task.delay(0.25 * wave, function()
 				if folder.Parent then
 					shockwave(folder, to * CFrame.Angles(0, math.rad(90), 0), wave % 2 == 0 and Color3.new(1, 1, 1) or tier.Color, 8 + rare * 2 + wave * 2, 0.7)

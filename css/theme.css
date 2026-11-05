@@ -263,3 +263,27 @@ body::before {
   box-shadow: 0 8px 24px -10px #d9b26a88;
 }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* ── Seltenheit „???“: Regenbogen (Text und Rand laufen durch alle Farben) ── */
+.rainbow-text {
+  background: linear-gradient(90deg, #ff5f5f, #ffb02e, #ffe14f, #5fd38d, #5fc8ff, #8f7bff, #ff5fd2, #ff5f5f);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  animation: rainbow-move 3s linear infinite;
+}
+.is-rainbow { animation: rainbow-border 3s linear infinite; }
+@keyframes rainbow-move { to { background-position: 200% 0; } }
+@keyframes rainbow-border {
+  0%, 100% { border-color: #ff5f5f; box-shadow: 0 0 18px -6px #ff5f5f; }
+  17% { border-color: #ffb02e; box-shadow: 0 0 18px -6px #ffb02e; }
+  33% { border-color: #ffe14f; box-shadow: 0 0 18px -6px #ffe14f; }
+  50% { border-color: #5fd38d; box-shadow: 0 0 18px -6px #5fd38d; }
+  67% { border-color: #5fc8ff; box-shadow: 0 0 18px -6px #5fc8ff; }
+  83% { border-color: #ff5fd2; box-shadow: 0 0 18px -6px #ff5fd2; }
+}
+.rainbow-fill { background: linear-gradient(90deg, #ff5f5f, #ffe14f, #5fd38d, #5fc8ff, #ff5fd2) !important; }
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-text, .is-rainbow { animation: none; }
+}

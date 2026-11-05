@@ -180,7 +180,8 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
   jedes Schatzes (Chance der Seltenheit geteilt durch die Anzahl Schätze dieser Seltenheit) und graut aus, was in
   der Rolle nicht vorkommt.
 - **Chancen:** Grundchance je Seltenheit Gewöhnlich 55 %, Selten 27 %, Episch 11 %, Legendär 5 %, Mythisch 1,6 %,
-  Göttlich 0,4 %. Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
+  Göttlich 0,4 %, Kosmisch 0,15 %, Himmlisch 0,06 % und **???** 0,02 % (die geheime Seltenheit: nur Regenbogenbaum
+  und Regenbogenzaun, alles in Regenbogenfarben; in der Sternenrolle 0,75 %). Gewicht = Chance × Glück ^ (Stufe / 5), Seltenheiten unter „Mindestens“ fallen weg. Beispiel
   Sternenrolle: Legendär 61,7 %, Mythisch 28,2 %, Göttlich 10,1 %. Innerhalb einer Seltenheit ist jede Sache
   gleich wahrscheinlich (Samen, Werkzeug und Zäune zusammen). Rechnung: `rollen/js/rolls.js`.
 - **Roblox:** `RollData` (`TierChances`, `MinIndex`, `Pick`, `Open`), `RollBuilder.Build(roll)` (Rolle auf
@@ -206,7 +207,15 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
 | Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 | 10× |
 | Kristallweide | Legendär | 20 min | alle 2 min | 6.000 | 12× |
 | Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 | 15× |
+| Glückspilz | Gewöhnlich | 1 min 30 s | alle 40 s | 60 | 6× |
+| Ahorngroschen | Selten | 4 min 30 s | alle 1 min 10 s | 380 | 8× |
+| Frosttanne | Episch | 11 min | alle 1 min 35 s | 1.650 | 10× |
+| Wolkenbaum | Legendär | 21 min 40 s | alle 2 min 5 s | 6.500 | 12× |
+| Kristallbaum | Mythisch | 43 min 20 s | alle 2 min 35 s | 27.000 | 15× |
 | Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 | 20× |
+| Planetenbaum | Kosmisch | 1 h 30 min | alle 3 min 20 s | 400.000 | 25× |
+| Engelsbaum | Himmlisch | 2 h | alle 3 min 40 s | 1.200.000 | 30× |
+| Regenbogenbaum | ??? | 3 h | alle 4 min | 5.000.000 | 40× |
 
 | Werkzeug & mehr | Seltenheit | Wirkung |
 |---|---|---|
@@ -238,6 +247,14 @@ ausgerissen (sonst ließe sich die Grenze umgehen). Im Spielstand zählt `Plot.C
 | Kristallzaun | Legendär | Kristallpfosten mit Leuchtkern, Lichtbänder, Funkeln |
 | Lavazaun | Mythisch | Basalt mit Glutadern, Lavamauer, Feuer |
 | Sternenzaun | Göttlich | nachtblaue Pfosten mit Sternen, farbige Lichtbänder |
+| Wolkenzaun | Himmlisch | goldene Pfosten, schwebende Wolken |
+| Regenbogenzaun | ??? | Glaspfosten, sechs Bänder in Regenbogenfarben |
+
+**Zaunwechsel animiert:** Der alte Zaun versinkt und verblasst, der neue wächst in einer Welle vom Tor aus rund um
+den Garten aus dem Boden (mit Überschwingen und Funken); Feuer und Funkeln gehen erst an, wenn ihr Teil steht
+(`garden.FenceFrom` in `GardenBuilder.Build`, abgespielt in `GardenBuilder.Animate`).
+
+**Neu im Werkzeug:** Kometendünger (Kosmisch, ×5 Ernte für 1 Stunde), Himmelstruhe (Himmlisch, +3.000.000 Taler).
 
 In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und Füllung je Stil),
 `LootBuilder.Fence` das Zaunstück, das aus der Rolle kommt.

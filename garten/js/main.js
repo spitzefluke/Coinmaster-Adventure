@@ -209,7 +209,8 @@ function renderBeds(t) {
     }
     if (card.dataset.key !== key) {
       card.dataset.key = key;
-      card.className = 'bed' + (canApply(i, t) ? ' is-target' : '');
+      const rr = state.plots[i] && rarityById[lootById[state.plots[i].tree].rarity];
+      card.className = 'bed' + (canApply(i, t) ? ' is-target' : '') + (rr?.rainbow ? ' is-rainbow' : '');
       card.innerHTML = html;
       const plot = state.plots[i];
       card.style.setProperty('--t', plot ? rarityById[lootById[plot.tree].rarity].color : '');
@@ -244,7 +245,7 @@ function bedHtml(i, t) {
   const harvestInfo = `<p class="bed-harvests${left <= 2 ? ' is-low' : ''}">Ernten übrig: <strong>${left}</strong> von ${tree.harvests}</p>`;
   return {
     key: `${plot.tree}|${plot.planted}|${st}|${r}|${mult}|${plot.count || 0}|${target ? selected : ''}`,
-    html: `<div class="bed-head"><span class="bed-no">Beet ${i + 1}</span><span class="bed-no" style="color:${rar.color}">${rar.name}</span></div>
+    html: `<div class="bed-head"><span class="bed-no">Beet ${i + 1}</span><span class="bed-no${rar.rainbow ? ' rainbow-text' : ''}" style="color:${rar.color}">${rar.name}</span></div>
       <h3 class="bed-name">${tree.name}</h3>
       ${info}
       ${harvestInfo}
@@ -302,7 +303,7 @@ function renderInv() {
       return `<article class="item${selected === id || fenceOn ? ' is-selected' : ''}" style="--t:${rar.color}">
         <span class="item-icon" aria-hidden="true">${item.type === 'tree' ? '🌱' : isFence ? '🏡' : icon(item)}</span>
         <p class="item-name">${lootName(item)}${count}</p>
-        <p class="item-rar">${rar.name} · ${kind}</p>
+        <p class="item-rar${rar.rainbow ? ' rainbow-text' : ''}">${rar.name} · ${kind}</p>
         <p class="item-text">${sub}</p>
         <button class="btn small${direct || selected === id ? '' : ' gold'}${isFence && !fenceOn ? ' gold' : ''}" data-use="${id}" ${usable && !fenceOn ? '' : 'disabled'}>${usable ? label : 'Erst Garten kaufen'}</button>
       </article>`;
@@ -313,7 +314,7 @@ function renderInv() {
 function renderCatalog() {
   $('cat').innerHTML = TREES.map((t) => {
     const rar = rarityById[t.rarity];
-    return `<tr><td>${icon(t)} ${t.name}</td><td style="--t:${rar.color}"><span class="dot"></span>${rar.name}</td><td>${fmtTime(t.grow)}</td><td>alle ${fmtTime(t.cycle)}</td><td>${fmt(t.yield)}</td><td>${t.harvests}×</td><td>${fmt(t.yield * t.harvests)}</td></tr>`;
+    return `<tr><td>${icon(t)} ${t.name}</td><td style="--t:${rar.color}"><span class="dot${rar.rainbow ? ' rainbow-fill' : ''}"></span><span class="${rar.rainbow ? 'rainbow-text' : ''}">${rar.name}</span></td><td>${fmtTime(t.grow)}</td><td>alle ${fmtTime(t.cycle)}</td><td>${fmt(t.yield)}</td><td>${t.harvests}×</td><td>${fmt(t.yield * t.harvests)}</td></tr>`;
   }).join('');
 }
 
@@ -379,6 +380,7 @@ rollLua().then((l) => {
 });
 
 const lastStage = [];
+let lastFence = null; // Zaun beim letzten Bau (für die Wechsel-Animation)
 async function update3d(t) {
   if (!lua || building) return;
   const beds = state.owned ? state.beds : GARDEN.startBeds;
@@ -399,7 +401,10 @@ async function update3d(t) {
   });
   building = true;
   try {
-    const next = await createRobloxGarden(beds, plots, { fence });
+    // neuer Zaun: alter versinkt, neuer wächst aus dem Boden
+    const fenceFrom = !reducedMotion && lastFence && lastFence !== fence ? lastFence : '';
+    const next = await createRobloxGarden(beds, plots, { fence, fenceFrom });
+    lastFence = fence;
     garden?.dispose();
     garden = next;
     garden.rows = Math.ceil(beds / 4);
