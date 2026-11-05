@@ -714,8 +714,8 @@ export const GARDEN_SERVER = `-- Coinmaster Adventure · Münzbaumgarten und Mü
 -- RemoteFunction GardenRemote: openRoll (Rollen-Id) sowie die Garten-Aktionen aus GardenData.Act
 -- (buyGarden, buyBed, plant, use, harvest, dig). Der Server prüft alles und würfelt selbst.
 -- Der Garten steht als JSON im Attribut Garden am Spieler. Gespeichert wird er mit dem ganzen Spielstand
--- (ServerScriptService > CoinmasterPlayerData); Aufträge gibt es erst, wenn der Spielstand geladen ist.
--- Taler kommen aus leaderstats.Taler (legt CoinmasterPlayerData an).
+-- (ServerScriptService > CoinmasterServer > PlayerData); Aufträge gibt es erst, wenn der Spielstand geladen ist.
+-- Taler kommen aus leaderstats.Taler (legt PlayerData an).
 -- Robux-Rollen brauchen ein Developer Product: Id in ROLL_PRODUCTS eintragen.
 
 local Players = game:GetService("Players")
@@ -725,7 +725,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local GardenData = require(root:WaitForChild("GardenData"))
 local RollData = require(root:WaitForChild("RollData"))
-local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterPlayerData"))
+local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterServer"):WaitForChild("PlayerData"))
 
 -- Developer Products für Robux-Rollen: [ProductId] = "stern"
 local ROLL_PRODUCTS = {}
@@ -766,7 +766,7 @@ end
 -- Garten aus dem geladenen Spielstand übernehmen
 local function onJoin(player)
 	gardens[player] = { Data = GardenData.New(), Loaded = false }
-	if not PlayerData.WaitLoaded(player, 120) then return end
+	if not PlayerData.WaitReady(player, 120) then return end
 	local entry = gardens[player]
 	if not entry then return end -- schon wieder weg
 	local ok, saved = pcall(function()

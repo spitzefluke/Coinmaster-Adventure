@@ -67,6 +67,7 @@ const DEFAULTS = {
   ColorCorrectionEffect: () => ({ Enabled: true, Brightness: 0, Contrast: 0, Saturation: 0, TintColor: WHITE }),
   Model: () => ({ PrimaryPart: null, WorldPivot: new THREE.Matrix4() }),
   ScreenGui: () => ({ Enabled: true, DisplayOrder: 0, IgnoreGuiInset: false, ResetOnSpawn: true, ZIndexBehavior: 'Sibling' }),
+  TextBox: () => ({ BackgroundColor3: WHITE, Text: '', PlaceholderText: '', PlaceholderColor3: rgb(0.7, 0.7, 0.7), ClearTextOnFocus: true, TextEditable: true, TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false, Active: true }),
   TextButton: () => ({ BackgroundColor3: WHITE, Text: 'Button', TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false, AutoButtonColor: true, Active: true }),
   ImageButton: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE, Active: true, AutoButtonColor: true }),
   ScrollingFrame: () => ({ ClipsDescendants: true, CanvasSize: [0, 0, 2, 0], CanvasPosition: [0, 0], ScrollBarThickness: 12, ScrollBarImageColor3: rgb(0, 0, 0), ScrollBarImageTransparency: 0, AutomaticCanvasSize: 'None', ScrollingDirection: 'XY', ScrollingEnabled: true }),
@@ -78,7 +79,7 @@ const DEFAULTS = {
   UISizeConstraint: () => ({ MinSize: [0, 0], MaxSize: [Infinity, Infinity] }),
 };
 const PART_CLASSES = new Set(['Part', 'WedgePart', 'SpawnLocation', 'MeshPart', 'TrussPart', 'Seat']);
-const GUI_CLASSES = new Set(['Frame', 'TextLabel', 'TextButton', 'ImageLabel', 'ImageButton', 'ScrollingFrame']);
+const GUI_CLASSES = new Set(['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame']);
 export { GUI_CLASSES };
 function defaultsFor(cls) {
   if (PART_CLASSES.has(cls)) return DEFAULTS.BasePart();

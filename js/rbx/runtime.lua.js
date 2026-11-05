@@ -14,6 +14,8 @@ function math.noise(x, y, z) return (sin((x or 0) * 12.9898 + (y or 0) * 78.233 
 function table.find(t, v) for i, x in ipairs(t) do if x == v then return i end end return nil end
 function table.clear(t) for k in pairs(t) do t[k] = nil end end
 function table.clone(t) local c = {} for k, v in pairs(t) do c[k] = v end return c end
+-- Luau kennt math.atan2 (Lua 5.3 nur math.atan mit zwei Werten)
+math.atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 function string.split(s, sep)
 	local out, pat = {}, "([^" .. (sep or ","):gsub("%p", "%%%0") .. "]*)"
 	for part in (s .. (sep or ",")):gmatch(pat .. (sep or ","):gsub("%p", "%%%0")) do table.insert(out, part) end
@@ -378,7 +380,7 @@ __signal = signal
 -- ── Instanzen ──
 local INST = { __type = "Instance" }
 local methods = {}
-local SIGNAL_PROPS = { AttributeChanged = true, Changed = true, ChildAdded = true, ChildRemoved = true, Touched = true, AncestryChanged = true, Destroying = true, Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true, MouseLeave = true, MouseWheelForward = true, MouseWheelBackward = true }
+local SIGNAL_PROPS = { AttributeChanged = true, Changed = true, ChildAdded = true, ChildRemoved = true, Touched = true, AncestryChanged = true, Destroying = true, Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true, MouseLeave = true, MouseWheelForward = true, MouseWheelBackward = true, FocusLost = true, Focused = true }
 INST.__index = function(self, k)
 	local m = methods[k]
 	if m then return m end
@@ -394,7 +396,7 @@ INST.__index = function(self, k)
 	local kindAndValues = { JS_get(rawget(self, "__id"), k) }
 	if kindAndValues[1] == nil or kindAndValues[1] == "none" then return nil end
 	local r = receive(unpack(kindAndValues))
-	if type(r) == "table" and getmetatable(r) ~= INST then props[k] = r end
+	if type(r) == "table" and getmetatable(r) ~= INST and k ~= "AbsolutePosition" and k ~= "AbsoluteSize" then props[k] = r end
 	return r
 end
 local attrSignals = setmetatable({}, { __mode = "k" })
@@ -473,7 +475,7 @@ end
 function methods.IsDescendantOf(self, other) local p = rawget(self, "__parent") while p do if p == other then return true end p = rawget(p, "__parent") end return false end
 function methods.IsAncestorOf(self, other) return other:IsDescendantOf(self) end
 local PART = { Part = true, WedgePart = true, SpawnLocation = true, MeshPart = true, TrussPart = true, Seat = true }
-local GUI = { Frame = true, TextLabel = true, TextButton = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true }
+local GUI = { Frame = true, TextLabel = true, TextButton = true, TextBox = true, ImageLabel = true, ImageButton = true, ScrollingFrame = true }
 local VALUES = { IntValue = true, NumberValue = true, StringValue = true, BoolValue = true, Color3Value = true, ObjectValue = true, Vector3Value = true, CFrameValue = true }
 function methods.IsA(self, cls)
 	local c = rawget(self, "__class")
@@ -494,6 +496,9 @@ function methods.Destroy(self)
 	for _, c in ipairs(self:GetChildren()) do c:Destroy() end
 	self.Parent = nil
 end
+function methods.CaptureFocus(self) rawset(self, "__wantFocus", true) end
+function methods.ReleaseFocus(self) rawset(self, "__wantFocus", false) end
+function methods.IsFocused(self) return rawget(self, "__focused") == true end
 function methods.ClearAllChildren(self) for _, c in ipairs(self:GetChildren()) do c:Destroy() end end
 function methods.SetAttribute(self, k, v)
 	local a = rawget(self, "__attrs")
@@ -905,11 +910,24 @@ function require(m)
 	return loaded[m]
 end
 -- GUI-Ereignis aus JS (Klick, Maus drüber) an die Instanz weitergeben
-function __fireGui(id, name)
+function __fireGui(id, name, arg)
 	local inst = byId[id]
 	if not inst then return end
 	local s = rawget(rawget(inst, "__props"), name)
-	if s then s:Fire() end
+	if s then s:Fire(arg) end
+end
+-- Text eines TextBox, den man in JS getippt hat: wie in Roblox Changed und GetPropertyChangedSignal("Text")
+function __setText(id, text)
+	local inst = byId[id]
+	if not inst then return end
+	local props = rawget(inst, "__props")
+	local old = props.Text
+	props.Text = text
+	if old == text then return end
+	local changed = rawget(props, "Changed")
+	if changed then changed:Fire("Text") end
+	local ps = rawget(inst, "__propSignals")
+	if ps and ps.Text then ps.Text:Fire() end
 end
 -- Wert, den JS geändert hat (z. B. CanvasPosition beim Scrollen), in Lua nachziehen
 function __syncProp(id, key, x, y)

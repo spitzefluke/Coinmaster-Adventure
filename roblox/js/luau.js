@@ -5,10 +5,11 @@
 
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
-import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT } from './uiLuau.js';
+import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
+import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
+import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
 import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
 import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_CLIENT } from './gardenLuau.js';
-import { PLAYER_DATA, SAVE_SERVER } from './saveLuau.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -1229,7 +1230,9 @@ export function moduleSources(data) {
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
     ...(data.TREES ? [{ name: 'GardenData', source: gardenDataSource(data) }, { name: 'LootBuilder', source: LOOT_BUILDER }, { name: 'GardenBuilder', source: GARDEN_BUILDER }] : []),
     ...(data.ROLLS && data.TREES ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
-    ...(data.BOOSTS && data.AURAS ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'GameUI', source: GAME_UI }] : []),
+    ...(data.BOOSTS && data.AURAS && data.SKILLS
+      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'UITheme', source: UI_THEME }, { name: 'GameUI', source: GAME_UI }]
+      : []),
   ];
 }
 
@@ -1253,18 +1256,17 @@ export function installerSource(data) {
 --   ReplicatedStorage > CoinmasterAdventure   alle Daten und Module (${modules.length} ModuleScripts)
 --   ReplicatedStorage > CoinmasterAdventure > Coins / Eggs   fertige Modelle zum Klonen
 --   Workspace > CoinmasterShowcase            alle ${data.COINS.length} Münzen und ${data.EGGS.length} Eier${data.ROLLS && data.TREES ? ` und ${data.ROLLS.length} Münzrollen` : ''} zum Ansehen${data.ROLLS && data.TREES ? `
---   Münzrollen: auf dem Server RollData.Open(rollId) würfeln, auf dem Client RollFx.Play(rollId, ids) zeigen
---   Workspace > CoinmasterGardenShowcase      Münzbaumgarten mit allen ${data.TREES.length} Münzbäumen (GardenBuilder)` : ''}
---   ServerScriptService > CoinmasterSave + CoinmasterPlayerData   speichert den ganzen Spielstand im DataStore
---                                             (Taler, Münzen, Welten, Eier, Boosts, Auras, Garten …).
---                                             In Studio: Game Settings > Security > Enable Studio Access to API Services
+--   Workspace > CoinmasterGardenShowcase      Münzbaumgarten mit allen ${data.TREES.length} Münzbäumen (GardenBuilder)
+--   ServerScriptService > CoinmasterGarden    Münzbaumgarten und Münzrollen (GardenRemote)
+--   StarterPlayerScripts > CoinmasterGardenClient   baut den eigenen Garten (Part „GartenPlatz“ im Workspace)` : ''}
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
---   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü, Shop, Inventar, Welten) aus GameUI
---   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)${data.ROLLS && data.TREES ? `
---   ServerScriptService > CoinmasterGarden    Münzbaumgarten und Münzrollen (GardenRemote)
---   StarterPlayerScripts > CoinmasterGardenClient   baut den eigenen Garten (Part „GartenPlatz“ im Workspace)` : ''}${data.AURAS ? `
+--   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
+--   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
+--   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)
+--   ServerScriptService > CoinmasterData      lädt und speichert den Spielstand (Modul CoinmasterServer > PlayerData)
+--     Zum Speichern in Studio: Game Settings > Security > „Enable Studio Access to API Services“${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
 --   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
@@ -1417,17 +1419,28 @@ local function addScript(className, parent, name, source)
 	s.Parent = parent
 	return s
 end
--- Spielstand speichern: ModuleScript zuerst, die anderen Server-Skripte warten darauf
-addScript("ModuleScript", game:GetService("ServerScriptService"), "CoinmasterPlayerData", ${longString(PLAYER_DATA)})
-addScript("Script", game:GetService("ServerScriptService"), "CoinmasterSave", ${longString(SAVE_SERVER)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
-${data.BOOSTS && data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
+${data.BOOSTS && data.AURAS && data.SKILLS ? `-- Spielstand: Modul PlayerData (ServerScriptService > CoinmasterServer) und das Skript, das es startet
+local serverFolder = game:GetService("ServerScriptService"):FindFirstChild("CoinmasterServer")
+if serverFolder then
+	serverFolder:Destroy()
+end
+serverFolder = Instance.new("Folder")
+serverFolder.Name = "CoinmasterServer"
+serverFolder.Parent = game:GetService("ServerScriptService")
+local playerData = Instance.new("ModuleScript")
+playerData.Name = "PlayerData"
+playerData.Source = ${longString(PLAYER_DATA)}
+playerData.Parent = serverFolder
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterData", ${longString(PLAYER_DATA_START)})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterPlayer", ${longString(playerServerSource(data))})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterUI", ${longString(UI_CLIENT)})
-` : ''}${data.ROLLS && data.TREES ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterGarden", ${longString(GARDEN_SERVER)})
+${data.ROLLS && data.TREES ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterGarden", ${longString(GARDEN_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterGardenClient", ${longString(GARDEN_CLIENT)})
-` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
+` : ''}` : ''}${data.AURAS ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAuras", ${longString(AURA_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterAuraClient", ${longString(AURA_CLIENT)})
 ` : ''}
 pcall(function()

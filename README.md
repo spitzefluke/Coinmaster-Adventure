@@ -23,7 +23,7 @@ Roblox-Engine (`js/rbx/`):
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
 (Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
-Haustiere und von der Spiel-Oberfläche HUD, Menü, Shop, Inventar, Welten und Garten. Die übrigen Fenster folgen.
+Haustiere und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -212,8 +212,9 @@ Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Brows
   Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig). Der Server würfelt, prüft
   Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
   zwei Aufrufen.
-- **Speichern:** mit dem ganzen Spielstand (siehe „Spielstand speichern“). Garten-Aufträge gibt es erst, wenn der
-  Spielstand geladen ist. Robux-Rollen werden erst bestätigt, wenn der Kauf gespeichert ist.
+- **Speichern:** mit dem ganzen Spielstand über `PlayerData` (Attribut `Garden`, siehe „Speichern in Roblox“).
+  Garten-Aufträge gibt es erst, wenn der Spielstand geladen ist. Robux-Rollen werden erst bestätigt, wenn der
+  Kauf gespeichert ist.
 - **Robux-Rolle:** Developer Product anlegen und die Id oben im Skript in `ROLL_PRODUCTS` eintragen
   (`[ProductId] = "stern"`). Jeder Kauf wird mit seiner `PurchaseId` gemerkt und zählt nur einmal. Achtung:
   `ProcessReceipt` darf im Spiel nur ein Skript setzen.
@@ -350,17 +351,18 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
   samt Grundpaket je Seltenheit). Roblox zeigt höchstens 31 Highlights gleichzeitig; im Showcase fehlen
   Umriss und Glitch-Flackern deshalb. Dazu
   `Workspace › CoinmasterAuraShowcase` mit allen 50 Auras an Figuren. Zum Testen in Studio Play drücken
-  und im Chat `/aura krone` schreiben. Gekaufte und angelegte Auras werden mit dem Spielstand gespeichert.
+  und im Chat `/aura krone` schreiben. Gekaufte Auras werden noch nicht gespeichert (DataStore fehlt).
   Eigene Teilchenbilder (Münze, Herz, Note …) als Decal-IDs in `AuraData.Textures` eintragen.
 
 ## Spiel-Oberfläche
 
-`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau. **HUD, Menü, Hinweise, Wetter-Ansage, Shop,
-Inventar und Welten sind schon die echte Roblox-Oberfläche** (Etappen 1 und 2): das Modul `GameUI` aus dem Installer baut sie als
-ScreenGui, die Seite führt es aus und zeichnet die ScreenGuis über der Welt (`js/rbx/screen.js`, mit
-Roblox-Layout: UDim2, AnchorPoint, UIListLayout, UIGridLayout, UIPadding, UIScale, ScrollingFrame).
-Die übrigen Fenster (Skilltree, Einstellungen, Wetter, Belohnungen, Codes, Ranglisten) sind noch HTML
-und folgen in weiteren Etappen.
+`spiel/` zeigt die UIs des Spiels als bedienbare Vorschau. **Die ganze Oberfläche ist die echte
+Roblox-Oberfläche**: HUD, Menü, Hinweise, Wetter-Ansage und alle Fenster (Shop, Inventar, Welten,
+Skilltree, Einstellungen, Wetter, Belohnungen, Codes, Ranglisten). Das Modul `GameUI` aus dem Installer
+baut sie als ScreenGui, die Seite führt es aus und zeichnet die ScreenGuis über der Welt
+(`js/rbx/screen.js`, mit Roblox-Layout: UDim2, AnchorPoint, UIListLayout, UIGridLayout, UIPadding,
+UIScale, UIAspectRatioConstraint, ScrollingFrame, TextBox zum Tippen). Die Seite spielt dabei den Server:
+Spielstand als Attribute, Aktionen und Daten über Rückrufe.
 
 - **HUD:** Level-Abzeichen, EP-Balken, Skillpunkte, Welt, Taler, Wetter mit Countdown, aktive Boosts,
   Menü (Welten, Skills, Inventar, Shop, Index, Optionen) und „Münze suchen“, das einen Fund simuliert.
@@ -370,55 +372,82 @@ und folgen in weiteren Etappen.
   `Aura`, `OwnedAuras`, `Egg_<id>`, `Boost_<id>`, dazu `Coins`, `Slots`, `World`, `Worlds`, `Portals`,
   `Rebirths`), das Wetter aus `ReplicatedStorage`. Käufe und Aktionen gehen an die RemoteFunctions
   `ShopRemote` (Server-Skript `CoinmasterShop`: Eier, Boosts, Münzen verkaufen, Welten kaufen,
-  Teleport, Portale, Wiedergeburt) und `AuraRemote`. Knöpfe für Fenster, die es in Roblox noch nicht
-  gibt, melden sich am BindableEvent `UIAction`.
-- **Inventar** (Taste I): Münzen sortieren (neu, Wert, selten, Name), nach Stufe filtern, nur Mutationen,
-  eine Münze ansehen und verkaufen oder alle normalen auf einmal; Eier mit Anzahl. Die Münzen stehen in
-  Roblox als JSON im Attribut `Coins` (`{ i = Münz-Id, m = Mutation, b = Fundbonus, t = Fundzeit }`);
-  der Wert kommt aus `CoinData.EntryValue`.
+  Teleport, Portale, Wiedergeburt), `PlayerRemote` (Server-Skript `CoinmasterPlayer`: Skills,
+  Belohnungen, Codes, Einstellungen, Ranglisten) und `AuraRemote`. Weitere Attribute: `Skills`
+  (`"kern:1,beutel:2"`), `DailyDay`, `DailyStreak`, `WheelDay`, `Group`, `Codes` und `Set_<Einstellung>`.
+  Die Codes stehen nur im Server-Skript, nicht im Spiel. Die Wettervorhersage rechnet der Client aus
+  der Uhrzeit (`Gacha.CurrentWeather`), die Ranglisten zeigen in Roblox die Spieler auf dem Server.
+- **Inventar** (Taste I): Münzen sortieren (neu, Wert, selten, Name), nach Stufe filtern, nur Mutationen.
+  Gleiche Münzen mit gleicher Mutation liegen als Stapel (×3); man verkauft eine, den ganzen Stapel oder
+  alle normalen auf einmal. Eier mit Anzahl. In Roblox hält der Server die Stapel im Spielstand und schickt
+  sie über das RemoteEvent `InventoryEvent`: beim Start alles, danach nur geänderte Stapel.
 - **Welten** (Taste W): Teleport-Menü je Planet mit Welt-Karten (kaufen, teleportieren), Portal-Banner
   mit Bedingungen und Wiedergeburt (siehe oben). Die Regeln stehen einmal in `WorldData` (`CanBuy`,
   `PortalChecks`, `CanOpenPortal`) und gelten für Server und Oberfläche. Der Teleport setzt in Roblox
   das Attribut `World` und stellt die Figur an den Spawn des Modells `Welt_<Name>`. „+ Test-Taler“ gibt
   es nur in der Vorschau.
-- **Skilltree** (`spiel/js/skills.js`): Kern plus vier Äste mit je fünf Skills (Erkundung,
-  Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus Leveln (jedes Level 1,
-  jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand, Feilscher und Großer
-  Beutel wirken in der Vorschau schon; die Erkundungs-Skills gelten später in den Welten.
-  Sichtbar sind nur Skills, deren Vorgänger man gelernt hat; der Rest bleibt verborgen und
-  taucht mit einer Animation auf. Zoomen per +/−-Knöpfen, Mausrad, Tasten + − 0 oder zwei
-  Fingern, verschieben durch Ziehen.
-- **Inventar:** Münzen sortieren, filtern, verkaufen; Eier; Haustiere folgen.
-- **Shop** (Roblox-Oberfläche): Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
-- **Einstellungen** (`js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
-  3D-Ansichten und „Animationen überspringen“ für Entdeckung und Schlüpfen.
+- **Skilltree** (Taste K, Daten in `spiel/js/skills.js`, in Roblox `SkillData`): Kern plus vier Äste
+  mit je fünf Skills (Erkundung, Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus
+  Leveln (jedes Level 1, jedes fünfte 2). Glück, Wert, Doppelfund, Wettergespür, Goldene Hand,
+  Feilscher und Großer Beutel wirken in der Vorschau schon; die Erkundungs-Skills gelten später in den
+  Welten. Sichtbar sind nur Skills, deren Vorgänger man gelernt hat. Der Baum besteht aus Frames
+  (Linien sind gedrehte Frames); „+“ zoomt um den gewählten Skill.
+- **Shop** (Taste B): Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
+- **Wetter** (Taste V): Vorhersage der nächsten Phasen und alle Wetter mit ihrer Mutation.
+- **Belohnungen** (`spiel/js/rewards.js`, in Roblox `RewardData`): tägliches Geschenk mit Serie,
+  Glücksrad (aus gedrehten Frames, dreht per TweenService) und Gruppen-Bonus.
+- **Codes:** Eingabe im TextBox, Enter oder „Einlösen“.
+- **Ranglisten:** Taler, Münzen, Wiedergeburten, Level, mit deinem Platz (in der Vorschau mit
+  Beispiel-Spielern).
+- **Einstellungen** (Taste O, `js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
+  3D-Ansichten und „Animationen überspringen“. In Roblox stehen sie als Attribute `Set_…` am Spieler.
 
-Tastenkürzel: K Skills, I Inventar, B Shop, O Einstellungen, F Münze suchen, Esc schließt.
+**Design-System** (Modul `UITheme`): alle Farben, Schriften, Textgrößen (Tiny 12 bis Hero 34), Ecken,
+Abstände und Bewegungen der Oberfläche an einer Stelle. Bewegungsregeln: `Fast` 0,12 s (Maus drüber),
+`Normal` 0,22 s (Fenster, Balken), `Pop` 0,22 s mit Überschwingen (Öffnen, Drücken, Hinweise), `Slow`
+0,4 s (Belohnungen), `Exit` 0,16 s (Schließen, schneller als Öffnen). Fenster öffnen und schließen animiert.
 
-## Spielstand speichern (Roblox)
+**Neu füllen nur wenn nötig:** Jedes Fenster kennt seine Daten (`deps`, z. B. der Shop: Taler, Eier,
+Boosts, Auras). Ändert sich etwas anderes, bleibt es stehen; mehrere Änderungen im selben Bild ergeben einen
+Neuaufbau. Countdowns (Wetter, Belohnungen, Boosts im HUD) ändern jede Sekunde nur ihren Text.
 
-`ServerScriptService › CoinmasterPlayerData` (ModuleScript) und `CoinmasterSave` (Script, startet es) speichern den
-ganzen Spielstand im DataStore **`CoinmasterPlayer`**, Schlüssel `p_<UserId>`
-(`roblox/js/saveLuau.js`).
+**Spielgefühl:** Taler zählen hoch statt zu springen, ein grünes „+500“ steigt neben dem Taler-Feld auf
+und das Feld wippt; der EP-Balken gleitet (bei einem neuen Level erst voll, dann von vorn). Beim Verkaufen
+fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameUI.Found` je nach Seltenheit:
 
-- **Was gespeichert wird:** `leaderstats.Taler` (legt das Modul an) und die Attribute am Spieler aus
-  `PlayerData.Keys`: Münzen (`Coins`), `Slots`, Welten (`Worlds`), Portale, Wiedergeburten, Auras (`Aura`,
-  `OwnedAuras`), Garten (`Garden`), dazu `Level`, `XP`, `Points`, `Skills`, `EggDiscount` für spätere Skripte, und
-  alles, was mit `Egg_` oder `Boost_` anfängt. Neue Werte: Namen in `PlayerData.Keys` eintragen. `World` (der
-  aktuelle Ort) bleibt draußen: Nach dem Beitreten steht man im Spawn.
-- **Laden:** Erst wenn alles gesetzt ist, kommt das Attribut `DataLoaded`. Shop, Auras und Garten nehmen vorher
-  keine Aufträge an („Dein Spielstand lädt noch“), damit nichts vom Laden überschrieben wird.
-- **Speichern:** beim Verlassen, jede Minute bei Änderungen (sonst alle 2,5 Minuten, um die Sperre aufzufrischen)
-  und beim Herunterfahren (`BindToClose`, wartet bis zu 25 Sekunden). Jeder Zugriff hat drei Versuche.
-- **Sitzungssperre:** Ist der Spielstand noch auf einem anderen Server offen, wird bis zu 30 Sekunden gewartet,
-  danach wird der Spieler mit einem Hinweis getrennt. Eine Sperre ohne Speichern seit 5 Minuten gilt als verwaist
-  (abgestürzter Server). Hat ein anderer Server übernommen, speichert der alte nicht mehr und trennt den Spieler.
-- **Fehler beim Laden:** Der Spieler wird getrennt („bitte später nochmal beitreten“), der alte Stand bleibt
-  unangetastet. In Studio ohne DataStore-Zugang spielt man stattdessen ohne Speichern weiter (Warnung im Output).
-  Fürs echte Speichern in Studio: *Game Settings › Security › Enable Studio Access to API Services*.
-- **Übernahme:** Ein Garten aus dem früheren DataStore `CoinmasterGarden` wird beim ersten Laden einmal übernommen.
-- Geprüft mit einem Roblox-Imitat in Lua: neu beitreten, Autosave, Verlassen, Serverwechsel, gleichzeitiger
-  Login, abgestürzter Server, Ladefehler, Studio ohne Zugang, Verlassen während des Ladens, Herunterfahren.
+| Stufe | Seltenheit | Effekt |
+| --- | --- | --- |
+| 1 | Normal, Selten | Hinweis |
+| 2 | Sehr selten, Episch | Fundkarte mit Glanz über „Münze suchen“ |
+| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken und große Ansage |
+| 4 | Göttlich, Galaktisch, Unerreichbar | alles stärker und länger |
+
+Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den Hinweis, „Weniger Partikel“
+weniger Funken.
+
+Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
+Spielstand neu beginnen“.
+
+Tastenkürzel: W Welten, K Skills, I Inventar, B Shop, V Wetter, O Einstellungen, F Münze suchen,
+Esc schließt.
+
+## Speichern in Roblox
+
+Das Modul `PlayerData` (ServerScriptService > CoinmasterServer, gestartet vom Skript `CoinmasterData`)
+lädt und speichert den Spielstand im DataStore `CoinmasterAdventure` (ein Profil pro Spieler):
+
+- **Session-Lock:** Nur ein Server hält ein Profil. Ein zweiter wartet, bis der erste freigibt; ein
+  Lock von einem abgestürzten Server gilt nach 15 Minuten als frei.
+- **Sicher speichern:** jeder Zugriff mit bis zu drei Wiederholungen, Autosave alle 2 Minuten, beim
+  Verlassen und beim Herunterfahren (`BindToClose`).
+- **Versionsnummer:** `PlayerData.Migrate` bringt ältere Profile auf den neuesten Stand.
+- **Was gespeichert wird:** `leaderstats.Taler`, die Münz-Stapel und die Attribute (Level, EP, Welten,
+  Portale, Wiedergeburten, Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen, Münzbaumgarten).
+- Level-Aufstieg, Skillpunkte, Inventarplätze und Eier-Rabatt rechnet der Server daraus.
+
+In Studio speichert es nur mit „Enable Studio Access to API Services“ (Game Settings > Security);
+ohne läuft das Spiel normal, nur ohne Speichern. Getestet ist die Speicher-Logik mit einem Ersatz-DataStore
+(Laden, Lock, zweiter Server, alter Lock, Fehler mit Wiederholung, Migration, Stapel).
 
 ## Nach Roblox Studio übertragen
 
@@ -464,7 +493,7 @@ Dann <http://localhost:8000> öffnen.
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
-- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/robloxUi.js` (Roblox-Oberfläche GameUI), `js/panels/` (Fenster, die noch HTML sind)
+- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/rewards.js` (Belohnungen, Codes, Ranglisten), `js/robloxUi.js` (Roblox-Oberfläche GameUI)
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite

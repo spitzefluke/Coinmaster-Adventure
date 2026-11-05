@@ -27,8 +27,11 @@ const FONTS = {
 };
 const font = (name, size) => (FONTS[name] || FONTS.SourceSans).replace('{s}', Math.max(1, Math.round(size)));
 const rgba = (c, a = 1, k = 1) => `rgba(${Math.round(c.srgb[0] * 255 * k)},${Math.round(c.srgb[1] * 255 * k)},${Math.round(c.srgb[2] * 255 * k)},${Math.max(0, Math.min(1, a))})`;
-const isGui = (i) => i.props && i.props.Size && Array.isArray(i.props.Size) && ['Frame', 'TextLabel', 'TextButton', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'CanvasGroup'].includes(i.ClassName);
+const isGui = (i) => i.props && i.props.Size && Array.isArray(i.props.Size) && ['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'CanvasGroup'].includes(i.ClassName);
 const isButton = (i) => i.ClassName === 'TextButton' || i.ClassName === 'ImageButton';
+const isText = (i) => i.ClassName === 'TextLabel' || i.ClassName === 'TextButton' || i.ClassName === 'TextBox';
+// Knöpfe und Eingabefelder nehmen Klicks an
+const isClickable = (i) => isButton(i) || i.ClassName === 'TextBox';
 const kid = (i, cls) => i.children.find((c) => c.ClassName === cls && c.props.Enabled !== false);
 
 function roundRect(g, x, y, w, h, r) {
@@ -206,18 +209,22 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
     }
     const stroke = kid(i, 'UIStroke');
     // Roblox: ApplyStrokeMode Contextual umrandet bei Text-Objekten den Text, sonst den Rahmen
-    const strokeText = stroke && stroke.props.ApplyStrokeMode !== 'Border' && (i.ClassName === 'TextLabel' || i.ClassName === 'TextButton');
-    if ((i.ClassName === 'TextLabel' || i.ClassName === 'TextButton') && P.Text) {
+    const strokeText = stroke && stroke.props.ApplyStrokeMode !== 'Border' && isText(i);
+    // TextBox: ohne Text der Platzhalter, beim Tippen ein blinkender Strich
+    const focused = state.focus && state.focus.box === i;
+    const placeholder = i.ClassName === 'TextBox' && !P.Text && !focused;
+    const shown = placeholder ? P.PlaceholderText : P.Text;
+    if (isText(i) && (shown || focused)) {
       const ta = (1 - (P.TextTransparency ?? 0)) * alphaMul;
       let size = (P.TextSize ?? 14) * k;
       g.font = font(P.Font, size);
       const avail = r.w - 2;
-      let lines = P.TextWrapped || P.TextScaled ? wrapLines(g, P.Text, avail) : String(P.Text).split('\n');
+      let lines = P.TextWrapped || P.TextScaled ? wrapLines(g, shown || '', avail) : String(shown || '').split('\n');
       if (P.TextScaled) {
         size = Math.min(100 * k, r.h * 0.86);
         for (let n = 0; n < 30; n++) {
           g.font = font(P.Font, size);
-          lines = P.TextWrapped ? wrapLines(g, P.Text, avail) : String(P.Text).split('\n');
+          lines = P.TextWrapped ? wrapLines(g, shown || '', avail) : String(shown || '').split('\n');
           const wide = Math.max(...lines.map((l) => g.measureText(l).width));
           if (wide <= avail && lines.length * size * 1.08 <= r.h) break;
           size *= 0.9;
@@ -243,8 +250,14 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
           g.lineJoin = 'round';
           g.strokeText(line, tx, ty);
         }
-        g.fillStyle = grad && bgA <= 0.002 ? fillStyle(P.TextColor3, ta) : rgba(P.TextColor3, ta);
+        g.fillStyle = placeholder ? rgba(P.PlaceholderColor3, ta) : grad && bgA <= 0.002 ? fillStyle(P.TextColor3, ta) : rgba(P.TextColor3, ta);
         g.fillText(line, tx, ty);
+        if (focused && n === lines.length - 1 && Math.floor(performance.now() / 530) % 2 === 0) {
+          const wLine = g.measureText(line).width;
+          const cx = xa === 'Left' ? tx + wLine + 2 : xa === 'Right' ? tx + 2 : tx + wLine / 2 + 2;
+          g.fillStyle = rgba(P.TextColor3, ta);
+          g.fillRect(cx, ty - size * 0.5, Math.max(1.5, k * 1.5), size);
+        }
       });
     }
     if (stroke && !strokeText) {
@@ -319,6 +332,7 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
       canvas.height = Math.round(H * dpr);
       force = true;
     }
+    if (state.focus) force = true; // blinkender Strich im TextBox
     if (!force && !playerGui.gui.dirty) return;
     playerGui.gui.dirty = false;
     state.w = W;
@@ -353,7 +367,7 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
     }
     return null;
   }
-  const solid = (i) => isButton(i) || (i.props.BackgroundTransparency ?? 0) < 0.95 || i.ClassName === 'ScrollingFrame';
+  const solid = (i) => isClickable(i) || (i.props.BackgroundTransparency ?? 0) < 0.95 || i.ClassName === 'ScrollingFrame';
   // type: move, down, up, leave, wheel; gibt true zurück, wenn die UI den Zeiger hat
   function pointer(type, x, y, delta = 0) {
     if (type === 'leave') {
@@ -362,7 +376,7 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
       playerGui.gui.dirty = true;
       return false;
     }
-    const btn = topAt(x, y, isButton);
+    const btn = topAt(x, y, isClickable);
     const over = topAt(x, y, solid);
     // nur der oberste Knopf zählt, wenn kein undurchsichtiges Element darüber liegt
     const target = btn && (!over || over === btn || isDescendant(over, btn)) ? btn : null;
@@ -374,7 +388,7 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
     }
     if (type === 'down' && target) {
       state.press = target;
-      fire(target, 'MouseButton1Down');
+      if (isButton(target)) fire(target, 'MouseButton1Down');
       playerGui.gui.dirty = true;
     }
     if (type === 'up') {
@@ -382,8 +396,11 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
       state.press = null;
       if (was) playerGui.gui.dirty = true;
       if (was && was === target) {
-        fire(target, 'MouseButton1Click');
-        fire(target, 'Activated');
+        if (target.ClassName === 'TextBox') focusBox(target);
+        else {
+          fire(target, 'MouseButton1Click');
+          fire(target, 'Activated');
+        }
       }
     }
     if (type === 'wheel') {
@@ -399,6 +416,46 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
     }
     canvas.style.cursor = target ? 'pointer' : '';
     return !!(target || over);
+  }
+  // TextBox: ein unsichtbares HTML-Eingabefeld über dem Feld nimmt die Tastatur an (auch am Handy)
+  function focusBox(box) {
+    if (state.focus?.box === box) return state.focus.input.focus();
+    state.focus?.input.blur();
+    const id = lua.idOf(box);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('aria-label', box.props.PlaceholderText || 'Eingabe');
+    const r = box.abs, c = canvas.getBoundingClientRect(), host = canvas.parentElement.getBoundingClientRect();
+    Object.assign(input.style, { position: 'absolute', left: `${c.left - host.left + r.x}px`, top: `${c.top - host.top + r.y}px`, width: `${r.w}px`, height: `${r.h}px`, opacity: '0', fontSize: '16px', border: '0', padding: '0', zIndex: '5' });
+    if (box.props.ClearTextOnFocus) box.props.Text = '';
+    input.value = box.props.Text || '';
+    if (id) lua.call('__setText', id, input.value);
+    const f = { box, input, enter: false };
+    state.focus = f;
+    input.addEventListener('input', () => {
+      box.props.Text = input.value;
+      if (id) lua.call('__setText', id, input.value);
+      playerGui.gui.dirty = true;
+    });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        f.enter = true;
+        input.blur();
+      } else if (e.key === 'Escape') input.blur();
+    });
+    input.addEventListener('blur', () => {
+      if (state.focus === f) state.focus = null;
+      input.remove();
+      playerGui.gui.dirty = true;
+      if (id) lua.call('__fireGui', id, 'FocusLost', f.enter);
+    });
+    canvas.parentElement.append(input);
+    input.focus();
+    if (id) lua.call('__fireGui', id, 'Focused');
+    playerGui.gui.dirty = true;
   }
   const isDescendant = (a, b) => {
     for (let p = a; p; p = p.parent) if (p === b) return true;

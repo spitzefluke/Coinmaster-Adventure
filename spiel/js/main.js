@@ -1,24 +1,22 @@
-// Spiel-Oberfläche: HUD über einer Spielwelt, dazu die Fenster Skilltree, Inventar, Shop und
-// Einstellungen. „Münze suchen“ simuliert einen Fund in der Welt mit allen Skill-Effekten.
-// HUD, Menü, Hinweise und die Fenster Shop, Inventar und Welten sind die Roblox-Oberfläche GameUI
-// (robloxUi.js); die übrigen Fenster sind noch HTML und folgen in späteren Etappen.
+// Spiel-Oberfläche: HUD über einer Spielwelt mit allen Fenstern. „Münze suchen“ simuliert einen Fund
+// in der Welt mit allen Skill-Effekten. HUD, Menü, Hinweise und alle Fenster sind die Roblox-Oberfläche
+// GameUI (robloxUi.js); diese Seite spielt den Server: Spielstand (state.js) als Attribute, Aktionen als
+// Rückrufe (invoke), Daten für Fenster als Abfragen (query).
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, weatherAt, weatherById, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier } from './state.js';
+import { weatherAt, weatherById, mutationForWeather, forecast, WEATHER } from '../../muenzen/js/mutations.js';
+import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
+import { skillById } from './skills.js';
+import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
 import { createRobloxUi } from './robloxUi.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
 import { planetById, worldById } from '../../welten/js/worlds.js';
 import { createWorldBg } from './worldBg.js';
-import { icon } from './icons.js';
-import { skillPanel } from './panels/skilltree.js';
-import { settingsPanel } from './panels/einstellungen.js';
-import { ranglistenPanel, belohnungPanel, codesPanel } from './panels/spawn.js';
-import { wetterPanel } from './panels/wetter.js';
 import { newGarden, gardenAct, lootById } from '../../garten/js/garden.js';
 import { rollById, openRoll } from '../../rollen/js/rolls.js';
 import { Opener } from '../../rollen/js/open.js';
+import { icon } from './icons.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
 
@@ -26,9 +24,8 @@ const state = loadState();
 state.garden ||= newGarden();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
-// Fenster in Roblox (GameUI) und noch als HTML
-const RBX_WINDOWS = new Set(['shop', 'inventar', 'welten', 'garten']);
-const PANELS = { skills: skillPanel, einstellungen: settingsPanel, ranglisten: ranglistenPanel, belohnung: belohnungPanel, codes: codesPanel, wetter: wetterPanel };
+// Fenster der Roblox-Oberfläche (GameUI)
+const WINDOWS = new Set(['shop', 'inventar', 'welten', 'skills', 'einstellungen', 'wetter', 'belohnung', 'codes', 'ranglisten', 'garten']);
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -77,12 +74,46 @@ function renderHud() {
   for (const b of BOOSTS) set('Boost_' + b.id, boostActive(state, b.id) ? Math.round(state.boosts[b.id] / 1000) : 0);
   // Inventar und Welten (in Roblox schreibt das der Server)
   set('Slots', slots(state));
-  set('Coins', JSON.stringify(state.inventory.map((e) => ({ i: e.id + 1, m: e.mutation || undefined, b: e.bonus || 1, t: Math.round((e.at || 0) / 1000) }))));
+  sendInventory();
   set('World', state.world);
   set('Worlds', state.worlds.join(','));
   set('Portals', state.portals.join(','));
   set('Rebirths', state.rebirths);
   set('Garden', JSON.stringify(state.garden));
+  // Skills, Belohnungen, Einstellungen
+  set('Skills', Object.entries(state.skills).filter(([, n]) => n > 0).map(([id, n]) => `${id}:${n}`).join(','));
+  set('DailyDay', state.daily?.lastDay ?? '');
+  set('DailyStreak', state.daily?.streak ?? 0);
+  set('WheelDay', state.wheel?.lastDay ?? '');
+  set('Group', !!state.group);
+  set('Codes', (state.codes ?? []).join(','));
+  for (const [k, v] of Object.entries(settings)) set('Set_' + k, v);
+}
+
+// Münzen als Stapel wie im Roblox-Spielstand (PlayerData): gleiche Münze + gleiche Mutation = ein Stapel.
+// Beim ersten Mal alles, danach nur geänderte Stapel (wie das RemoteEvent InventoryEvent)
+const coinKey = (e) => `${e.id + 1}|${e.mutation || ''}`;
+function stacks() {
+  const out = new Map();
+  for (const e of state.inventory) {
+    const k = coinKey(e);
+    const s = out.get(k) ?? { k, i: e.id + 1, m: e.mutation || undefined, n: 0, v: 0, t: 0 };
+    s.n++;
+    s.v = Math.round((s.v + coinValue(e)) * 100) / 100;
+    s.t = Math.max(s.t, Math.round((e.at || 0) / 1000));
+    out.set(k, s);
+  }
+  return out;
+}
+let sentStacks = null;
+function sendInventory() {
+  const now = stacks();
+  if (!sentStacks) rui.inventory('full', [...now.values()]);
+  else {
+    for (const [k, s] of now) if (JSON.stringify(s) !== JSON.stringify(sentStacks.get(k))) rui.inventory('set', k, s);
+    for (const k of sentStacks.keys()) if (!now.has(k)) rui.inventory('set', k, null);
+  }
+  sentStacks = now;
 }
 
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
@@ -108,104 +139,33 @@ function announceWeather(w) {
   rui?.announce(w.id);
   // kleine Fanfare: drei Töne
   [0, 140, 280].forEach((d, i) => setTimeout(() => sound(0.8 + i * 0.25), d));
-  if (openId === 'wetter') renderPanel();
 }
-$('panel-close').innerHTML = icon('close', 20);
 
 // ── Fenster ──────────────────────────────────────────────────────────────────
 
-let openId = null, openTab = null, lastFocus = null;
-
-const ctx = {
-  state,
-  get settings() {
-    return settings;
-  },
-  save: () => {
-    save();
-    renderHud();
-  },
-  sound,
-  toast,
-  rerender: () => openId && renderPanel(),
-  applySettings: () => {
-    settings = loadSettings();
-    applyWorldSettings();
-    worldBg.refresh(currentWorld(state));
-    renderHud();
-  },
-  teleport,
-  flash,
-  testWeather(id) {
-    testWeather = { id, until: Date.now() + 60000 };
-    renderWeather();
-  },
-};
-
-function renderPanel() {
-  const p = PANELS[openId];
-  $('panel-ico').innerHTML = icon(p.icon, 26);
-  $('panel-title').textContent = p.title;
-  $('panel-sub').textContent = p.sub(ctx);
-  $('panel-tools').replaceChildren(...(p.tools ? p.tools(ctx) : []));
-  const tabs = $('panel-tabs');
-  tabs.hidden = !p.tabs;
-  if (p.tabs) {
-    tabs.innerHTML = p.tabs.map((t) => `<button type="button" role="tab" data-tab="${t.id}" aria-selected="${t.id === openTab}">${t.label}</button>`).join('');
-    tabs.querySelectorAll('button').forEach((b) =>
-      b.addEventListener('click', () => {
-        openTab = b.dataset.tab;
-        renderPanel();
-        tabs.querySelector(`[data-tab="${openTab}"]`)?.focus();
-      }),
-    );
-  }
-  const body = $('panel-body');
-  const scroll = body.scrollTop;
-  p.render(body, ctx, openTab);
-  body.scrollTop = scroll;
-}
-
 function openPanel(id, tab = null) {
-  if (RBX_WINDOWS.has(id)) {
-    closePanel();
-    if (rui?.isOpen(id) && !tab) rui.close(id);
-    else rui?.open(id, tab);
-    sound(0.95);
-    return;
-  }
-  if (openId === id && !tab) return closePanel();
-  lastFocus = document.activeElement;
-  openId = id;
-  openTab = tab ?? PANELS[id].defaultTab?.(ctx) ?? PANELS[id].tabs?.[0].id ?? null;
-  $('panel-layer').hidden = false;
-  $('panel').dataset.panel = id;
-  rui?.close();
-  renderPanel();
-  $('panel-body').scrollTop = 0;
-  $('panel-close').focus();
+  if (!WINDOWS.has(id) || !rui) return;
+  if (rui.isOpen(id) && !tab) rui.close(id);
+  else rui.open(id, tab);
   sound(0.95);
 }
 
-function closePanel() {
-  openId = null;
-  $('panel-layer').hidden = true;
-  lastFocus?.focus?.();
+function applySettings() {
+  saveSettings(settings);
+  applyWorldSettings();
+  worldBg.refresh(currentWorld(state));
+  renderHud();
 }
-
-$('panel-close').addEventListener('click', closePanel);
-$('panel-layer').addEventListener('click', (e) => e.target === $('panel-layer') && closePanel());
 
 addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
-  if (key === 'escape' && openId) return closePanel();
   if (key === 'escape') return rui?.close();
   const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen', v: 'wetter' };
   if (map[key]) {
     e.preventDefault();
     openPanel(map[key]);
-  } else if (key === 'f' && !openId) {
+  } else if (key === 'f' && !rui?.isOpen()) {
     e.preventDefault();
     find();
   }
@@ -228,7 +188,7 @@ function find() {
     return;
   }
   const r = findCoin(state, Math.random, currentWeather().w.id);
-  const coin = COINS[r.id], tier = tierById[coin.tier], m = r.mutation && mutationById[r.mutation];
+  const tier = tierById[COINS[r.id].tier];
   const space = slots(state) - state.inventory.length;
   const n = Math.min(r.count, space);
   for (let k = 0; k < n; k++) state.inventory.push({ id: r.id, mutation: r.mutation, at: Date.now(), bonus: r.bonus });
@@ -239,8 +199,8 @@ function find() {
   sound(1 + tier.index * 0.05);
 
   const value = coinValue({ id: r.id, mutation: r.mutation, bonus: r.bonus });
-  toast(`${coin.name}${n > 1 ? ' ×2' : ''} · ${tier.name}${m ? ` · ${m.name} ${fmtMultiplier(m)}` : ''}${r.upgraded ? ' · Goldene Hand!' : ''} · ${fmtNumber(value, true)} Taler · +${r.xp} EP`, m ? m.color : tier.color);
-  if (openId) renderPanel();
+  // Effekte je nach Seltenheit zeigt die Roblox-Oberfläche (GameUI.Found)
+  rui?.found({ coinId: r.id + 1, mutation: r.mutation, count: n, value, xp: r.xp, upgraded: r.upgraded });
   if (ups) levelUp(before, state.level);
 }
 
@@ -348,7 +308,6 @@ function teleport(id, quiet = false) {
   state.world = id;
   save();
   renderHud();
-  closePanel();
   flash(w.accent);
   // Welt mitten im Aufleuchten tauschen
   setTimeout(() => {
@@ -427,11 +386,14 @@ function invoke(action, a, b) {
     state.taler = Math.round((state.taler + delta) * 100) / 100;
     return done(text);
   }
-  // Inventar: Positionen in der Liste Coins (1-basiert)
+  // Inventar: Stapel-Schlüssel und Anzahl (oder alle normalen ohne Mutation)
   if (action === 'sell' || action === 'sellNormal') {
     const pick = new Set();
     if (action === 'sellNormal') state.inventory.forEach((e, i) => tierById[COINS[e.id].tier].index === 0 && !e.mutation && pick.add(i));
-    else String(a).split(',').forEach((n) => pick.add(Number(n) - 1));
+    else {
+      let left = Math.max(1, Math.floor(Number(b) || 1));
+      state.inventory.forEach((e, i) => coinKey(e) === a && left-- > 0 && pick.add(i));
+    }
     let total = 0, count = 0;
     state.inventory = state.inventory.filter((e, i) => {
       if (!pick.has(i)) return true;
@@ -481,7 +443,96 @@ function invoke(action, a, b) {
     state.taler = Math.max(1e6, Math.round(state.taler * 10));
     return done(`Test: ${fmtNumber(state.taler, true)} Taler`);
   }
+  // Skills
+  if (action === 'learn') {
+    const k = skillById[a];
+    const why = k ? canLearn(state, a) : 'Diesen Skill gibt es nicht';
+    if (why) return [false, why];
+    state.skills[k.id] = skillLevel(state, k.id) + 1;
+    sound(1.2);
+    return done(`${k.name} auf Stufe ${state.skills[k.id]}`);
+  }
+  if (action === 'resetSkills') {
+    state.skills = { kern: 1 };
+    return done('Alle Skillpunkte zurückerstattet');
+  }
+  // Belohnungen und Codes (rewards.js)
+  if (action === 'daily') {
+    const r = claimDaily(state);
+    if (!r) return [false, 'Heute schon abgeholt'];
+    flash('#ffd76a');
+    return done(`Tag ${r.day}: ${prizeText(r.prize)}!`);
+  }
+  if (action === 'spin') {
+    const r = spinWheel(state);
+    if (!r) return [false, 'Heute schon gedreht'];
+    save();
+    renderHud();
+    return [true, `Glücksrad: ${prizeText(r.prize)}!`, r.index + 1];
+  }
+  if (action === 'group') {
+    const p = joinGroup(state);
+    if (!p) return [false, 'Schon beigetreten'];
+    return done(`Willkommen in der Gruppe! +${prizeText(p)}`);
+  }
+  if (action === 'code') {
+    const r = redeem(state, a ?? '');
+    if (r.error) return [false, r.error];
+    return done(`Code ${r.code}: ${prizeText(r.prize)}!`);
+  }
+  // Einstellungen (gelten für die ganze Seite, js/settings.js)
+  if (action === 'setting') {
+    if (!(a in DEFAULT_SETTINGS)) return [false, 'Ungültig'];
+    if (typeof DEFAULT_SETTINGS[a] === 'number') b = Math.max(0, Math.min(100, Math.round(Number(b) / 5) * 5));
+    else if (typeof DEFAULT_SETTINGS[a] === 'boolean') b = b === true;
+    else if (!['niedrig', 'mittel', 'hoch'].includes(b)) return [false, 'Ungültig'];
+    settings[a] = b;
+    applySettings();
+    if (a === 'sfx') sound(1);
+    return [true];
+  }
+  if (action === 'resetSettings') {
+    settings = { ...DEFAULT_SETTINGS };
+    applySettings();
+    return [true, 'Einstellungen zurückgesetzt'];
+  }
+  // nur Vorschau
+  if (action === 'resetSave') {
+    Object.keys(state).forEach((k) => delete state[k]);
+    Object.assign(state, freshState());
+    state.garden = newGarden();
+    teleport(state.world, true);
+    return done('Neuer Spielstand mit Beispiel-Inventar');
+  }
+  if (action === 'testDay') {
+    const d = new Date(Date.now() - 86400000);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    if (state.daily?.lastDay) state.daily.lastDay = key;
+    if (state.wheel?.lastDay) state.wheel.lastDay = key;
+    return done('Test: ein Tag ist vergangen');
+  }
+  if (action === 'testWeather') {
+    const list = WEATHER.filter((w) => w.id !== 'klar' && w.id !== currentWeather().w.id);
+    const w = list[Math.floor(Math.random() * list.length)];
+    testWeather = { id: w.id, until: Date.now() + 60000 };
+    renderWeather();
+    return [true, `Test: ${w.name} für eine Minute`];
+  }
   return [false, 'Unbekannt'];
+}
+
+// Daten für Fenster: Wettervorhersage und Ranglisten (in Roblox: Uhrzeit und Server)
+function query(kind, arg) {
+  if (kind === 'forecast') {
+    const now = currentWeather();
+    const rest = forecast(9).slice(1).filter((f) => f.starts >= now.ends - 1);
+    return [{ w: now.w, starts: now.ends - 60000, ends: now.ends }, ...rest].map((f) => ({ Id: f.w.id, Starts: Math.round(f.starts / 1000), Ends: Math.round(f.ends / 1000) }));
+  }
+  if (kind === 'board') {
+    const { top, me, place } = board(state, arg);
+    return { Rows: top.map((r) => ({ Name: r.name, Value: r.value, Me: !!r.me })), Place: place, Mine: me.value };
+  }
+  return null;
 }
 // Geöffnete Münzrolle: dieselbe Öffnen-Ansicht wie auf der Rollen-Seite (RollFx)
 let opener = null;
@@ -496,13 +547,19 @@ function playRoll(arg) {
 function uiAction(name, arg) {
   if (name === 'find') return find();
   if (name === 'playRoll') return playRoll(arg);
-  if (name === 'gartenBesuchen') return toast('Im Spiel geht es jetzt zum Garten. Hier: Seite „Münzbaumgarten“ zum Ansehen in 3D.', '#6fbf4a');
+  if (name === 'gartenBesuchen') return toast('Im Spiel geht es jetzt zum Garten. In 3D ansehen: Seite „Münzbaumgarten“.', '#6fbf4a');
   if (name === 'index') return (location.href = '../muenzindex/');
-  if (PANELS[name] || RBX_WINDOWS.has(name)) openPanel(name);
+  if (WINDOWS.has(name)) openPanel(name);
 }
 let rui = null;
 try {
-  rui = await createRobloxUi($('game'), { onAction: uiAction, onInvoke: invoke, devTools: true });
+  rui = await createRobloxUi($('game'), {
+    onAction: uiAction,
+    onInvoke: invoke,
+    onQuery: query,
+    devTools: true,
+    codeHint: `In der Vorschau: ${Object.keys(CODES).join(', ')}.`,
+  });
   if (location.hash === '#debug') window.rui = rui;
 } catch (e) {
   console.error('Roblox-Oberfläche konnte nicht starten', e);
