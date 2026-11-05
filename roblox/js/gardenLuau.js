@@ -339,6 +339,15 @@ local function scaleModel(model, k)
 	end
 end
 
+-- Ellipsoid: Block mit Kugel-Mesh (ein Ball-Part bleibt in Roblox immer rund)
+local function ellipsoid(parent, name, size, cf, color, material)
+	local p = part("Part", { Name = name, Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic }, parent)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
 local function measure(model)
 	local top = 0
 	for _, p in ipairs(model:GetDescendants()) do
@@ -455,20 +464,22 @@ local function trunk(m, t, h, w, bend)
 	end
 end
 
-function LootBuilder.Tree(tree, stage, ripe)
+-- full = true: Jungbaum in voller Größe bauen (GardenBuilder skaliert ihn beim Wachsen selbst)
+function LootBuilder.Tree(tree, stage, ripe, full)
 	stage = stage or 3
 	ripe = ripe or 0
 	local model = Instance.new("Model")
 	model.Name = tree.Name
 	local leaf = Enum.Material[tree.Look] or Enum.Material.Grass
 	if stage <= 1 then
-		-- Setzling: dünner Stiel mit zwei Blättern
-		part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 0.2, 0.2), CFrame = CFrame.new(0, 0.5, 0) * UP, Color = tree.Trunk, Material = Enum.Material.Wood }, model)
-		for _, x in ipairs({ -0.3, 0.3 }) do
-			local b = ball(model, "Blatt", 0.6, Vector3.new(x, 1.05, 0), tree.Leaf, leaf)
-			b.Size = Vector3.new(0.7, 0.3, 0.45)
+		-- Keimling: aufgeplatzte Samenschale, gebogener Stiel, zwei Keimblätter und eine Knospe
+		ellipsoid(model, "Schale", Vector3.new(0.5, 0.26, 0.4), CFrame.new(0, 0.1, 0), tree.Trunk:Lerp(tree.Fruit, 0.3))
+		part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 0.14, 0.14), CFrame = CFrame.new(0, 0.38, 0) * UP, Color = tree.Leaf:Lerp(tree.Trunk, 0.3), Material = Enum.Material.SmoothPlastic }, model)
+		part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 0.12, 0.12), CFrame = CFrame.new(0.06, 0.85, 0) * CFrame.Angles(0, 0, math.rad(78)), Color = tree.Leaf:Lerp(tree.Trunk, 0.2), Material = Enum.Material.SmoothPlastic }, model)
+		for _, side in ipairs({ -1, 1 }) do
+			ellipsoid(model, "Blatt", Vector3.new(0.62, 0.14, 0.38), CFrame.new(side * 0.3, 1.12, 0) * CFrame.Angles(0, 0, side * math.rad(-22)), tree.Leaf, leaf)
 		end
-		ball(model, "Knospe", 0.35, Vector3.new(0, 1.2, 0), tree.Fruit, Enum.Material.Metal)
+		ellipsoid(model, "Knospe", Vector3.new(0.24, 0.3, 0.24), CFrame.new(0.08, 1.2, 0), tree.Fruit, Enum.Material.Neon)
 		measure(model)
 		model:SetAttribute("TreeId", tree.Id)
 		return model
@@ -499,7 +510,7 @@ function LootBuilder.Tree(tree, stage, ripe)
 			sp.Parent = model:FindFirstChild("Stamm")
 		end
 	end
-	if stage == 2 then
+	if stage == 2 and not full then
 		scaleModel(model, 0.55)
 	end
 	measure(model)
@@ -507,145 +518,258 @@ function LootBuilder.Tree(tree, stage, ripe)
 	return model
 end
 
+-- ── Werkzeug ──
+-- Jedes Stück bekommt Akzente in der Farbe seiner Seltenheit; ab Episch leuchtet es, ab Legendär funkelt es.
+local RANK = { gewoehnlich = 1, selten = 2, episch = 3, legendaer = 4, mythisch = 5, goettlich = 6 }
+local DARK = Color3.fromRGB(28, 22, 34)
+
+local function cyl(parent, name, len, dia, cf, color, material)
+	return part("Part", { Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(len, dia, dia), CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic }, parent)
+end
+local function box(parent, name, size, cf, color, material, transparency)
+	return part("Part", { Name = name, Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = transparency or 0 }, parent)
+end
+-- Bogen aus kurzen Stücken (für Griffe): Mitte, Radius, Winkel von–bis (Grad) in der XY-Ebene
+local function arc(parent, name, center, radius, from, to, thick, color, material, steps)
+	steps = steps or 7
+	for i = 0, steps - 1 do
+		local a0, a1 = math.rad(from + (to - from) * i / steps), math.rad(from + (to - from) * (i + 1) / steps)
+		local p0 = center + Vector3.new(math.cos(a0) * radius, math.sin(a0) * radius, 0)
+		local p1 = center + Vector3.new(math.cos(a1) * radius, math.sin(a1) * radius, 0)
+		local mid = (p0 + p1) / 2
+		local len = (p1 - p0).Magnitude + thick * 0.6
+		box(parent, name, Vector3.new(len, thick, thick), CFrame.new(mid) * CFrame.Angles(0, 0, math.atan((p1.Y - p0.Y) / ((p1.X - p0.X) ~= 0 and (p1.X - p0.X) or 0.0001))), color, material)
+	end
+end
+
 local TOOLS = {}
-function TOOLS.can(m, t)
-	local metal = t.Rainbow and Enum.Material.SmoothPlastic or Enum.Material.Metal
-	part("Part", { Name = "Body", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.5, 1.4, 1.4), CFrame = CFrame.new(0, 0.75, 0) * UP, Color = t.Color, Material = metal }, m)
-	part("Part", { Name = "Rand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 1.5, 1.5), CFrame = CFrame.new(0, 1.5, 0) * UP, Color = t.Color:Lerp(Color3.new(1, 1, 1), 0.3), Material = metal }, m)
-	local tilt = CFrame.Angles(0, 0, math.rad(-35))
-	part("Part", { Name = "Tuelle", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.9, 0.24, 0.24), CFrame = CFrame.new(-1.15, 1.15, 0) * tilt, Color = t.Color, Material = metal }, m)
-	part("Part", { Name = "Brause", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.22, 0.5, 0.5), CFrame = CFrame.new(-1.95, 1.72, 0) * tilt, Color = t.Color:Lerp(Color3.new(0, 0, 0), 0.15), Material = metal }, m)
-	part("Part", { Name = "Griff", Size = Vector3.new(1.1, 0.18, 0.26), CFrame = CFrame.new(0.2, 2.05, 0), Color = t.Color, Material = metal }, m)
-	part("Part", { Name = "Griff", Size = Vector3.new(0.18, 0.75, 0.26), CFrame = CFrame.new(0.72, 1.7, 0), Color = t.Color, Material = metal }, m)
-	part("Part", { Name = "Griff", Size = Vector3.new(0.18, 0.5, 0.26), CFrame = CFrame.new(-0.32, 1.8, 0), Color = t.Color, Material = metal }, m)
+function TOOLS.can(m, t, accent)
+	local metal = t.Rainbow and Enum.Material.SmoothPlastic or (t.Id == "goldkanne" and Enum.Material.Foil or Enum.Material.Metal)
+	local c = t.Color
+	local body = cyl(m, "Body", 1.35, 1.45, CFrame.new(0, 0.8, 0) * UP, c, metal)
+	ellipsoid(m, "Schulter", Vector3.new(1.45, 0.55, 1.45), CFrame.new(0, 1.47, 0), c, metal)
+	cyl(m, "Fuss", 0.14, 1.52, CFrame.new(0, 0.12, 0) * UP, c:Lerp(Color3.new(0, 0, 0), 0.25), metal)
+	ellipsoid(m, "Oeffnung", Vector3.new(0.55, 0.12, 0.55), CFrame.new(0.15, 1.72, 0), DARK)
+	cyl(m, "OeffnungRand", 0.1, 0.66, CFrame.new(0.15, 1.7, 0) * UP, c:Lerp(Color3.new(1, 1, 1), 0.3), metal)
+	-- Zierband mit Nieten in der Farbe der Seltenheit
+	cyl(m, "Zierband", 0.2, 1.49, CFrame.new(0, 0.8, 0) * UP, accent, Enum.Material.Neon)
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		ball(m, "Niete", 0.11, Vector3.new(math.cos(a) * 0.75, 1.15, math.sin(a) * 0.75), c:Lerp(Color3.new(1, 1, 1), 0.45), metal)
+	end
+	-- Tülle: dick am Körper, dünn nach außen, vorne eine Brause mit Löchern
+	local tilt = CFrame.Angles(0, 0, math.rad(-38))
+	cyl(m, "Tuelle", 1.1, 0.34, CFrame.new(-0.95, 0.85, 0) * tilt, c, metal)
+	cyl(m, "Tuelle2", 1.0, 0.22, CFrame.new(-1.6, 1.36, 0) * tilt, c, metal)
+	local rose = CFrame.new(-2.05, 1.72, 0) * tilt
+	cyl(m, "Brause", 0.22, 0.62, rose, c:Lerp(Color3.new(0, 0, 0), 0.12), metal)
+	for i = 0, 5 do
+		local a = i / 6 * math.pi * 2
+		ball(m, "Loch", 0.08, (rose * CFrame.new(-0.12, math.cos(a) * 0.17, math.sin(a) * 0.17)).Position, DARK)
+	end
+	-- Bügel hinten als Bogen
+	arc(m, "Griff", Vector3.new(0.38, 1.55, 0), 0.6, -20, 160, 0.18, c, metal, 8)
+	-- Wassertropfen aus der Brause
+	for i, d in ipairs({ { -2.25, 1.42 }, { -2.33, 1.05 }, { -2.2, 0.72 } }) do
+		ellipsoid(m, "Tropfen", Vector3.new(0.16, 0.24, 0.16) * (1 - i * 0.12), CFrame.new(d[1], d[2], 0), Color3.fromRGB(110, 200, 255), Enum.Material.Glass)
+	end
 	if t.Rainbow then
-		for i = 0, 4 do
-			part("Part", { Name = "Streifen", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.22, 1.43, 1.43), CFrame = CFrame.new(0, 0.25 + i * 0.27, 0) * UP, Color = Color3.fromHSV(i / 5, 0.7, 1), Material = Enum.Material.Neon }, m)
+		for i = 0, 5 do
+			cyl(m, "Streifen", 0.18, 1.48, CFrame.new(0, 0.28 + i * 0.22, 0) * UP, Color3.fromHSV(i / 6, 0.7, 1), Enum.Material.Neon)
 		end
-		local s = Instance.new("Sparkles")
-		s.SparkleColor = Color3.fromRGB(255, 255, 255)
-		s.Parent = m:FindFirstChild("Body")
-	end
-	-- ein Tropfen an der Brause
-	ball(m, "Tropfen", 0.22, Vector3.new(-2.1, 1.4, 0), Color3.fromRGB(120, 200, 255), Enum.Material.Glass, 0.2)
-	return m:FindFirstChild("Body")
-end
-function TOOLS.sack(m, t)
-	local body = part("Part", { Name = "Body", Size = Vector3.new(1.4, 1.7, 0.95), CFrame = CFrame.new(0, 0.85, 0), Color = t.Color, Material = Enum.Material.Fabric }, m)
-	part("Part", { Name = "Etikett", Size = Vector3.new(1.42, 0.55, 0.97), CFrame = CFrame.new(0, 0.95, 0), Color = t.Color:Lerp(Color3.new(1, 1, 1), 0.55), Material = Enum.Material.SmoothPlastic }, m)
-	part("Part", { Name = "Hals", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 0.6, 0.6), CFrame = CFrame.new(0, 1.85, 0) * UP, Color = t.Color, Material = Enum.Material.Fabric }, m)
-	ball(m, "Zipfel", 0.75, Vector3.new(0, 2.15, 0), t.Color, Enum.Material.Fabric)
-	-- Blatt-Symbol vorne
-	local leaf = ball(m, "Symbol", 0.4, Vector3.new(0, 0.95, -0.5), Color3.fromRGB(90, 190, 80), t.Id == "zauberduenger" and Enum.Material.Neon or Enum.Material.SmoothPlastic)
-	leaf.Size = Vector3.new(0.5, 0.32, 0.12)
-	if t.Id == "zauberduenger" then
-		local s = Instance.new("Sparkles")
-		s.SparkleColor = Color3.fromRGB(220, 160, 255)
-		s.Parent = body
 	end
 	return body
 end
-function TOOLS.bag(m, t)
-	local body = ball(m, "Body", 1.8, Vector3.new(0, 0.9, 0), t.Color, Enum.Material.Fabric)
-	part("Part", { Name = "Hals", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 0.6, 0.6), CFrame = CFrame.new(0, 1.85, 0) * UP, Color = t.Color, Material = Enum.Material.Fabric }, m)
-	part("Part", { Name = "Band", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 0.68, 0.68), CFrame = CFrame.new(0, 1.75, 0) * UP, Color = Color3.fromRGB(190, 40, 40), Material = Enum.Material.SmoothPlastic }, m)
-	for i, p in ipairs({ Vector3.new(-0.3, 0.9, -0.88), Vector3.new(0.35, 0.6, -0.86), Vector3.new(1.2, 0.12, -0.4) }) do
-		part("Part", { Name = "Taler", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 0.6, 0.6), CFrame = CFrame.new(p) * (i == 3 and UP or FRONT), Color = Color3.fromRGB(255, 205, 80), Material = Enum.Material.Metal }, m)
+function TOOLS.sack(m, t, accent)
+	local magic = t.Id == "zauberduenger"
+	local c = t.Color
+	local body = ellipsoid(m, "Body", Vector3.new(1.55, 1.75, 1.05), CFrame.new(0, 0.9, 0), c, Enum.Material.Fabric)
+	-- zusammengebundener Hals mit Kordel und Zipfeln
+	ellipsoid(m, "Hals", Vector3.new(0.7, 0.45, 0.55), CFrame.new(0, 1.82, 0), c, Enum.Material.Fabric)
+	cyl(m, "Kordel", 0.12, 0.62, CFrame.new(0, 1.82, 0) * UP, Color3.fromRGB(196, 160, 98), Enum.Material.Fabric)
+	for i, a in ipairs({ -35, 0, 35 }) do
+		ellipsoid(m, "Zipfel", Vector3.new(0.3, 0.5, 0.26), CFrame.new(math.sin(math.rad(a)) * 0.22, 2.12, 0) * CFrame.Angles(0, 0, math.rad(-a)), c:Lerp(Color3.new(1, 1, 1), 0.08 * i), Enum.Material.Fabric)
+	end
+	-- Etikett vorne: helles Feld mit Blatt und Rand in der Farbe der Seltenheit
+	local label = CFrame.new(0, 0.95, -0.5)
+	box(m, "Etikett", Vector3.new(1.0, 0.7, 0.06), label, Color3.fromRGB(246, 238, 214))
+	box(m, "EtikettRand", Vector3.new(1.08, 0.78, 0.04), label * CFrame.new(0, 0, 0.02), accent, Enum.Material.Neon)
+	for _, side in ipairs({ -1, 1 }) do
+		ellipsoid(m, "Blatt", Vector3.new(0.3, 0.16, 0.05), label * CFrame.new(side * 0.13, 0.08, -0.04) * CFrame.Angles(0, 0, side * math.rad(30)), magic and Color3.fromRGB(220, 140, 255) or Color3.fromRGB(96, 190, 80), magic and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	end
+	box(m, "Stiel", Vector3.new(0.05, 0.22, 0.05), label * CFrame.new(0, -0.1, -0.04), Color3.fromRGB(80, 120, 50))
+	-- verstreute Körner davor
+	local rng = Random.new(#t.Id)
+	for i = 1, 9 do
+		ball(m, "Korn", 0.1, Vector3.new(rng:NextNumber(-0.8, 0.8), 0.05, rng:NextNumber(-0.95, -0.55)), magic and Color3.fromHSV(0.78 + rng:NextNumber(0, 0.1), 0.6, 1) or Color3.fromRGB(150, 120, 70), magic and Enum.Material.Neon or Enum.Material.SmoothPlastic)
 	end
 	return body
 end
-function TOOLS.spade(m, t)
-	part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 0.2, 0.2), CFrame = CFrame.new(0, 2.15, 0) * UP, Color = Color3.fromRGB(120, 80, 45), Material = Enum.Material.Wood }, m)
-	part("Part", { Name = "Griff", Size = Vector3.new(0.8, 0.2, 0.2), CFrame = CFrame.new(0, 3.35, 0), Color = t.Color, Material = Enum.Material.Foil }, m)
-	local body = part("Part", { Name = "Body", Size = Vector3.new(0.95, 1.2, 0.12), CFrame = CFrame.new(0, 0.6, 0), Color = t.Color, Material = Enum.Material.Foil }, m)
-	part("Part", { Name = "Kante", Size = Vector3.new(0.6, 0.25, 0.14), CFrame = CFrame.new(0, 1.25, 0), Color = t.Color:Lerp(Color3.new(0, 0, 0), 0.2), Material = Enum.Material.Foil }, m)
-	local s = Instance.new("Sparkles")
-	s.SparkleColor = t.Color
-	s.Parent = body
+function TOOLS.bag(m, t, accent)
+	local c = t.Color
+	local body = ellipsoid(m, "Body", Vector3.new(1.75, 1.55, 1.55), CFrame.new(0, 0.8, 0), c, Enum.Material.Fabric)
+	ellipsoid(m, "Hals", Vector3.new(0.65, 0.4, 0.65), CFrame.new(0, 1.62, 0), c, Enum.Material.Fabric)
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2
+		ellipsoid(m, "Rueschen", Vector3.new(0.32, 0.42, 0.32), CFrame.new(math.cos(a) * 0.22, 1.92, math.sin(a) * 0.22) * CFrame.Angles(math.sin(a) * 0.4, 0, -math.cos(a) * 0.4), c:Lerp(Color3.new(1, 1, 1), 0.1), Enum.Material.Fabric)
+	end
+	cyl(m, "Kordel", 0.12, 0.7, CFrame.new(0, 1.66, 0) * UP, Color3.fromRGB(196, 44, 52), Enum.Material.Fabric)
+	-- Schleife
+	for _, side in ipairs({ -1, 1 }) do
+		ellipsoid(m, "Schleife", Vector3.new(0.34, 0.22, 0.08), CFrame.new(side * 0.2, 1.62, -0.38) * CFrame.Angles(0, 0, side * math.rad(20)), Color3.fromRGB(214, 52, 60))
+	end
+	-- großes Taler-Zeichen vorne
+	local front = CFrame.new(0, 0.85, -0.78)
+	cyl(m, "Zeichen", 0.06, 0.62, front * FRONT, accent, Enum.Material.Neon)
+	cyl(m, "ZeichenInnen", 0.08, 0.42, front * CFrame.new(0, 0, -0.01) * FRONT, Color3.fromRGB(255, 214, 90), Enum.Material.Metal)
+	-- Taler daneben: ein kleiner Stapel und zwei schräge
+	for i = 0, 3 do
+		cyl(m, "Taler", 0.1, 0.5, CFrame.new(1.05, 0.06 + i * 0.1, -0.35) * UP * CFrame.Angles(math.rad(i * 25), 0, 0), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
+	end
+	cyl(m, "Taler", 0.1, 0.5, CFrame.new(-0.95, 0.2, -0.6) * CFrame.Angles(0, math.rad(60), math.rad(70)), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
+	cyl(m, "Taler", 0.1, 0.5, CFrame.new(0.55, 0.06, -0.95) * UP, Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
 	return body
 end
-function TOOLS.chest(m, t)
-	local wood = Color3.fromRGB(120, 72, 38)
-	local body = part("Part", { Name = "Body", Size = Vector3.new(2, 1, 1.3), CFrame = CFrame.new(0, 0.5, 0), Color = wood, Material = Enum.Material.WoodPlanks }, m)
-	part("Part", { Name = "Deckel", Size = Vector3.new(2.04, 0.35, 1.34), CFrame = CFrame.new(0, 1.25, 0.25) * CFrame.Angles(math.rad(-25), 0, 0), Color = wood, Material = Enum.Material.WoodPlanks }, m)
+function TOOLS.spade(m, t, accent)
+	local wood = Color3.fromRGB(132, 88, 50)
+	cyl(m, "Stiel", 2.2, 0.2, CFrame.new(0, 2.2, 0) * UP, wood, Enum.Material.Wood)
+	-- T-Griff mit goldenen Kappen
+	cyl(m, "Griff", 0.85, 0.2, CFrame.new(0, 3.35, 0), wood, Enum.Material.Wood)
+	for _, x in ipairs({ -0.45, 0.45 }) do
+		ball(m, "Kappe", 0.26, Vector3.new(x, 3.35, 0), t.Color, Enum.Material.Foil)
+	end
+	-- Manschette mit Steinen in der Farbe der Seltenheit
+	cyl(m, "Manschette", 0.35, 0.3, CFrame.new(0, 1.2, 0) * UP, t.Color, Enum.Material.Foil)
+	for i = 0, 3 do
+		local a = i / 4 * math.pi * 2
+		ball(m, "Stein", 0.1, Vector3.new(math.cos(a) * 0.16, 1.2, math.sin(a) * 0.16), accent, Enum.Material.Neon)
+	end
+	-- Blatt: gerade Fläche mit runder Spitze, oben eine Trittkante
+	local body = box(m, "Body", Vector3.new(1, 0.85, 0.1), CFrame.new(0, 0.62, 0), t.Color, Enum.Material.Foil)
+	ellipsoid(m, "Spitze", Vector3.new(1, 0.7, 0.1), CFrame.new(0, 0.2, 0), t.Color, Enum.Material.Foil)
+	box(m, "Kante", Vector3.new(1.06, 0.12, 0.2), CFrame.new(0, 1.06, 0), t.Color:Lerp(Color3.new(0, 0, 0), 0.2), Enum.Material.Foil)
+	box(m, "Glanz", Vector3.new(0.12, 0.7, 0.02), CFrame.new(-0.25, 0.6, -0.06) * CFrame.Angles(0, 0, math.rad(12)), Color3.new(1, 1, 1), Enum.Material.Neon, 0.4)
+	return body
+end
+function TOOLS.chest(m, t, accent)
+	local wood = Color3.fromRGB(122, 70, 36)
+	local gold = t.Color
+	local body = box(m, "Body", Vector3.new(2, 1, 1.3), CFrame.new(0, 0.5, 0), wood, Enum.Material.WoodPlanks)
+	-- gewölbter Deckel, geöffnet nach hinten geklappt
+	local hinge = CFrame.new(0, 1.0, 0.65)
+	local lid = hinge * CFrame.Angles(math.rad(-38), 0, 0) * CFrame.new(0, 0.1, -0.65)
+	cyl(m, "Deckel", 2.02, 1.1, lid, wood, Enum.Material.WoodPlanks)
 	for _, x in ipairs({ -0.7, 0.7 }) do
-		part("Part", { Name = "Beschlag", Size = Vector3.new(0.16, 1.02, 1.34), CFrame = CFrame.new(x, 0.5, 0), Color = t.Color, Material = Enum.Material.Foil }, m)
+		cyl(m, "DeckelBand", 0.16, 1.14, lid * CFrame.new(x, 0, 0), gold, Enum.Material.Foil)
+		box(m, "Beschlag", Vector3.new(0.16, 1.02, 1.34), CFrame.new(x, 0.5, 0), gold, Enum.Material.Foil)
 	end
-	part("Part", { Name = "Schloss", Size = Vector3.new(0.3, 0.35, 0.1), CFrame = CFrame.new(0, 0.85, -0.68), Color = t.Color, Material = Enum.Material.Foil }, m)
-	for i = 0, 8 do
+	-- Ecken und Schloss
+	for _, x in ipairs({ -0.98, 0.98 }) do
+		box(m, "Ecke", Vector3.new(0.1, 0.3, 0.3), CFrame.new(x, 0.15, -0.6), gold, Enum.Material.Foil)
+	end
+	box(m, "Schloss", Vector3.new(0.34, 0.4, 0.1), CFrame.new(0, 0.82, -0.68), gold, Enum.Material.Foil)
+	ball(m, "Schlossstein", 0.16, Vector3.new(0, 0.82, -0.74), accent, Enum.Material.Neon)
+	-- Schatz: Berg aus Talern, Edelsteine, ein paar Taler fallen heraus
+	ellipsoid(m, "Schatz", Vector3.new(1.85, 0.65, 1.15), CFrame.new(0, 1.0, 0), gold, Enum.Material.Neon)
+	local rng = Random.new(9)
+	for i = 0, 10 do
 		local a = i * 2.4
-		part("Part", { Name = "Taler", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 0.5, 0.5), CFrame = CFrame.new(math.cos(a) * 0.55, 1.05 + (i % 3) * 0.08, math.sin(a) * 0.35) * UP * CFrame.Angles(0, 0, 0.2 * (i % 2)), Color = t.Color, Material = Enum.Material.Neon }, m)
+		cyl(m, "Taler", 0.08, 0.36, CFrame.new(math.cos(a) * 0.6 * rng:NextNumber(0.3, 1), 1.18 + rng:NextNumber(0, 0.12), math.sin(a) * 0.35 * rng:NextNumber(0.3, 1)) * UP * CFrame.Angles(rng:NextNumber(-0.5, 0.5), 0, rng:NextNumber(-0.4, 0.4)), Color3.fromRGB(255, 226, 120), Enum.Material.Metal)
 	end
-	local l = Instance.new("PointLight")
-	l.Color = t.Color
-	l.Brightness = 3
-	l.Range = 8
-	l.Parent = body
-	local s = Instance.new("Sparkles")
-	s.SparkleColor = t.Color
-	s.Parent = body
+	for i, col in ipairs({ Color3.fromRGB(255, 70, 110), Color3.fromRGB(80, 200, 255), Color3.fromRGB(120, 255, 140) }) do
+		ball(m, "Edelstein", 0.24, Vector3.new(-0.6 + i * 0.35, 1.28, -0.15 + (i % 2) * 0.2), col, Enum.Material.Neon)
+	end
+	for i = 0, 2 do
+		cyl(m, "Taler", 0.08, 0.38, CFrame.new(-0.4 + i * 0.4, 0.05 + (i % 2) * 0.05, -0.95) * UP, Color3.fromRGB(255, 214, 100), Enum.Material.Metal)
+	end
 	return body
 end
 
 function LootBuilder.Tool(tool)
 	local model = Instance.new("Model")
 	model.Name = tool.Name
-	local body = (TOOLS[tool.Model] or TOOLS.bag)(model, tool)
+	local rarity = GardenData.RarityById[tool.Rarity]
+	local rank = RANK[tool.Rarity] or 1
+	local accent = rarity and rarity.Color or tool.Color
+	local body = (TOOLS[tool.Model] or TOOLS.bag)(model, tool, accent)
 	model.PrimaryPart = body
+	if rank >= 3 then
+		local glow = Instance.new("PointLight")
+		glow.Color = accent
+		glow.Brightness = 0.6 + rank * 0.35
+		glow.Range = 5 + rank
+		glow.Parent = body
+	end
+	if rank >= 4 then
+		local sp = Instance.new("Sparkles")
+		sp.SparkleColor = accent
+		sp.Parent = body
+	end
 	measure(model)
 	model:SetAttribute("ToolId", tool.Id)
 	return model
 end
 
--- Was aus einer Münzrolle kommt
--- Samentüte eines Baums: Papiertüte in den Farben des Baums mit Baum-Bild vorne, davor ein paar Samen.
+-- Samentüte eines Baums: bauchige Papiertüte in den Farben des Baums, Rand in der Farbe der Seltenheit,
+-- vorne ein Bild des Baums auf hellem Feld, oben eingerissen mit herausrieselnden Samen, davor ein Häufchen.
 -- Seltene Samen leuchten (ab Episch) und funkeln (ab Legendär).
-local SEED_RANK = { gewoehnlich = 1, selten = 2, episch = 3, legendaer = 4, mythisch = 5, goettlich = 6 }
--- Ellipsoid: Block mit Kugel-Mesh (ein Ball-Part bleibt in Roblox immer rund)
-local function ellipsoid(parent, name, size, cf, color, material)
-	local p = part("Part", { Name = name, Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic }, parent)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Parent = p
-	return p
-end
 function LootBuilder.Seed(tree)
 	local model = Instance.new("Model")
 	model.Name = tree.SeedName or (tree.Name .. "-Samen")
-	local rank = SEED_RANK[tree.Rarity] or 1
+	local rank = RANK[tree.Rarity] or 1
+	local rarity = GardenData.RarityById[tree.Rarity]
+	local accent = rarity and rarity.Color or tree.Fruit
 	local paper = tree.Leaf:Lerp(Color3.new(1, 1, 1), 0.35)
-	local body = part("Part", { Name = "Body", Size = Vector3.new(1.5, 2, 0.32), CFrame = CFrame.new(0, 1.12, 0) * CFrame.Angles(math.rad(-6), 0, 0), Color = paper, Material = Enum.Material.SmoothPlastic }, model)
+	local tilt = CFrame.new(0, 1.12, 0) * CFrame.Angles(math.rad(-6), 0, 0)
+	local body = box(model, "Body", Vector3.new(1.5, 2, 0.24), tilt, paper)
 	model.PrimaryPart = body
-	-- umgefalzter Rand oben, Zickzack wie abgerissen
-	part("Part", { Name = "Falz", Size = Vector3.new(1.52, 0.32, 0.36), CFrame = body.CFrame * CFrame.new(0, 0.9, 0), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
+	ellipsoid(model, "Bauch", Vector3.new(1.42, 1.8, 0.36), tilt * CFrame.new(0, -0.05, 0.08), paper)
+	-- Rand in der Farbe der Seltenheit (vier Leisten)
+	local front = tilt * CFrame.new(0, 0, -0.13)
+	local edge = rank >= 3 and Enum.Material.Neon or Enum.Material.Foil
+	for _, e in ipairs({ { 0, 0.97, 1.5, 0.07 }, { 0, -0.97, 1.5, 0.07 }, { -0.72, 0, 0.07, 2 }, { 0.72, 0, 0.07, 2 } }) do
+		box(model, "Rand", Vector3.new(e[3], e[4], 0.04), front * CFrame.new(e[1], e[2], 0), accent, edge)
+	end
+	-- oben gefalzt und eingerissen (Zacken), Samen rieseln heraus
+	box(model, "Falz", Vector3.new(1.52, 0.3, 0.3), tilt * CFrame.new(0, 0.86, 0), tree.Trunk)
 	for i = 0, 5 do
-		part("Part", { Name = "Zacke", Size = Vector3.new(0.2, 0.2, 0.3), CFrame = body.CFrame * CFrame.new(-0.62 + i * 0.25, 1.06, 0) * CFrame.Angles(0, 0, math.rad(45)), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
+		box(model, "Zacke", Vector3.new(0.2, 0.2, 0.28), tilt * CFrame.new(-0.62 + i * 0.25, 1.02, 0) * CFrame.Angles(0, 0, math.rad(45)), tree.Trunk)
 	end
-	-- Bild: kleiner Baum auf hellem Feld
-	local front = body.CFrame * CFrame.new(0, -0.05, -0.17)
-	part("Part", { Name = "Bildfeld", Size = Vector3.new(1.15, 1.2, 0.04), CFrame = front, Color = Color3.fromRGB(250, 244, 226), Material = Enum.Material.SmoothPlastic }, model)
-	part("Part", { Name = "Bildstamm", Size = Vector3.new(0.14, 0.42, 0.05), CFrame = front * CFrame.new(0, -0.32, -0.02), Color = tree.Trunk, Material = Enum.Material.SmoothPlastic }, model)
-	ellipsoid(model, "Bildkrone", Vector3.new(0.7, 0.58, 0.08), front * CFrame.new(0, 0.08, -0.03), tree.Leaf, rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	local seedColor = tree.Trunk:Lerp(tree.Fruit, 0.35)
+	local seedMat = rank >= 4 and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	for i, o in ipairs({ { 0.42, 1.1 }, { 0.56, 1.13 }, { 0.49, 1.22 } }) do
+		ellipsoid(model, "Rieseln", Vector3.new(0.17, 0.12, 0.14), tilt * CFrame.new(o[1], o[2], -0.04) * CFrame.Angles(0, 0, i), seedColor, seedMat)
+	end
+	-- Bild: Baum mit Münzen auf hellem Feld, darüber eine Sonne
+	local pic = front * CFrame.new(0, 0.05, -0.02)
+	box(model, "Bildfeld", Vector3.new(1.12, 1.15, 0.04), pic, Color3.fromRGB(250, 244, 226))
+	box(model, "Boden", Vector3.new(1.12, 0.18, 0.05), pic * CFrame.new(0, -0.48, -0.01), Color3.fromRGB(120, 170, 80))
+	box(model, "Bildstamm", Vector3.new(0.14, 0.42, 0.05), pic * CFrame.new(0, -0.24, -0.02), tree.Trunk)
+	ellipsoid(model, "Bildkrone", Vector3.new(0.72, 0.6, 0.08), pic * CFrame.new(0, 0.14, -0.03), tree.Leaf, rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
 	for i = -1, 1 do
-		part("Part", { Name = "Bildmuenze", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.04, 0.16, 0.16), CFrame = front * CFrame.new(i * 0.2, 0.05 + math.abs(i) * 0.08, -0.08) * FRONT, Color = tree.Fruit, Material = Enum.Material.Neon }, model)
+		cyl(model, "Bildmuenze", 0.04, 0.16, pic * CFrame.new(i * 0.2, 0.1 + math.abs(i) * 0.09, -0.08) * FRONT, tree.Fruit, Enum.Material.Neon)
 	end
-	-- Banderole unten in der Farbe der Seltenheit (Rang als Punkte)
-	part("Part", { Name = "Band", Size = Vector3.new(1.52, 0.22, 0.34), CFrame = body.CFrame * CFrame.new(0, -0.82, 0), Color = tree.Fruit, Material = rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic }, model)
-	-- Samen davor auf dem Boden
+	ball(model, "Sonne", 0.2, (pic * CFrame.new(0.38, 0.4, -0.03)).Position, Color3.fromRGB(255, 210, 90), Enum.Material.Neon)
+	-- Banderole unten mit Edelstein in der Farbe der Seltenheit
+	box(model, "Band", Vector3.new(1.52, 0.24, 0.32), tilt * CFrame.new(0, -0.8, 0), tree.Fruit, rank >= 3 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	box(model, "Stein", Vector3.new(0.22, 0.22, 0.08), front * CFrame.new(0, -0.8, -0.06) * CFrame.Angles(0, 0, math.rad(45)), accent, Enum.Material.Neon)
+	-- Glanzstreifen schräg über die Tüte
+	box(model, "Glanz", Vector3.new(0.14, 1.9, 0.02), front * CFrame.new(-0.42, 0, -0.05) * CFrame.Angles(0, 0, math.rad(-14)), Color3.new(1, 1, 1), Enum.Material.Neon, 0.75)
+	-- Häufchen Samen davor
 	local rng = Random.new(#tree.Id)
-	for i = 1, 4 do
-		ellipsoid(model, "Samen", Vector3.new(0.26, 0.17, 0.2), CFrame.new(-0.5 + i * 0.22 + rng:NextNumber(-0.05, 0.05), 0.09, -0.55 - rng:NextNumber(0, 0.25)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), tree.Trunk:Lerp(tree.Fruit, 0.35), rank >= 4 and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	for i = 1, 6 do
+		ellipsoid(model, "Samen", Vector3.new(0.26, 0.17, 0.2), CFrame.new(-0.55 + i * 0.17 + rng:NextNumber(-0.05, 0.05), 0.09 + (i % 3 == 0 and 0.12 or 0), -0.6 - rng:NextNumber(0, 0.25)) * CFrame.Angles(0, rng:NextNumber(0, 3), rng:NextNumber(-0.3, 0.3)), seedColor, seedMat)
 	end
 	if rank >= 3 then
 		local glow = Instance.new("PointLight")
-		glow.Color = tree.Leaf
+		glow.Color = accent
 		glow.Brightness = 0.6 + rank * 0.3
 		glow.Range = 5 + rank
 		glow.Parent = body
 	end
 	if rank >= 4 then
 		local sp = Instance.new("Sparkles")
-		sp.SparkleColor = tree.Fruit
+		sp.SparkleColor = accent
 		sp.Parent = body
 	end
 	measure(model)
@@ -670,12 +794,45 @@ export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- in Reihen zu je 4. garden = { Beds = Anzahl, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n } oder false } }
 -- (Stage und Ripe aus GardenData.Stage/Ripe). Beet 1 liegt vorne links (von der Kamera vor dem Tor aus).
 -- Über wachsenden Bäumen schwebt ein Timer; GardenBuilder.SetTimer(model, i, text, fortschritt) zählt ihn weiter.
+-- Animation: GardenBuilder.Animate(model, zeit, dt) jedes Bild aufrufen. Bäume wachsen dann stufenlos mit dem
+-- Fortschritt (Plot.Progress bzw. SetTimer), wiegen sich im Wind, wachsende atmen leicht und lassen Blättchen
+-- aufsteigen. Plot.Fresh = true: Das Beet hat gerade eine neue Stufe erreicht, der Baum ploppt mit Funken auf.
 -- GardenBuilder.BedPosition(i, beds) gibt die Mitte eines Beets zurück.
 
 local GardenData = require(script.Parent.GardenData)
 local LootBuilder = require(script.Parent.LootBuilder)
 
 local GardenBuilder = {}
+
+-- Animations-Daten je gebautem Garten (schwache Schlüssel: verschwindet mit dem Model)
+local animated = setmetatable({}, { __mode = "k" })
+
+-- Teile eines Baums relativ zu seinem Fußpunkt merken; gibt eine Funktion zum Setzen (Ort, Größe) zurück
+local function rigTree(tree, base)
+	local parts = {}
+	for _, p in ipairs(tree:GetDescendants()) do
+		if p:IsA("BasePart") then
+			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size })
+		end
+	end
+	return function(cf, k)
+		for _, e in ipairs(parts) do
+			local o = e.Offset
+			e.Part.Size = e.Size * math.max(k, 0.01)
+			e.Part.CFrame = cf * CFrame.new(o.Position * k) * o.Rotation
+		end
+	end
+end
+
+-- Zielgröße eines Baums aus Stufe und Fortschritt (0–1 bis ausgewachsen)
+local function growScale(stage, progress)
+	if stage <= 1 then
+		return 0.55 + 0.75 * math.clamp(progress / 0.34, 0, 1) -- Keimling wird größer
+	elseif stage == 2 then
+		return 0.42 + 0.58 * math.clamp((progress - 0.34) / 0.66, 0, 1) -- Jungbaum wächst zur vollen Größe
+	end
+	return 1
+end
 
 GardenBuilder.Columns = 4
 GardenBuilder.Spacing = 7
@@ -717,6 +874,7 @@ local function sign(parent, text, cf, size, bg, fg)
 end
 
 function GardenBuilder.Build(garden)
+	local anim = {}
 	local beds = garden.Beds
 	local cols = GardenBuilder.Columns
 	local rows = math.max(1, math.ceil(beds / cols))
@@ -766,12 +924,49 @@ function GardenBuilder.Build(garden)
 		local plot = garden.Plots and garden.Plots[i]
 		if plot and plot.Tree then
 			local tree = GardenData.ById[plot.Tree]
-			local t = LootBuilder.Tree(tree, plot.Stage or 1, plot.Ripe or 0)
-			moveModel(t, CFrame.new(pos + Vector3.new(0, 0.4, 0)))
+			local stage = plot.Stage or 1
+			local t = LootBuilder.Tree(tree, stage, plot.Ripe or 0, true)
+			local base = CFrame.new(pos + Vector3.new(0, 0.4, 0))
+			moveModel(t, base)
 			t.Parent = model
+			-- für die Animation merken
+			local progress = plot.Progress or (stage >= 3 and 1 or 0)
+			local entry = { Place = rigTree(t, base), Base = base, Stage = stage, Progress = progress, Shown = growScale(stage, progress), Phase = i * 1.7, Fresh = plot.Fresh, Born = nil, Height = t:GetAttribute("Height") or 2 }
+			entry.Place(base, entry.Shown)
+			anim[i] = entry
+			local fx = part("Part", { Name = "Wachsen" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = base * CFrame.new(0, 0.3, 0) }, model)
+			if stage < 3 then
+				-- Blättchen steigen auf, solange der Baum wächst
+				local leaves = Instance.new("ParticleEmitter")
+				leaves.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				leaves.Color = ColorSequence.new(tree.Leaf, tree.Leaf:Lerp(Color3.new(1, 1, 1), 0.5))
+				leaves.LightEmission = 0.5
+				leaves.Lifetime = NumberRange.new(1.2, 2)
+				leaves.Speed = NumberRange.new(0.8, 1.8)
+				leaves.SpreadAngle = Vector2.new(30, 30)
+				leaves.Size = NumberSequence.new(0.22, 0)
+				leaves.Rate = 3
+				leaves.Parent = fx
+			end
+			if plot.Fresh then
+				-- neue Stufe erreicht: Funken
+				local pop = Instance.new("ParticleEmitter")
+				pop.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				pop.Color = ColorSequence.new(tree.Fruit, Color3.new(1, 1, 1))
+				pop.LightEmission = 1
+				pop.Lifetime = NumberRange.new(0.5, 1)
+				pop.Speed = NumberRange.new(4, 8)
+				pop.SpreadAngle = Vector2.new(180, 180)
+				pop.Drag = 3
+				pop.Size = NumberSequence.new(0.35, 0)
+				pop.Rate = 0
+				pop.Parent = fx
+				pop:Emit(stage >= 3 and 40 or 20)
+			end
 			-- Wachstums-Timer über dem Beet, solange der Baum wächst (Text setzt GardenBuilder.SetTimer)
 			if (plot.Stage or 1) < 3 then
-				local holder = part("Part", { Name = "Timer" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = CFrame.new(pos + Vector3.new(0, (plot.Stage or 1) == 1 and 2.6 or 4.6, 0)) }, model)
+				local holder = part("Part", { Name = "Timer" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = base * CFrame.new(0, entry.Height * entry.Shown + 1, 0) }, model)
+				entry.Timer = holder
 				local gui = Instance.new("BillboardGui")
 				gui.Name = "Timer"
 				gui.Size = UDim2.new(3.4, 0, 1.15, 0)
@@ -814,7 +1009,60 @@ function GardenBuilder.Build(garden)
 	end
 	model:SetAttribute("Width", width)
 	model:SetAttribute("Depth", depth)
+	animated[model] = anim
 	return model
+end
+
+-- Ganzen Garten an einen Ort setzen (cf * jetziger Ort); die Animation zieht mit
+function GardenBuilder.Move(model, cf)
+	moveModel(model, cf)
+	local anim = animated[model]
+	if anim then
+		for _, e in pairs(anim) do
+			e.Base = cf * e.Base
+		end
+	end
+end
+
+-- Fortschritt eines Beets (0–1) setzen; der Baum wächst in Animate sanft auf die neue Größe
+function GardenBuilder.SetProgress(model, i, progress)
+	local anim = animated[model]
+	if anim and anim[i] then
+		anim[i].Progress = progress
+	end
+end
+
+-- Jedes Bild aufrufen: Bäume wachsen sanft, wiegen sich, wachsende atmen; neue Stufen ploppen auf
+function GardenBuilder.Animate(model, t, dt)
+	local anim = animated[model]
+	if not anim then return end
+	for _, e in pairs(anim) do
+		local target = growScale(e.Stage, e.Progress)
+		e.Shown = e.Shown + (target - e.Shown) * math.min(1, (dt or 0.03) * 3)
+		local k = e.Shown
+		if e.Fresh then
+			e.Born = e.Born or t
+			local age = (t - e.Born) / 0.5
+			if age < 1 then
+				-- Überschwingen wie Back-Out, von 60 % auf 100 %
+				local back = 1 + 2.7 * (age - 1) ^ 3 + 1.7 * (age - 1) ^ 2
+				k = k * (0.6 + 0.4 * back)
+			else
+				e.Fresh = false
+			end
+		end
+		local growing = e.Stage < 3
+		local sway = growing and 1.5 or 1
+		if growing then
+			k = k * (1 + math.sin(t * 2.2 + e.Phase) * 0.02)
+		end
+		local rot = CFrame.Angles(math.sin(t * 1.3 + e.Phase) * 0.03 * sway, 0, math.cos(t * 1.1 + e.Phase) * 0.04 * sway)
+		e.Place(e.Base * rot, k)
+		if e.Timer then
+			-- der Timer schwebt über der Spitze und wächst mit
+			e.Timer.CFrame = e.Base * CFrame.new(0, e.Height * e.Shown + 1, 0)
+		end
+	end
 end
 
 -- Timer eines Beets setzen (Text wie "2 min 5 s", Fortschritt 0–1), ohne den Garten neu zu bauen
@@ -825,6 +1073,7 @@ function GardenBuilder.SetTimer(model, i, text, progress)
 	local bg = gui:FindFirstChildOfClass("Frame")
 	bg.Zeit.Text = "⏳ " .. text
 	bg.Balken.Fuellung.Size = UDim2.new(math.clamp(progress, 0, 1), 0, 1, 0)
+	GardenBuilder.SetProgress(model, i, progress)
 end
 
 return GardenBuilder
@@ -993,12 +1242,14 @@ export const GARDEN_CLIENT = `-- Coinmaster Adventure · Münzbaumgarten (Client
 -- Baut den Garten des Spielers aus dem Attribut Garden mit GardenBuilder (nur für ihn sichtbar).
 -- Platz: ein Part „GartenPlatz“ im Workspace (seine Oberseite ist der Boden), sonst neben dem Spawn.
 -- Wachsen und Reifen werden jede Sekunde geprüft; neu gebaut wird nur, wenn sich etwas ändert.
--- Über wachsenden Bäumen zählt ein Timer die Zeit bis „ausgewachsen“ herunter.
+-- Über wachsenden Bäumen zählt ein Timer die Zeit bis „ausgewachsen“ herunter. Die Bäume wachsen animiert
+-- (GardenBuilder.Animate jedes Bild), eine neue Stufe ploppt mit Funken auf.
 -- „Zum Garten“ im Garten-Fenster teleportiert hierher (UIAction gartenBesuchen).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local GardenData = require(root:WaitForChild("GardenData"))
 local GardenBuilder = require(root:WaitForChild("GardenBuilder"))
@@ -1013,6 +1264,7 @@ local function place()
 end
 
 local model, signature = nil, ""
+local lastStage = {} -- Stufe je Beet beim letzten Bau (für das Aufploppen bei neuer Stufe)
 local function update()
 	local ok, g = pcall(function()
 		return HttpService:JSONDecode(player:GetAttribute("Garden") or "null")
@@ -1027,7 +1279,8 @@ local function update()
 	for i = 1, g.Beds do
 		local p = g.Plots[tostring(i)]
 		if p then
-			plots[i] = { Tree = p.Tree, Stage = GardenData.Stage(p, now), Ripe = GardenData.Ripe(p, now) }
+			local tree = GardenData.ById[p.Tree]
+			plots[i] = { Tree = p.Tree, Stage = GardenData.Stage(p, now), Ripe = GardenData.Ripe(p, now), Progress = 1 - GardenData.GrowLeft(p, now) / tree.Grow }
 			table.insert(parts, p.Tree .. plots[i].Stage .. plots[i].Ripe)
 		else
 			plots[i] = false
@@ -1036,16 +1289,19 @@ local function update()
 	end
 	local sig = table.concat(parts, ",")
 	if sig ~= signature or not model then
+		local first = model == nil
 		signature = sig
+		for i = 1, g.Beds do
+			local key = plots[i] and (plots[i].Tree .. plots[i].Stage) or "-"
+			if plots[i] and not first and lastStage[i] ~= key then
+				plots[i].Fresh = true -- neue Stufe: aufploppen
+			end
+			lastStage[i] = key
+		end
 		if model then model:Destroy() end
 		model = GardenBuilder.Build({ Beds = g.Beds, Plots = plots })
 		model.Name = "MeinGarten"
-		local base = place()
-		for _, d in ipairs(model:GetDescendants()) do
-			if d:IsA("BasePart") then
-				d.CFrame = base * d.CFrame
-			end
-		end
+		GardenBuilder.Move(model, place())
 		model.Parent = workspace
 	end
 	-- Timer über wachsenden Bäumen jede Sekunde weiterzählen
@@ -1060,6 +1316,12 @@ local function update()
 end
 
 player:GetAttributeChangedSignal("Garden"):Connect(update)
+-- jedes Bild: Bäume wachsen sanft und wiegen sich
+RunService.Heartbeat:Connect(function(dt)
+	if model then
+		GardenBuilder.Animate(model, os.clock(), dt)
+	end
+end)
 task.spawn(function()
 	while true do
 		update()
