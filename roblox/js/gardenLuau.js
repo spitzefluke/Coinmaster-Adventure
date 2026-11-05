@@ -711,7 +711,7 @@ return GardenBuilder
 
 // Server: Garten und Münzrollen. RemoteFunction GardenRemote, Spielstand im DataStore.
 export const GARDEN_SERVER = `-- Coinmaster Adventure · Münzbaumgarten und Münzrollen (Server)
--- RemoteFunction GardenRemote: openRoll (Rollen-Id) sowie die Garten-Aktionen aus GardenData.Act
+-- RemoteFunction GardenRemote: openRoll (Rollen-Id → ok, Text, Id der gewonnenen Sache) sowie die Garten-Aktionen aus GardenData.Act
 -- (buyGarden, buyBed, plant, use, harvest, dig). Der Server prüft alles und würfelt selbst.
 -- Der Garten steht als JSON im Attribut Garden am Spieler. Gespeichert wird er mit dem ganzen Spielstand
 -- (ServerScriptService > CoinmasterServer > PlayerData); Aufträge gibt es erst, wenn der Spielstand geladen ist.
@@ -786,17 +786,12 @@ for _, p in ipairs(Players:GetPlayers()) do
 	task.spawn(onJoin, p)
 end
 
--- Rolle öffnen: würfeln, ins Inventar legen; gibt die Ids mit Komma zurück
+-- Rolle öffnen: eine Sache würfeln und ins Inventar legen; gibt ihre Id und die Sache zurück
 local function openRoll(player, entry, roll)
-	local items = RollData.Open(roll.Id)
-	local ids = {}
-	for _, item in ipairs(items) do
-		entry.Data.Inv[item.Id] = (entry.Data.Inv[item.Id] or 0) + 1
-		table.insert(ids, item.Id)
-	end
+	local item = RollData.Open(roll.Id)
+	entry.Data.Inv[item.Id] = (entry.Data.Inv[item.Id] or 0) + 1
 	publish(player)
-	local best = items[#items]
-	return table.concat(ids, ","), best
+	return item.Id, item
 end
 
 remote.OnServerInvoke = function(player, action, a, b)
@@ -830,8 +825,8 @@ remote.OnServerInvoke = function(player, action, a, b)
 		end
 		if taler.Value < roll.Price.Amount then return false, "Zu wenig Taler" end
 		taler.Value = taler.Value - roll.Price.Amount
-		local ids, best = openRoll(player, entry, roll)
-		return true, roll.Name .. ": " .. best.Name .. "!", ids
+		local id, item = openRoll(player, entry, roll)
+		return true, roll.Name .. ": " .. item.Name .. "!", id
 	end
 	local ok, text, delta = GardenData.Act(entry.Data, action, a, b, os.time(), taler.Value)
 	if ok then
@@ -860,8 +855,8 @@ if next(ROLL_PRODUCTS) then
 			while #receipts > 50 do
 				table.remove(receipts, 1)
 			end
-			local ids = openRoll(player, entry, RollData.ById[rollId])
-			rollEvent:FireClient(player, rollId, ids)
+			local id = openRoll(player, entry, RollData.ById[rollId])
+			rollEvent:FireClient(player, rollId, id)
 		end
 		-- erst bestätigen, wenn der Spielstand mit dem Kauf gespeichert ist
 		if not PlayerData.Save(player) then
@@ -956,8 +951,8 @@ end
 local rollEvent = root:WaitForChild("RollOpened", 10)
 if rollEvent then
 	local GameUI = require(root:WaitForChild("GameUI"))
-	rollEvent.OnClientEvent:Connect(function(rollId, ids)
-		GameUI.PlayRoll(rollId, ids)
+	rollEvent.OnClientEvent:Connect(function(rollId, itemId)
+		GameUI.PlayRoll(rollId, itemId)
 	end)
 end
 `;

@@ -27,7 +27,6 @@ export function rollDataSource({ ROLLS }) {
       Alias: r.alias ? str(r.alias) : undefined,
       Rank: num(r.rank),
       RankName: str(r.rankName),
-      Items: num(r.items),
       Luck: num(r.luck),
       Guarantee: r.guarantee ? str(r.guarantee) : undefined,
       Paper: color(r.paper),
@@ -40,9 +39,9 @@ export function rollDataSource({ ROLLS }) {
     }),
   );
   return `${HEADER('Münzrollen')}
--- Eine Münzrolle enthält Items Sachen für den Münzbaumgarten (Bäume und Werkzeug aus GardenData).
+-- Aus einer Münzrolle kommt genau eine Sache für den Münzbaumgarten (Baum oder Werkzeug aus GardenData).
 -- Luck hebt seltene Stufen an: Gewicht einer Seltenheit = Chance × Luck ^ (Stufe / 5).
--- Die letzte Sache ist mindestens Guarantee (falls vorher nichts so Seltenes kam).
+-- Guarantee: Mindest-Seltenheit (seltener geht immer, gewöhnlicher nie).
 -- Price = nil: nicht kaufbar.
 -- Wichtig: RollData.Open nur auf dem Server aufrufen, nie auf dem Client.
 
@@ -91,35 +90,27 @@ local function pickTier(chances, rng)
 	return last
 end
 
--- Öffnet eine Rolle: Liste von Sachen (Einträge aus GardenData.Loot), seltenste zuletzt
-function RollData.Open(rollId, rng)
+-- Mindest-Seltenheit einer Rolle als Index (1 = Gewöhnlich)
+function RollData.MinIndex(roll)
+	return roll.Guarantee and GardenData.RarityById[roll.Guarantee].Index or 1
+end
+
+-- Eine Sache nach den Chancen der Rolle würfeln (Eintrag aus GardenData.Loot)
+function RollData.Pick(roll, rng)
 	rng = rng or Random.new()
-	local roll = RollData.ById[rollId]
-	local min = roll.Guarantee and GardenData.RarityById[roll.Guarantee].Index or 1
-	local free = RollData.TierChances(roll)
-	local sure = RollData.TierChances(roll, min)
-	local out, reached = {}, false
-	for k = 1, roll.Items do
-		local chances = free
-		if k == roll.Items and not reached then
-			chances = sure
+	local tier = GardenData.Rarities[pickTier(RollData.TierChances(roll, RollData.MinIndex(roll)), rng)]
+	local pool = {}
+	for _, item in ipairs(GardenData.Loot) do
+		if item.Rarity == tier.Id then
+			table.insert(pool, item)
 		end
-		local tier = GardenData.Rarities[pickTier(chances, rng)]
-		if tier.Index >= min then
-			reached = true
-		end
-		local pool = {}
-		for _, item in ipairs(GardenData.Loot) do
-			if item.Rarity == tier.Id then
-				table.insert(pool, item)
-			end
-		end
-		table.insert(out, pool[rng:NextInteger(1, #pool)])
 	end
-	table.sort(out, function(a, b)
-		return GardenData.RarityById[a.Rarity].Index < GardenData.RarityById[b.Rarity].Index
-	end)
-	return out
+	return pool[rng:NextInteger(1, #pool)]
+end
+
+-- Öffnet eine Rolle: genau eine Sache
+function RollData.Open(rollId, rng)
+	return RollData.Pick(RollData.ById[rollId], rng)
 end
 
 return RollData
@@ -233,13 +224,14 @@ return RollBuilder
 `;
 
 export const ROLL_FX = `${HEADER('Münzrolle öffnen')}
--- RollFx.Play(rollId, itemIds, options) zeigt das Öffnen einer Rolle an einem Ort
--- (options.CFrame = Boden unter der Rolle, options.Parent = Elternteil, Standard workspace).
--- itemIds: Liste von Ids aus GardenData (Bäume, Werkzeug), am besten aus RollData.Open auf dem Server.
--- Die Rolle wackelt, hebt ab, dreht sich immer schneller und reißt auf. Papierfetzen fliegen, dann
--- springen die Sachen einzeln heraus und reihen sich auf. Seltene kommen mit Blitz und Druckwelle,
--- vor einer sehr seltenen letzten (ab Legendär) gibt es eine kurze Pause.
--- Läuft am besten auf dem Client (LocalScript). Gibt { Folder, Items } zurück, wenn alles liegt.
+-- RollFx.Play(rollId, itemId, options) zeigt das Öffnen einer Rolle an einem Ort
+-- (options.CFrame = Boden unter der Rolle, options.Parent = Elternteil, Standard workspace,
+-- options.Window = halbe Breite des Rollbands in Studs, Standard RollFx.Window).
+-- itemId: Id aus GardenData (Baum oder Werkzeug), am besten aus RollData.Open auf dem Server.
+-- Die Rolle wackelt, hebt ab, dreht sich immer schneller und reißt auf. Dann läuft ein Band mit Sachen
+-- durch (Rollanimation), wird langsamer und bleibt unter der Markierung auf der gewonnenen Sache stehen.
+-- Die springt heraus; seltene mit Blitz und Druckwelle. Die Vorderseite zeigt nach −Z.
+-- Läuft am besten auf dem Client (LocalScript). Gibt { Folder, Item } zurück, wenn alles steht.
 
 local TweenService = game:GetService("TweenService")
 local GardenData = require(script.Parent.GardenData)
@@ -249,8 +241,11 @@ local RollBuilder = require(script.Parent.RollBuilder)
 
 local RollFx = {}
 
-RollFx.ItemSize = 2.1 -- so hoch wird jede Sache in Studs
-RollFx.PerRow = 4
+RollFx.ItemSize = 2.1 -- so hoch wird jede Sache im Band in Studs
+RollFx.Spacing = 3.3 -- Abstand der Felder im Band
+RollFx.Window = 12 -- halbe Breite des sichtbaren Bands
+RollFx.SpinTime = 5 -- Sekunden, bis das Band steht
+RollFx.Slots = 30 -- Felder im Band; das gewonnene liegt bei Slots − 4
 
 local function tween(inst, time, goal, style, dir)
 	local t = TweenService:Create(inst, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), goal)
@@ -317,20 +312,6 @@ local function rig(model, pivot)
 	end, parts
 end
 
--- Platz der k-ten von n Sachen: Reihen zu je PerRow, leicht gebogen, oberste Reihe zuerst
-local function slot(k, n)
-	local per = RollFx.PerRow
-	local rows = math.ceil(n / per)
-	local row = math.floor((k - 1) / per)
-	local inRow = math.min(per, n - row * per)
-	local col = (k - 1) % per
-	-- die Kamera schaut von vorne (−Z), dort liegt +X links: darum von +X nach −X auffüllen
-	local x = ((inRow - 1) / 2 - col) * 2.45
-	local y = 2.2 + (rows - 1 - row) * 2.95
-	local z = -1.6 + 0.09 * x * x
-	return Vector3.new(x, y, z)
-end
-
 local function label(parent, item, tier)
 	local gui = Instance.new("BillboardGui")
 	-- Größe in Studs, damit sich die Schilder nebeneinander nie überlappen
@@ -361,7 +342,7 @@ local function label(parent, item, tier)
 	return gui
 end
 
-function RollFx.Play(rollId, itemIds, options)
+function RollFx.Play(rollId, itemId, options)
 	options = options or {}
 	local roll = RollData.ById[rollId]
 	local origin = options.CFrame or CFrame.new()
@@ -476,85 +457,213 @@ function RollFx.Play(rollId, itemIds, options)
 	end)
 	task.wait(0.2)
 
-	-- 4. Die Sachen springen einzeln heraus, die seltenste zuletzt
-	local items = {}
-	local n = #itemIds
-	for k, id in ipairs(itemIds) do
-		local item = GardenData.ById[id]
-		local tier = GardenData.RarityById[item.Rarity]
-		local rare = tier.Index - 1 -- 0 bei Gewöhnlich
-		local isLast = k == n
-		-- Spannung vor einer sehr seltenen letzten Sache
-		if isLast and rare >= 3 then
-			local tease = emitter(burst, { Color = ColorSequence.new(tier.Color), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(-6, -3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.4, 0), Rate = 40 + rare * 15 })
-			local pulse = Instance.new("PointLight")
-			pulse.Color = tier.Color
-			pulse.Brightness = 0
-			pulse.Range = 14
-			pulse.Parent = burst
-			tween(pulse, 0.5 + rare * 0.2, { Brightness = 6 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
-			task.wait(0.5 + rare * 0.2)
-			tease.Rate = 0
-			tween(pulse, 0.6, { Brightness = 0 })
+	-- 4. Rollband: Felder mit Sachen laufen von rechts nach links durch und bleiben auf dem Gewinn stehen
+	if type(itemId) == "table" then itemId = itemId[1] end
+	local item = GardenData.ById[itemId]
+	local tier = GardenData.RarityById[item.Rarity]
+	local rare = tier.Index - 1 -- 0 bei Gewöhnlich
+	local window = options.Window or RollFx.Window
+	local spacing = RollFx.Spacing
+	local reelC = origin * CFrame.new(0, 3.9, 0)
+	local reel = Instance.new("Model")
+	reel.Name = "Rollband"
+	reel.Parent = folder
+	local function block(name, size, cf, color, material, transparency)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material or Enum.Material.SmoothPlastic
+		p.Transparency = transparency or 0
+		p.Parent = reel
+		return p
+	end
+	local width = window * 2 + 2
+	local frameParts = {
+		block("Rueckwand", Vector3.new(width, 4.4, 0.3), reelC * CFrame.new(0, 0, 1), Color3.fromRGB(26, 22, 36)),
+		block("RandOben", Vector3.new(width, 0.18, 0.5), reelC * CFrame.new(0, 2.25, 0.4), glow, Enum.Material.Neon),
+		block("RandUnten", Vector3.new(width, 0.18, 0.5), reelC * CFrame.new(0, -2.25, 0.4), glow, Enum.Material.Neon),
+	}
+	local marker = block("Markierung", Vector3.new(0.09, 4.3, 0.09), reelC * CFrame.new(0, 0, -1.7), Color3.new(1, 1, 1), Enum.Material.Neon, 0.35)
+	table.insert(frameParts, marker)
+	for _, y in ipairs({ 2.45, -2.45 }) do
+		table.insert(frameParts, block("Zeiger", Vector3.new(0.5, 0.5, 0.2), reelC * CFrame.new(0, y, -1.7) * CFrame.Angles(0, 0, math.rad(45)), Color3.fromRGB(255, 220, 120), Enum.Material.Neon))
+	end
+	-- Band aufrollen lassen: Rand wächst aus der Mitte
+	for _, p in ipairs(frameParts) do
+		if p.Name ~= "Markierung" and p.Name ~= "Zeiger" then
+			local size = p.Size
+			p.Size = Vector3.new(0.2, size.Y, size.Z)
+			tween(p, 0.35, { Size = size }, Enum.EasingStyle.Back)
 		end
-
-		local model = LootBuilder.Build(item)
-		model.Parent = folder
-		local height = model:GetAttribute("Height") or 2
-		local scale = RollFx.ItemSize / height
-		local place = rig(model, CFrame.new(0, height / 2, 0))
-		local from = center.Position
-		local to = (origin * CFrame.new(slot(k, n))).Position
-		local flight = 0.32 + (isLast and 0.12 or 0)
-		local steps = math.max(4, math.floor(flight / 0.03))
-		local turns = 1 + math.min(rare, 3)
-		for s = 1, steps do
-			local t = s / steps
-			local e = 1 - (1 - t) ^ 3
-			local pos = from:Lerp(to, e) + Vector3.new(0, math.sin(t * math.pi) * 2.2, 0)
-			place(CFrame.new(pos) * CFrame.Angles(0, (1 - e) * turns * math.pi * 2, 0), scale * (0.3 + 0.7 * e))
-			task.wait(flight / steps)
-		end
-		place(CFrame.new(to), scale)
-		local anchor = holder(folder, CFrame.new(to))
-		anchor.Name = item.Name
-		label(anchor, item, tier)
-		local pop = emitter(anchor, { Color = ColorSequence.new(tier.Color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.4, 0.8), Speed = NumberRange.new(3, 6 + rare), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.3, 0) })
-		pop:Emit(6 + rare * 8)
-		if rare >= 1 then
-			local l = Instance.new("PointLight")
-			l.Color = tier.Color
-			l.Brightness = 3 + rare * 1.5
-			l.Range = 6 + rare
-			l.Parent = anchor
-			tween(l, 0.8, { Brightness = 0.5 + rare * 0.25 })
-		end
-		if rare >= 2 then
-			shockwave(folder, CFrame.new(to) * CFrame.Angles(0, math.rad(90), 0), tier.Color, 3 + rare, 0.5)
-		end
-		if isLast and rare >= 3 then
-			shockwave(folder, origin * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), tier.Color, 14 + rare * 3, 1)
-			local s = Instance.new("Sparkles")
-			s.SparkleColor = tier.Color
-			s.Parent = anchor
-		end
-		table.insert(items, { Model = model, Item = item, Tier = tier, Place = place, Position = to, Scale = scale })
-		task.wait(isLast and 0.3 or 0.12 + math.min(rare, 3) * 0.08)
 	end
 
-	-- die Sachen wiegen sich sanft und drehen sich, solange der Ordner existiert
+	-- Felder: Sache plus Karte mit Streifen in der Farbe der Seltenheit. Gebaut wird erst, wenn sie ins Bild kommen.
+	local n = RollFx.Slots
+	local win = n - 4
+	local rng = Random.new()
+	local slots = {}
+	for k = 1, n do
+		local thing = k == win and item or RollData.Pick(roll, rng)
+		-- knapp daneben: direkt hinter dem Gewinn oft etwas Seltenes
+		if k == win + 1 and rng:NextNumber() < 0.5 then
+			local top = {}
+			for _, it in ipairs(GardenData.Loot) do
+				if GardenData.RarityById[it.Rarity].Index >= 4 then table.insert(top, it) end
+			end
+			thing = top[rng:NextInteger(1, #top)]
+		end
+		slots[k] = { Item = thing }
+	end
+	local PARK = origin * CFrame.new(0, -500, 0)
+	local function build(slot)
+		local it = slot.Item
+		local r = GardenData.RarityById[it.Rarity]
+		local m = LootBuilder.Build(it)
+		m.Parent = reel
+		local h = m:GetAttribute("Height") or 2
+		slot.Scale = RollFx.ItemSize / h
+		slot.Place = rig(m, CFrame.new(0, h / 2, 0))
+		slot.Model = m
+		local card = Instance.new("Model")
+		card.Name = "Karte"
+		local back = Instance.new("Part")
+		back.Anchored, back.CanCollide = true, false
+		back.Size = Vector3.new(spacing - 0.3, 3.8, 0.1)
+		back.CFrame = CFrame.new(0, 0, 0.55)
+		back.Color = Color3.fromRGB(44, 38, 58)
+		back.Material = Enum.Material.SmoothPlastic
+		back.Parent = card
+		local stripe = back:Clone()
+		stripe.Size = Vector3.new(spacing - 0.3, 0.26, 0.12)
+		stripe.CFrame = CFrame.new(0, -1.72, 0.48)
+		stripe.Color = r.Color
+		stripe.Material = Enum.Material.Neon
+		stripe.Parent = card
+		local glowBack = back:Clone()
+		glowBack.Size = Vector3.new(spacing - 0.9, 3, 0.05)
+		glowBack.CFrame = CFrame.new(0, 0.1, 0.48)
+		glowBack.Color = r.Color
+		glowBack.Transparency = 0.82
+		glowBack.Material = Enum.Material.Neon
+		glowBack.Parent = card
+		card.Parent = reel
+		slot.Card = rig(card, CFrame.new())
+		slot.Visible = true
+	end
+	local lastTick = nil
+	local function layout(pos, spin)
+		for k, slot in ipairs(slots) do
+			local x = -(k - pos) * spacing
+			local visible = math.abs(x) <= window - spacing * 0.35
+			if visible and not slot.Model then
+				build(slot)
+			end
+			if slot.Model then
+				if visible then
+					local cf = reelC * CFrame.new(x, 0, 0)
+					slot.Card(cf, 1)
+					slot.Place(cf * CFrame.new(0, 0.15, -0.35) * CFrame.Angles(0, spin or 0, 0), slot.Scale)
+					slot.Visible = true
+				elseif slot.Visible then
+					slot.Card(PARK, 1)
+					slot.Place(PARK, slot.Scale)
+					slot.Visible = false
+				end
+			end
+		end
+		-- jedes Feld, das die Markierung passiert, lässt sie kurz aufleuchten
+		local current = math.floor(pos + 0.5)
+		if current ~= lastTick then
+			lastTick = current
+			marker.Transparency = 0
+			tween(marker, 0.12, { Transparency = 0.35 })
+		end
+	end
+
+	local start = 3
+	local jitter = rng:NextNumber(-0.38, 0.38) -- bleibt nicht genau in der Mitte stehen
+	local goal = win + jitter
+	local frames = math.floor(RollFx.SpinTime / 0.03)
+	for f = 1, frames do
+		local t = f / frames
+		local e = 1 - (1 - t) ^ 4
+		layout(start + (goal - start) * e, math.sin(f * 0.21) * 0.25 * (1 - t))
+		task.wait(0.03)
+	end
+	-- einrasten
+	for f = 1, 10 do
+		local e = f / 10
+		layout(goal + (win - goal) * (1 - (1 - e) ^ 2))
+		task.wait(0.03)
+	end
+	layout(win)
+	task.wait(0.25)
+
+	-- 5. Gewinn: alles andere verschwindet, die Sache springt nach vorne
+	local winner = slots[win]
+	winner.Model.Parent = folder -- bleibt, wenn das Band verschwindet
+	for k, slot in ipairs(slots) do
+		if slot.Model and k ~= win then
+			slot.Card(PARK, 1)
+			slot.Place(PARK, slot.Scale)
+		end
+	end
+	winner.Card(PARK, 1)
+	for _, p in ipairs(frameParts) do
+		tween(p, 0.35, { Transparency = 1 })
+	end
+	local from = reelC * CFrame.new(0, 0.15, -0.35)
+	local to = reelC * CFrame.new(0, -0.3, -1.6)
+	local big = winner.Scale * 1.35
+	local steps = 16
+	for s = 1, steps do
+		local t = s / steps
+		local back = 1 + 2.7 * (t - 1) ^ 3 + 1.7 * (t - 1) ^ 2 -- Überschwingen wie Back-Out
+		winner.Place(from:Lerp(to, t) * CFrame.Angles(0, (1 - t) * math.pi * 2, 0), winner.Scale + (big - winner.Scale) * back)
+		task.wait(0.03)
+	end
+	winner.Place(to, big)
+	local anchor = holder(folder, to)
+	anchor.Name = item.Name
+	local gui = label(anchor, item, tier)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, RollFx.ItemSize * 1.35 / 2 + 0.7, 0)
+	local pop = emitter(anchor, { Color = ColorSequence.new(tier.Color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(4, 8 + rare * 2), SpreadAngle = Vector2.new(180, 180), Drag = 3, Size = NumberSequence.new(0.35, 0) })
+	pop:Emit(14 + rare * 12)
+	local l = Instance.new("PointLight")
+	l.Color = tier.Color
+	l.Brightness = 4 + rare * 1.5
+	l.Range = 8 + rare
+	l.Parent = anchor
+	tween(l, 1, { Brightness = 1 + rare * 0.3 })
+	if rare >= 2 then
+		shockwave(folder, to * CFrame.Angles(0, math.rad(90), 0), tier.Color, 5 + rare * 1.5, 0.6)
+	end
+	if rare >= 3 then
+		shockwave(folder, origin * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), tier.Color, 14 + rare * 3, 1)
+		local sp = Instance.new("Sparkles")
+		sp.SparkleColor = tier.Color
+		sp.Parent = anchor
+	end
+	task.delay(0.4, function()
+		reel:Destroy()
+	end)
+	-- leicht schweben und drehen, solange der Ordner existiert
 	task.spawn(function()
 		local t = 0
 		while folder.Parent do
 			t = t + 0.05
-			for i, c in ipairs(items) do
-				local bob = math.sin(t * 2 + i) * 0.08
-				c.Place(CFrame.new(c.Position + Vector3.new(0, bob, 0)) * CFrame.Angles(0, math.sin(t * 0.8 + i * 0.7) * 0.5, 0), c.Scale)
+			if winner.Model.Parent then
+				winner.Place(to * CFrame.new(0, math.sin(t * 2) * 0.1, 0) * CFrame.Angles(0, math.sin(t * 0.8) * 0.6, 0), big)
 			end
 			task.wait(0.05)
 		end
 	end)
-	return { Folder = folder, Items = items }
+	task.wait(0.4)
+	return { Folder = folder, Item = item }
 end
 
 return RollFx

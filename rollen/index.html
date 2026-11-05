@@ -24,11 +24,20 @@
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Glück</p>
     <h1>Münzrollen</h1>
-    <p class="lede">Papierrollen voller Schätze für deinen <a href="../garten/">Münzbaumgarten</a>: Münzbäume, Gießkannen, Dünger und mehr. Reiß eine auf, und alles springt einzeln heraus, das Seltenste zuletzt. Teurere Rollen haben mehr drin, mehr Glück und eine Garantie.</p>
+    <p class="lede">Papierrollen voller Schätze für deinen <a href="../garten/">Münzbaumgarten</a>: Münzbäume, Gießkannen, Dünger und mehr. Reiß eine auf, dann rollt ein Band mit Schätzen durch und bleibt auf genau einem stehen. Teurere Rollen haben mehr Glück und eine Mindest-Seltenheit.</p>
     <p class="wallet-line"><span class="wallet-label">Deine Taler</span> <strong id="wallet">0</strong> <a class="wallet-link" href="../garten/">Zum Garten →</a></p>
   </header>
 
   <main id="rolls" class="rolls"></main>
+
+  <section class="loot-section" aria-labelledby="loot-title">
+    <div class="loot-head">
+      <h2 id="loot-title" class="section-title">Was in den Rollen steckt</h2>
+      <p class="loot-lede">Alle 18 Schätze, die aus einer Rolle kommen können: 9 Münzbäume und 9 Werkzeuge. Wähle eine Rolle, um zu sehen, wie wahrscheinlich jeder Schatz darin ist.</p>
+    </div>
+    <div id="loot-filter" class="loot-filter" role="group" aria-label="Chancen für Rolle"></div>
+    <div id="loot" class="loot"></div>
+  </section>
 
   <footer class="foot">Preise und Chancen sind Vorschläge. Die Taler und das Inventar teilt sich diese Seite mit dem <a href="../garten/">Münzbaumgarten</a> (gespeichert im Browser). Robux-Käufe sind in der Vorschau nur simuliert.</footer>
 </div>
@@ -46,7 +55,7 @@
       <p id="detail-text" class="detail-text"></p>
       <dl class="detail-facts">
         <div><dt>Inhalt</dt><dd id="detail-coins"></dd></div>
-        <div><dt>Garantie</dt><dd id="detail-guarantee"></dd></div>
+        <div><dt>Mindestens</dt><dd id="detail-guarantee"></dd></div>
         <div><dt>Preis</dt><dd id="detail-price"></dd></div>
         <div><dt>Erhältlich</dt><dd id="detail-avail"></dd></div>
       </dl>

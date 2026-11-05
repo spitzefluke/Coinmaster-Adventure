@@ -373,11 +373,11 @@ function invoke(action, a, b) {
     if (!roll) return [false, 'Diese Rolle gibt es nicht'];
     if (roll.price.currency !== 'taler') return [false, 'Robux-Käufe gibt es erst im Spiel'];
     if (!pay(roll.price.amount)) return [false, 'Zu wenig Taler'];
-    const items = openRoll(roll);
-    for (const it of items) state.garden.Inv[it.id] = (state.garden.Inv[it.id] || 0) + 1;
+    const item = openRoll(roll);
+    state.garden.Inv[item.id] = (state.garden.Inv[item.id] || 0) + 1;
     save();
     renderHud();
-    return [true, `${roll.name}: ${items[items.length - 1].name}!`, items.map((i) => i.id).join(',')];
+    return [true, `${roll.name}: ${item.name}!`, item.id];
   }
   const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig' };
   if (GARDEN_ACTIONS[action]) {
@@ -537,12 +537,12 @@ function query(kind, arg) {
 // Geöffnete Münzrolle: dieselbe Öffnen-Ansicht wie auf der Rollen-Seite (RollFx)
 let opener = null;
 function playRoll(arg) {
-  const [rollId, ids] = String(arg).split('|');
+  const [rollId, itemId] = String(arg).split('|');
   const roll = rollById[rollId];
-  const items = (ids || '').split(',').map((id) => lootById[id]).filter(Boolean);
-  if (!roll || !items.length) return;
+  const item = lootById[itemId];
+  if (!roll || !item) return;
   opener ||= Opener.mount();
-  opener.play(roll, items).then(() => rui?.open('garten', 'sachen'));
+  opener.play(roll, item).then(() => rui?.open('garten', 'sachen'));
 }
 function uiAction(name, arg) {
   if (name === 'find') return find();

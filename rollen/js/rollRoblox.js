@@ -40,18 +40,13 @@ function __buildGarden(key, beds, plots)
 	model.Parent = workspace
 	previews[key] = model
 end
-function __open(key, rollId, ids, perRow)
-	local list = {}
-	for id in string.gmatch(ids, "[%w-]+") do
-		table.insert(list, id)
-	end
-	RollFx.PerRow = perRow
+function __open(key, rollId, itemId, window)
 	local holder = Instance.new("Folder")
 	holder.Name = "Vorschau"
 	holder.Parent = workspace
 	previews[key] = holder
 	task.spawn(function()
-		RollFx.Play(rollId, list, { Parent = holder })
+		RollFx.Play(rollId, itemId, { Parent = holder, Window = window })
 		if __openDone then __openDone(key) end
 	end)
 end
@@ -110,9 +105,9 @@ export const createRobloxLoot = (item, { shadows = false } = {}) => staticModel(
 export const createRobloxGarden = (beds, plots, { shadows = true } = {}) =>
   staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe}` : '')).join(';')], { shadows, area: 22 });
 
-// Öffnen: RollFx.Play wie im Spiel (der Inhalt ist vorher gezogen)
+// Öffnen: RollFx.Play wie im Spiel (die Sache ist vorher gezogen); window = halbe Breite des Rollbands
 const doneHandlers = new Map();
-export async function createRobloxOpening(roll, items, { shadows = true, perRow = 4, onDone } = {}) {
+export async function createRobloxOpening(roll, item, { shadows = true, window = 12, onDone } = {}) {
   const lua = await rollLua();
   if (!lua.openHook) {
     lua.register('__openDone', (key) => doneHandlers.get(key)?.());
@@ -126,7 +121,7 @@ export async function createRobloxOpening(roll, items, { shadows = true, perRow 
     onDone?.();
   });
   lua.setWorld(world);
-  lua.call('__open', key, roll.id, items.map((i) => i.id).join(','), perRow);
+  lua.call('__open', key, roll.id, item.id, window);
   return {
     world,
     get done() {
@@ -134,7 +129,7 @@ export async function createRobloxOpening(roll, items, { shadows = true, perRow 
     },
     // vorspulen: Lua-Zeit laufen lassen, bis RollFx fertig ist
     skip() {
-      for (let i = 0; i < 900 && !done; i++) {
+      for (let i = 0; i < 1200 && !done; i++) {
         lua.frame(1 / 30);
         world.update(1 / 30);
       }

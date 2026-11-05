@@ -136,7 +136,7 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- in der Vorschau ruft die Seite GameUI.ApplyInventory direkt auf. Plätze im Attribut Slots.
 -- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths.
 -- Garten: Garden (JSON, siehe GardenData), Aktionen garden… und openRoll gehen an GardenRemote.
--- options.PlayRoll(rollId, ids)            zeigt eine geöffnete Rolle (Standard: RollFx vor dem Spieler)
+-- options.PlayRoll(rollId, itemId)         zeigt eine geöffnete Rolle mit Rollband (Standard: RollFx vor dem Spieler)
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
 --                                           buyWorld, teleport, portal, rebirth); Standard: RemoteFunctions
 -- options.OnAction(name, arg)               Menü-Knöpfe für Fenster, die es hier noch nicht gibt
@@ -1698,7 +1698,7 @@ end
 -- ── Münzbaumgarten: Beete, Sachen aus Münzrollen, Rollen kaufen ──
 -- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
--- gardenDig (Beet), openRoll (Rolle) → ok, Text, Ids. Danach spielt GameUI.PlayRoll die Animation.
+-- gardenDig (Beet), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
 local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
 local STAGE_NAMES = { "Setzling", "Jungbaum", "Ausgewachsen" }
 local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
@@ -1779,8 +1779,8 @@ fillGarden = function(w)
 				new("Frame", { Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0.5, -9), BackgroundColor3 = roll.Band, BorderSizePixel = 0 }),
 			})
 			text(c, 70, 22, roll.Name, 20, C.ink, FONT)
-			text(c, 94, 16, roll.RankName .. " · " .. roll.Items .. " Sachen", 12, roll.Glow)
-			local guarantee = roll.Guarantee and ("Garantie ab " .. GardenData.RarityById[roll.Guarantee].Name) or "Ohne Garantie"
+			text(c, 94, 16, roll.RankName .. " · 1 Sache", 12, roll.Glow)
+			local guarantee = roll.Guarantee and ("Mindestens " .. GardenData.RarityById[roll.Guarantee].Name) or "Alles möglich"
 			text(c, 114, 32, guarantee .. " · Glück ×" .. roll.Luck, 12, C.muted, TEXT)
 			if roll.Price.Currency == "Coins" then
 				actionButton(c, "Öffnen · " .. GameUI.Format(roll.Price.Amount), C.green, money >= roll.Price.Amount, function()
@@ -1946,24 +1946,23 @@ function GameUI.OpenGarden(tab) GameUI.Open("garten", tab) end
 
 -- Animation einer geöffneten Rolle vor dem Spieler (RollFx). ids: Sachen mit Komma.
 -- In der Webseiten-Vorschau übernimmt das options.PlayRoll.
-function GameUI.PlayRoll(rollId, ids)
+function GameUI.PlayRoll(rollId, itemId)
 	if options.PlayRoll then
-		return options.PlayRoll(rollId, ids)
+		return options.PlayRoll(rollId, itemId)
 	end
-	local list = {}
-	for id in string.gmatch(ids or "", "[%w-]+") do
-		table.insert(list, id)
-	end
+	itemId = string.match(itemId or "", "[%w-]+")
+	if not itemId then return end
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	local RollFx = require(root:WaitForChild("RollFx"))
-	local front = hrp.CFrame * CFrame.new(0, -3, -12)
+	-- etwas weiter weg, damit das ganze Rollband ins Bild passt
+	local front = hrp.CFrame * CFrame.new(0, -3, -16)
 	-- Vorderseite (−Z) der Animation zeigt zum Spieler
 	local origin = CFrame.lookAt(front.Position, Vector3.new(hrp.Position.X, front.Position.Y, hrp.Position.Z))
 	task.spawn(function()
-		local fx = RollFx.Play(rollId, list, { CFrame = origin })
-		task.wait(5)
+		local fx = RollFx.Play(rollId, itemId, { CFrame = origin })
+		task.wait(4)
 		fx.Folder:Destroy()
 	end)
 end

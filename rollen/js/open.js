@@ -1,5 +1,5 @@
 // Öffnen-Ansicht 1:1 wie in Roblox: Das Modul RollFx aus dem Installer spielt die Animation
-// (Rolle wackelt, hebt ab, reißt auf; Bäume und Gartenwerkzeug springen heraus und reihen sich auf).
+// (Rolle wackelt, hebt ab, reißt auf; ein Rollband läuft durch und bleibt auf einer Sache stehen).
 // Tippen spult vor, danach zeigt die Seite die Ausbeute. Sie landet im Inventar des Gartens.
 
 import * as THREE from 'three';
@@ -101,33 +101,31 @@ export class Opener {
     return new Promise((res) => (this.resolve = res));
   }
 
+  // preset: schon gezogene Sache (oder Liste, davon die erste), z. B. vom Spiel-Server
   start(roll, preset = null) {
     this.roll = roll;
     this.preset = !!preset;
     const token = (this.token = (this.token || 0) + 1);
-    const items = preset || openRoll(roll);
-    // bezahlen und Inhalt ins Garten-Inventar legen (nur auf der Rollen-Seite)
+    const item = preset ? (Array.isArray(preset) ? preset[0] : preset) : openRoll(roll);
+    // bezahlen und ins Garten-Inventar legen (nur auf der Rollen-Seite)
     const state = loadState();
     if (!preset) {
       if (roll.price?.currency === 'taler') state.taler -= roll.price.amount;
-      addLoot(state, items);
+      addLoot(state, [item]);
       saveState(state);
       this.onChange?.(state);
     }
     this.ui.garden.hidden = !!preset;
-    const best = items[items.length - 1];
-    const bestTier = rarityById[best.rarity];
+    const tier = rarityById[item.rarity];
     this.view?.dispose();
     this.view = null;
     const u = this.ui;
     this.el.style.setProperty('--roll', roll.glow);
-    u.eyebrow.textContent = `${roll.name} aufgerissen`;
-    u.name.textContent = best.name;
-    u.name.style.textShadow = `0 0 30px ${bestTier.color}`;
-    u.from.textContent = `Bestes Stück: ${bestTier.name} · alles liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
-    u.loot.innerHTML = items
-      .map((c) => `<li style="--t:${rarityById[c.rarity].color}">${c.name}</li>`)
-      .join('');
+    u.eyebrow.textContent = `${roll.name} · ${tier.name}`;
+    u.name.textContent = item.name;
+    u.name.style.textShadow = `0 0 30px ${tier.color}`;
+    u.from.textContent = `${item.type === 'tree' ? 'Münzbaum' : 'Werkzeug'} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
+    u.loot.innerHTML = `<li style="--t:${tier.color}">${item.text}</li>`;
     u.again.disabled = !canPay(roll, state);
     u.again.textContent = u.again.disabled ? 'Zu wenig Taler' : 'Noch eine';
     u.text.classList.remove('is-shown');
@@ -135,16 +133,15 @@ export class Opener {
     u.hint.hidden = false;
     this.time = 0;
     this.lift = 0;
-    // im Hochformat eine Sache pro Reihe weniger, damit alles aufs Bild passt
-    const perRow = this.portrait ? 3 : 4;
-    this.rows = Math.ceil(items.length / perRow);
+    // Rollband: im Hochformat schmaler, damit es ganz ins Bild passt
+    this.window = this.portrait ? 6 : 11;
     const finish = () => {
       u.hint.hidden = true;
       u.done.hidden = false;
       u.again.hidden = this.preset;
       setTimeout(() => u.text.classList.add('is-shown'), 250);
     };
-    createRobloxOpening(roll, items, { perRow, onDone: finish }).then((view) => {
+    createRobloxOpening(roll, item, { window: this.window, onDone: finish }).then((view) => {
       if (this.el.hidden || token !== this.token) return view.dispose();
       this.view = view;
       if (skipAnimations()) view.skip();
@@ -167,14 +164,15 @@ export class Opener {
     if (!this.view) return;
     this.lua?.frame(dt);
     this.view.step(dt);
-    // langsam heranfahren; mit vielen Reihen etwas weiter weg und höher schauen
+    // Abstand so, dass das ganze Rollband ins Bild passt; am Ende rutscht der Gewinn etwas nach oben
     const k = Math.min(1, this.time / 2.5);
-    const base = (this.portrait ? 26 : 17) + (this.rows - 1) * 2.8;
-    const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.12 : -0.12 + k * 0.12;
-    // ist alles draußen, rutscht das Bild etwas nach oben, damit unten Platz für die Ausbeute ist
+    const fit = (this.window + 2) / (Math.tan(THREE.MathUtils.degToRad(17.5)) * this.camera.aspect);
+    const base = Math.max(17, fit);
+    const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.12 : -0.08 + k * 0.08;
     this.lift += ((this.view.done ? 1 : 0) - this.lift) * Math.min(1, dt * 2.5);
-    const y = 2.9 + (this.rows - 1) * 1.2 - this.lift * (this.portrait ? 3.6 : 2);
-    orbitEgg(this.camera, angle, 0.1, base * (1.12 - 0.12 * k), y);
+    const y = 3.4 - this.lift * (this.portrait ? 2.6 : 1.4);
+    const dist = this.view.done ? base * (1 - (this.portrait ? 0.5 : 0.25) * this.lift) : base * (1.08 - 0.08 * k);
+    orbitEgg(this.camera, angle, 0.1, dist, y);
     this.view.world.render(this.renderer, this.camera);
   }
 }
