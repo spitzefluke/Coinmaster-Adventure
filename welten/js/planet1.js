@@ -13,7 +13,7 @@ import * as THREE from 'three';
 const TAU = Math.PI * 2;
 
 // Teil der Kulisse: gehört in den Ordner „Himmel“, wirft keinen Schatten
-function backdropMesh(mesh) {
+export function backdropMesh(mesh) {
   mesh.userData.rbx = { ...(mesh.userData.rbx || {}), sky: true };
   if (mesh.geometry.type === 'ConeGeometry') mesh.userData.rbx.tiers = 9; // in Roblox feiner gestuft
   mesh.castShadow = false;
@@ -30,13 +30,12 @@ const PATHS = {
   hoehle: { color: '#4a4458', kind: 'stone', glow: '#6ae8ff' },
   candy: { color: '#7a4a2a', kind: 'tile', edge: '#ff8ac8' },
 };
-function paths(ctx, kit) {
-  const style = PATHS[ctx.world.id];
+export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
   if (!style) return;
   const { M, E, at } = kit;
   const { root, height, reserve, rand, R, shared } = ctx;
   shared.coinSpots = shared.coinSpots || [];
-  const mat = M(style.color, style.glass ? { roughness: 0.2, metalness: 0.1 } : {});
+  const mat = M(style.color, style.glass ? { roughness: 0.2, metalness: 0.1 } : style.metal ? { metalness: 0.6, roughness: 0.35 } : {});
   const start = rand() * TAU;
   for (let k = 0; k < 3; k++) {
     const a0 = start + (k * TAU) / 3, wob = 0.25 + rand() * 0.2, ph = rand() * 6;
