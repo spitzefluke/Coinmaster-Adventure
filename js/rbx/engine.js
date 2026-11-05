@@ -53,7 +53,7 @@ const DEFAULTS = {
   SurfaceGui: () => ({ Enabled: true, Face: 'Front', LightInfluence: 1, CanvasSize: [800, 600], Adornee: null }),
   GuiObject: () => ({ Visible: true, Size: [0, 100, 0, 100], Position: [0, 0, 0, 0], AnchorPoint: [0, 0], Rotation: 0, BackgroundColor3: rgb(163 / 255, 162 / 255, 165 / 255), BackgroundTransparency: 0, BorderSizePixel: 1, ZIndex: 1 }),
   TextLabel: () => ({ BackgroundColor3: WHITE, Text: 'Label', TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false }),
-  ImageLabel: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE }),
+  ImageLabel: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE, ImageRectOffset: [0, 0], ImageRectSize: [0, 0], ScaleType: 'Stretch' }),
   UICorner: () => ({ CornerRadius: [0, 8] }),
   UIStroke: () => ({ Color: rgb(0, 0, 0), Thickness: 1, Transparency: 0, Enabled: true, ApplyStrokeMode: 'Contextual', LineJoinMode: 'Round' }),
   UIGradient: () => ({ Color: CS(WHITE), Transparency: NS(0), Rotation: 0, Offset: [0, 0], Enabled: true }),
@@ -208,6 +208,10 @@ const IMAGES = new Map();
 // Bilder, die in Roblox als Decal hochgeladen werden (z. B. Münzmotive), für die Vorschau bekannt machen
 export function registerImage(url, canvas) {
   IMAGES.set(url, canvas);
+}
+// Bild zu einer Adresse (registerImage oder eingebaute), für GUI-Bilder in screen.js
+export function imageOf(url) {
+  return knownImage(url);
 }
 function knownImage(url) {
   if (!url) return null;

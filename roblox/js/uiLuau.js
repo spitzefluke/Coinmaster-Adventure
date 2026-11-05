@@ -3,6 +3,9 @@
 // GameUI baut alles aus Frames, Buttons und Layouts; die Webseite führt dasselbe Modul aus und zeigt es 1:1.
 // Reiner Text wie luau.js, damit es auch in Node prüfbar ist.
 import { GAME_UI_MORE } from './uiMoreLuau.js';
+import { iconLua, ICON_CELL } from './iconSheet.js';
+
+const ICONS = iconLua();
 
 const str = (s) => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
 const num = (n) => String(Math.round(n * 1000) / 1000);
@@ -11,10 +14,10 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 -- und neu übertragen, sonst gehen sie beim nächsten Import verloren.
 `;
 
-const EMOJI = { clover: '🍀', star: '⭐', cloud: '☁️' };
+
 
 export function shopDataSource({ BOOSTS, ROBUX }) {
-  const boosts = BOOSTS.map((b) => `{ Id = ${str(b.id)}, Name = ${str(b.name)}, Minutes = ${num(b.minutes)}, Price = ${num(b.price)}, Text = ${str(b.text)}, Icon = ${str(EMOJI[b.icon] || '✨')} }`);
+  const boosts = BOOSTS.map((b) => `{ Id = ${str(b.id)}, Name = ${str(b.name)}, Minutes = ${num(b.minutes)}, Price = ${num(b.price)}, Text = ${str(b.text)}, Icon = ${str(b.icon || 'sparkle')} }`);
   const robux = ROBUX.map((r) => `{ Id = ${str(r.id)}, Name = ${str(r.name)}, Text = ${str(r.text)}, Robux = ${num(r.robux)}, Badge = ${r.badge ? str(r.badge) : 'nil'} }`);
   return `${HEADER('Shop')}
 -- Boosts kauft man mit Talern, sie laufen eine Zeit lang. Robux-Angebote brauchen im Spiel Developer Products.
@@ -105,6 +108,14 @@ UITheme.Motion = {
 }
 UITheme.ExitTime = 0.16
 
+-- Icons: ein Bild mit allen Icons (Datei Icons.png von der Webseite, 8 pro Zeile, je ${ICON_CELL} Pixel).
+-- Nach dem Hochladen in Studio die Bild-Id hier eintragen, z. B. "rbxassetid://1234567890".
+-- Solange das Feld leer ist, zeigt die Oberfläche statt der Icons Emojis.
+UITheme.IconSheet = ""
+UITheme.IconCell = Vector2.new(${ICON_CELL}, ${ICON_CELL})
+UITheme.Icons = { ${ICONS.cells} }
+UITheme.Emoji = { ${ICONS.emoji} }
+
 local TweenService = game:GetService("TweenService")
 -- Kurzform: UITheme.Tween(objekt, "Normal", { Eigenschaft = Ziel })
 function UITheme.Tween(object, kind, goal)
@@ -179,6 +190,23 @@ local function label(props)
 	for k, v in pairs(props) do base[k] = v end
 	return new("TextLabel", base)
 end
+-- Icon aus dem Icon-Bild (UITheme.IconSheet); ohne hochgeladenes Bild das passende Emoji
+local function icon(name, props)
+	local cell = Theme.Icons[name]
+	local base
+	local class
+	if Theme.IconSheet ~= "" and cell then
+		class = "ImageLabel"
+		base = { Name = "Icon", BackgroundTransparency = 1, Image = Theme.IconSheet, ImageRectOffset = cell, ImageRectSize = Theme.IconCell, ScaleType = Enum.ScaleType.Fit }
+	else
+		class = "TextLabel"
+		base = { Name = "Icon", BackgroundTransparency = 1, Text = Theme.Emoji[name] or "•", Font = Enum.Font.SourceSans, TextScaled = true, TextColor3 = Color3.new(1, 1, 1) }
+	end
+	for k, v in pairs(props or {}) do base[k] = v end
+	return new(class, base)
+end
+GameUI.Icon = icon
+
 local function gradient(top, bottom)
 	return new("UIGradient", { Rotation = 90, Color = ColorSequence.new(top, bottom) })
 end
@@ -300,7 +328,7 @@ local function buildHud(playerGui)
 	local coins = new("Frame", { Name = "Taler", Size = UDim2.new(0, 220, 0, 52), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, LayoutOrder = 1, Parent = right }, {
 		corner(R.Round),
 		stroke(C.gold, 3),
-		label({ Size = UDim2.new(0, 46, 1, 0), Position = UDim2.new(0, 6, 0, 0), Text = "🪙", TextSize = 30, Font = EMOJI }),
+		icon("coin", { Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) }),
 		label({ Name = "Einheit", Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -60, 0, 2), Text = "Taler", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right }),
 	})
 	ui.talerPill = coins
@@ -309,7 +337,8 @@ local function buildHud(playerGui)
 	ui.weather = new("TextButton", { Name = "Wetter", Size = UDim2.new(0, 300, 0, 36), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Text = "", AutoButtonColor = false, LayoutOrder = 2, Parent = right }, { corner(R.Round) })
 	ui.weatherStroke = stroke(C.blue, 2)
 	ui.weatherStroke.Parent = ui.weather
-	ui.weatherText = label({ Size = UDim2.new(1, -20, 1, 0), Position = UDim2.new(0, 10, 0, 0), Text = "", TextSize = T.Small, Parent = ui.weather })
+	icon("cloud", { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.weather })
+	ui.weatherText = label({ Size = UDim2.new(1, -48, 1, 0), Position = UDim2.new(0, 38, 0, 0), Text = "", TextSize = T.Small, Parent = ui.weather })
 	pressable(ui.weather, function() GameUI.Toggle("wetter") end)
 	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 100), BackgroundTransparency = 1, LayoutOrder = 3, Parent = right }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -321,14 +350,14 @@ local function buildHud(playerGui)
 	})
 	ui.badges = {}
 	local entries = {
-		{ "welten", "🌍", "Welten" }, { "skills", "🌳", "Skills" }, { "inventar", "🎒", "Inventar" },
-		{ "shop", "🛒", "Shop" }, { "index", "📖", "Index" }, { "einstellungen", "⚙️", "Optionen" },
+		{ "welten", "globe", "Welten" }, { "skills", "tree", "Skills" }, { "inventar", "bag", "Inventar" },
+		{ "shop", "shop", "Shop" }, { "index", "book", "Index" }, { "einstellungen", "gear", "Optionen" },
 	}
 	for i, e in ipairs(entries) do
 		local b = new("TextButton", { Name = e[1], Size = UDim2.new(0, 72, 0, 70), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, Text = "", LayoutOrder = i, Parent = menu }, {
 			corner(R.M),
 			stroke(C.gold, 2),
-			label({ Size = UDim2.new(1, 0, 0, 38), Position = UDim2.new(0, 0, 0, 6), Text = e[2], TextSize = 30, Font = EMOJI }),
+			icon(e[2], { Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0.5, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0) }),
 			label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, -22), Text = e[3], TextSize = T.Tiny, Font = BODY }),
 		})
 		local badge = new("TextLabel", { Name = "Zahl", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -14, 0, -8), BackgroundColor3 = C.red, Text = "", Font = BODY, TextSize = T.Small, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 2, Parent = b }, { corner(R.Round), stroke(C.bg, 2) })
@@ -343,11 +372,13 @@ local function buildHud(playerGui)
 	end
 
 	-- Suchen unten in der Mitte
-	ui.find = new("TextButton", { Name = "Suchen", Size = UDim2.new(0, 270, 0, 64), Position = UDim2.new(0.5, 0, 1, -34), AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = C.green, Text = "🔍  Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), Parent = gui }, {
+	ui.find = new("TextButton", { Name = "Suchen", Size = UDim2.new(0, 270, 0, 64), Position = UDim2.new(0.5, 0, 1, -34), AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = C.green, Text = "", Parent = gui }, {
 		corner(R.L),
 		stroke(C.greenDark, 3),
 		gradient(C.greenHi, C.greenDeep),
 	})
+	icon("search", { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0, 28, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.find })
+	label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
 	new("UIStroke", { Color = C.greenDark, Thickness = 2, Parent = ui.find })
 	pressable(ui.find, function() options.OnAction("find") end)
 	ui.findHint = label({ Size = UDim2.new(0, 320, 0, 18), Position = UDim2.new(0.5, 0, 1, -12), AnchorPoint = Vector2.new(0.5, 1), Text = "", TextSize = T.Tiny, TextColor3 = C.ink, TextStrokeTransparency = 0.5, Font = BODY, Parent = gui })
@@ -397,12 +428,13 @@ local function refreshHud()
 					corner(R.Round),
 					stroke(C.green, 2),
 				})
-				row = { frame = frame, text = label({ Size = UDim2.new(1, -16, 1, 0), Position = UDim2.new(0, 8, 0, 0), Text = "", TextSize = T.Small, Parent = frame }) }
+				icon(b.Icon, { Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(0, 8, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = frame })
+				row = { frame = frame, text = label({ Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 32, 0, 0), Text = "", TextSize = T.Small, Parent = frame }) }
 				ui.boostRows[b.Id] = row
 				local scale = new("UIScale", { Scale = 0.6, Parent = frame })
 				TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
 			end
-			row.text.Text = b.Icon .. " " .. b.Name .. "  " .. mmss(left)
+			row.text.Text = b.Name .. "  " .. mmss(left)
 		elseif row then
 			row.frame:Destroy()
 			ui.boostRows[b.Id] = nil
@@ -411,7 +443,7 @@ local function refreshHud()
 end
 
 -- ── Shop ──
-local TABS = { { "eier", "🥚 Eier" }, { "boosts", "⚡ Boosts" }, { "auras", "✨ Auras" }, { "robux", "💎 Robux" } }
+local TABS = { { "eier", "Eier", 110, "egg" }, { "boosts", "Boosts", 120, "bolt" }, { "auras", "Auras", 110, "sparkle" }, { "robux", "Robux", 116, "robux" } }
 
 local function card(parent, accent)
 	return new("Frame", { Size = UDim2.new(0, 100, 0, 100), BackgroundColor3 = C.bg2, Parent = parent }, {
@@ -479,7 +511,7 @@ local function fillShop()
 		for i, b in ipairs(ShopData.Boosts) do
 			local c = card(list)
 			c.LayoutOrder = i
-			label({ Size = UDim2.new(1, 0, 0, 52), Text = b.Icon, TextSize = 42, Font = EMOJI, Parent = c })
+			icon(b.Icon, { Size = UDim2.new(0, 48, 0, 48), Position = UDim2.new(0.5, 0, 0, 2), AnchorPoint = Vector2.new(0.5, 0), Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 56), Text = b.Name, Font = FONT, TextSize = T.Large, Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 52), Position = UDim2.new(0, 0, 0, 80), Text = b.Text, TextSize = T.Tiny, TextColor3 = C.muted, TextWrapped = true, Font = TEXT, Parent = c })
 			local left = attr("Boost_" .. b.Id, 0) - os.time()
@@ -521,7 +553,7 @@ local function fillShop()
 		for i, r in ipairs(ShopData.Robux) do
 			local c = card(list)
 			c.LayoutOrder = i
-			label({ Size = UDim2.new(1, 0, 0, 52), Text = r.Id == "release" and "🥚" or r.Id == "vip" and "⭐" or "🪙", TextSize = 42, Font = EMOJI, Parent = c })
+			icon(r.Id == "release" and "egg" or r.Id == "vip" and "star" or "coins", { Size = UDim2.new(0, 48, 0, 48), Position = UDim2.new(0.5, 0, 0, 2), AnchorPoint = Vector2.new(0.5, 0), Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 56), Text = r.Name, Font = FONT, TextSize = T.Large, Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 52), Position = UDim2.new(0, 0, 0, 80), Text = r.Text, TextSize = T.Tiny, TextColor3 = C.muted, TextWrapped = true, Font = TEXT, Parent = c })
 			if r.Badge then
@@ -539,8 +571,8 @@ local function clear(frame)
 	end
 end
 
-local function buildWindow(playerGui, key, icon, title, tabs, fill)
-	local w = { key = key, tabs = tabs, fill = fill, buttons = {}, tab = tabs[1] and tabs[1][1] }
+local function buildWindow(playerGui, key, iconName, title, tabs, fill)
+	local w = { key = key, tabs = tabs, fill = fill, buttons = {}, tabLabels = {}, tab = tabs[1] and tabs[1][1] }
 	local gui = new("ScreenGui", { Name = "Coinmaster" .. title, ResetOnSpawn = false, DisplayOrder = 5, Enabled = false, Parent = playerGui })
 	local dim = new("TextButton", { Name = "Abdunkeln", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, Parent = gui })
 	w.dim = dim
@@ -555,7 +587,7 @@ local function buildWindow(playerGui, key, icon, title, tabs, fill)
 	new("Frame", { Size = UDim2.new(0, 56, 0, 56), BackgroundColor3 = C.gold, Parent = head }, {
 		corner(R.M),
 		gradient(C.goldHi, C.goldDark),
-		label({ Size = UDim2.new(1, 0, 1, 0), Text = icon, TextSize = 30, Font = EMOJI }),
+		icon(iconName, { Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
 	})
 	label({ Size = UDim2.new(0.5, 0, 0, 34), Position = UDim2.new(0, 70, 0, 2), Text = title, Font = FONT, TextSize = T.Hero, TextXAlignment = Enum.TextXAlignment.Left, Parent = head })
 	w.sub = label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 70, 0, 38), Text = "", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = head })
@@ -569,7 +601,12 @@ local function buildWindow(playerGui, key, icon, title, tabs, fill)
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	for i, t in ipairs(tabs) do
-		local b = new("TextButton", { Name = t[1], Size = UDim2.new(0, t[3] or 132, 1, 0), BackgroundColor3 = C.bg2, Text = t[2], Font = FONT, TextSize = T.Medium, TextColor3 = C.ink, LayoutOrder = i, Parent = row }, { corner(R.Round) })
+		local b = new("TextButton", { Name = t[1], Size = UDim2.new(0, (t[3] or 132) + (t[4] and 24 or 0), 1, 0), BackgroundColor3 = C.bg2, Text = t[4] and "" or t[2], Font = FONT, TextSize = T.Medium, TextColor3 = C.ink, LayoutOrder = i, Parent = row }, { corner(R.Round) })
+		if t[4] then
+			-- Icon links, Text daneben
+			icon(t[4], { Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 14, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = b })
+			w.tabLabels[t[1]] = label({ Size = UDim2.new(1, -50, 1, 0), Position = UDim2.new(0, 42, 0, 0), Text = t[2], Font = FONT, TextSize = T.Medium, TextXAlignment = Enum.TextXAlignment.Left, Parent = b })
+		end
 		w.buttons[t[1]] = b
 		pressable(b, function()
 			w.tab = t[1]
@@ -629,6 +666,7 @@ local function rebuild(w)
 		local on = t[1] == w.tab
 		w.buttons[t[1]].BackgroundColor3 = on and C.gold or C.bg2
 		w.buttons[t[1]].TextColor3 = on and C.goldInk or C.ink
+		if w.tabLabels[t[1]] then w.tabLabels[t[1]].TextColor3 = on and C.goldInk or C.ink end
 	end
 	-- Bildlauf merken, dann neu füllen
 	for _, d in ipairs(w.body:GetDescendants()) do
@@ -747,7 +785,7 @@ end
 
 -- ── Shop ──
 local function buildShop(playerGui)
-	local w = buildWindow(playerGui, "shop", "🛒", "Shop", TABS, fillShop)
+	local w = buildWindow(playerGui, "shop", "shop", "Shop", TABS, fillShop)
 	ui.shopList = new("ScrollingFrame", { Name = "Inhalt", Size = UDim2.new(1, 16, 1, 0), Position = UDim2.new(0, -8, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 8, ScrollBarImageColor3 = C.gold, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = w.body }, {
 		new("UIGridLayout", { CellSize = UDim2.new(0, 200, 0, 236), CellPadding = UDim2.new(0, 12, 0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
 		new("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }),
@@ -961,7 +999,7 @@ local function fillCoins(w, entries)
 			all.TextSize = T.Small
 		end
 	else
-		label({ Size = UDim2.new(1, 0, 0, 50), Position = UDim2.new(0, 0, 0, 30), Text = "🪙", TextSize = 40, Font = EMOJI, Parent = side })
+		icon("coin", { Size = UDim2.new(0, 46, 0, 46), Position = UDim2.new(0.5, 0, 0, 32), AnchorPoint = Vector2.new(0.5, 0), Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0, 84), Text = "Wähle eine Münze, um sie dir anzusehen oder zu verkaufen.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, Parent = side })
 	end
 	local normal = 0
@@ -1003,7 +1041,7 @@ local function fillEggs(w)
 		label({ Size = UDim2.new(1, 0, 0, 40), Text = "Noch keine Eier. Im Shop gibt es welche.", TextSize = T.Body, TextColor3 = C.muted, Parent = list })
 	end
 	label({ Size = UDim2.new(1, -190, 0, 40), Position = UDim2.new(0, 0, 1, -40), Text = "Eier schlüpfen im Spiel nach einer Brutzeit.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
-	local shop = new("TextButton", { Name = "ZumShop", Size = UDim2.new(0, 170, 0, 40), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = C.green, Text = "🛒 Eier kaufen", Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(R.S) })
+	local shop = new("TextButton", { Name = "ZumShop", Size = UDim2.new(0, 170, 0, 40), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = C.green, Text = "Eier kaufen", Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(R.S) })
 	pressable(shop, function() GameUI.Open("shop", "eier") end)
 end
 
@@ -1026,7 +1064,7 @@ local function fillInventory(w)
 end
 
 local function buildInventory(playerGui)
-	buildWindow(playerGui, "inventar", "🎒", "Inventar", { { "muenzen", "🪙 Münzen" }, { "eier", "🥚 Eier" }, { "tiere", "🐾 Haustiere", 150 } }, fillInventory)
+	buildWindow(playerGui, "inventar", "bag", "Inventar", { { "muenzen", "Münzen", 120, "coin" }, { "eier", "Eier", 100, "egg" }, { "tiere", "Haustiere", 136, "paw" } }, fillInventory)
 end
 function GameUI.OpenInventory(tab) GameUI.Open("inventar", tab) end
 
@@ -1071,11 +1109,11 @@ local function worldCard(parent, st, world, number, order, here)
 		label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 98), Text = "···", TextSize = T.Tiny, TextColor3 = C.muted, Font = MONO, Parent = c })
 		label({ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 116), Text = "Coming soon", Font = FONT, TextSize = T.Large, Parent = c })
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 142), Text = "Kommt mit einem späteren Update.", TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = c })
-		actionButton(c, "🔒 Bald", C.line, false, function() end)
+		actionButton(c, "Bald", C.line, false, function() end)
 		return c
 	end
 	new("UIGradient", { Rotation = 120, Color = ColorSequence.new(world.Ground, accent), Parent = img })
-	label({ Size = UDim2.new(1, 0, 1, 0), Text = world.Planet == "hub" and "🏛️" or "🌍", TextSize = 40, Font = EMOJI, Parent = img })
+	icon(world.Planet == "hub" and "home" or "globe", { Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Parent = img })
 	if here then
 		new("TextLabel", { Size = UDim2.new(0, 100, 0, 22), Position = UDim2.new(0, 8, 0, 8), BackgroundColor3 = C.gold, Text = "Du bist hier", Font = BODY, TextSize = T.Tiny, TextColor3 = C.goldInk, Parent = img }, { corner(R.Round) })
 	end
@@ -1087,7 +1125,7 @@ local function worldCard(parent, st, world, number, order, here)
 	if here then
 		actionButton(c, "✔ Hier bist du", C.line, false, function() end)
 	elseif owned then
-		actionButton(c, "🌀 Teleportieren", C.blue, true, function()
+		actionButton(c, "Teleportieren", C.blue, true, function()
 			if result(options.Invoke("teleport", world.Id)) then GameUI.Close("welten") end
 		end)
 	elseif not why or why == "Zu wenig Taler" then
@@ -1102,7 +1140,7 @@ local function worldCard(parent, st, world, number, order, here)
 		end)
 		if why then b.BackgroundTransparency = 0.45 end
 	else
-		local b = actionButton(c, "🔒 " .. why, C.line, false, function() end)
+		local b = actionButton(c, why, C.line, false, function() end)
 		b.TextScaled = true
 	end
 	return c
@@ -1117,7 +1155,7 @@ local function portalBanner(parent, st, planet)
 	new("Frame", { Size = UDim2.new(0, 70, 0, 70), Position = UDim2.new(0, 18, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = planet.Color, BackgroundTransparency = 0.6, Parent = banner }, {
 		corner(R.Round),
 		stroke(planet.Color, 2),
-		label({ Size = UDim2.new(1, 0, 1, 0), Text = planet.ComingSoon and "🔒" or (planet.Id == "p2" and "🚀" or "🌀"), TextSize = 36, Font = EMOJI }),
+		icon(planet.ComingSoon and "lock" or (planet.Id == "p2" and "rocket" or "portal"), { Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
 	})
 	if planet.ComingSoon then
 		label({ Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 106, 0, 24), Text = planet.Name .. " · Coming soon", Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = banner })
@@ -1176,7 +1214,7 @@ local function fillRebirth(w, st)
 		corner(R.L),
 		stroke(C.goldHi, 2),
 		gradient(C.cream, C.creamDark),
-		label({ Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.5, -96), Text = "♻️", TextSize = 50, Font = EMOJI }),
+		icon("rebirth", { Size = UDim2.new(0, 56, 0, 56), Position = UDim2.new(0.5, 0, 0.5, -94), AnchorPoint = Vector2.new(0.5, 0) }),
 		label({ Size = UDim2.new(1, 0, 0, 70), Position = UDim2.new(0, 0, 0.5, -34), Text = tostring(st.Rebirths), Font = FONT, TextSize = 64, TextColor3 = C.goldHi }),
 		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0.5, 40), Text = "Wiedergeburt" .. (st.Rebirths == 1 and "" or "en"), TextSize = T.Small, TextColor3 = C.muted }),
 	})
@@ -1238,7 +1276,7 @@ local function fillWorlds(w)
 	local inHub = not here or here.Planet == "hub"
 	local planet = here and WorldData.PlanetById[here.Planet]
 	w.sub.Text = (inHub and "Spawn" or (planet.Name .. " · " .. here.Name)) .. " · " .. GameUI.Format(st.Taler) .. " Taler"
-	toolButton(w.tools, inHub and "Im Spawn" or "🏛️ Zum Spawn", 1, not inHub, function()
+	toolButton(w.tools, inHub and "Im Spawn" or "Zum Spawn", 1, not inHub, function()
 		if result(options.Invoke("teleport", "spawn")) then GameUI.Close("welten") end
 	end)
 	if options.DevTools then
@@ -1258,8 +1296,8 @@ local function buildWorlds(playerGui)
 	for _, p in ipairs(WorldData.Planets) do
 		table.insert(tabs, { p.Id, p.Name, 120 })
 	end
-	table.insert(tabs, { "wiedergeburt", "♻️ Wiedergeburt", 170 })
-	local w = buildWindow(playerGui, "welten", "🌍", "Welten", tabs, fillWorlds)
+	table.insert(tabs, { "wiedergeburt", "Wiedergeburt", 160, "rebirth" })
+	local w = buildWindow(playerGui, "welten", "globe", "Welten", tabs, fillWorlds)
 	-- Standard-Reiter: Planet der aktuellen Welt
 	w.defaultTab = function()
 		local here = WorldData.ById[attr("World", "spawn")]
