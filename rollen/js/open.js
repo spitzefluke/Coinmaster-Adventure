@@ -123,7 +123,10 @@ export class Opener {
     this.el.style.setProperty('--roll', roll.glow);
     u.eyebrow.textContent = `${roll.name} · ${tier.name}`;
     u.name.textContent = lootName(item);
-    u.name.style.textShadow = `0 0 30px ${tier.color}`;
+    u.name.style.textShadow = tier.rainbow ? 'none' : `0 0 30px ${tier.color}`;
+    // ???: Name und Zeile in Regenbogenfarben
+    u.name.classList.toggle('rainbow-text', !!tier.rainbow);
+    u.eyebrow.classList.toggle('rainbow-text', !!tier.rainbow);
     const kind = item.type === 'tree' ? 'Samen' : item.type === 'fence' ? 'Zaun' : 'Werkzeug';
     u.from.textContent = `${kind} · liegt jetzt ${preset ? 'unter Garten › Sachen' : 'im Inventar deines Gartens'}`;
     const how = item.type === 'tree' ? `Säen, und in ${fmtTime(item.grow)} wächst daraus ein ${item.name} (${item.harvests}× ernten).` : item.type === 'fence' ? `${item.text} Im Garten anbringen.` : item.text;
