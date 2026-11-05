@@ -37,6 +37,12 @@ kbd { padding: 1px 7px; border: 1px solid var(--seam); border-bottom-width: 2px;
 @media (max-width: 760px) {
   .game { aspect-ratio: auto; min-height: 640px; border-radius: 16px; }
 }
+/* Handy-Ansicht: so groß wie ein iPhone quer (in Roblox-Punkten) */
+.game.is-phone { aspect-ratio: auto; width: 844px; height: 390px; min-height: 0; max-width: 100%; margin-inline: auto; }
+.game.is-phone .spawn-bar { top: auto; bottom: 84px; }
+.view-switch { margin: 10px 0 0; }
+.view-btn { padding: 8px 14px; font-size: 0.875rem; }
+.view-btn[aria-pressed="true"] { border-color: var(--brass); color: #f3d48c; }
 
 /* Spielwelt: Himmel, Sonne, drei Hügel-Ebenen; Farben je Wetter */
 .world { position: absolute; inset: 0; z-index: 0; --sky1: #6fb6e8; --sky2: #cfe9f7; --hill1: #3f7d4a; --hill2: #4f9a55; --hill3: #66b25f; --sun: #fff3b0; }

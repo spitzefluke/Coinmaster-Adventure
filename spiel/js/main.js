@@ -574,6 +574,23 @@ try {
   requestAnimationFrame(tick);
 }
 
+// Vorschau: Spielansicht in Handy-Größe (die Oberfläche ordnet sich dann wie am Handy an)
+{
+  const btn = $('phone-view');
+  const apply = (on) => {
+    $('game').classList.toggle('is-phone', on);
+    btn.setAttribute('aria-pressed', String(on));
+    try {
+      localStorage.setItem('coinmaster.phoneView', on ? '1' : '');
+    } catch {}
+    dispatchEvent(new Event('resize'));
+  };
+  btn.addEventListener('click', () => apply(btn.getAttribute('aria-pressed') !== 'true'));
+  try {
+    if (localStorage.getItem('coinmaster.phoneView')) apply(true);
+  } catch {}
+}
+
 applyWorldSettings();
 worldBg.set(currentWorld(state));
 renderWorldName();

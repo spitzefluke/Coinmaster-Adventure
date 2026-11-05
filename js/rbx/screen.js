@@ -9,6 +9,7 @@
 //   screen.pointer(type, x, y) → true, wenn die UI getroffen wurde
 
 import { sampleNumber, sampleColor } from './gui.js';
+import { imageOf } from './engine.js';
 
 // Roblox-Leiste oben (Menü, Chat): Inhalte ohne IgnoreGuiInset beginnen darunter
 export const TOPBAR = 58;
@@ -206,6 +207,25 @@ export function createScreen(canvas, playerGui, lua, { dpr = Math.min(2, deviceP
       g.fillStyle = fillStyle(P.BackgroundColor3, bgA);
       roundRect(g, r.x, r.y, r.w, r.h, radius);
       g.fill();
+    }
+    // ImageLabel/ImageButton: Bild oder Ausschnitt (ImageRectOffset/ImageRectSize), ScaleType Fit hält das Seitenverhältnis
+    if ((i.ClassName === 'ImageLabel' || i.ClassName === 'ImageButton') && P.Image) {
+      const img = imageOf(P.Image);
+      if (img && img.width) {
+        const off = P.ImageRectOffset || [0, 0], rs = P.ImageRectSize || [0, 0];
+        const sw = rs[0] > 0 ? rs[0] : img.width, sh = rs[1] > 0 ? rs[1] : img.height;
+        let dx = r.x, dy = r.y, dw = r.w, dh = r.h;
+        if (P.ScaleType === 'Fit') {
+          const k2 = Math.min(r.w / sw, r.h / sh);
+          dw = sw * k2;
+          dh = sh * k2;
+          dx = r.x + (r.w - dw) / 2;
+          dy = r.y + (r.h - dh) / 2;
+        }
+        g.globalAlpha = (1 - (P.ImageTransparency ?? 0)) * alphaMul;
+        g.drawImage(img, off[0], off[1], sw, sh, dx, dy, dw, dh);
+        g.globalAlpha = 1;
+      }
     }
     const stroke = kid(i, 'UIStroke');
     // Roblox: ApplyStrokeMode Contextual umrandet bei Text-Objekten den Text, sonst den Rahmen

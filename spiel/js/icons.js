@@ -1,6 +1,6 @@
 // Linien-Icons (24er-Raster, Strich in currentColor) für HUD, Menüs und Skills.
 
-const P = {
+export const ICON_PATHS = {
   coin: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="5"/><path d="M12 9.5v5"/>',
   coins: '<ellipse cx="9" cy="8" rx="6" ry="3"/><path d="M3 8v4c0 1.7 2.7 3 6 3s6-1.3 6-3V8"/><path d="M9 15v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4c0-1.6-2.4-2.9-5.5-3"/>',
   tree: '<circle cx="12" cy="5" r="2.2"/><circle cx="5.5" cy="18" r="2.2"/><circle cx="12" cy="18" r="2.2"/><circle cx="18.5" cy="18" r="2.2"/><path d="M12 7.2v8.6M12 10l-5.6 5.9M12 10l5.6 5.9"/>',
@@ -45,8 +45,12 @@ const P = {
   globe: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.5 12h17M5 7.5h14M5 16.5h14"/>',
   rocket: '<path d="M12 3c3 2 4.5 5.5 4.5 9.5L14 16h-4l-2.5-3.5C7.5 8.5 9 5 12 3Z"/><circle cx="12" cy="9.5" r="1.6"/><path d="M8 13l-3 2.5 2.5.5M16 13l3 2.5-2.5.5M10.5 18.5 12 21l1.5-2.5"/>',
   rebirth: '<path d="M4.5 12a7.5 7.5 0 0 1 13-5.1"/><path d="M19.5 12a7.5 7.5 0 0 1-13 5.1"/><path d="M17.5 3v4h-4M6.5 21v-4h4"/><path d="m12 9 1 2 2 .3-1.5 1.4.4 2.1L12 13.8l-1.9 1 .4-2.1L9 11.3l2-.3 1-2Z"/>',
+  sprout: '<path d="M12 21v-9"/><path d="M12 12c0-4-3-6.5-7-6.5 0 4 3 6.5 7 6.5Z"/><path d="M12 14c0-3.5 2.5-6 6.5-6 0 3.5-2.5 6-6.5 6Z"/><path d="M7 21h10"/>',
+  bolt: '<path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/>',
+  wind: '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+  home: '<path d="M4 10.5 12 4l8 6.5V20H4v-9.5Z"/><path d="M9.5 20v-5.5h5V20"/>',
   portal: '<ellipse cx="12" cy="12" rx="5.5" ry="8.5"/><path d="M12 7.5c2 1.5 2 7.5 0 9"/><path d="M3 12h3M18 12h3"/>',
 };
 
 export const icon = (name, size = 20) =>
-  `<svg class="ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || P.coin}</svg>`;
+  `<svg class="ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ICON_PATHS.coin}</svg>`;

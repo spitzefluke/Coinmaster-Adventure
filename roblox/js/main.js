@@ -18,6 +18,7 @@ import { BRANCHES, SKILLS } from '../../spiel/js/skills.js';
 import { DAILY, WHEEL, GROUP_BONUS, BOARDS, CODES } from '../../spiel/js/rewards.js';
 import { moduleSources, installerSource } from './luau.js';
 import { makeZip } from './zip.js';
+import { buildIconSheet, ICON_NAMES } from './iconSheet.js';
 
 const CODE_HASH = 'c3b410ec23ada5956961769cb9d1ff25d6b73d2842551e78da41bf602425868b';
 const UNLOCK_KEY = 'coinmaster.roblox.unlocked';
@@ -167,6 +168,16 @@ ${COINS.map((c, i) => `${String(i + 1).padStart(2, '0')}  ${c.name}`).join('\n')
   files.push({ name: 'motive/LIESMICH.txt', data: new TextEncoder().encode(readme) });
   download(makeZip(files), 'CoinmasterAdventure-Motive.zip');
   status.textContent = `${COINS.length} Motive im ZIP`;
+  btn.disabled = false;
+});
+
+// Icon-Bild für UITheme.IconSheet
+document.getElementById('download-icons').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  const canvas = await buildIconSheet();
+  download(await new Promise((r) => canvas.toBlob(r, 'image/png')), 'Icons.png');
+  document.getElementById('icon-status').textContent = `${ICON_NAMES.length} Icons, ${canvas.width} × ${canvas.height}`;
   btn.disabled = false;
 });
 

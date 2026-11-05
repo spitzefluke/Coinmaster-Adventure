@@ -4,6 +4,8 @@
 
 import { createLua } from '../../js/rbx/lua.js';
 import { createScreen } from '../../js/rbx/screen.js';
+import { registerImage } from '../../js/rbx/engine.js';
+import { buildIconSheet } from '../../roblox/js/iconSheet.js';
 import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI, UI_THEME } from '../../roblox/js/uiLuau.js';
@@ -47,6 +49,13 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
   // Daten für Fenster (Vorhersage, Rangliste) als JSON; in Roblox kämen sie vom Server
   lua.registerFn('__uiQuery', (kind, arg) => [JSON.stringify(onQuery(kind, arg) ?? null)]);
+  // Icon-Bild wie in Roblox nach dem Hochladen (UITheme.IconSheet)
+  try {
+    registerImage('coinmaster://icons', await buildIconSheet());
+    lua.run('require(game:GetService("ReplicatedStorage").CoinmasterAdventure.UITheme).IconSheet = "coinmaster://icons"', 'Icons');
+  } catch (e) {
+    console.warn('Icon-Bild nicht gezeichnet, es bleiben Emojis', e);
+  }
   lua.run(`
     local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
     __GameUI = require(root.GameUI)
@@ -63,6 +72,13 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   `, 'Spiel-Oberfläche');
   const playerGui = lua.get(9);
   const screen = createScreen(canvas, playerGui, lua);
+  // Bildschirmgröße wie Camera.ViewportSize in Roblox (für die Handy-Anordnung)
+  const viewport = () => {
+    const r = canvas.getBoundingClientRect();
+    if (r.width && r.height) lua.call('__setViewport', Math.round(r.width), Math.round(r.height));
+  };
+  new ResizeObserver(viewport).observe(canvas);
+  viewport();
 
   // Zeiger: was die UI trifft, geht nicht an die Welt darunter
   const at = (e) => {

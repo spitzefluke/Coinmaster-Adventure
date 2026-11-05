@@ -10,24 +10,18 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 -- und neu übertragen, sonst gehen sie beim nächsten Import verloren.
 `;
 
-// Bilder der Skills als Emoji (in Roblox ohne hochgeladene Bilder)
-const SKILL_ICONS = {
-  coin: '🪙', boot: '👟', magnet: '🧲', jump: '🦘', radar: '📡', compass: '🧭', clover: '🍀', gem: '💎',
-  double: '✌️', cloud: '☁️', hand: '✋', tag: '🏷️', flame: '🔥', paw: '🐾', eggs: '🥚', nest: '🪺',
-  bag: '🎒', moon: '🌙', auto: '🤖', coins: '💰', portal: '🌀',
-};
 
 export function skillDataSource({ BRANCHES, SKILLS, pointsForLevel }) {
   const branches = BRANCHES.map((b) => `{ Id = ${str(b.id)}, Name = ${str(b.name)}, Color = ${color(b.color)}, Text = ${str(b.text)} }`);
   const skills = SKILLS.map((k) => {
     const effects = Array.from({ length: k.max }, (_, i) => str(k.format((i + 1) * k.per)));
-    return `{ Id = ${str(k.id)}, Branch = ${k.branch ? str(k.branch) : 'nil'}, Name = ${str(k.name)}, Max = ${num(k.max)}, Cost = ${num(k.cost)}, X = ${num(k.x)}, Y = ${num(k.y)}, Req = ${k.req ? str(k.req) : 'nil'}, Per = ${num(k.per)}, Icon = ${str(SKILL_ICONS[k.icon] || '⭐')}, Text = ${str(k.text)}, Effects = { ${effects.join(', ')} } }`;
+    return `{ Id = ${str(k.id)}, Branch = ${k.branch ? str(k.branch) : 'nil'}, Name = ${str(k.name)}, Max = ${num(k.max)}, Cost = ${num(k.cost)}, X = ${num(k.x)}, Y = ${num(k.y)}, Req = ${k.req ? str(k.req) : 'nil'}, Per = ${num(k.per)}, Icon = ${str(k.icon || 'star')}, Text = ${str(k.text)}, Effects = { ${effects.join(', ')} } }`;
   });
   // Punkte je Level als Tabelle bis Level 200 prüfen: die Regel steht hier als Funktion
   const every5 = pointsForLevel(5), normal = pointsForLevel(2);
   return `${HEADER('Skilltree')}
 -- Jeder Skill hat Stufen; eine Stufe kostet Cost Skillpunkte. Lernbar erst, wenn der Vorgänger (Req)
--- mindestens Stufe 1 hat. Per = Wirkung pro Stufe, Effects[n] = Text für Stufe n.
+-- mindestens Stufe 1 hat. Per = Wirkung pro Stufe, Effects[n] = Text für Stufe n, Icon = Name in UITheme.Icons.
 -- X, Y: Platz im Baum (Kern bei 0, 0). Am Spieler stehen die Stufen im Attribut Skills ("kern:1,beutel:2").
 
 local SkillData = {}
@@ -167,11 +161,12 @@ function RewardData.PrizeText(p)
 	if p.XP then return p.XP .. " EP" end
 	return "–"
 end
+-- Icon-Name (UITheme.Icons) zu einem Gewinn
 function RewardData.PrizeIcon(p)
-	if p.Taler then return "💰" end
-	if p.Boost then return p.Boost == "xp" and "⭐" or "🍀" end
-	if p.Egg then return "🥚" end
-	return "✨"
+	if p.Taler then return "coins" end
+	if p.Boost then return p.Boost == "xp" and "star" or "clover" end
+	if p.Egg then return "egg" end
+	return "sparkle"
 end
 
 -- Kalendertag (Ortszeit) als Text, z. B. "2026-11-4"
@@ -444,7 +439,7 @@ do
 				hidden = hidden + 1
 			end
 		end
-		minX, maxX, minY, maxY = minX - 1.7, maxX + 1.7, minY - 0.9, maxY + 0.9
+		minX, maxX, minY, maxY = minX - 2.2, maxX + 2.2, minY - 0.9, maxY + 0.9
 		local spanX, spanY = maxX - minX, maxY - minY
 		local aspect = spanX / spanY
 		local function fx(x) return (x - minX) / spanX end
@@ -508,7 +503,7 @@ do
 				stroke(selected and C.goldHi or (learnable and C.green or col), selected and 4 or 3),
 			})
 			if locked and n == 0 then node.BackgroundTransparency = 0.3 end
-			label({ Size = UDim2.new(0.7, 0, 0.7, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Text = (locked and n == 0) and "🔒" or k.Icon, TextScaled = true, Font = EMOJI, ZIndex = 3, Parent = node })
+			icon((locked and n == 0) and "lock" or k.Icon, { Size = UDim2.new(0.62, 0, 0.62, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = 3, Parent = node })
 			label({ Size = UDim2.new(2, 0, 0, 16), Position = UDim2.new(0.5, 0, 1, 4), AnchorPoint = Vector2.new(0.5, 0), Text = n .. "/" .. k.Max, TextSize = T.Tiny, Font = MONO, TextColor3 = n > 0 and C.ink or C.muted, ZIndex = 3, Parent = node })
 			pressable(node, function()
 				ui.skillSel = k.Id
@@ -516,7 +511,7 @@ do
 			end)
 		end
 		if hidden > 0 then
-			label({ Size = UDim2.new(0, 240, 0, 18), Position = UDim2.new(0, 14, 1, -28), Text = "🔒 " .. hidden .. " Skill" .. (hidden > 1 and "s" or "") .. " noch verborgen", TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Parent = area })
+			label({ Size = UDim2.new(0, 240, 0, 18), Position = UDim2.new(0, 14, 1, -28), Text = hidden .. " Skill" .. (hidden > 1 and "s" or "") .. " noch verborgen", TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Parent = area })
 		end
 		-- Zoom: vergrößert um den gewählten Skill
 		local zoom = new("Frame", { Name = "Zoom", Size = UDim2.new(0, 38, 0, 128), Position = UDim2.new(1, -12, 0, 12), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, ZIndex = 4, Parent = area }, {
@@ -546,7 +541,8 @@ do
 			new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 16) }),
 		})
 		label({ Size = UDim2.new(1, 0, 0, 14), Text = GameUI.Upper(branch and branch.Name or "Kern"), TextSize = T.Tiny, Font = MONO, TextColor3 = col, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = k.Icon .. " " .. k.Name, Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
+		icon(k.Icon, { Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 0, 0, 17), Parent = side })
+		label({ Size = UDim2.new(1, -36, 0, 30), Position = UDim2.new(0, 36, 0, 16), Text = k.Name, Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 48), Text = k.Text, TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
 		local pips = new("Frame", { Name = "Stufen", Size = UDim2.new(1, 0, 0, 10), Position = UDim2.new(0, 0, 0, 92), BackgroundTransparency = 1, Parent = side }, {
 			new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -578,9 +574,9 @@ do
 		if not ok then result(false, text) end
 		GameUI.Refresh("einstellungen")
 	end
-	local function settingRow(parent, order, icon, title, hint)
+	local function settingRow(parent, order, iconName, title, hint)
 		local row = new("Frame", { Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = C.bg2, LayoutOrder = order, Parent = parent }, { corner(R.M) })
-		label({ Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(0, 12, 0, 0), Text = icon, TextSize = T.Title, Font = EMOJI, Parent = row })
+		icon(iconName, { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0, 16, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = row })
 		label({ Size = UDim2.new(1, -330, 0, 22), Position = UDim2.new(0, 62, 0, 10), Text = title, Font = FONT, TextSize = T.Medium, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 		label({ Size = UDim2.new(1, -330, 0, 18), Position = UDim2.new(0, 62, 0, 34), Text = hint, TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = row })
 		return new("Frame", { Name = "Regler", Size = UDim2.new(0, 250, 1, 0), Position = UDim2.new(1, -14, 0, 0), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = row })
@@ -621,14 +617,14 @@ do
 			new("UIPadding", { PaddingRight = UDim.new(0, 14), PaddingBottom = UDim.new(0, 10) }),
 		})
 		heading(list, 1, "Ton")
-		stepper(settingRow(list, 2, "🔊", "Effekte", "Klänge beim Finden, Kaufen und Lernen"), "sfx", 80)
-		stepper(settingRow(list, 3, "🎵", "Musik", "Lautstärke der Hintergrundmusik"), "music", 60)
+		stepper(settingRow(list, 2, "sound", "Effekte", "Klänge beim Finden, Kaufen und Lernen"), "sfx", 80)
+		stepper(settingRow(list, 3, "music", "Musik", "Lautstärke der Hintergrundmusik"), "music", 60)
 		heading(list, 4, "Grafik")
-		segmented(settingRow(list, 5, "✨", "Qualität", "Niedrig schont schwache Geräte"), "quality", { "niedrig", "mittel", "hoch" })
-		toggle(settingRow(list, 6, "💨", "Weniger Partikel", "Ruhigere Spielwelt mit weniger Glitzern"), "fewerParticles")
+		segmented(settingRow(list, 5, "sparkle", "Qualität", "Niedrig schont schwache Geräte"), "quality", { "niedrig", "mittel", "hoch" })
+		toggle(settingRow(list, 6, "wind", "Weniger Partikel", "Ruhigere Spielwelt mit weniger Glitzern"), "fewerParticles")
 		heading(list, 7, "Spiel")
-		toggle(settingRow(list, 8, "⏩", "Animationen überspringen", "Entdecken und Schlüpfen in Kurzfassung"), "skipAnimations")
-		toggle(settingRow(list, 9, "🔢", "Kurze Zahlen", "Große Beträge als 12,5K statt 12.500"), "shortNumbers")
+		toggle(settingRow(list, 8, "skip", "Animationen überspringen", "Entdecken und Schlüpfen in Kurzfassung"), "skipAnimations")
+		toggle(settingRow(list, 9, "numbers", "Kurze Zahlen", "Große Beträge als 12,5K statt 12.500"), "shortNumbers")
 		heading(list, 10, "Zurücksetzen")
 		local row = new("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, LayoutOrder = 11, Parent = list }, {
 			new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -713,7 +709,7 @@ do
 		return (RewardData.PrizeText(p):gsub(" Taler", ""):gsub(" %(.*%)", ""))
 	end
 	local function fillDaily(w, st)
-		label({ Size = UDim2.new(1, 0, 0, 22), Text = "🎁 Hol dir jeden Tag ein Geschenk. Wer einen Tag auslässt, fängt wieder bei Tag 1 an.", TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 22), Text = "Hol dir jeden Tag ein Geschenk. Wer einen Tag auslässt, fängt wieder bei Tag 1 an.", TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
 		local days = new("Frame", { Name = "Tage", Size = UDim2.new(1, 0, 0, 170), Position = UDim2.new(0, 0, 0, 36), BackgroundTransparency = 1, Parent = w.body }, {
 			new("UIGridLayout", { CellSize = UDim2.new(0, 120, 0, 160), CellPadding = UDim2.new(0, 10, 0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
 		})
@@ -724,7 +720,7 @@ do
 			c.LayoutOrder = i
 			if today then c.BackgroundColor3 = C.highlight end
 			label({ Size = UDim2.new(1, 0, 0, 16), Text = "Tag " .. i, TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, Parent = c })
-			label({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.new(0, 0, 0, 20), Text = RewardData.PrizeIcon(p), TextSize = 36, Font = EMOJI, Parent = c })
+			icon(RewardData.PrizeIcon(p), { Size = UDim2.new(0, 42, 0, 42), Position = UDim2.new(0.5, 0, 0, 22), AnchorPoint = Vector2.new(0.5, 0), Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), Text = RewardData.PrizeText(p), TextSize = T.Small, TextWrapped = true, Parent = c })
 			if done then
 				label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 1, -20), Text = "✔", TextSize = T.Medium, TextColor3 = C.green, Parent = c })
@@ -801,7 +797,7 @@ do
 		c.Size = UDim2.new(0, 480, 0, 280)
 		c.Position = UDim2.new(0.5, 0, 0.5, 0)
 		c.AnchorPoint = Vector2.new(0.5, 0.5)
-		label({ Size = UDim2.new(1, 0, 0, 56), Text = "⭐", TextSize = 46, Font = EMOJI, Parent = c })
+		icon("star", { Size = UDim2.new(0, 52, 0, 52), Position = UDim2.new(0.5, 0, 0, 2), AnchorPoint = Vector2.new(0.5, 0), Parent = c })
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 60), Text = "Coinmaster-Gruppe", Font = FONT, TextSize = T.Title, Parent = c })
 		label({ Size = UDim2.new(1, -20, 0, 60), Position = UDim2.new(0, 10, 0, 96), Text = "Tritt der Gruppe bei und bekomme einmalig " .. RewardData.PrizeText(RewardData.GroupBonus) .. ". Das Spiel prüft, ob du Mitglied bist.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = c })
 		local joined = attr("Group", false) == true
@@ -921,16 +917,16 @@ do
 	end
 
 	function buildMore(playerGui)
-		buildWindow(playerGui, "skills", "🌳", "Skilltree", {}, fillSkills)
-		buildWindow(playerGui, "einstellungen", "⚙️", "Einstellungen", {}, fillSettings)
-		buildWindow(playerGui, "wetter", "☁️", "Wetter", { { "vorhersage", "Vorhersage", 150 }, { "alle", "Alle Wetter", 150 } }, fillWeather)
-		buildWindow(playerGui, "belohnung", "🎁", "Belohnungen", { { "taeglich", "Täglich" }, { "rad", "Glücksrad" }, { "gruppe", "Gruppe" } }, fillRewards)
-		buildWindow(playerGui, "codes", "🔑", "Codes", {}, fillCodes)
+		buildWindow(playerGui, "skills", "tree", "Skilltree", {}, fillSkills)
+		buildWindow(playerGui, "einstellungen", "gear", "Einstellungen", {}, fillSettings)
+		buildWindow(playerGui, "wetter", "cloud", "Wetter", { { "vorhersage", "Vorhersage", 150 }, { "alle", "Alle Wetter", 150 } }, fillWeather)
+		buildWindow(playerGui, "belohnung", "gift", "Belohnungen", { { "taeglich", "Täglich", 110, "gift" }, { "rad", "Glücksrad", 130, "sparkle" }, { "gruppe", "Gruppe", 110, "star" } }, fillRewards)
+		buildWindow(playerGui, "codes", "key", "Codes", {}, fillCodes)
 		local tabs = {}
 		for _, b in ipairs(RewardData.Boards) do
 			table.insert(tabs, { b.Id, b.Label, b.Id == "rebirths" and 170 or 132 })
 		end
-		buildWindow(playerGui, "ranglisten", "🏆", "Ranglisten", tabs, fillBoards)
+		buildWindow(playerGui, "ranglisten", "trophy", "Ranglisten", tabs, fillBoards)
 	end
 end
 `;
