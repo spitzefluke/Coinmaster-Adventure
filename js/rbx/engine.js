@@ -70,6 +70,8 @@ const DEFAULTS = {
   TextBox: () => ({ BackgroundColor3: WHITE, Text: '', PlaceholderText: '', PlaceholderColor3: rgb(0.7, 0.7, 0.7), ClearTextOnFocus: true, TextEditable: true, TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false, Active: true }),
   TextButton: () => ({ BackgroundColor3: WHITE, Text: 'Button', TextColor3: rgb(27 / 255, 42 / 255, 53 / 255), TextSize: 14, TextScaled: false, Font: 'Legacy', TextStrokeTransparency: 1, TextStrokeColor3: rgb(0, 0, 0), TextTransparency: 0, TextXAlignment: 'Center', TextYAlignment: 'Center', TextWrapped: false, AutoButtonColor: true, Active: true }),
   ImageButton: () => ({ Image: '', ImageTransparency: 0, ImageColor3: WHITE, Active: true, AutoButtonColor: true }),
+  ViewportFrame: () => ({ CurrentCamera: null, Ambient: rgb(200 / 255, 200 / 255, 200 / 255), LightColor: rgb(140 / 255, 140 / 255, 140 / 255), LightDirection: V3(-1, -1, -1), ImageTransparency: 0, ImageColor3: WHITE }),
+  Camera: () => ({ CFrame: new THREE.Matrix4(), FieldOfView: 70 }),
   ScrollingFrame: () => ({ ClipsDescendants: true, CanvasSize: [0, 0, 2, 0], CanvasPosition: [0, 0], ScrollBarThickness: 12, ScrollBarImageColor3: rgb(0, 0, 0), ScrollBarImageTransparency: 0, AutomaticCanvasSize: 'None', ScrollingDirection: 'XY', ScrollingEnabled: true }),
   UIListLayout: () => ({ FillDirection: 'Vertical', Padding: [0, 0], HorizontalAlignment: 'Left', VerticalAlignment: 'Top', SortOrder: 'Name', Wraps: false }),
   UIGridLayout: () => ({ CellSize: [0, 100, 0, 100], CellPadding: [0, 5, 0, 5], FillDirection: 'Horizontal', HorizontalAlignment: 'Left', VerticalAlignment: 'Top', SortOrder: 'Name' }),
@@ -79,7 +81,7 @@ const DEFAULTS = {
   UISizeConstraint: () => ({ MinSize: [0, 0], MaxSize: [Infinity, Infinity] }),
 };
 const PART_CLASSES = new Set(['Part', 'WedgePart', 'SpawnLocation', 'MeshPart', 'TrussPart', 'Seat']);
-const GUI_CLASSES = new Set(['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame']);
+const GUI_CLASSES = new Set(['Frame', 'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton', 'ScrollingFrame', 'ViewportFrame']);
 export { GUI_CLASSES };
 function defaultsFor(cls) {
   if (PART_CLASSES.has(cls)) return DEFAULTS.BasePart();
@@ -99,6 +101,8 @@ export class Inst {
     this.attrs = {};
     this.world = null;
     this.listeners = null;
+    // ViewportFrame: eigene kleine 3D-Welt für alles, was darin liegt (gezeichnet in screen.js)
+    if (cls === 'ViewportFrame') this.vpWorld = new RbxWorld({ shadows: false, sky: false });
   }
   get name() {
     return this.props.Name;
@@ -129,7 +133,7 @@ export class Inst {
     }
     this.parent = p || null;
     if (p) p.children.push(this);
-    const world = p ? p.world : null;
+    const world = p ? p.vpWorld || p.world : null;
     if (world !== this.world) this.setWorld(world);
     else if (world) world.reparented(this);
     this.dirtyGui();
@@ -138,7 +142,7 @@ export class Inst {
     const old = this.world;
     this.world = null;
     if (old) old.detach(this);
-    for (const c of this.children) c.setWorld(world);
+    for (const c of this.children) c.setWorld(this.vpWorld || world);
     this.world = world;
     if (world) world.attach(this);
   }
@@ -292,6 +296,7 @@ export class RbxWorld {
 
   // ── Anmelden und Abmelden ──
   attach(inst) {
+    this.version = (this.version || 0) + 1;
     const cls = inst.ClassName;
     if (PART_CLASSES.has(cls)) {
       inst.mesh = new THREE.Mesh(GEO.Block, null);
@@ -336,6 +341,7 @@ export class RbxWorld {
     if (inst.ClassName !== 'Workspace' && inst.parent && PART_CLASSES.has(inst.parent.ClassName) && (cls === 'SurfaceGui')) inst.gui.dirty = true;
   }
   detach(inst) {
+    this.version = (this.version || 0) + 1;
     const cls = inst.ClassName;
     if (inst.mesh) {
       this.scene.remove(inst.mesh);
@@ -380,6 +386,7 @@ export class RbxWorld {
     }
   }
   changed(inst, key) {
+    this.version = (this.version || 0) + 1;
     if (inst.mesh) this.refreshPart(inst, key !== 'CFrame' && key !== 'Size');
     else if ((inst.ClassName === 'SpecialMesh' || inst.ClassName === 'Decal') && inst.parent?.mesh) this.refreshPart(inst.parent, true);
   }
@@ -517,10 +524,12 @@ export class RbxWorld {
     this.placeLights(camera);
   }
   // Spiegelung des Himmels für Metall, Glas und Licht von oben (wie Roblox' Umgebungslicht)
+  // (je Renderer eine eigene: Texturen gelten nur im WebGL-Kontext, in dem sie entstanden sind)
   ensureEnvironment(renderer) {
-    if (this.scene.environment) return;
-    envCache ||= buildEnvironment(renderer);
-    this.scene.environment = envCache;
+    if (this.envRenderer === renderer) return;
+    if (!envCache.has(renderer)) envCache.set(renderer, buildEnvironment(renderer));
+    this.scene.environment = envCache.get(renderer);
+    this.envRenderer = renderer;
   }
   render(renderer, camera) {
     this.ensureEnvironment(renderer);
@@ -531,6 +540,22 @@ export class RbxWorld {
   }
 
   applyLighting(camera) {
+    // ViewportFrame: Licht wie in Roblox nur aus Ambient, LightColor und LightDirection
+    const V = this.viewportLight;
+    if (V) {
+      this.sun.position.copy(this.shadowCenter).addScaledVector(V.direction.clone().normalize(), -this.shadowRadius * 3);
+      this.sun.target.position.copy(this.shadowCenter);
+      this.sun.color.copy(V.color);
+      this.sun.intensity = 2.4;
+      this.sun.castShadow = false;
+      this.hemi.color.copy(V.ambient);
+      this.hemi.groundColor.copy(V.ambient).multiplyScalar(0.55);
+      this.hemi.intensity = 1.1;
+      this.ambient.color.copy(V.ambient);
+      this.ambient.intensity = 0.55;
+      this.scene.fog = null;
+      return;
+    }
     const L = this.lighting.props;
     const atm = this.lighting.children.find((c) => c.ClassName === 'Atmosphere');
     const cc = this.lighting.children.find((c) => c.ClassName === 'ColorCorrectionEffect' && c.props.Enabled);
@@ -600,7 +625,7 @@ export class RbxWorld {
   }
 }
 
-let envCache = null;
+const envCache = new WeakMap();
 function buildEnvironment(renderer) {
   const scene = new THREE.Scene();
   const sky = makeSky();
