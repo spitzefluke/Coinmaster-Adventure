@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { WORLDS, planetById } from './worlds.js';
 import { buildSpawnTown } from './spawnTown.js';
+import { planet1Before, planet1After } from './planet1.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -338,9 +339,12 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
+  planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
+  planet1After(ctx, kit); // Planet 1: Kulisse, Bodendetails, Leben, Klänge
 
   // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.
@@ -388,7 +392,8 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const coinMat = new THREE.MeshStandardMaterial({ color: '#ffcf4a', metalness: 0.7, roughness: 0.28, emissive: '#b8860b', emissiveIntensity: 0.55 });
   const glowMat = new THREE.SpriteMaterial({ map: dotTex(), color: world.accent || '#ffd76a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
   for (let i = 0; i < (world.hub ? 0 : Math.round(5 * AREA)); i++) {
-    const p = spot(0.5, 0.5, R - 0.7);
+    // zuerst die Lichtungen an den Wegen (dort sucht man), dann irgendwo auf der Insel
+    const p = shared.coinSpots?.[i] ?? spot(0.5, 0.5, R - 0.7);
     if (!p) continue;
     const g = new THREE.Group();
     const spin = new THREE.Group();
@@ -443,6 +448,8 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     lights: { hemi, sun },
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
+    emitters: shared.emitters || [], // zusätzliche Partikel (Leben, Himmelseffekte), Webseiten-Einheiten
+    sounds: shared.sounds || [], // Plätze für Klänge mit Vorschlag (SoundId setzt man in Roblox)
     update(t, dt) {
       for (const a of anims) a(t, dt);
       for (const f of fxs) f.update(t, Math.min(dt, 0.05));
