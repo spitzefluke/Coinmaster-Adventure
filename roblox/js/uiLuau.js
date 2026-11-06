@@ -2247,6 +2247,11 @@ function GameUI.OpenGarden(tab) GameUI.Open("garten", tab) end
 -- Animation einer geöffneten Rolle vor dem Spieler (RollFx). ids: Sachen mit Komma.
 -- In der Webseiten-Vorschau übernimmt das options.PlayRoll.
 function GameUI.PlayRoll(rollId, itemId)
+	-- wenn das Rollband anhält: kurz wackeln und Konfetti
+	task.delay(3.2, function()
+		Juice.shake(7, 0.35)
+		Juice.confetti(34)
+	end)
 	if options.PlayRoll then
 		return options.PlayRoll(rollId, itemId)
 	end
