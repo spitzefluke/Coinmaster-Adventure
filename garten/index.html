@@ -23,7 +23,7 @@
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Glück</p>
     <h1>Münzbaumgarten</h1>
-    <p class="lede">Kauf dir mit Talern einen kleinen Garten und säe Münzbaum-Samen. Ein Timer zeigt, wann der Baum ausgewachsen ist; dann trägt er Münzen, die du als Taler erntest. Samen, Gießkannen und Dünger gibt es nur aus <a href="../rollen/">Münzrollen</a>.</p>
+    <p class="lede">Kauf dir mit Talern einen kleinen Garten und säe Münzbaum-Samen. Der Baum wächst vom Keimling über Schössling, Jungbaum und Knospen zum fertigen Baum; dann trägt er Früchte. Die verkaufst du am Marktstand, wo die Preise alle 10 Minuten schwanken, oder du ziehst aus ihnen neue Samen. Mit etwas Glück wächst ein Baum golden und trägt doppelt. Samen, Gießkannen und Dünger gibt es aus <a href="../rollen/">Münzrollen</a>.</p>
   </header>
 
   <section class="bar" aria-label="Kasse und Zeit">
@@ -62,6 +62,15 @@
     <div id="beds" class="beds"></div>
   </section>
 
+  <section aria-labelledby="market-title">
+    <div class="section-head">
+      <h2 id="market-title" class="section-title">Fruchtkorb und Marktstand</h2>
+      <p class="market-info">Neue Preise in <strong id="market-left">–</strong></p>
+      <button id="sell-all" class="btn gold small" type="button">Alles verkaufen</button>
+    </div>
+    <div id="market" class="inv"></div>
+  </section>
+
   <section aria-labelledby="inv-title">
     <h2 id="inv-title" class="section-title">Inventar</h2>
     <div id="inv" class="inv"></div>
@@ -71,13 +80,13 @@
     <h2 id="cat-title" class="section-title">Alle Münzbäume</h2>
     <div class="table-wrap">
       <table class="cat">
-        <thead><tr><th>Baum</th><th>Seltenheit</th><th>Wachsen</th><th>Ernte</th><th>Taler je Ernte</th><th>Ernten</th><th>Taler gesamt</th></tr></thead>
+        <thead><tr><th>Baum</th><th>Seltenheit</th><th>Wachsen</th><th>Ernte</th><th>Frucht</th><th>Grundpreis</th><th>Ernten</th><th>Taler gesamt</th></tr></thead>
         <tbody id="cat"></tbody>
       </table>
     </div>
   </section>
 
-  <footer class="foot">Werte sind Vorschläge. Ein ausgewachsener Baum hält höchstens 3 Ernten vor, dann musst du ernten. Jeder Baum lässt sich nur begrenzt oft abernten, dann verschwindet er und das Beet ist frei. Der Spielstand liegt nur in diesem Browser. Mit dem Zeitraffer läuft die Gartenzeit schneller, damit du alles ausprobieren kannst.</footer>
+  <footer class="foot">Werte sind Vorschläge. Ein ausgewachsener Baum hält höchstens 3 Früchte vor, dann musst du ernten. Der Marktpreis liegt zwischen 60 % und 180 % des Grundpreises. Ein Samen kostet so viele Früchte, wie der Baum Ernten hat. Etwa jeder 20. Baum (5 %) wächst golden und trägt doppelt, bei ??? schillernd. Jeder Baum lässt sich nur begrenzt oft abernten, dann verschwindet er und das Beet ist frei. Der Spielstand liegt nur in diesem Browser. Mit dem Zeitraffer läuft die Gartenzeit schneller, damit du alles ausprobieren kannst.</footer>
 </div>
 
 <script type="module" src="js/main.js"></script>

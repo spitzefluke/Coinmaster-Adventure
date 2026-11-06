@@ -149,3 +149,17 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
 .bed-harvests strong { color: var(--ink); }
 .bed-harvests.is-low strong { color: #ff8a96; }
 .item .btn:disabled { opacity: 0.7; }
+
+/* Fruchtkorb und Marktstand */
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 12px; }
+.section-head .section-title { margin: 0; }
+.market-info { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.market-info strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.section-head .btn { margin-left: auto; }
+.item-btns { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.item-btns .btn { margin-top: 0; }
+.trend { font: 600 0.6875rem/1 var(--font-data); color: var(--muted); margin-left: 4px; }
+.trend.up { color: #7ee08a; }
+.trend.down { color: #ff8a96; }
+.gold-badge { background: linear-gradient(90deg, #ffe7a333, #e2b54f55); color: #ffe08a; }
+.gold-badge.rainbow-fill { color: #1a1408; }

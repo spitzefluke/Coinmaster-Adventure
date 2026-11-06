@@ -157,7 +157,7 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
   wachsen; Göttlich mit Regenbogen-Strahlen und drei Wellen.
 - **Samen statt Bäume:** Aus der Rolle kommen Samentüten (`LootBuilder.Seed`): bauchige Tüte mit Rand in der Farbe
   der Seltenheit, Baum-Bild, Glanzstreifen, eingerissener Ecke und Samen davor. Gesät wachsen sie im Garten mit
-  sichtbarem Timer (Keimling, Jungbaum, ausgewachsen) zum Münzbaum.
+  sichtbarem Timer (Keimling, Schössling, Jungbaum, Knospen, ausgewachsen) zum Münzbaum.
 - **Werkzeug-Design:** Gießkannen mit Schulter, Zierband, Nieten, Bügel, Brause mit Löchern und Tropfen; Dünger als
   gebundener Sack mit Etikett und Körnern; Talerbeutel mit Rüschen, Schleife und Talern; Spaten mit T-Griff,
   Edelstein-Manschette und runder Spitze; Truhe mit gewölbtem Deckel und Schatzberg. Akzente in der Farbe der
@@ -193,29 +193,40 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
 ## Münzbaumgarten
 
 `garten/`: Ein kleiner Garten, den man für **25.000 Taler** kauft (4 Beete, erweiterbar bis 12; jedes weitere Beet
-kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in drei Stufen
-(Setzling, Jungbaum, ausgewachsen) und tragen dann Münzen. Jede Ernte bringt Taler, höchstens 3 Ernten warten am
-Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert im Browser.
+kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in fünf Phasen
+(Keimling, Schössling, Jungbaum, Knospen mit Blüten, ausgewachsen) und tragen dann Früchte. Jede Ernte bringt
+**Früchte statt Taler**, höchstens 3 warten am Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert
+im Browser.
 
-| Münzbaum | Seltenheit | Wachsen | Ernte | Taler je Ernte | Ernten |
-|---|---|---|---|---|---|
-| Pfennigbusch | Gewöhnlich | 1 min | alle 30 s | 40 | 6× |
-| Kupferbaum | Gewöhnlich | 2 min | alle 45 s | 90 | 6× |
-| Silberbirke | Selten | 4 min | alle 1 min | 300 | 8× |
-| Talertanne | Selten | 5 min | alle 1 min 15 s | 420 | 8× |
-| Goldeiche | Episch | 10 min | alle 1 min 30 s | 1.500 | 10× |
-| Dukatenkirsche | Episch | 9 min | alle 1 min 20 s | 1.300 | 10× |
-| Kristallweide | Legendär | 20 min | alle 2 min | 6.000 | 12× |
-| Drachenpalme | Mythisch | 40 min | alle 2 min 30 s | 25.000 | 15× |
-| Glückspilz | Gewöhnlich | 1 min 30 s | alle 40 s | 60 | 6× |
-| Ahorngroschen | Selten | 4 min 30 s | alle 1 min 10 s | 380 | 8× |
-| Frosttanne | Episch | 11 min | alle 1 min 35 s | 1.650 | 10× |
-| Wolkenbaum | Legendär | 21 min 40 s | alle 2 min 5 s | 6.500 | 12× |
-| Kristallbaum | Mythisch | 43 min 20 s | alle 2 min 35 s | 27.000 | 15× |
-| Sternenbaum | Göttlich | 1 h | alle 3 min | 120.000 | 20× |
-| Planetenbaum | Kosmisch | 1 h 30 min | alle 3 min 20 s | 400.000 | 25× |
-| Engelsbaum | Himmlisch | 2 h | alle 3 min 40 s | 1.200.000 | 30× |
-| Regenbogenbaum | ??? | 3 h | alle 4 min | 5.000.000 | 40× |
+- **Fruchtkorb und Marktstand:** Früchte landen im Korb (`Garden.Fruits`). Am Marktstand verkauft man sie zum
+  Marktpreis: Grundpreis × Faktor 0,6–1,8, je Baum verschieden und alle 10 Minuten neu (aus der Uhrzeit, für alle
+  gleich, `GardenData.MarketMult`). Oder man zieht aus so vielen Früchten, wie der Baum Ernten hat, einen neuen
+  Samen desselben Baums (`seed`-Aktion).
+- **Goldene Bäume:** Mit 5 % Chance wächst ein gesäter Baum golden (`Plot.Golden`): goldenes Laub, Funkeln, etwas
+  größer und doppelte Früchte. Bei ??? heißt er „schillernd“ und sein Laub läuft durch alle Farben.
+- **Jeder Baum hat seine eigene Form** (Spalte „Form“), seltene Bäume sind größer (bis ×1,48 bei ???).
+- **Lebendig:** Bäume wiegen sich, Windböen ziehen über den Garten, Blätter fallen und treiben davon (beim Ahorn
+  mehr), ab Selten schwirren Glühwürmchen um den Baum. Früchte schaukeln an ihren Stielen.
+
+| Münzbaum | Seltenheit | Form | Wachsen | Frucht | Grundpreis | Ernten |
+|---|---|---|---|---|---|---|
+| Pfennigbusch | Gewöhnlich | Busch | 1 min | Pfennigbeere (alle 30 s) | 40 | 6× |
+| Kupferbaum | Gewöhnlich | runde Krone | 2 min | Kupferapfel (alle 45 s) | 90 | 6× |
+| Silberbirke | Selten | schlanke Birke | 4 min | Silberbirne (alle 1 min) | 300 | 8× |
+| Talertanne | Selten | Tanne | 5 min | Talerzapfen (alle 1 min 15 s) | 420 | 8× |
+| Goldeiche | Episch | breite Eiche | 10 min | Goldeichel (alle 1 min 30 s) | 1.500 | 10× |
+| Dukatenkirsche | Episch | Blütenkrone | 9 min | Dukatenkirsche (alle 1 min 20 s) | 1.300 | 10× |
+| Kristallweide | Legendär | Hängeweide | 20 min | Kristalltropfen (alle 2 min) | 6.000 | 12× |
+| Drachenpalme | Mythisch | Palme | 40 min | Drachenfrucht (alle 2 min 30 s) | 25.000 | 15× |
+| Glückspilz | Gewöhnlich | Pilz | 1 min 30 s | Glückssporling (alle 40 s) | 60 | 6× |
+| Ahorngroschen | Selten | gezackter Ahorn | 4 min 30 s | Groschennuss (alle 1 min 10 s) | 380 | 8× |
+| Frosttanne | Episch | Fichte mit Schnee | 11 min | Frostzapfen (alle 1 min 35 s) | 1.650 | 10× |
+| Wolkenbaum | Legendär | Wolke | 21 min 40 s | Wolkenpflaume (alle 2 min 5 s) | 6.500 | 12× |
+| Kristallbaum | Mythisch | Kristalle | 43 min 20 s | Kristallfrucht (alle 2 min 35 s) | 27.000 | 15× |
+| Sternenbaum | Göttlich | Sternenkugel | 1 h | Sternfrucht (alle 3 min) | 120.000 | 20× |
+| Planetenbaum | Kosmisch | Planet mit Ring | 1 h 30 min | Mondfrucht (alle 3 min 20 s) | 400.000 | 25× |
+| Engelsbaum | Himmlisch | Flügel | 2 h | Engelsfeige (alle 3 min 40 s) | 1.200.000 | 30× |
+| Regenbogenbaum | ??? | Regenbogen-Etagen | 3 h | Regenbogenfrucht (alle 4 min) | 5.000.000 | 40× |
 
 | Werkzeug & mehr | Seltenheit | Wirkung |
 |---|---|---|
@@ -251,9 +262,10 @@ ausgerissen (sonst ließe sich die Grenze umgehen). Im Spielstand zählt `Plot.C
 | Regenbogenzaun | ??? | Glaspfosten, sechs Bänder in Regenbogenfarben |
 
 **Baum-Design (Low-Poly):** Stamm in zwei Stücken mit Rindenstreifen, Wurzeln, die schräg aus der Erde ragen,
-Äste in die Krone, facettierte Laubbüschel in mehreren Farbtönen (oben heller, unten dunkler). Münzen hängen an
-kleinen Stielen und drehen sich langsam; reife Münzen leuchten. Ist ein Baum reif, rieseln Münzen aus der Krone
-(Münzregen) und ein paar Taler liegen schon im Beet. Effekte je Seltenheit: ab Episch Lichtpunkte, ab Legendär
+Äste in die Krone, facettierte Laubbüschel in mehreren Farbtönen (oben heller, unten dunkler). Früchte hängen an
+kleinen Stielen, jede Baumart mit eigener Form (Apfel, Birne, Beeren, Zapfen, Eichel, Kirschen, Tropfen,
+Drachenfrucht, Stern, Mond); reife Früchte leuchten. Ist ein Baum reif, rieselt Funkeln aus der Krone und ein
+paar Früchte liegen schon im Beet. Effekte je Seltenheit: ab Episch Lichtpunkte, ab Legendär
 Aura und Licht, ab Göttlich ein Leuchtring im Beet; bei ??? schillert alles in Regenbogenfarben.
 
 **Zaunwechsel animiert:** Der alte Zaun versinkt und verblasst, der neue wächst in einer Welle vom Tor aus rund um
@@ -265,20 +277,22 @@ den Garten aus dem Boden (mit Überschwingen und Funken); Feuer und Funkeln gehe
 In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und Füllung je Stil),
 `LootBuilder.Fence` das Zaunstück, das aus der Rolle kommt.
 
-- **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `Ripe`, `HarvestValue`,
-  `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe)`, `Seed(tree)`, `Tool(tool)`, `Build(item)`) und
+- **Roblox** (`roblox/js/gardenLuau.js`): `GardenData` (Bäume, Werkzeug, `Stage`, `PhaseOf`, `Ripe`,
+  `HarvestFruits`, `MarketMult`, `FruitPrice`, `SeedCost`, `BedPrice`), `LootBuilder` (`Tree(tree, stage, ripe,
+  full, { Phase, Golden })`, `Seed(tree)`, `Tool(tool)`, `Build(item)`) und
   `GardenBuilder.Build({ Beds, Plots })` (Wiese, Zaun mit Tor und Schild, Beete mit Nummern, Bäume, Timer über
   wachsenden Bäumen; `GardenBuilder.SetTimer` zählt sie weiter).
   Der Installer baut `Workspace > CoinmasterGarden` mit allen Bäumen.
 
 ### Im Spiel (Roblox)
 
-- **Spiel-Oberfläche:** Menüknopf **🌱 Garten** öffnet das Fenster mit drei Reitern: *Beete* (Wachstum, Countdown,
-  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
+- **Spiel-Oberfläche:** Menüknopf **🌱 Garten** öffnet das Fenster mit vier Reitern: *Beete* (Phase, Countdown,
+  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Korb* (Früchte mit Marktpreis und Trend, verkaufen, „Alles
+  verkaufen“, Samen ziehen, Countdown bis zu neuen Preisen), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
   und dann ein Beet antippen, Talerbeutel und Spaten direkt benutzen) und *Rollen* (kaufen und öffnen). Nach dem
   Öffnen spielt `GameUI.PlayRoll` die Animation `RollFx` vor dem Spieler. „🚪 Zum Garten“ teleportiert zum Garten.
 - **Server** (`ServerScriptService > CoinmasterGarden`): RemoteFunction `GardenRemote` mit `openRoll` und den
-  Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig). Der Server würfelt, prüft
+  Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig, fence, sell, seed). Der Server würfelt, prüft
   Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
   zwei Aufrufen.
 - **Speichern:** mit dem ganzen Spielstand über `PlayerData` (Attribut `Garden`, siehe „Speichern in Roblox“).

@@ -77,7 +77,7 @@ const lootCam = (item) => (item.type === 'tree' ? { dist: 7, y: 1.15 } : item.ty
 // Chance einer Sache in einer Rolle: Chance ihrer Seltenheit geteilt durch die Anzahl Sachen dieser Seltenheit
 const poolSize = Object.fromEntries(RARITIES.map((r) => [r.id, LOOT.filter((l) => l.rarity === r.id).length]));
 const itemChance = (roll, item) => rollChances(roll)[rarityById[item.rarity].index] / poolSize[item.rarity];
-const lootInfo = (item) => (item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}: ${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}, ${item.harvests}× ernten. ${item.text}` : item.type === 'fence' ? `${item.text} Für deinen Garten, bleibt im Inventar.` : item.text);
+const lootInfo = (item) => (item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}: ${item.fruitPlural} alle ${fmtTime(item.cycle)} (je ${fmt(item.yield)} Taler am Markt), ${item.harvests}× ernten. ${item.text}` : item.type === 'fence' ? `${item.text} Für deinen Garten, bleibt im Inventar.` : item.text);
 
 const lootList = document.getElementById('loot');
 const sortedLoot = [...LOOT].sort((a, b) => rarityById[a.rarity].index - rarityById[b.rarity].index || (a.type === b.type ? 0 : a.type === 'tree' ? -1 : 1));
