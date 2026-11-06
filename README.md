@@ -250,6 +250,12 @@ ausgerissen (sonst ließe sich die Grenze umgehen). Im Spielstand zählt `Plot.C
 | Wolkenzaun | Himmlisch | goldene Pfosten, schwebende Wolken |
 | Regenbogenzaun | ??? | Glaspfosten, sechs Bänder in Regenbogenfarben |
 
+**Baum-Design (Low-Poly):** Stamm in zwei Stücken mit Rindenstreifen, Wurzeln, die schräg aus der Erde ragen,
+Äste in die Krone, facettierte Laubbüschel in mehreren Farbtönen (oben heller, unten dunkler). Münzen hängen an
+kleinen Stielen und drehen sich langsam; reife Münzen leuchten. Ist ein Baum reif, rieseln Münzen aus der Krone
+(Münzregen) und ein paar Taler liegen schon im Beet. Effekte je Seltenheit: ab Episch Lichtpunkte, ab Legendär
+Aura und Licht, ab Göttlich ein Leuchtring im Beet; bei ??? schillert alles in Regenbogenfarben.
+
 **Zaunwechsel animiert:** Der alte Zaun versinkt und verblasst, der neue wächst in einer Welle vom Tor aus rund um
 den Garten aus dem Boden (mit Überschwingen und Funken); Feuer und Funkeln gehen erst an, wenn ihr Teil steht
 (`garden.FenceFrom` in `GardenBuilder.Build`, abgespielt in `GardenBuilder.Animate`).
