@@ -99,8 +99,13 @@ function cylLocal(a, b, r) {
 }
 
 export function convertMesh(out, mesh, world) {
-  const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const r = mesh.userData.rbx || {};
+  // Modell aus der Bibliothek: unsichtbarer Platzhalter in Größe und Lage des Modells (Einheitswürfel × Skalierung)
+  if (r.model)
+    return emit(out, mesh, 'Block', new THREE.Matrix4(), { color: '#ffffff', material: 'SmoothPlastic', transparency: 1 }, {
+      name: 'ModellPlatz', model: r.model, fest: !!r.fest, canCollide: false, castShadow: false, ...(r.sky ? { noShadow: true } : {}),
+    });
+  const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const ex = {};
   // Spawn-Bereich (für Klicks im Spiel-Hintergrund)
   for (let o = mesh; o; o = o.parent) if (o.userData.area) {

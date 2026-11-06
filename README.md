@@ -312,6 +312,26 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
+**Modelle aus kostenlosen Grafikpaketen (CC0):** Normal und Wald sind aus Modellen der KayKit-Pakete von
+Kay Lousberg gebaut (Medieval Hexagon Pack, CC0, auch für Roblox frei). Die übrigen Welten folgen in den
+nächsten Etappen.
+
+- `tools/modelle/build.mjs` holt die Pakete (git) und legt die Auswahl (`auswahl.json`) in **eine** Datei
+  `assets/modelle/bibliothek.glb` (89 Modelle, ein Farbatlas, 2,6 MB) und schreibt `welten/js/modelCatalog.js`
+  mit Größe und Mitte jedes Modells. Neu bauen: `cd tools/modelle && npm install && npm run build`.
+- `welten/js/modelWorlds.js` baut die Welten: Normal ist ein Startdorf (Windmühle, fünf Häuser um einen
+  Brunnen, Kisten und Fässer, Weizenfeld mit Zaun, Steinbrücke und Wasserpflanzen am Bach, Bäume, Felsen),
+  Wald ein Nadelwald mit Sägemühle und Holzlager, Zeltlager und Baumgruppen. In der Ferne stehen Berge und
+  Hügel mit Bäumen und Wolken aus dem Paket.
+- Ein Modell ist im Export ein unsichtbares Teil **`ModellPlatz`** (Ordner `Modelle`) in Lage und Größe des
+  Modells, mit `StringValue` „Modell“ (Name) und `BoolValue` „Fest“ (kollidiert, z. B. Häuser und Bäume).
+- In Roblox: `bibliothek.glb` (liegt im Welten-ZIP) einmal mit **Import 3D** einfügen, das Model in
+  `CoinmasterModelle` umbenennen und nach ServerStorage legen. Das Skript `ServerScriptService >
+  CoinmasterModelle` (vom Installer) setzt beim Spielstart an jeden Platz eine Kopie, auf die Größe des Platzes
+  gestreckt. Fest in Studio einsetzen: in der Befehlsleiste
+  `require(game.ServerScriptService.CoinmasterModelle.Einsetzen)()`.
+- Die Vorschau (`js/rbx/models.js`) lädt dieselbe `bibliothek.glb` und setzt die Modelle genauso in die Plätze.
+
 **Jede Insel eine eigene Welt:** Eine Himmelskuppel (Kugel mit 640 Studs Radius, in Roblox ein
 SpecialMesh mit negativer Skalierung, darum von innen sichtbar) in der Himmelsfarbe, ein weicher Ring in
 Horizontfarbe und eine dichtere Atmosphäre verdecken die Nachbarinseln (1500 Studs entfernt). Unter der

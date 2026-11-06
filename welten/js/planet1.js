@@ -345,13 +345,14 @@ export const PLANET1 = new Set(['normal', 'wald', 'stadt', 'eis', 'lava', 'hoehl
 
 export function planet1Before(ctx, kit) {
   if (!PLANET1.has(ctx.world.id)) return;
-  LANDMARK[ctx.world.id]?.(ctx, kit);
+  if (!ctx.modelWorld || ctx.modelWorld.landmark) LANDMARK[ctx.world.id]?.(ctx, kit);
   paths(ctx, kit);
 }
 
 export function planet1After(ctx, kit) {
   if (!PLANET1.has(ctx.world.id)) return;
-  backdrop(ctx, kit);
+  if (ctx.modelWorld) ctx.modelWorld.backdrop(ctx, kit);
+  else backdrop(ctx, kit);
   details(ctx, kit);
   emitters(ctx);
   sounds(ctx);

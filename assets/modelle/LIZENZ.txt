@@ -1,0 +1,10 @@
+Modelle in bibliothek.glb
+
+KayKit : Medieval Hexagon Pack (1.0)
+Kay Lousberg, www.kaylousberg.com
+https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0
+Lizenz: Creative Commons Zero (CC0 1.0), http://creativecommons.org/publicdomain/zero/1.0/
+Frei nutzbar in privaten, schulischen und kommerziellen Projekten (auch Roblox-Spielen).
+Eine Nennung ist nicht nötig, aber willkommen.
+
+Gebaut mit tools/modelle/build.mjs (Auswahl: tools/modelle/auswahl.json).
