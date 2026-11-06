@@ -7,6 +7,8 @@ import { RbxWorld, Inst, rgb, hexColor } from '../../js/rbx/engine.js';
 import { createLua } from '../../js/rbx/lua.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
+import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
+import { WORLDS } from './worlds.js';
 import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
 
 const partsCache = new Map();
@@ -90,11 +92,20 @@ export function worldLua() {
   luaReady ||= (async () => {
     const lua = await createLua();
     lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
+    lua.call('__addModule', 'WorldFx', worldFxSource({ WORLDS }));
     lua.run(`
       local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
       function __weather(id)
         local fx = require(root.WeatherFx)
         fx.Apply(id)
+      end
+      local worldFx = nil
+      function __worldFx(id)
+        if worldFx then worldFx.Destroy() worldFx = nil end
+        worldFx = require(root.WorldFx).Apply(id, Vector3.new(0, 0, 0), workspace)
+      end
+      function __worldFxReset()
+        if worldFx then pcall(worldFx.Destroy) worldFx = nil end
       end
       function __weatherReset()
         local m = root:FindFirstChild("WeatherFx")
@@ -104,6 +115,14 @@ export function worldLua() {
     return lua;
   })();
   return luaReady;
+}
+
+// Umgebung der Welt (WorldFx): Himmel, Fernkulisse, Partikel und Leben, ruhig animiert
+export async function showWorldFx(rw, worldId) {
+  const lua = await worldLua();
+  lua.setWorld(rw);
+  lua.call('__worldFx', worldId);
+  return lua;
 }
 
 // Wetter in einer Welt anzeigen: neues WeatherFx-Modul (merkt sich das Licht dieser Welt als Grundlage)

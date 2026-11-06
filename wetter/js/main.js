@@ -7,7 +7,7 @@ import { WEATHER, WEATHER_MS, weatherById, weatherAt, forecast, mutationForWeath
 import { COINS } from '../../muenzen/js/coins.js';
 import { createRobloxCoin, coinLua, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
-import { buildRobloxWorld, showWeather, worldLua } from '../../welten/js/robloxWorld.js';
+import { buildRobloxWorld, showWeather, showWorldFx, worldLua } from '../../welten/js/robloxWorld.js';
 import { WORLDS, worldById } from '../../welten/js/worlds.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 
@@ -44,9 +44,11 @@ worldLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht 
 function buildScene() {
   if (built) {
     lua?.call('__weatherReset');
+    lua?.call('__worldFxReset');
     built.rw.dispose();
   }
   built = buildRobloxWorld(worldById[worldId], { shadows: renderer.shadowMap.enabled });
+  showWorldFx(built.rw, worldId);
   showWeather(built.rw, selected);
 }
 

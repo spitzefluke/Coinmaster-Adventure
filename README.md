@@ -488,11 +488,25 @@ Sturm, Blasen …).
   Lore auf Schienen, Cupcakes, Geysire, Schatztruhe, Sandburg oder Statuen.
 - **Roblox-Vorschau:** Die 3D-Ansicht zeigt die Insel so, wie sie nach dem Import in Roblox aussieht:
   dieselben Teile wie die `.rbxmx`-Datei, Roblox-Licht und -Himmel und das Wetter aus dem Modul
-  `WeatherFx` (`welten/js/robloxWorld.js`). Animationen der Insel (Wasser, Lebewesen) gibt es in Roblox
-  noch nicht, darum steht auch die Vorschau still.
+  `WeatherFx` (`welten/js/robloxWorld.js`). Die Insel selbst steht still; bewegt ist die Umgebung (`WorldFx`).
 - **Licht je Welt:** Jede Welt bringt im Ordner `Licht` eine Atmosphere (Himmelsfarben) und
   Lighting-Werte mit (`worldLighting` in `roblox/js/worldParts.js`). Das Skript
   `CoinmasterWorldLighting` setzt sie im Spiel für die Welt, in der man ist; die Vorschau nutzt dieselben Werte.
+- **Umgebung je Welt (`WorldFx`, `roblox/js/worldFxLuau.js`):** rund um jede Insel baut das Luau-Modul
+  `WorldFx` eine eigene Umgebung aus Parts, ruhig animiert. Das LocalScript `CoinmasterWorldFx` baut sie im
+  Spiel für die Welt, in der die Kamera ist; die Vorschau führt dasselbe Modul aus.
+  - *Himmel & Licht:* Sonne mit Schein, Mond, funkelnde Sterne, wogendes Polarlicht (Eis, Neptun),
+    Nebelschleier und Kometen im All, Lichtstrahlen von der Wasseroberfläche, eine sanfte Farbstimmung
+    (ColorCorrection) je Welt. Der Nebel reicht weiter als vorher, damit die Ferne zu sehen ist.
+  - *Fernkulisse* am Rand der Himmelskuppel: Schneeberge und Waldhügel (Normal, Wald, Spawn), Skyline
+    (Stadt), Eisberge mit Polarlicht (Eis), Vulkane mit Lavaströmen und Rauch (Lava), Tropfsteine und
+    Riesenkristalle (Höhle), Zuckerhügel und Riesenlollis (Candy), Asteroidengürtel (Mond, Sonne), Eisspitzen
+    und Sturmwirbel (Neptun), Tafelberge (Mars), Gesteinsring (Saturn), Leuchtpflanzen (Alien),
+    Sonnenbögen (Sonne), Korallentürme, Riesenmuscheln und Tempelruinen mit wogendem Seetang (Tiefsee).
+  - *Atmosphäre-Partikel:* Lichtstaub, fallende Blätter, Schneeflocken, Asche, Leuchtsporen, Sternenstaub,
+    Staubwind, Funken, Meeresschnee.
+  - *Leben:* kreisende Vogelschwärme, Fledermäuse, Schmetterlinge, Heißluftballons, ein Luftschiff,
+    Satelliten, schwebende Inselchen, Himmelsquallen, Fischschwärme, Quallen und ein Wal.
 - **Größenvergleich** (Knopf in der 3D-Ansicht): stellt eine normal große Roblox-Figur (gut
   5 Studs, klassische Block-Proportionen) neben die Teleport-Plattform und fährt die Kamera hin.
   Eine Insel ist rund 256 Studs breit, also etwa 64 Figuren nebeneinander

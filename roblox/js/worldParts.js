@@ -495,9 +495,9 @@ export function worldLighting(world) {
     Ambient: night ? dim(horizon, 0.55) : '#585858',
     OutdoorAmbient: night ? dim(horizon, 0.9) : '#8c8c8c',
     FogColor: horizon,
-    // dichter als zuvor: alles jenseits der Himmelskuppel verschwimmt in der Farbe der Welt
-    FogStart: world.water ? 60 : 220,
-    FogEnd: world.water ? 560 : 1000,
+    // weit genug, dass die Fernkulisse am Rand der Kuppel (WorldFx) zu sehen ist; dahinter verschwimmt alles
+    FogStart: world.water ? 110 : 360,
+    FogEnd: world.water ? 900 : 1500,
     atmosphere: { Density: world.water ? 0.55 : night ? 0.4 : 0.42, Offset: 0.08, Color: horizon, Decay: top, Glare: night ? 0 : 0.25, Haze: world.water ? 2.6 : 1.8 },
     // Neon und Lava leuchten weich nach (nur in Roblox; die Vorschau zeigt kein Bloom)
     bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },

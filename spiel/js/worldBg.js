@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
-import { buildRobloxWorld, showWeather, worldLua } from '../../welten/js/robloxWorld.js';
+import { buildRobloxWorld, showWeather, showWorldFx, worldLua } from '../../welten/js/robloxWorld.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 
 const CS = (ISLAND_RADIUS / 10) * 8; // Kamerawerte unten gelten für Radius 10, in Studs
@@ -39,10 +39,12 @@ export function createWorldBg(host) {
   function build(world) {
     if (built) {
       lua?.call('__weatherReset');
+      lua?.call('__worldFxReset');
       built.rw.dispose();
     }
     built = buildRobloxWorld(world, { shadows: renderer.shadowMap.enabled });
     worldId = world.id;
+    showWorldFx(built.rw, world.id);
     showWeather(built.rw, weatherId);
   }
 
