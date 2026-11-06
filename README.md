@@ -326,9 +326,9 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
-**Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten von Planet 1 sind mit Modellen der KayKit-Pakete
-von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween; CC0, auch für Roblox frei).
-Planet 2 und 3 folgen.
+**Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten von Planet 1 und 2 sind mit Modellen der
+KayKit-Pakete von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween, Space Base; CC0,
+auch für Roblox frei). Planet 3 und der Spawn folgen.
 
 | Welt | Modelle |
 | --- | --- |
@@ -339,14 +339,21 @@ Planet 2 und 3 folgen.
 | Lava | Schmiede mit Fackeln und Fässern, Ruine mit Schatztruhe, tote und verkohlte Bäume, Basaltfelsen (@lava) |
 | Höhle | Mine mit Lager, Säulenhalle mit Schatztruhe und Kerzen, violette Felsen (@hoehle), Fackeln, Laternen |
 | Candy | Lebkuchendorf mit Windmühle und Brunnen, Pastellbäume und -felsen (@candy); Süßigkeiten bleiben |
+| Mond | Mondbasis aus Modulen und Röhren, Landeplatz mit Landefähre, Solarpaneele, Fracht, Rover, graue Felsen und Abbaukrater (@mond) |
+| Neptun | Forschungsstation mit Kuppelmodul, Windräder im Sturm, Stützmasten, eisblaue Felsen und Klippen (@neptun) |
+| Mars | Bohrturm über einer Abbaugrube mit Lastwagen, Station, Landefähre, Solardächer, orange Felsen und Tafelberge |
+| Saturn | Handelsposten: drei Frachtlager um einen Landeplatz, goldene Felsen und Klippen (@saturn) |
+| Alien | Forschungslager der Menschen, Landefähre, violette Felsen und Klippen (@alien) |
+| Sonne | Sonnenkraftwerk aus Solarpaneel-Reihen mit Masten, glühende Felsen (@sonne) |
 
 Farbvarianten: `tools/modelle/atlanten.py` färbt den Farbatlas des Medieval-Pakets um (Schnee, Asche und Glut,
-Höhlenviolett, Zuckerguss und Schokolade). Die Modelle liegen dann ein zweites Mal als `name@variante` in der
+Höhlenviolett, Zuckerguss und Schokolade) und beim Space-Paket die Felsen je Planet (grau, eisblau, golden,
+violett, glühend). Die Modelle liegen dann ein zweites Mal als `name@variante` in der
 Bibliothek. Bei Eis, Lava, Höhle und Candy bleibt das Typische der Welt stehen (`keepBase`), die Modelle kommen
 dazu und werden zuerst gesetzt.
 
 - `tools/modelle/build.mjs` holt die Pakete (git) und legt die Auswahl (`auswahl.json`) in **eine** Datei
-  `assets/modelle/bibliothek.glb` (188 Modelle, 8 Farbatlanten, 4,4 MB) und schreibt `welten/js/modelCatalog.js`
+  `assets/modelle/bibliothek.glb` (275 Modelle, 14 Farbatlanten, 5,9 MB) und schreibt `welten/js/modelCatalog.js`
   mit Größe und Mitte jedes Modells. Neu bauen: `cd tools/modelle && npm install && npm run build`.
 - `welten/js/modelWorlds.js` baut die Welten: Normal ist ein Startdorf (Windmühle, fünf Häuser um einen
   Brunnen, Kisten und Fässer, Weizenfeld mit Zaun, Steinbrücke und Wasserpflanzen am Bach, Bäume, Felsen),

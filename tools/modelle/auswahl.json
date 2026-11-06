@@ -1016,5 +1016,481 @@
   "pack": "medieval",
   "fest": true,
   "variant": "candy"
+ },
+ {
+  "id": "basemodule_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "basemodule_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "basemodule_C",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "basemodule_D",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "basemodule_E",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "basemodule_garage",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargo_A_stacked",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargo_B_stacked",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargo_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargo_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargodepot_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargodepot_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "cargodepot_C",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "drill_structure",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "lander_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "lander_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "lander_base",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "landingpad_large",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "landingpad_small",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "roofmodule_solarpanels",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "roofmodule_cargo_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "roofmodule_cargo_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "roofmodule_cargo_C",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "solarpanel",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "spacetruck",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "spacetruck_large",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "spacetruck_trailer",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "structure_low",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "structure_tall",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "windturbine_low",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "windturbine_tall",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "tunnel_straight_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "tunnel_straight_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "containers_A",
+  "pack": "space",
+  "fest": false
+ },
+ {
+  "id": "containers_B",
+  "pack": "space",
+  "fest": false
+ },
+ {
+  "id": "containers_C",
+  "pack": "space",
+  "fest": false
+ },
+ {
+  "id": "containers_D",
+  "pack": "space",
+  "fest": false
+ },
+ {
+  "id": "space_lights",
+  "pack": "space",
+  "fest": false,
+  "file": "lights"
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "terrain_low_curved",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true,
+  "variant": "mond"
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true,
+  "variant": "neptun"
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true,
+  "variant": "saturn"
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true,
+  "variant": "alien"
+ },
+ {
+  "id": "rock_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "rock_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "rocks_A",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "rocks_B",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "terrain_low",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "terrain_tall",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "terrain_mining",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
+ },
+ {
+  "id": "terrain_tall_curved",
+  "pack": "space",
+  "fest": true,
+  "variant": "sonne"
  }
 ]

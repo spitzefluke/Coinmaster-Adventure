@@ -374,4 +374,148 @@ const CANDY = {
   },
 };
 
-export const MODEL_WORLDS = { normal: NORMAL, wald: WALD, stadt: STADT, eis: EIS, lava: LAVA, hoehle: HOEHLE, candy: CANDY };
+// ── Planet 2: Weltraumbasen aus Space Base Bits; Felsen und Geländeblöcke je Planet umgefärbt (@mond …) ──
+// Felsen und Tafelberge in der Ferne, aus dem Nebelmeer ragend
+function spaceBackdrop(ctx, v) {
+  const sfx = v ? '@' + v : '';
+  mountainRing(ctx, [`rocks_B${sfx}`], { n: 8, sMin: 10, sMax: 15, rMin: 52, rMax: 68, base: -26 });
+  mountainRing(ctx, [`rock_B${sfx}`, `rock_A${sfx}`], { n: 6, sMin: 24, sMax: 34, rMin: 56, rMax: 70, base: -26 });
+}
+// Station: Module in einer Reihe, verbunden durch Röhren
+function station(ctx, c, modules, s = 3, dir = null) {
+  const a = dir ?? ctx.rand() * TAU, dx = Math.cos(a), dz = Math.sin(a);
+  const step = 2.35 * s;
+  modules.forEach((id, i) => {
+    const off = (i - (modules.length - 1) / 2) * step;
+    const x = c[0] + dx * off, z = c[1] + dz * off;
+    if (Math.hypot(x, z) > ctx.R - 2) return;
+    ctx.reserve(x, z, 1.1 * s);
+    stand(ctx, model(id, s), x, z, { rot: -a + Math.PI / 2 });
+    if (i < modules.length - 1) {
+      const tx = x + dx * step / 2, tz = z + dz * step / 2;
+      if (Math.hypot(tx, tz) < ctx.R - 2) stand(ctx, model('tunnel_straight_A', s * 0.55), tx, tz, { rot: -a });
+    }
+  });
+}
+function rocksOf(ctx, v, n = 7) {
+  const sfx = v ? '@' + v : '';
+  scatterModels(ctx, n, [`rock_A${sfx}`, `rock_B${sfx}`, `rocks_A${sfx}`], 2.6, 4, { gap: 0.8 });
+  scatterModels(ctx, 3, [`rocks_B${sfx}`], 1.4, 1.9, { rMin: ctx.R * 0.55, gap: 0.75 });
+}
+
+const MOND = {
+  landmark: true, // Rakete auf der Startrampe
+  keepBase: true, // Erde am Himmel, Krater, Flagge, Landefähre
+  baseSpots: [[0.6, 0.4, 0.6], [-2, -1.6, 1.3]],
+  build(ctx) {
+    const { R } = ctx;
+    const base = clearing(ctx, 6, 5, R - 4);
+    if (base) station(ctx, base, ['basemodule_A', 'basemodule_E', 'basemodule_garage']);
+    const pad = place(ctx, 'landingpad_large', 2.6, { rMin: 4, rMax: R - 3 });
+    if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
+    const solar = clearing(ctx, 3, 4, R - 3);
+    if (solar) around(ctx, solar, [['solarpanel', 2.6], ['solarpanel', 2.6], ['solarpanel', 2.6], ['space_lights', 2.4]], 1.4, 2.4);
+    scatterModels(ctx, 3, ['cargo_A_stacked', 'cargo_B_stacked', 'spacetruck'], 2.4, 2.8, { gap: 0.9 });
+    rocksOf(ctx, 'mond');
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, 'mond'),
+};
+
+const NEPTUN = {
+  landmark: true, // Eisturm mit Ringen
+  keepBase: true, // Sturmwirbel, Kristalle, Geysire
+  baseSpots: [[0, 0, 1.3]],
+  build(ctx) {
+    const { R } = ctx;
+    const base = clearing(ctx, 5, 5, R - 4);
+    if (base) station(ctx, base, ['basemodule_E', 'basemodule_C']);
+    scatterModels(ctx, 3, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
+    scatterModels(ctx, 2, ['structure_tall'], 2.4, 2.4, { gap: 0.9 });
+    scatterModels(ctx, 3, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
+    rocksOf(ctx, 'neptun');
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, 'neptun'),
+};
+
+const MARS = {
+  landmark: true, // Radarschüssel mit Solarfeld
+  keepBase: true, // Rover, Kuppeln, Flagge, Phobos am Himmel
+  baseSpots: [[1.6, 1.2, 1.1], [-2.6, -1, 2.8], [0.4, -2.8, 0.6]],
+  build(ctx) {
+    const { R } = ctx;
+    // Abbaugrube: der Geländeblock steckt im Boden, nur der Rand mit der Grube schaut heraus
+    const mine = place(ctx, 'terrain_mining', 1.8, { rMin: 5, rMax: R - 3, sink: 3.3 });
+    if (mine) {
+      stand(ctx, model('drill_structure', 2.6), mine.position.x, mine.position.z, { sink: -0.3 });
+      around(ctx, [mine.position.x, mine.position.z], [['spacetruck_large', 2.6], ['spacetruck_trailer', 2.6], ['cargo_A_stacked', 2.6]], 2.8, 3.8);
+    }
+    const base = clearing(ctx, 4.6, 4, R - 4);
+    if (base) station(ctx, base, ['basemodule_B', 'basemodule_D'], 2.8);
+    const pad = place(ctx, 'landingpad_small', 2.6, { rMin: 4, rMax: R - 3 });
+    if (pad) stand(ctx, model('lander_B', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
+    scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
+    rocksOf(ctx, null, 9);
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, null),
+};
+
+const SATURN = {
+  landmark: true, // Sternwarte
+  keepBase: true, // Ring um die Insel, Obsidian, Kristalle
+  build(ctx) {
+    const { R } = ctx;
+    // Handelsposten: drei Frachtlager um einen Landeplatz
+    const hub = clearing(ctx, 6, 4, R - 5);
+    if (hub) {
+      stand(ctx, model('landingpad_large', 2.6), hub[0], hub[1]);
+      stand(ctx, model('lander_base', 2.4), hub[0], hub[1], { sink: -1.2 });
+      around(ctx, hub, [['cargodepot_A', 2.6], ['cargodepot_B', 2.6], ['cargodepot_C', 2.6], ['containers_A', 2.6], ['containers_C', 2.6]], 4.2, 5.4);
+    }
+    scatterModels(ctx, 2, ['structure_low', 'space_lights'], 2.4, 2.6, { gap: 0.9 });
+    rocksOf(ctx, 'saturn');
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, 'saturn'),
+};
+
+const ALIEN = {
+  landmark: true, // Alien-Tor
+  keepBase: true, // UFO, leuchtende Pflanzen, Kapseln
+  build(ctx) {
+    const { R } = ctx;
+    // Forschungslager der Menschen, die die Aliens beobachten
+    const camp = clearing(ctx, 5, 5, R - 4);
+    if (camp) {
+      station(ctx, camp, ['basemodule_C', 'basemodule_A']);
+      around(ctx, camp, [['structure_low', 2.4], ['space_lights', 2.4], ['roofmodule_cargo_B', 2.4]], 4, 5);
+    }
+    const pad = place(ctx, 'landingpad_small', 2.6, { rMin: 4, rMax: R - 3 });
+    if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
+    rocksOf(ctx, 'alien');
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, 'alien'),
+};
+
+const SONNE = {
+  landmark: true, // Sonnentempel
+  keepBase: true, // Sonne am Himmel, Sonnenbögen, Dampf, Glutkristalle
+  baseSpots: [[2.4, 1.6, 1.6], [-2.6, 1.2, 1.6], [1, -3, 1.6], [-1.6, -2.8, 1.6]],
+  build(ctx) {
+    const { R } = ctx;
+    // Sonnenkraftwerk: Reihen von Solarpaneelen und zwei Masten
+    const plant = clearing(ctx, 5, 5, R - 4);
+    if (plant) {
+      const a = Math.atan2(plant[1], plant[0]);
+      for (let i = -2; i <= 2; i++)
+        for (const j of [-1, 1]) {
+          const x = plant[0] + Math.cos(a) * j * 1.6 - Math.sin(a) * i * 1.9, z = plant[1] + Math.sin(a) * j * 1.6 + Math.cos(a) * i * 1.9;
+          if (Math.hypot(x, z) < R - 1.6 && ctx.free(x, z, 0.6)) stand(ctx, model('solarpanel', 2.4), x, z, { rot: a + Math.PI / 2 });
+        }
+      around(ctx, plant, [['structure_tall', 2.4], ['structure_tall', 2.4], ['space_lights', 2.4]], 4, 5.2);
+    }
+    scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
+    rocksOf(ctx, 'sonne');
+  },
+  backdrop: (ctx) => spaceBackdrop(ctx, 'sonne'),
+};
+
+export const MODEL_WORLDS = { normal: NORMAL, wald: WALD, stadt: STADT, eis: EIS, lava: LAVA, hoehle: HOEHLE, candy: CANDY, mond: MOND, neptun: NEPTUN, mars: MARS, saturn: SATURN, alien: ALIEN, sonne: SONNE };

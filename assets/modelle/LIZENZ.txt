@@ -5,9 +5,10 @@ Alle Modelle stammen aus kostenlosen KayKit-Paketen von Kay Lousberg (www.kaylou
   KayKit : City Builder Bits (1.0)       https://github.com/KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0
   KayKit : Dungeon Remastered (1.0)      https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0
   KayKit : Halloween Bits (1.0)          https://github.com/KayKit-Game-Assets/KayKit-Halloween-Bits-1.0
+  KayKit : Space Base Bits (1.0)         https://github.com/KayKit-Game-Assets/KayKit-Space-Base-Bits-1.0
 Lizenz: Creative Commons Zero (CC0 1.0), http://creativecommons.org/publicdomain/zero/1.0/
 Frei nutzbar in privaten, schulischen und kommerziellen Projekten (auch Roblox-Spielen).
 Eine Nennung ist nicht nötig, aber willkommen.
 
-Farbvarianten (@eis, @lava, @hoehle, @candy): umgefärbter Farbatlas aus tools/modelle/atlanten.py.
+Farbvarianten (@eis, @lava, @hoehle, @candy, @mond, @neptun, @saturn, @alien, @sonne): umgefärbter Farbatlas aus tools/modelle/atlanten.py.
 Gebaut mit tools/modelle/build.mjs (Auswahl: tools/modelle/auswahl.json).

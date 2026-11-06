@@ -1583,10 +1583,10 @@ const EXTRAS = {
     scatter(5, (i) => cupcake(cols[i % cols.length]), 0.45);
     scatter(4, (i) => iceCream(cols[(i + 2) % cols.length]), 0.35);
   },
-  mond({ put, spot, scatter, rand, rr }) {
+  mond({ put, spot, scatter, rand, rr, modelWorld }) {
     const p = spot(0.6);
     if (p) put(dish(), p[0], p[1]);
-    scatter(5, () => rockMesh(rr(0.15, 0.3), '#8a8d96', rand), 0.25);
+    if (!modelWorld) scatter(5, () => rockMesh(rr(0.15, 0.3), '#8a8d96', rand), 0.25);
   },
   neptun({ scatter, rand, anims }) {
     scatter(4, () => geyser(anims, rand), 0.5);
@@ -2099,11 +2099,11 @@ const BUILDERS = {
     }, 0.8);
   },
 
-  mond({ put, scatter, rand, rr, scene }) {
+  mond({ put, scatter, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#2a6ad1', bands: ['#3fae5a', '#ffffff55', '#2f8a4a', '#ffffff40'], size: 6, pos: [-20, 5, -32], glow: '#4a8aff' });
     scatter(6, () => crater(rr(0.6, 1.1), '#a0a3ac', rand), 1.1);
     put(flag('#ffd76a'), 0.6, 0.4);
-    scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
+    if (!modelWorld) scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
     // Mondlandefähre
     const lander = new THREE.Group();
     lander.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.6, 8), M('#e8c86a', { metalness: 0.5, roughness: 0.4 })), 0, 0.8, 0));
@@ -2117,10 +2117,10 @@ const BUILDERS = {
     put(lander, -2, -1.6);
   },
 
-  neptun({ scatter, rand, rr, scene, anims, put }) {
+  neptun({ scatter, rand, rr, scene, anims, put, modelWorld }) {
     planetBackdrop(scene, { color: '#2a5ad8', bands: ['#4a8aff', '#1a3a9a', '#6aa8ff', '#2a4ab8', '#8ac8ff'], size: 10, pos: [24, 8, -38], glow: '#3a7aff' });
     scatter(10, () => crystal(rr(1.2, 2.6), rand() < 0.5 ? '#3a9aff' : '#6ac8ff', rand, 1), 0.7);
-    scatter(8, () => rockMesh(rr(0.3, 0.6), '#2a4fa0', rand), 0.45);
+    if (!modelWorld) scatter(8, () => rockMesh(rr(0.3, 0.6), '#2a4fa0', rand), 0.45);
     // Sturmwirbel in der Mitte
     const vortex = new THREE.Group();
     for (let i = 0; i < 4; i++) {
@@ -2133,7 +2133,7 @@ const BUILDERS = {
     anims.push((t) => vortex.children.forEach((r, i) => (r.rotation.z = t * (1 + i * 0.4))));
   },
 
-  mars({ put, scatter, rand, rr, scene }) {
+  mars({ put, scatter, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#d8743a', bands: ['#b0502a', '#e8a070'], size: 4, pos: [20, 16, -40], glow: '#ff9a5a' }); // Phobos-ähnlicher Mond
     put(rover(), 1.6, 1.2);
     const base = new THREE.Group();
@@ -2142,11 +2142,11 @@ const BUILDERS = {
     tunnel.rotation.z = Math.PI / 2;
     base.add(tunnel, at(dome(0.6, '#cfe8ff', '#e0e0e0'), 2.2, 0, 0));
     put(base, -2.6, -1);
-    scatter(12, () => rockMesh(rr(0.25, 0.7), ['#8a3a1e', '#a0482a', '#6a2a16'][Math.floor(rand() * 3)], rand), 0.5);
+    if (!modelWorld) scatter(12, () => rockMesh(rr(0.25, 0.7), ['#8a3a1e', '#a0482a', '#6a2a16'][Math.floor(rand() * 3)], rand), 0.5);
     put(flag('#ffd76a'), 0.4, -2.8);
   },
 
-  saturn({ root, scatter, rand, rr, anims, scene }) {
+  saturn({ root, scatter, rand, rr, anims, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#d8b880', bands: ['#c8a060', '#e8d0a0', '#b08850', '#f0dcb0'], size: 6, pos: [-30, 3, -44], ring: '220, 190, 140', glow: '#ffd8a0' });
     // Ring um die Insel
     const rt = canvasTex(256, 256, (g) => {
@@ -2178,15 +2178,15 @@ const BUILDERS = {
       chunks.rotation.y = t * 0.1;
       ring.rotation.z = t * 0.05;
     });
-    scatter(9, () => rockMesh(rr(0.3, 0.7), '#b0905a', rand), 0.5);
+    if (!modelWorld) scatter(9, () => rockMesh(rr(0.3, 0.7), '#b0905a', rand), 0.5);
     scatter(6, () => crystal(rr(0.6, 1.1), '#ffe2a0', rand, 0.8), 0.5);
   },
 
-  alien({ put, scatter, rand, rr, root, anims, scene }) {
+  alien({ put, scatter, rand, rr, root, anims, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#5a1a8a', bands: ['#7a2ab0', '#3a0a60', '#9a4ad0'], size: 7, pos: [22, 12, -36], glow: '#b07bff' });
     scatter(14, (i) => alienPlant(['#3a8a4a', '#2a6a7a'][i % 2], ['#7aff5a', '#5affd8', '#ff7ae0'][i % 3], rand), 0.5);
     scatter(6, () => mushroom(rr(0.5, 0.9), '#5affd8', rand, true), 0.4);
-    scatter(5, () => rockMesh(rr(0.3, 0.6), '#3a1a60', rand), 0.4);
+    if (!modelWorld) scatter(5, () => rockMesh(rr(0.3, 0.6), '#3a1a60', rand), 0.4);
     // UFO
     const ufo = new THREE.Group();
     const disk = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), M('#b8c0cc', { metalness: 0.8, roughness: 0.3, flatShading: false }));
@@ -2212,7 +2212,7 @@ const BUILDERS = {
     });
   },
 
-  sonne({ put, scatter, rand, rr, root, anims, scene }) {
+  sonne({ put, scatter, rand, rr, root, anims, scene, modelWorld }) {
     const sunBall = planetBackdrop(scene, { color: '#ffd84a', bands: ['#ffb02e', '#fff2a0', '#ff8a1a'], size: 12, pos: [0, 4, -45], glow: '#ff9a2a', emissive: true });
     // Sonnenbögen
     const arcs = [];
@@ -2226,7 +2226,7 @@ const BUILDERS = {
       arcs.forEach((a, i) => (a.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.08)));
       sunBall.rotation.y = t * 0.03;
     });
-    scatter(10, () => rockMesh(rr(0.25, 0.6), '#a02a08', rand, E('#c83a08', 0.6)), 0.45);
+    if (!modelWorld) scatter(10, () => rockMesh(rr(0.25, 0.6), '#a02a08', rand, E('#c83a08', 0.6)), 0.45);
     scatter(6, () => crystal(rr(0.8, 1.4), '#ffc83a', rand, 1.4), 0.5);
     const glow = new THREE.PointLight('#ffb02e', 30, 14 * K, 2);
     glow.position.set(0, 3, 0);
