@@ -463,13 +463,21 @@ export function buildSpawnTown(ctx, K) {
     }
     anims.push((t) => swirl.forEach((r, i) => (r.rotation.z = t * (1.6 - i * 0.3))));
     for (const [x, z, c] of [[-2.0, 0.9, '#ff7a8a'], [2.0, 0.9, '#ffb05a']]) g.add(at(crystal(1.2, c, rand, 0.8), x, 0, z));
-    const sg = signBoard('Tiefsee-Portal', { w: 3.0, h: 0.7, bg: '#0a4a6a', fg: '#9ff3f0', sub: 'Planet 3 · ab 3 Wiedergeburten' });
+    // Planet 4 teilt sich die Halle: goldene Himmelsleiter hinter dem Strudel
+    const sky = (byPlanet.p4 || []).length > 0;
+    if (sky) {
+      const goldM = M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.35 });
+      for (const sx of [-0.45, 0.45]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 6, 0.1), goldM), sx, 3, -2.6));
+      for (let y = 0.5; y < 6; y += 0.55) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), goldM), 0, y, -2.6));
+      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), M('#ffffff', { roughness: 1 })), 0, 6.2, -2.6));
+    }
+    const sg = signBoard(sky ? 'Tiefsee & Himmel' : 'Tiefsee-Portal', { w: 3.0, h: 0.7, bg: '#0a4a6a', fg: '#9ff3f0', sub: sky ? 'Planet 3 ab 3 · Planet 4 ab 6 Wiedergeburten' : 'Planet 3 · ab 3 Wiedergeburten' });
     sg.position.set(0, 0.9, 2.0);
     sg.rotation.x = -0.3;
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), M('#4a4458')), 0, 0.45, 1.95));
     g.add(sg);
   });
-  addArea('portale-p3', 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), 9.4));
+  addArea('portale-p3', (byPlanet.p4 || []).length ? 'Tiefsee-Strudel und Himmelsleiter (Planet 3 und 4)' : 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), 9.4));
 
   // ── Spielbereiche im äußeren Ring ──
   // Ei-Schlüpfplatz: alle sieben Eier auf Podesten
