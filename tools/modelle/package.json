@@ -1,0 +1,11 @@
+{
+  "name": "coinmaster-modelle",
+  "private": true,
+  "type": "module",
+  "description": "Baut assets/modelle/bibliothek.glb und welten/js/modelCatalog.js aus den CC0-Paketen (KayKit)",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": {
+    "@gltf-transform/core": "^4.0.0",
+    "@gltf-transform/functions": "^4.0.0"
+  }
+}

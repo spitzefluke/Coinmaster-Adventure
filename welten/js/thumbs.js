@@ -25,12 +25,13 @@ export function worldThumb(world, w = 360, h = 240) {
   const p = (queue = queue.then(
     () =>
       new Promise((resolve) =>
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
             const r = getRenderer();
             r.setPixelRatio(1);
             r.setSize(w, h, false);
             const { rw } = buildRobloxWorld(world, { shadows: false });
+            await rw.modelsReady; // Modelle aus der Bibliothek abwarten
             rw.update(0.5);
             const cam = new THREE.PerspectiveCamera(36, w / h, 0.5, 6000);
             const k = (ISLAND_RADIUS / 10) * 8;

@@ -224,6 +224,10 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
       all.push(worldModel(parts, [i * 1500, 0, 0]));
     }
     files.push({ name: 'welten/AlleWelten.rbxmx', data: new TextEncoder().encode(rbxmxFile(all)) });
+    // Modellbibliothek (CC0-Pakete) für den 3D-Importer
+    status.textContent = 'Lade Modellbibliothek …';
+    const glb = await fetch(new URL('../../assets/modelle/bibliothek.glb', import.meta.url)).then((r) => r.arrayBuffer());
+    files.push({ name: 'welten/bibliothek.glb', data: new Uint8Array(glb) });
     files.push({
       name: 'welten/LIESMICH.txt',
       data: new TextEncoder().encode(`Coinmaster Adventure · Welten für Roblox Studio
@@ -238,11 +242,23 @@ haben echten Text (SurfaceGui). Ranglisten und Portale verbindet das Spielskript
 Jede Welt ist ein Model (alle Teile verankert) mit diesen Ordnern:
   Insel        Boden als Säulen, Erdschicht und Felsen darunter
   Deko         Bäume, Gebäude, Kristalle, Pflanzen ...
+  Modelle      unsichtbare Teile "ModellPlatz": hier kommen Häuser, Bäume, Felsen ... aus bibliothek.glb hin
   Muenzen      Teile namens "CoinSpawn": hier setzt das Spiel echte Münzen ein
   Teleport     Teil "TeleportPad": Ankunftsort in dieser Welt
   Himmel       Planeten und Sonne im Hintergrund (nur Weltraum-Welten)
   Effekte      Lichter und ein ParticleEmitter mit den Partikeln der Welt
   Einstellungen  WeltId, Planet, Preis, Glueck, Muenzwert, HimmelOben, HimmelUnten, Akzent
+
+MODELLE (Häuser, Bäume, Felsen, Berge in der Ferne) – einmalig:
+  1. In Studio oben „Avatar“ (oder „Home“) > „Import 3D“ und welten/bibliothek.glb wählen. Im Importer
+     nichts zusammenführen; „Import“ drücken. Es entsteht ein Model mit einem MeshPart je Modell.
+  2. Dieses Model in „CoinmasterModelle“ umbenennen und in ServerStorage ziehen.
+  3. Den Installer der Webseite ausführen (er legt ServerScriptService > CoinmasterModelle an).
+     Im Spiel setzt das Skript die Modelle beim Start an alle Plätze „ModellPlatz“.
+  4. Damit die Modelle schon in Studio stehen und mitgespeichert werden, nach dem Einfügen der Welten
+     einmal in die Befehlsleiste (Ansicht > Befehlsleiste) schreiben und Enter drücken:
+       require(game.ServerScriptService.CoinmasterModelle.Einsetzen)()
+  Die Modelle stammen aus den kostenlosen KayKit-Paketen von Kay Lousberg (CC0, www.kaylousberg.com).
 
 Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 256 Studs breit.
 Animationen (UFO, Fische, Wasser) sind in Studio noch nicht dabei, die Teile stehen in ihrer Grundhaltung.

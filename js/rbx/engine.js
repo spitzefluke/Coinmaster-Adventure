@@ -9,6 +9,7 @@
 //   Vector2 → [x, y]   UDim2 → [xs, xo, ys, yo]   UDim → [s, o]   Enum → Name als Text
 // Instanzen entstehen ohne Welt (wie Instance.new) und erscheinen, sobald sie unter workspace hängen.
 
+import { addModels } from './models.js';
 import * as THREE from 'three';
 import { partMaterial, neonColor, FORCEFIELD_TIME } from './materials.js';
 import { particleTexture } from './textures.js';
@@ -493,6 +494,9 @@ export class RbxWorld {
     }
     this.scene.add(group);
     this.staticGroups.push(group);
+    // Platzhalter „ModellPlatz“: Modelle aus der Bibliothek (in Roblox setzt sie CoinmasterModelle ein)
+    const places = list.filter((p) => p.model);
+    if (places.length) this.modelsReady = addModels(group, places, { shadows: this.shadows !== false });
     return group;
   }
 

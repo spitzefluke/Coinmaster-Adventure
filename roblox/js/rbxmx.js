@@ -84,7 +84,7 @@ function part(p, offset = [0, 0, 0], extraChildren = '') {
       prop.bool('CanCollide', p.canCollide ?? true),
       prop.bool('CastShadow', p.castShadow ?? true),
       // Kuppel und Wolkenmeer: von Klicks und Strahlen ignoriert
-      ...(p.noShadow ? [prop.bool('CanQuery', false), prop.bool('CanTouch', false)] : []),
+      ...(p.noShadow || p.model ? [prop.bool('CanQuery', false), prop.bool('CanTouch', false)] : []),
       prop.cframe('CFrame', [p.pos[0] + offset[0], p.pos[1] + offset[1], p.pos[2] + offset[2]], p.rot),
       prop.color3uint8('Color3uint8', p.color),
       prop.token('Material', MATERIAL[p.material] ?? MATERIAL.SmoothPlastic),
@@ -101,7 +101,10 @@ function part(p, offset = [0, 0, 0], extraChildren = '') {
 
 const folder = (name, children) => item('Folder', [prop.string('Name', name)], children);
 const value = (cls, name, v) =>
-  item(cls, [prop.string('Name', name), cls === 'Color3Value' ? prop.color3('Value', v) : cls === 'NumberValue' ? `<double name="Value">${f(v)}</double>` : prop.string('Value', v)]);
+  item(cls, [
+    prop.string('Name', name),
+    cls === 'Color3Value' ? prop.color3('Value', v) : cls === 'NumberValue' ? `<double name="Value">${f(v)}</double>` : cls === 'BoolValue' ? prop.bool('Value', v) : prop.string('Value', v),
+  ]);
 
 const ID = { x: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
 
@@ -158,12 +161,13 @@ function soundFolder(list, offset) {
 
 export function worldModel(w, offset = [0, 0, 0]) {
   const { world, parts, sky, lights, emitter, emitters, lighting, sounds } = w;
-  const byFolder = { Insel: [], Deko: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
+  const byFolder = { Insel: [], Deko: [], Modelle: [], Muenzen: [], Teleport: [], Spawn: [], Portale: [], Ranglisten: [] };
   for (const p of parts) {
     if (p.name === 'SpawnLocation') byFolder.Spawn.push(p);
     else if (p.name?.startsWith('Portal')) byFolder.Portale.push(p);
     else if (p.name === 'Rangliste') byFolder.Ranglisten.push(p);
     else if (p.name === 'CoinSpawn') byFolder.Muenzen.push(p);
+    else if (p.model) byFolder.Modelle.push(p);
     else if (p.name === 'TeleportPad') byFolder.Teleport.push(p);
     else if (p.name === 'Boden' || p.name === 'Fels' || p.name === 'Rand') byFolder.Insel.push(p);
     else byFolder.Deko.push(p);
@@ -213,13 +217,15 @@ export function worldModel(w, offset = [0, 0, 0]) {
       value('Color3Value', 'Akzent', world.accent),
     ].join(''),
   );
-  const list = (arr) => arr.map((p) => part(p, offset)).join('');
+  // Platzhalter für Modelle: StringValue „Modell“ (Name in der Bibliothek) und BoolValue „Fest“ (kollidiert)
+  const list = (arr) => arr.map((p) => part(p, offset, p.model ? value('StringValue', 'Modell', p.model) + value('BoolValue', 'Fest', !!p.fest) : '')).join('');
   return item(
     'Model',
     [prop.string('Name', `Welt_${world.name.replace(/\s+/g, '')}`)],
     settings +
       folder('Insel', list(byFolder.Insel)) +
       folder('Deko', list(byFolder.Deko)) +
+      (byFolder.Modelle.length ? folder('Modelle', list(byFolder.Modelle)) : '') +
       folder('Muenzen', list(byFolder.Muenzen)) +
       folder('Teleport', list(byFolder.Teleport)) +
       (byFolder.Spawn.length ? folder('Spawn', list(byFolder.Spawn)) : '') +

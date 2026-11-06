@@ -1149,6 +1149,108 @@ update()
 `;
 
 // Client: setzt Licht und Atmosphere der Welt, in deren Nähe die Kamera ist (Ordner „Licht“ im Weltmodell)
+// Modelle der CC0-Pakete einsetzen: Die Welten-Dateien enthalten unsichtbare Teile „ModellPlatz“ (Lage und
+// Größe des Modells, StringValue „Modell“, BoolValue „Fest“). Die Bibliothek bibliothek.glb kommt einmal mit
+// dem 3D-Importer nach ServerStorage > CoinmasterModelle. Das Modul setzt an jeden Platz eine Kopie.
+export const MODEL_PLACER = `-- Coinmaster Adventure · Modelle einsetzen
+--
+-- Sucht unter root (Standard: Workspace) alle Teile „ModellPlatz“ und setzt dort das gleichnamige Modell
+-- aus ServerStorage > CoinmasterModelle ein (MeshPart oder Model), gestreckt auf die Größe des Platzes.
+-- Im Spiel ruft das Skript CoinmasterModelle das beim Start auf. Damit die Modelle schon in Studio zu sehen
+-- sind und fest gespeichert werden, einmal in der Befehlsleiste ausführen:
+--   require(game.ServerScriptService.CoinmasterModelle.Einsetzen)()
+
+local ServerStorage = game:GetService("ServerStorage")
+
+local function library()
+	return ServerStorage:FindFirstChild("CoinmasterModelle") or workspace:FindFirstChild("CoinmasterModelle")
+end
+
+local function setPart(p, fest)
+	p.Anchored = true
+	p.CanCollide = fest
+	p.CanQuery = fest
+	p.CanTouch = false
+end
+
+-- eine Kopie der Vorlage an den Platz setzen, den Platzhalter entfernen
+local function place_(place, template, id)
+	local festValue = place:FindFirstChild("Fest")
+	local fest = festValue ~= nil and festValue.Value
+	local copy = template:Clone()
+	if copy:IsA("BasePart") then
+		copy.Size = place.Size
+		copy.CFrame = place.CFrame
+		setPart(copy, fest)
+	else
+		-- Model: gleichmäßig auf die Höhe des Platzes skalieren, Mitte des Rahmens auf die Mitte des Platzes
+		local _, size = copy:GetBoundingBox()
+		if size.Y > 0 then
+			copy:ScaleTo(copy:GetScale() * place.Size.Y / size.Y)
+		end
+		local box = copy:GetBoundingBox()
+		copy:PivotTo(place.CFrame * box:ToObjectSpace(copy:GetPivot()))
+		for _, p in ipairs(copy:GetDescendants()) do
+			if p:IsA("BasePart") then
+				setPart(p, fest)
+			end
+		end
+	end
+	copy.Name = id
+	copy.Parent = place.Parent
+	place:Destroy()
+	return 1
+end
+
+return function(root)
+	root = root or workspace
+	local lib = library()
+	if not lib then
+		warn("[Coinmaster] Modellbibliothek fehlt: bibliothek.glb mit dem 3D-Importer einfügen und als ServerStorage > CoinmasterModelle ablegen")
+		return 0
+	end
+	-- Vorlagen nach Namen (das erste Vorkommen: ein Model mit Teilen oder ein einzelnes MeshPart)
+	local templates = {}
+	for _, d in ipairs(lib:GetDescendants()) do
+		if (d:IsA("BasePart") or d:IsA("Model")) and not templates[d.Name] then
+			templates[d.Name] = d
+		end
+	end
+	local places = {}
+	for _, d in ipairs(root:GetDescendants()) do
+		if d.Name == "ModellPlatz" and d:IsA("BasePart") then
+			table.insert(places, d)
+		end
+	end
+	local count, missing = 0, {}
+	for _, place in ipairs(places) do
+		local idValue = place:FindFirstChild("Modell")
+		local id = idValue and idValue.Value
+		local template = id and templates[id]
+		if not template then
+			if id then
+				missing[id] = true
+			end
+		else
+			count = count + place_(place, template, id)
+		end
+	end
+	local list = {}
+	for id in pairs(missing) do
+		table.insert(list, id)
+	end
+	if #list > 0 then
+		warn("[Coinmaster] Modelle fehlen in der Bibliothek: " .. table.concat(list, ", "))
+	end
+	print(("[Coinmaster] %d Modelle eingesetzt"):format(count))
+	return count
+end
+`;
+
+export const MODEL_PLACER_START = `-- Coinmaster Adventure · Modelle beim Spielstart einsetzen (Modul Einsetzen darunter)
+require(script:WaitForChild("Einsetzen"))(workspace)
+`;
+
 export const WORLD_LIGHT_CLIENT = `-- Coinmaster Adventure · Weltlicht (Client)
 -- Jede Welt aus den .rbxmx-Dateien hat einen Ordner „Licht“ mit einer Atmosphere und Lighting-Werten.
 -- Dieses Skript übernimmt sie für die Welt, die der Kamera am nächsten ist.
@@ -1277,6 +1379,7 @@ export function installerSource(data) {
 --   ServerScriptService > CoinmasterWeather   wechselt das Wetter (alle ${(data.WEATHER_MS ?? 180000) / 60000} Minuten)
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
+--   ServerScriptService > CoinmasterModelle   setzt die Modelle (bibliothek.glb) in die Welten ein
 --   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
 --   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
 --   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)
@@ -1437,6 +1540,14 @@ end
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather", ${longString(WEATHER_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
+-- Modelle der Welten: Skript mit Modul „Einsetzen“ (Bibliothek: ServerStorage > CoinmasterModelle)
+do
+	local placer = addScript("Script", game:GetService("ServerScriptService"), "CoinmasterModelle", ${longString(MODEL_PLACER_START)})
+	local m = Instance.new("ModuleScript")
+	m.Name = "Einsetzen"
+	m.Source = ${longString(MODEL_PLACER)}
+	m.Parent = placer
+end
 ${data.BOOSTS && data.AURAS && data.SKILLS ? `-- Spielstand: Modul PlayerData (ServerScriptService > CoinmasterServer) und das Skript, das es startet
 local serverFolder = game:GetService("ServerScriptService"):FindFirstChild("CoinmasterServer")
 if serverFolder then
