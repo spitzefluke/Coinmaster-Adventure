@@ -23,7 +23,7 @@
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Haustiere</p>
     <h1>Eierhalle</h1>
-    <p class="lede">Sieben Eier, aus denen deine Haustiere schlüpfen. Dreh sie, schau sie dir genau an und lass eins schlüpfen. Je seltener das Ei, desto größer das Spektakel.</p>
+    <p class="lede">Sieben Eier, aus denen deine Haustiere schlüpfen, jedes mit eigener Deko aus Roblox-Teilen und eigenen Animationen. Dreh sie, schau sie dir genau an und lass eins schlüpfen: Es wackelt, lädt auf, platzt und das Tier wächst heraus. Je seltener das Ei, desto größer das Spektakel.</p>
   </header>
 
   <main id="eggs" class="eggs"></main>
@@ -45,6 +45,7 @@
       <dl class="detail-facts">
         <div><dt>Preis</dt><dd id="detail-price"></dd></div>
         <div><dt>Erhältlich</dt><dd id="detail-avail"></dd></div>
+        <div class="wide"><dt>Neu</dt><dd id="detail-extras"></dd></div>
       </dl>
       <div class="detail-actions">
         <button id="detail-hatch" class="hatch-btn" type="button">Schlüpfen lassen</button>
@@ -65,7 +66,10 @@
     <h2 id="hatch-name" class="hatch-name">???</h2>
     <p class="hatch-from"></p>
     <p class="hatch-note"></p>
-    <button class="hatch-done" type="button" hidden>Fertig</button>
+    <div class="hatch-actions" hidden>
+      <button class="hatch-again" type="button">Nochmal</button>
+      <button class="hatch-done" type="button">Fertig</button>
+    </div>
   </div>
   <p class="hatch-hint">Tippen zum Überspringen</p>
 </div>

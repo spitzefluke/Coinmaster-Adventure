@@ -5,6 +5,7 @@
 
 import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from './auraLuau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
+import { EGG_BUILDER } from './eggLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
 import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
@@ -618,88 +619,8 @@ end
 return MutationFx
 `;
 
-export const EGG_BUILDER = `${HEADER('Eier bauen')}
--- EggBuilder.Build(egg) baut ein Ei auf einem Sockel als Model.
-
-local EggData = require(script.Parent.EggData)
-
-local EggBuilder = {}
-
-${BUILD_HELPERS}
-local LOOK = {
-	normal = { Material = Enum.Material.SmoothPlastic },
-	wald = { Material = Enum.Material.Grass },
-	eis = { Material = Enum.Material.Ice, Transparency = 0.1 },
-	engel = { Material = Enum.Material.SmoothPlastic, Reflectance = 0.25 },
-	galaxie = { Material = Enum.Material.Glass, Color = Color3.fromRGB(26, 18, 54) },
-	admin = { Material = Enum.Material.DiamondPlate, Color = Color3.fromRGB(23, 23, 29) },
-	release = { Material = Enum.Material.Foil },
-}
-
-function EggBuilder.Build(egg)
-	local look = LOOK[egg.Id] or {}
-	local model = Instance.new("Model")
-	model.Name = egg.Name
-
-	local pedestal = part("Part", { Name = "Pedestal", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 4.4, 4.4), Color = Color3.fromRGB(42, 37, 50), Material = Enum.Material.Slate, CFrame = CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)) }, model)
-	-- Leuchtband rund um die Sockelkante (etwas breiter als der Sockel, unterhalb der Oberseite)
-	part("Part", { Name = "PedestalRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 4.52, 4.52), Color = egg.Glow, Material = Enum.Material.Neon, CFrame = CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.rad(90)) }, model)
-
-	local shell = part("Part", { Name = "Shell", Shape = Enum.PartType.Ball, Size = Vector3.new(3, 3, 3), Color = look.Color or egg.Color, Material = look.Material or Enum.Material.SmoothPlastic, Transparency = look.Transparency or 0, Reflectance = look.Reflectance or 0, CFrame = CFrame.new(0, 0.6 + 2.05, 0) }, model)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Scale = Vector3.new(1, 1.35, 1)
-	mesh.Parent = shell
-	model.PrimaryPart = shell
-	light(shell, egg.Glow, 1 + egg.Rank * 0.4, 8 + egg.Rank * 2)
-
-	local top = shell.Position + Vector3.new(0, 2.05, 0)
-	if egg.Id == "engel" then
-		for i = 0, 23 do
-			local a = math.rad(i * 15)
-			part("Part", { Name = "Halo", Shape = Enum.PartType.Ball, Size = Vector3.new(0.18, 0.18, 0.18), Color = Color3.fromRGB(255, 224, 138), Material = Enum.Material.Neon, CFrame = CFrame.new(top + Vector3.new(math.cos(a) * 0.9, 0.7, math.sin(a) * 0.9)) }, model)
-		end
-		for _, side in ipairs({ 1, -1 }) do
-			part("Part", { Name = "Wing", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 1.4, 0.2), Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(shell.Position + Vector3.new(side * 2, 0.6, -0.4)) * CFrame.Angles(0, 0, side * math.rad(-20)) }, model)
-		end
-	elseif egg.Id == "galaxie" then
-		for i = 0, 35 do
-			local a = math.rad(i * 10)
-			part("Part", { Name = "Ring", Shape = Enum.PartType.Ball, Size = Vector3.new(0.2, 0.2, 0.2), Color = Color3.fromHSV(0.72 + (i % 6) * 0.02, 0.6, 1), Material = Enum.Material.Neon, CFrame = CFrame.new(shell.Position + Vector3.new(math.cos(a) * 2.6, math.sin(a) * 0.6, math.sin(a) * 2.6)) }, model)
-		end
-		local s = Instance.new("Sparkles")
-		s.SparkleColor = egg.Glow
-		s.Parent = shell
-	elseif egg.Id == "admin" then
-		part("Part", { Name = "Band", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 3.08, 3.08), Color = egg.Glow, Material = Enum.Material.Neon, CFrame = CFrame.new(shell.Position) * CFrame.Angles(0, 0, math.rad(90)) }, model)
-	elseif egg.Id == "release" then
-		for _, side in ipairs({ 1, -1 }) do
-			part("Part", { Name = "Bow", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.6, 0.5), Color = Color3.fromRGB(224, 36, 58), Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(top + Vector3.new(side * 0.4, 0.15, 0)) * CFrame.Angles(0, 0, side * math.rad(25)) }, model)
-		end
-		local s = Instance.new("Sparkles")
-		s.SparkleColor = egg.Glow
-		s.Parent = shell
-	elseif egg.Id == "wald" then
-		for i = 0, 2 do
-			local a = math.rad(i * 120 + 20)
-			local base = Vector3.new(math.cos(a) * 1.7, 0.9, math.sin(a) * 1.7)
-			part("Part", { Name = "MushroomStem", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 0.2, 0.2), Color = Color3.fromRGB(243, 234, 216), Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(base) * CFrame.Angles(0, 0, math.rad(90)) }, model)
-			part("Part", { Name = "MushroomCap", Shape = Enum.PartType.Ball, Size = Vector3.new(0.6, 0.35, 0.6), Color = Color3.fromRGB(216, 50, 46), Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new(base + Vector3.new(0, 0.25, 0)) }, model)
-		end
-	elseif egg.Id == "eis" then
-		local rng = Random.new(3)
-		for i = 0, 11 do
-			local a = math.rad(i * 30)
-			part("WedgePart", { Name = "Crystal", Size = Vector3.new(0.4, rng:NextNumber(0.8, 1.6), 0.5), Color = Color3.fromRGB(200, 242, 255), Material = Enum.Material.Glass, Transparency = 0.2, CFrame = CFrame.new(Vector3.new(math.cos(a) * 1.7, 1.2, math.sin(a) * 1.7)) * CFrame.Angles(0, -a, math.rad(15)) }, model)
-		end
-	end
-
-	model:SetAttribute("EggId", egg.Id)
-	return model
-end
-
-return EggBuilder
-`;
+// EggBuilder (Eier v2) liegt in eggLuau.js
+export { EGG_BUILDER };
 
 export function worldDataSource({ PLANETS, WORLDS, REBIRTH }) {
   const planets = PLANETS.map((p) =>
