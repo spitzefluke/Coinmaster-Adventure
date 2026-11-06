@@ -1702,13 +1702,17 @@ local function few() return setting("fewerParticles", false) end
 
 -- Bildschirm wackeln: HUD-Teile und Kamera kurz versetzen, klingt schnell ab
 local shakeToken
+local shakeBase = {} -- Grundstellung je Teil, solange gewackelt wird (ein neues Wackeln übernimmt sie)
 function Juice.shake(strength, duration)
 	if Juice.calm() or not ui.hud then return end
 	local token = {}
 	shakeToken = token
 	local items = {}
 	for _, g in ipairs(ui.hud:GetChildren()) do
-		if g:IsA("GuiObject") then table.insert(items, { G = g, P = g.Position }) end
+		if g:IsA("GuiObject") then
+			shakeBase[g] = shakeBase[g] or g.Position
+			table.insert(items, { G = g, P = shakeBase[g] })
+		end
 	end
 	local cam = workspace.CurrentCamera
 	task.spawn(function()
@@ -1718,11 +1722,26 @@ function Juice.shake(strength, duration)
 			if k >= 1 then break end
 			local s = strength * (1 - k) * (1 - k)
 			local dx, dy = (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s
-			for _, e in ipairs(items) do e.G.Position = e.P + UDim2.new(0, dx, 0, dy) end
+			for _, e in ipairs(items) do
+				-- hat die Anordnung (z. B. Handy-Layout) das Teil inzwischen verschoben, bleibt es dort
+				if e.Last and e.G.Position ~= e.Last then
+					e.Skip = true
+					shakeBase[e.G] = nil
+				end
+				if not e.Skip then
+					e.Last = e.P + UDim2.new(0, dx, 0, dy)
+					e.G.Position = e.Last
+				end
+			end
 			if cam and player.Character then cam.CFrame = cam.CFrame * CFrame.new(dx * 0.012, dy * 0.012, 0) end
 			task.wait()
 		end
-		for _, e in ipairs(items) do e.G.Position = e.P end
+		-- abgelöst von einem neuen Wackeln: das neue stellt am Ende zurück
+		if shakeToken ~= token then return end
+		for _, e in ipairs(items) do
+			if not e.Skip and (not e.Last or e.G.Position == e.Last) then e.G.Position = e.P end
+			shakeBase[e.G] = nil
+		end
 	end)
 end
 
