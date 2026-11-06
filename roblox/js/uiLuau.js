@@ -1698,14 +1698,19 @@ end
 -- ── Münzbaumgarten: Beete, Sachen aus Münzrollen, Rollen kaufen ──
 -- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
--- gardenDig (Beet), gardenFence (Zaun), openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
+-- gardenDig (Beet), gardenFence (Zaun), gardenSell (Baum | "all"), gardenSeed (Baum),
+-- openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
+-- Tab „Korb“: Früchte aus der Ernte, Marktpreis (wechselt alle 10 Minuten), verkaufen oder Samen ziehen.
 -- Name einer Seltenheit; ??? bekommt einen Regenbogen davor
 local function rarityName(r)
 	return (r.Rainbow and "🌈 " or "") .. r.Name
 end
-local GARDEN_TABS = { { "beete", "Beete", 110, "sprout" }, { "sachen", "Sachen", 116, "bag" }, { "rollen", "Rollen", 116, "coins" } }
-local STAGE_NAMES = { "Keimling", "Jungbaum", "Ausgewachsen" }
-local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
+local GARDEN_TABS = { { "beete", "Beete", 104, "sprout" }, { "korb", "Korb", 96, "tree" }, { "sachen", "Sachen", 110, "bag" }, { "rollen", "Rollen", 110, "coins" } }
+local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", spruce = "🌲", oak = "🌳", maple = "🍁", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", mushroom = "🍄", cloud = "☁️", crystal = "💎", planet = "🪐", angel = "😇", rainbow = "🌈", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
+local FRUIT_ICON = { apple = "🍎", pear = "🍐", berry = "🫐", cone = "🌰", acorn = "🌰", cherry = "🍒", drop = "💧", dragon = "🐉", star = "⭐", moon = "🌕" }
+local function fruitIcon(tree)
+	return FRUIT_ICON[tree.FruitShape] or "🍎"
+end
 ui.gardenSel = nil -- ausgewählte Sache (Baum, Kanne, Dünger), die auf ein Beet soll
 ui.gardenLive = {}
 
@@ -1722,8 +1727,13 @@ local function gardenSignature(g, now)
 	local parts = { tostring(g.Owned), g.Beds, ui.gardenSel or "" }
 	for i = 1, g.Beds do
 		local p = g.Plots[tostring(i)]
-		table.insert(parts, p and (p.Tree .. GardenData.Stage(p, now) .. GardenData.Ripe(p, now) .. ((p.BoostEnd or 0) > now and "d" or "")) or "-")
+		table.insert(parts, p and (p.Tree .. GardenData.PhaseOf(GardenData.Progress(p, now)) .. GardenData.Ripe(p, now) .. ((p.BoostEnd or 0) > now and "d" or "") .. (p.Golden and "g" or "")) or "-")
 	end
+	-- Korb: Früchte und Marktpreis-Fenster
+	for _, t in ipairs(GardenData.Trees) do
+		if g.Fruits[t.Id] then table.insert(parts, t.Id .. g.Fruits[t.Id]) end
+	end
+	table.insert(parts, tostring(math.floor(now / GardenData.Garden.MarketSlot)))
 	return table.concat(parts, ",")
 end
 local function gardenDo(action, a, b)
@@ -1813,10 +1823,58 @@ fillGarden = function(w)
 		local c = card(list, C.gold)
 		text(c, 0, 52, "🌳", 44, C.ink, EMOJI)
 		text(c, 56, 22, "Münzbaumgarten", 20, C.ink, FONT)
-		text(c, 80, 70, GardenData.Garden.StartBeds .. " Beete für Münzbäume aus Münzrollen. Ausgewachsen tragen sie Taler.", 12, C.muted, TEXT)
+		text(c, 80, 70, GardenData.Garden.StartBeds .. " Beete für Münzbäume aus Münzrollen. Ausgewachsen tragen sie Früchte, die du am Markt verkaufst.", 12, C.muted, TEXT)
 		actionButton(c, "Kaufen · " .. GameUI.Format(GardenData.Garden.Price), C.green, money >= GardenData.Garden.Price, function()
 			gardenDo("gardenBuy")
 		end)
+		return
+	end
+
+	if w.tab == "korb" then
+		-- Marktstand: alle Früchte auf einmal verkaufen
+		local total, any = 0, false
+		for id, n in pairs(g.Fruits) do
+			total = total + n * GardenData.FruitPrice(id, now)
+			any = true
+		end
+		local all = new("TextButton", { Name = "AllesVerkaufen", Size = UDim2.new(0, 230, 1, 0), BackgroundColor3 = any and C.green or C.line, Text = "💰 Alles verkaufen · +" .. GameUI.Format(total), Font = FONT, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 2, Parent = w.tools }, { corner(R.Round) })
+		pressable(all, function() if any then gardenDo("gardenSell", "all") end end)
+		local n = 0
+		for _, tree in ipairs(GardenData.Trees) do
+			local count = g.Fruits[tree.Id] or 0
+			if count > 0 then
+				n = n + 1
+				local r = GardenData.RarityById[tree.Rarity]
+				local c = card(list, r.Color)
+				c.LayoutOrder = n
+				local mult = GardenData.MarketMult(tree.Id, now)
+				local price = GardenData.FruitPrice(tree.Id, now)
+				local fname = (count == 1 and tree.FruitName or tree.FruitPlural)
+				text(c, 0, 40, fruitIcon(tree), 34, C.ink, EMOJI)
+				text(c, 44, 20, fname, #fname > 14 and 14 or 17, C.ink, FONT)
+				text(c, 66, 16, "×" .. GameUI.Format(count) .. " · " .. rarityName(r), 12, r.Color)
+				local trend = mult > 1 and ("▲ " .. math.floor((mult - 1) * 100 + 0.5) .. " %") or (mult < 1 and ("▼ " .. math.floor((1 - mult) * 100 + 0.5) .. " %") or "Grundpreis")
+				text(c, 84, 18, GameUI.Format(price) .. " Taler/Stück", 12, C.ink, MONO)
+				text(c, 104, 16, trend, 12, mult > 1 and C.green or (mult < 1 and C.red or C.muted), MONO)
+				local cost = GardenData.SeedCost(tree)
+				local seedBtn = actionButton(c, "🌱 Samen ziehen · " .. cost, C.blue, count >= cost, function() gardenDo("gardenSeed", tree.Id) end)
+				seedBtn.Position = UDim2.new(0, 0, 1, -86)
+				seedBtn.TextSize = 14
+				local sellBtn = actionButton(c, "Verkaufen · +" .. GameUI.Format(count * price), C.green, true, function() gardenDo("gardenSell", tree.Id) end)
+				sellBtn.TextSize = 14
+			end
+		end
+		-- Hinweis mit Countdown bis zu neuen Preisen
+		local info = card(list, C.line)
+		info.LayoutOrder = 1000
+		text(info, 0, 46, "🏪", 38, C.ink, EMOJI)
+		text(info, 50, 22, "Marktstand", 20, C.ink, FONT)
+		local live = text(info, 76, 34, "", 13, C.ink, MONO)
+		text(info, 112, 80, n == 0 and "Der Korb ist leer. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier." or "Preise schwanken zwischen 60 % und 180 % des Grundpreises. Ein Samen kostet so viele Früchte, wie der Baum Ernten hat.", 12, C.muted, TEXT)
+		table.insert(ui.gardenLive, function(t)
+			live.Text = "Neue Preise in " .. GardenData.FormatTime(GardenData.MarketLeft(t))
+		end)
+		for _, fn in ipairs(ui.gardenLive) do fn(now) end
 		return
 	end
 
@@ -1851,7 +1909,7 @@ fillGarden = function(w)
 				text(c, 0, 46, item.Type == "Tree" and "🌱" or lootIcon(item), 38, C.ink, EMOJI)
 				text(c, 50, 22, GardenData.LootName(item) .. "  ×" .. count, 17, C.ink, FONT)
 				text(c, 74, 16, rarityName(r) .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
-				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. GameUI.Format(item.Yield) .. " Taler alle " .. GardenData.FormatTime(item.Cycle) .. ", " .. item.Harvests .. "× ernten") or item.Text
+				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. item.FruitPlural .. " alle " .. GardenData.FormatTime(item.Cycle) .. ", " .. item.Harvests .. "× ernten") or item.Text
 				text(c, 94, 48, info, 12, C.muted, TEXT)
 				if item.Kind == "Taler" or item.Kind == "Bed" then
 					actionButton(c, "Benutzen", C.blue, true, function() gardenDo("gardenUse", item.Id) end)
@@ -1906,11 +1964,13 @@ fillGarden = function(w)
 			end
 		else
 			local stage = GardenData.Stage(plot, now)
+			local phase = GardenData.PhaseOf(GardenData.Progress(plot, now))
 			local ripe = GardenData.Ripe(plot, now)
-			text(c, 20, 46, lootIcon(tree), stage == 1 and 26 or (stage == 2 and 34 or 42), C.ink, EMOJI)
-			text(c, 68, 22, tree.Name, 19, C.ink, FONT)
+			text(c, 20, 46, (plot.Golden and "✨" or "") .. (phase <= 2 and "🌱" or lootIcon(tree)), ({ 24, 30, 36, 40, 42 })[phase], C.ink, EMOJI)
+			local treeName = GardenData.TreeName(tree, plot.Golden)
+			text(c, 68, 22, treeName, #treeName > 15 and 15 or 19, plot.Golden and C.goldHi or C.ink, FONT)
 			local left = GardenData.HarvestsLeft(plot)
-			text(c, 90, 16, rarityName(r) .. " · " .. STAGE_NAMES[stage] .. " · noch " .. left .. "× ernten", 12, left <= 2 and C.red or r.Color)
+			text(c, 90, 16, rarityName(r) .. (phase < 5 and (" · " .. GardenData.PhaseNames[phase]) or ""), 12, r.Color)
 			local live = text(c, 108, 16, "", 12, C.muted, MONO)
 			if stage < 3 then
 				local bar = new("Frame", { Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 0, 130), BackgroundColor3 = C.bg, Parent = c }, { corner(R.Round) })
@@ -1923,9 +1983,9 @@ fillGarden = function(w)
 			else
 				local dots = {}
 				for k = 1, GardenData.Garden.MaxRipe do
-					table.insert(dots, k <= ripe and "🪙" or "⚪")
+					table.insert(dots, k <= ripe and fruitIcon(tree) or "⚪")
 				end
-				text(c, 128, 18, table.concat(dots, " "), 14, C.ink, EMOJI)
+				text(c, 128, 18, table.concat(dots, " ") .. "   noch " .. left .. "×", 14, left <= 2 and C.red or C.ink, EMOJI)
 				table.insert(ui.gardenLive, function(t)
 					local since = math.max(GardenData.GrownAt(plot), plot.Harvested or 0)
 					local r2 = GardenData.Ripe(plot, t)
@@ -1943,7 +2003,8 @@ fillGarden = function(w)
 			if canUse then
 				actionButton(c, (sel.Kind == "Water" and "Gießen: " or "Düngen: ") .. sel.Name, C.blue, true, function() gardenDo("gardenUse", sel.Id, tostring(i)) end)
 			elseif ripe > 0 then
-				actionButton(c, "Ernten · +" .. GameUI.Format(GardenData.HarvestValue(plot, now)), C.green, true, function() gardenDo("gardenHarvest", tostring(i)) end)
+				local b = actionButton(c, "Ernten · +" .. GardenData.FruitLabel(tree, GardenData.HarvestFruits(plot, now)), C.green, true, function() gardenDo("gardenHarvest", tostring(i)) end)
+				b.TextSize = 14
 			else
 				local dig = actionButton(c, "Ausgraben", C.line, true, function() gardenDo("gardenDig", tostring(i)) end)
 				dig.TextSize = 14
@@ -2003,7 +2064,7 @@ local function defaultInvoke(action, a, b)
 		local remote = root:FindFirstChild("GardenRemote")
 		if not remote then return false, "GardenRemote fehlt" end
 		-- gardenBuy → buyGarden usw. (Namen wie in GardenData.Act)
-		local map = { gardenBuy = "buyGarden", gardenBed = "buyBed", gardenPlant = "plant", gardenUse = "use", gardenHarvest = "harvest", gardenDig = "dig", gardenFence = "fence" }
+		local map = { gardenBuy = "buyGarden", gardenBed = "buyBed", gardenPlant = "plant", gardenUse = "use", gardenHarvest = "harvest", gardenDig = "dig", gardenFence = "fence", gardenSell = "sell", gardenSeed = "seed" }
 		return remote:InvokeServer(map[action] or action, a, b)
 	end
 	if PLAYER_ACTIONS[action] then

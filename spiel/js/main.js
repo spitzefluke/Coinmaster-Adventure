@@ -379,7 +379,7 @@ function invoke(action, a, b) {
     renderHud();
     return [true, `${roll.name}: ${lootName(item)}!`, item.id];
   }
-  const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig', gardenFence: 'fence' };
+  const GARDEN_ACTIONS = { gardenBuy: 'buyGarden', gardenBed: 'buyBed', gardenPlant: 'plant', gardenUse: 'use', gardenHarvest: 'harvest', gardenDig: 'dig', gardenFence: 'fence', gardenSell: 'sell', gardenSeed: 'seed' };
   if (GARDEN_ACTIONS[action]) {
     const [ok, text, delta] = gardenAct(state.garden, GARDEN_ACTIONS[action], a, b, Date.now() / 1000, state.taler);
     if (!ok) return [false, text];

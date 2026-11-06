@@ -1,11 +1,13 @@
 // Münzbaumgarten: Garten kaufen, Beete, Samen säen, Gießen, Düngen, Ernten. Wachsende Bäume zeigen einen Timer.
+// Geerntet werden Früchte: Sie liegen im Fruchtkorb und werden am Marktstand verkauft oder zu Samen gezogen.
 // Der Garten in 3D ist GardenBuilder aus dem Installer (1:1 wie in Roblox), die Regeln stehen in
 // garden.js (wie GardenData). Taler und Inventar teilt sich die Seite mit den Münzrollen.
 
 import * as THREE from 'three';
 import {
-  TREES, LOOT, GARDEN, lootById, fenceById, rarityById, stage, ripe, grownAt, boostMult, harvestValue, harvestsLeft,
-  loadState, saveState, freshState, now, setSpeed, fmt, fmtTime, lootName,
+  TREES, LOOT, GARDEN, lootById, fenceById, rarityById, stage, ripe, grownAt, boostMult, harvestFruits, harvestsLeft,
+  loadState, saveState, freshState, now, setSpeed, fmt, fmtTime, lootName, phaseOf, progressOf, PHASE_NAME,
+  marketMult, fruitPrice, marketLeft, seedCost, fruitLabel, treeName,
 } from './garden.js';
 import { createRobloxGarden, rollLua } from '../../rollen/js/rollRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
@@ -16,8 +18,9 @@ let state = loadState();
 let selected = null; // Id einer Sache aus dem Inventar, die man gerade auf ein Beet anwenden will
 
 const $ = (id) => document.getElementById(id);
-const STAGE_NAME = ['Leer', 'Keimling', 'Jungbaum', 'Ausgewachsen'];
-const ICON = { bush: '🌿', round: '🌳', oval: '🌳', cone: '🌲', blossom: '🌸', weeping: '🌳', palm: '🌴', star: '🌌', can: '💧', sack: '🌱', bag: '💰', spade: '⚒️', chest: '💎' };
+const ICON = { bush: '🌿', round: '🌳', oval: '🌳', cone: '🌲', spruce: '🌲', oak: '🌳', maple: '🍁', blossom: '🌸', weeping: '🌳', palm: '🌴', star: '🌌', mushroom: '🍄', cloud: '☁️', crystal: '💎', planet: '🪐', angel: '😇', rainbow: '🌈', can: '💧', sack: '🌱', bag: '💰', spade: '⚒️', chest: '💎' };
+const FRUIT_ICON = { apple: '🍎', pear: '🍐', berry: '🫐', cone: '🌰', acorn: '🌰', cherry: '🍒', drop: '💧', dragon: '🐉', star: '⭐', moon: '🌕' };
+const fruitIcon = (tree) => FRUIT_ICON[tree.fruitShape] || '🍎';
 const icon = (item) => ICON[item.crown || item.model] || '🌳';
 
 function save() {
@@ -103,8 +106,11 @@ function apply(i) {
   if (!canApply(i, t)) return;
   const item = lootById[selected];
   if (item.type === 'tree') {
-    state.plots[i] = { tree: item.id, planted: t, bonus: 0, harvested: 0, boost: 1, boostEnd: 0 };
-    hint(`${lootName(item)} in Beet ${i + 1} gesät. Der Timer zeigt, wann der Baum ausgewachsen ist.`);
+    const golden = Math.random() < GARDEN.goldenChance;
+    state.plots[i] = { tree: item.id, planted: t, bonus: 0, harvested: 0, boost: 1, boostEnd: 0, golden };
+    hint(golden
+      ? `✨ <strong>${lootName(item)}</strong> in Beet ${i + 1} gesät: Es wächst ein <strong>${treeName(item, true)}</strong> mit doppelter Ernte!`
+      : `${lootName(item)} in Beet ${i + 1} gesät. Der Timer zeigt, wann der Baum ausgewachsen ist.`);
   } else if (item.kind === 'water') {
     const plot = state.plots[i];
     const left = grownAt(plot) - t;
@@ -120,15 +126,17 @@ function apply(i) {
   save();
 }
 
-// Ernten zählen mit: ist die Grenze des Baums erreicht, ist er abgeerntet und das Beet wird frei
+// Ernten zählen mit: ist die Grenze des Baums erreicht, ist er abgeerntet und das Beet wird frei.
+// Die Früchte kommen in den Fruchtkorb (state.fruits).
 const gone = [];
-function harvest(i, quiet) {
+function harvest(i, quiet, got = {}) {
   const t = now(state);
   const plot = state.plots[i];
-  const value = plot ? harvestValue(plot, t) : 0;
-  if (!value) return 0;
-  const n = ripe(plot, t);
-  state.taler += value;
+  const n = plot ? ripe(plot, t) : 0;
+  if (!n) return got;
+  const fruits = harvestFruits(plot, t);
+  state.fruits[plot.tree] = (state.fruits[plot.tree] || 0) + fruits;
+  got[plot.tree] = (got[plot.tree] || 0) + fruits;
   plot.harvested = t;
   plot.count = (plot.count || 0) + n;
   const tree = lootById[plot.tree];
@@ -138,17 +146,18 @@ function harvest(i, quiet) {
     gone.push(tree.name);
   }
   if (!quiet) {
-    hint(`<strong>+${fmt(value)} Taler</strong> aus Beet ${i + 1}.${done ? ` Der ${tree.name} ist abgeerntet, das Beet ist frei.` : ''}`);
+    hint(`<strong>+${fruitLabel(tree, fruits)}</strong> aus Beet ${i + 1} in den Fruchtkorb.${done ? ` Der ${tree.name} ist abgeerntet, das Beet ist frei.` : ''}`);
     gone.length = 0;
     save();
   }
-  return value;
+  return got;
 }
+const gotText = (got) => Object.entries(got).map(([id, n]) => '+' + fruitLabel(lootById[id], n)).join(', ');
 
 function harvestAll() {
-  let sum = 0;
-  for (let i = 0; i < state.beds; i++) sum += harvest(i, true);
-  hint(sum ? `<strong>+${fmt(sum)} Taler</strong> geerntet.${gone.length ? ` Abgeerntet: ${gone.join(', ')}.` : ''}` : 'Noch nichts reif.');
+  const got = {};
+  for (let i = 0; i < state.beds; i++) harvest(i, true, got);
+  hint(Object.keys(got).length ? `<strong>${gotText(got)}</strong> in den Fruchtkorb.${gone.length ? ` Abgeerntet: ${gone.join(', ')}.` : ''}` : 'Noch nichts reif.');
   gone.length = 0;
   save();
 }
@@ -157,14 +166,44 @@ function dig(i) {
   const plot = state.plots[i];
   if (!plot) return;
   const t = now(state);
-  harvest(i, true);
+  const got = harvest(i, true);
   gone.length = 0;
   const tree = lootById[plot.tree];
   // nur ein noch nicht ausgewachsener Baum gibt seine Samen zurück (sonst ließe sich die Erntegrenze umgehen)
   const back = stage(plot, t) < 3;
   if (back) state.inv[plot.tree] = (state.inv[plot.tree] || 0) + 1;
   state.plots[i] = null;
-  hint(back ? `${tree.name} ausgegraben, die ${lootName(tree)} liegen wieder im Inventar.` : `${tree.name} ausgerissen, das Beet ist frei.`);
+  const extra = Object.keys(got).length ? ` ${gotText(got)} in den Fruchtkorb.` : '';
+  hint((back ? `${tree.name} ausgegraben, die ${lootName(tree)} liegen wieder im Inventar.` : `${tree.name} ausgerissen, das Beet ist frei.`) + extra);
+  save();
+}
+
+// Marktstand: Früchte zum Preis von jetzt verkaufen (id oder 'all')
+function sell(id) {
+  const t = now(state);
+  let total = 0;
+  let count = 0;
+  for (const k of Object.keys(state.fruits)) {
+    if (id !== 'all' && k !== id) continue;
+    total += state.fruits[k] * fruitPrice(k, t);
+    count += state.fruits[k];
+    delete state.fruits[k];
+  }
+  if (!count) return;
+  state.taler += total;
+  hint(`${id === 'all' ? `${fmt(count)} Früchte` : fruitLabel(lootById[id], count)} verkauft: <strong>+${fmt(total)} Taler</strong>.`);
+  save();
+}
+
+// Samen ziehen: seedCost Früchte gegen einen Samen desselben Baums
+function seed(id) {
+  const tree = lootById[id];
+  const cost = seedCost(tree);
+  if ((state.fruits[id] || 0) < cost) return;
+  state.fruits[id] -= cost;
+  if (state.fruits[id] <= 0) delete state.fruits[id];
+  state.inv[id] = (state.inv[id] || 0) + 1;
+  hint(`${fruitLabel(tree, cost)} eingetauscht: <strong>1 ${lootName(tree)}</strong>. Liegt im Inventar.`);
   save();
 }
 
@@ -234,24 +273,27 @@ function bedHtml(i, t) {
   }
   const tree = lootById[plot.tree];
   const st = stage(plot, t);
+  const ph = phaseOf(progressOf(plot, t));
   const r = ripe(plot, t);
   const rar = rarityById[tree.rarity];
   const mult = boostMult(plot, t);
   const info =
     st < 3
-      ? `<p class="bed-state">${STAGE_NAME[st]} · ausgewachsen in <span data-live="grow"></span></p><div class="meter"><span data-live="meter"></span></div>`
-      : `<p class="bed-state">Ausgewachsen · <span data-live="next"></span></p><div class="ripe" aria-label="${r} von ${GARDEN.maxRipe} Ernten reif">${Array.from({ length: GARDEN.maxRipe }, (_, k) => `<i class="${k < r ? 'on' : ''}"></i>`).join('')}</div>`;
+      ? `<p class="bed-state">${PHASE_NAME[ph]} · ausgewachsen in <span data-live="grow"></span></p><div class="meter"><span data-live="meter"></span></div>`
+      : `<p class="bed-state">Trägt ${tree.fruitPlural} · <span data-live="next"></span></p><div class="ripe" aria-label="${r} von ${GARDEN.maxRipe} Ernten reif">${Array.from({ length: GARDEN.maxRipe }, (_, k) => `<i class="${k < r ? 'on' : ''}"></i>`).join('')}</div>`;
   const left = harvestsLeft(plot);
   const harvestInfo = `<p class="bed-harvests${left <= 2 ? ' is-low' : ''}">Ernten übrig: <strong>${left}</strong> von ${tree.harvests}</p>`;
+  const golden = plot.golden ? `<span class="badge gold-badge${rar.rainbow ? ' rainbow-fill' : ''}">✨ ${rar.rainbow ? 'Schillernd' : 'Golden'} · doppelte Ernte</span>` : '';
   return {
-    key: `${plot.tree}|${plot.planted}|${st}|${r}|${mult}|${plot.count || 0}|${target ? selected : ''}`,
+    key: `${plot.tree}|${plot.planted}|${ph}|${r}|${mult}|${plot.count || 0}|${target ? selected : ''}`,
     html: `<div class="bed-head"><span class="bed-no">Beet ${i + 1}</span><span class="bed-no${rar.rainbow ? ' rainbow-text' : ''}" style="color:${rar.color}">${rar.name}</span></div>
-      <h3 class="bed-name">${tree.name}</h3>
+      <h3 class="bed-name">${treeName(tree, plot.golden)}</h3>
+      ${golden}
       ${info}
       ${harvestInfo}
       ${mult > 1 ? `<span class="badge">Dünger ×${mult} · noch <span data-live="boost"></span></span>` : ''}
       <div class="bed-actions">
-        ${r > 0 ? `<button class="btn gold small" data-harvest="${i}">Ernten · +${fmt(harvestValue(plot, t))}</button>` : ''}
+        ${r > 0 ? `<button class="btn gold small" data-harvest="${i}">Ernten · +${fruitLabel(tree, harvestFruits(plot, t))}</button>` : ''}
         ${applyBtn}
         <button class="btn ghost small" data-dig="${i}">Ausgraben</button>
       </div>`,
@@ -296,7 +338,7 @@ function renderInv() {
       const fenceOn = isFence && (state.fence || 'holzzaun') === id;
       const direct = item.kind === 'taler' || item.kind === 'bed' || isFence;
       const label = isFence ? (fenceOn ? 'Angebracht' : 'Anbringen') : direct ? 'Benutzen' : selected === id ? 'Abwählen' : `Auswählen zum ${actionName(item)}`;
-      const sub = item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}, dann ${fmt(item.yield)} Taler alle ${fmtTime(item.cycle)}, ${item.harvests}× ernten` : item.text;
+      const sub = item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}, dann alle ${fmtTime(item.cycle)} ${item.fruitName === item.fruitPlural ? 'ein' : 'eine'} ${item.fruitName}, ${item.harvests}× ernten` : item.text;
       const kind = item.type === 'tree' ? 'Samen' : isFence ? 'Zaun' : 'Werkzeug';
       const count = item.standard ? '' : `<small>×${state.inv[id]}</small>`;
       const usable = state.owned || item.kind === 'taler';
@@ -311,10 +353,44 @@ function renderInv() {
     .join(''));
 }
 
+// Fruchtkorb und Marktstand: Preis schwankt alle 10 Minuten (Pfeil zeigt, ob er über dem Grundpreis liegt)
+let marketHtml = '';
+function renderMarket(t) {
+  const el = $('market');
+  const ids = TREES.map((x) => x.id).filter((id) => state.fruits[id] > 0);
+  $('market-left').textContent = fmtTime(marketLeft(t));
+  const total = ids.reduce((a, id) => a + state.fruits[id] * fruitPrice(id, t), 0);
+  const all = $('sell-all');
+  all.disabled = !ids.length;
+  all.textContent = ids.length ? `Alles verkaufen · +${fmt(total)} Taler` : 'Alles verkaufen';
+  const html = !ids.length
+    ? '<p class="inv-empty">Der Korb ist leer. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier.</p>'
+    : ids.map((id) => {
+        const tree = lootById[id];
+        const rar = rarityById[tree.rarity];
+        const n = state.fruits[id];
+        const m = marketMult(id, t);
+        const price = fruitPrice(id, t);
+        const trend = m > 1 ? `<span class="trend up">▲ ${Math.round((m - 1) * 100)} %</span>` : m < 1 ? `<span class="trend down">▼ ${Math.round((1 - m) * 100)} %</span>` : '<span class="trend">Grundpreis</span>';
+        const cost = seedCost(tree);
+        return `<article class="item fruit" style="--t:${rar.color}">
+          <span class="item-icon" aria-hidden="true">${fruitIcon(tree)}</span>
+          <p class="item-name">${n === 1 ? tree.fruitName : tree.fruitPlural}<small>×${fmt(n)}</small></p>
+          <p class="item-rar${rar.rainbow ? ' rainbow-text' : ''}">${rar.name} · vom ${tree.name}</p>
+          <p class="item-text">${fmt(price)} Taler je Stück ${trend}</p>
+          <div class="item-btns">
+            <button class="btn gold small" data-sell="${id}">Verkaufen · +${fmt(n * price)}</button>
+            <button class="btn small" data-seed="${id}" ${n >= cost ? '' : 'disabled'} title="${cost} Früchte ergeben einen Samen">Samen ziehen · ${cost} Stück</button>
+          </div>
+        </article>`;
+      }).join('');
+  if (html !== marketHtml) el.innerHTML = marketHtml = html;
+}
+
 function renderCatalog() {
   $('cat').innerHTML = TREES.map((t) => {
     const rar = rarityById[t.rarity];
-    return `<tr><td>${icon(t)} ${t.name}</td><td style="--t:${rar.color}"><span class="dot${rar.rainbow ? ' rainbow-fill' : ''}"></span><span class="${rar.rainbow ? 'rainbow-text' : ''}">${rar.name}</span></td><td>${fmtTime(t.grow)}</td><td>alle ${fmtTime(t.cycle)}</td><td>${fmt(t.yield)}</td><td>${t.harvests}×</td><td>${fmt(t.yield * t.harvests)}</td></tr>`;
+    return `<tr><td>${icon(t)} ${t.name}</td><td style="--t:${rar.color}"><span class="dot${rar.rainbow ? ' rainbow-fill' : ''}"></span><span class="${rar.rainbow ? 'rainbow-text' : ''}">${rar.name}</span></td><td>${fmtTime(t.grow)}</td><td>alle ${fmtTime(t.cycle)}</td><td>${fruitIcon(t)} ${t.fruitName}</td><td>${fmt(t.yield)}</td><td>${t.harvests}×</td><td>${fmt(t.yield * t.harvests)}</td></tr>`;
   }).join('');
 }
 
@@ -322,6 +398,7 @@ function render() {
   const t = now(state);
   renderBar();
   renderBeds(t);
+  renderMarket(t);
   renderInv();
   update3d(t);
 }
@@ -335,6 +412,8 @@ document.addEventListener('click', (e) => {
   else if (b.dataset.apply) apply(Number(b.dataset.apply));
   else if (b.dataset.harvest) harvest(Number(b.dataset.harvest));
   else if (b.dataset.dig) dig(Number(b.dataset.dig));
+  else if (b.dataset.sell) sell(b.dataset.sell);
+  else if (b.dataset.seed) seed(b.dataset.seed);
   else if (b.dataset.speed) {
     setSpeed(state, Number(b.dataset.speed));
     save();
@@ -343,6 +422,7 @@ document.addEventListener('click', (e) => {
 $('buy-btn').addEventListener('click', buyGarden);
 $('buy-bed').addEventListener('click', buyBed);
 $('harvest-all').addEventListener('click', harvestAll);
+$('sell-all').addEventListener('click', () => sell('all'));
 $('cheat').addEventListener('click', () => {
   state.taler += 100000;
   save();
@@ -387,15 +467,15 @@ async function update3d(t) {
   const plots = Array.from({ length: beds }, (_, i) => {
     const p = state.owned && state.plots[i];
     if (!p) return null;
-    const tree = lootById[p.tree];
-    return { tree: p.tree, stage: stage(p, t), ripe: ripe(p, t), progress: Math.max(0, Math.min(1, 1 - (grownAt(p) - t) / tree.grow)) };
+    const progress = progressOf(p, t);
+    return { tree: p.tree, stage: stage(p, t), ripe: ripe(p, t), progress, phase: phaseOf(progress), golden: !!p.golden };
   });
   const fence = state.owned ? state.fence || 'holzzaun' : 'holzzaun';
-  const s = beds + '|' + fence + '|' + plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe}` : '')).join(';');
+  const s = beds + '|' + fence + '|' + plots.map((p) => (p ? `${p.tree},${p.phase},${p.ripe},${p.golden}` : '')).join(';');
   if (s === sig) return updateTimers(t);
-  // Beete mit neuer Stufe ploppen auf (nicht beim ersten Bau)
+  // Beete mit neuer Phase ploppen auf (nicht beim ersten Bau)
   plots.forEach((p, i) => {
-    const key = p ? p.tree + p.stage : '-';
+    const key = p ? p.tree + p.phase : '-';
     if (p && sig && lastStage[i] !== key) p.fresh = true;
     lastStage[i] = key;
   });

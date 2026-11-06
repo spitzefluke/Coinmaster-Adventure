@@ -34,7 +34,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Münzbaumgarten',
-    text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen pflanzen, gießen, düngen und ihre Münzen als Taler ernten.',
+    text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen wachsen in fünf Phasen, manche golden. Ihre Früchte verkaufst du am Marktstand mit schwankenden Preisen oder ziehst daraus neue Samen.',
     href: 'garten/',
     status: 'vorschau',
     eckdaten: ['17 Münzbäume', '9 Zäune', 'bis 12 Beete'],

@@ -34,6 +34,9 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], G
       Cycle: num(t.cycle),
       Yield: num(t.yield),
       Harvests: num(t.harvests),
+      FruitName: str(t.fruitName),
+      FruitPlural: str(t.fruitPlural),
+      FruitShape: str(t.fruitShape),
       Crown: str(t.crown),
       Trunk: color(t.trunk),
       Leaf: color(t.leaf),
@@ -65,9 +68,13 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], G
   return `${HEADER('Münzbaumgarten')}
 -- Den Garten kauft man mit Talern (Garden.Price). Samen und Werkzeug gibt es aus Münzrollen (RollData);
 -- ein Baum steckt als Samen (SeedName) im Inventar und wächst nach dem Säen mit Timer (Grow Sekunden).
--- Ein Beet (Plot) im Spielstand: { Tree = id, Planted = os.time(), Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0 }
+-- Geerntet werden keine Taler, sondern Früchte (FruitName): Sie kommen in den Fruchtkorb (Fruits) und
+-- lassen sich zum Marktpreis verkaufen (Yield × MarketMult, wechselt alle Garden.MarketSlot Sekunden)
+-- oder gegen Samen desselben Baums tauschen (SeedCost Früchte).
+-- Ein Beet (Plot) im Spielstand: { Tree = id, Planted = os.time(), Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0, Golden = true? }
 --   Bonus     Sekunden, die der Baum durch Gießen schon gewachsen ist
 --   Harvested Zeit der letzten Ernte, Boost/BoostEnd Dünger
+--   Golden    wächst golden (Chance Garden.GoldenChance beim Säen) und trägt doppelt
 -- Werkzeug (Kind): Water = Seconds schneller wachsen (math.huge: sofort fertig), Boost = Mult × Ernte
 -- für Seconds, Taler = Amount Taler, Bed = ein Beet mehr.
 -- Wichtig: Ernten und Benutzen nur auf dem Server rechnen.
@@ -83,7 +90,7 @@ GardenData.Tools = ${list(tools)}
 -- Zäune: Standard = immer da; die anderen kommen aus Münzrollen und bleiben im Inventar (anbringen kostet nichts)
 GardenData.Fences = ${fences.length ? list(fences) : '{}'}
 
-GardenData.Garden = { Price = ${num(GARDEN.price)}, StartBeds = ${num(GARDEN.startBeds)}, MaxBeds = ${num(GARDEN.maxBeds)}, MaxRipe = ${num(GARDEN.maxRipe)} }
+GardenData.Garden = { Price = ${num(GARDEN.price)}, StartBeds = ${num(GARDEN.startBeds)}, MaxBeds = ${num(GARDEN.maxBeds)}, MaxRipe = ${num(GARDEN.maxRipe)}, GoldenChance = ${num(GARDEN.goldenChance)}, MarketSlot = ${num(GARDEN.marketSlot)} }
 
 -- Preis für das nächste Beet, wenn man schon beds Beete hat
 function GardenData.BedPrice(beds)
@@ -93,6 +100,10 @@ end
 GardenData.RarityById = {}
 for _, r in ipairs(GardenData.Rarities) do
 	GardenData.RarityById[r.Id] = r
+end
+GardenData.TreeIndex = {}
+for i, t in ipairs(GardenData.Trees) do
+	GardenData.TreeIndex[t.Id] = i
 end
 GardenData.Loot = {}
 GardenData.ById = {}
@@ -150,18 +161,55 @@ function GardenData.Ripe(plot, now)
 	return math.min(GardenData.Garden.MaxRipe, GardenData.HarvestsLeft(plot), math.floor((now - since) / tree.Cycle))
 end
 
-function GardenData.HarvestValue(plot, now)
+-- Früchte, die eine Ernte jetzt bringt (Dünger und goldene Bäume vervielfachen)
+function GardenData.HarvestFruits(plot, now)
 	local mult = (plot.BoostEnd or 0) > now and plot.Boost or 1
-	return GardenData.Ripe(plot, now) * GardenData.ById[plot.Tree].Yield * mult
+	return GardenData.Ripe(plot, now) * mult * (plot.Golden and 2 or 1)
+end
+
+-- Wachstum 0–1
+function GardenData.Progress(plot, now)
+	return math.clamp((now - plot.Planted + plot.Bonus) / GardenData.ById[plot.Tree].Grow, 0, 1)
+end
+
+-- Phase fürs Aussehen: 1 Keimling, 2 Schössling, 3 Jungbaum, 4 Knospen, 5 ausgewachsen
+function GardenData.PhaseOf(progress)
+	if progress >= 1 then return 5 elseif progress >= 0.8 then return 4 elseif progress >= 0.34 then return 3 elseif progress >= 0.15 then return 2 end
+	return 1
+end
+GardenData.PhaseNames = { "Keimling", "Schössling", "Jungbaum", "Knospen", "Ausgewachsen" }
+
+-- Marktpreis-Faktor 0,6–1,8 je Baum und Zeitfenster (Ganzzahl-Rechnung wie auf der Webseite)
+function GardenData.MarketMult(treeId, now)
+	local i = GardenData.TreeIndex[treeId] or 0
+	local slot = math.floor(now / GardenData.Garden.MarketSlot)
+	local h1 = ((slot % 10007) * 7919 + i * 104729) % 10007
+	local h2 = (h1 * h1 + 12345) % 10007
+	return (6 + math.floor(h2 * 13 / 10007)) / 10
+end
+function GardenData.FruitPrice(treeId, now)
+	return math.floor(GardenData.ById[treeId].Yield * GardenData.MarketMult(treeId, now) + 0.5)
+end
+function GardenData.MarketLeft(now)
+	return GardenData.Garden.MarketSlot - now % GardenData.Garden.MarketSlot
+end
+-- So viele Früchte kostet ein Samen desselben Baums
+function GardenData.SeedCost(tree)
+	return tree.Harvests
+end
+-- Name eines (goldenen) Baums; ??? schillert statt golden
+function GardenData.TreeName(tree, golden)
+	if not golden then return tree.Name end
+	return (GardenData.RarityById[tree.Rarity].Rainbow and "Schillernder " or "Goldener ") .. tree.Name
 end
 
 -- ── Spielstand eines Spielers ──
--- garden = { Owned = bool, Beds = n, Fence = Zaun-Id, Plots = { ["1"] = Plot, … }, Inv = { [id] = Anzahl }, Receipts = { PurchaseIds } }
+-- garden = { Owned = bool, Beds = n, Fence = Zaun-Id, Plots = { ["1"] = Plot, … }, Inv = { [id] = Anzahl }, Fruits = { [Baum-Id] = Anzahl }, Receipts = { PurchaseIds } }
 -- Plot.Count: wie oft der Baum schon abgeerntet wurde (Grenze: Tree.Harvests)
 -- Liegt als JSON im Attribut Garden am Spieler (schreibt nur der Server).
 
 function GardenData.New()
-	return { Owned = false, Beds = GardenData.Garden.StartBeds, Fence = "holzzaun", Plots = {}, Inv = {}, Receipts = {} }
+	return { Owned = false, Beds = GardenData.Garden.StartBeds, Fence = "holzzaun", Plots = {}, Inv = {}, Fruits = {}, Receipts = {} }
 end
 
 -- Repariert geladene oder fremde Daten (fehlende Felder, falsche Typen, unbekannte Ids)
@@ -188,6 +236,14 @@ function GardenData.Clean(g)
 			end
 		end
 	end
+	if type(g.Fruits) == "table" then
+		for id, n in pairs(g.Fruits) do
+			n = math.floor(tonumber(n) or 0)
+			if GardenData.ById[id] and GardenData.ById[id].Type == "Tree" and n > 0 then
+				out.Fruits[id] = n
+			end
+		end
+	end
 	if type(g.Plots) == "table" then
 		for key, p in pairs(g.Plots) do
 			local i = tonumber(key)
@@ -196,6 +252,7 @@ function GardenData.Clean(g)
 					Tree = p.Tree, Planted = tonumber(p.Planted) or 0, Bonus = tonumber(p.Bonus) or 0,
 					Harvested = tonumber(p.Harvested) or 0, Boost = tonumber(p.Boost) or 1, BoostEnd = tonumber(p.BoostEnd) or 0,
 					Count = math.max(0, math.floor(tonumber(p.Count) or 0)),
+					Golden = p.Golden == true or nil,
 				}
 			end
 		end
@@ -208,6 +265,10 @@ local function take(g, id)
 	if g.Inv[id] <= 0 then
 		g.Inv[id] = nil
 	end
+end
+
+local function addFruit(g, id, n)
+	g.Fruits[id] = (g.Fruits[id] or 0) + n
 end
 
 local function fmtTime(sec)
@@ -228,12 +289,20 @@ local function fmtNum(n)
 end
 GardenData.FormatNumber = fmtNum
 
+-- 1 Kupferapfel, 3 Kupferäpfel
+function GardenData.FruitLabel(tree, n)
+	return fmtNum(n) .. " " .. (n == 1 and tree.FruitName or tree.FruitPlural)
+end
+
 -- Eine Aktion auf dem Spielstand ausführen. Ändert g, rechnet aber keine Taler ab:
 -- gibt ok, Text und die Taler-Änderung zurück (negativ = kostet). taler = Taler, die der Spieler hat.
---   buyGarden · buyBed · plant (Beet, Baum-Id) · use (Werkzeug-Id, Beet) · harvest (Beet oder "all") · dig (Beet)
+--   buyGarden · buyBed · plant (Beet, Baum-Id) · use (Werkzeug-Id, Beet) · harvest (Beet oder "all"): Früchte in den Korb · dig (Beet)
 --   fence (Zaun-Id): Zaun anbringen (aus dem Inventar oder der Standard-Holzzaun)
-function GardenData.Act(g, action, a, b, now, taler)
+--   sell (Baum-Id oder "all"): Früchte zum Marktpreis verkaufen · seed (Baum-Id): Früchte gegen einen Samen tauschen
+-- rng (Random, optional): würfelt beim Säen den goldenen Baum
+function GardenData.Act(g, action, a, b, now, taler, rng)
 	local G = GardenData.Garden
+	g.Fruits = g.Fruits or {}
 	local bed = tonumber(a)
 	local function plotAt(i)
 		return i and g.Plots[tostring(i)]
@@ -260,7 +329,11 @@ function GardenData.Act(g, action, a, b, now, taler)
 		if plotAt(bed) then return false, "Das Beet ist schon belegt", 0 end
 		if not tree or tree.Type ~= "Tree" or (g.Inv[b] or 0) < 1 then return false, "Diese Samen hast du nicht", 0 end
 		take(g, b)
-		g.Plots[tostring(bed)] = { Tree = b, Planted = now, Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0 }
+		local golden = (rng or Random.new()):NextNumber() < G.GoldenChance
+		g.Plots[tostring(bed)] = { Tree = b, Planted = now, Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0, Golden = golden or nil }
+		if golden then
+			return true, "✨ " .. tree.SeedName .. " in Beet " .. bed .. " gesät: Es wächst ein " .. GardenData.TreeName(tree, true) .. "!", 0
+		end
 		return true, tree.SeedName .. " in Beet " .. bed .. " gesät", 0
 	elseif action == "use" then
 		local tool = GardenData.ById[a]
@@ -291,13 +364,13 @@ function GardenData.Act(g, action, a, b, now, taler)
 		end
 		return false, "Das geht nicht", 0
 	elseif action == "harvest" then
-		local total, gone = 0, {}
+		local got, order, gone = {}, {}, {}
 		for key, plot in pairs(g.Plots) do
 			if a == "all" or key == tostring(bed) then
 				local n = GardenData.Ripe(plot, now)
-				local value = GardenData.HarvestValue(plot, now)
-				if value > 0 then
-					total = total + value
+				if n > 0 then
+					if not got[plot.Tree] then table.insert(order, plot.Tree) end
+					got[plot.Tree] = (got[plot.Tree] or 0) + GardenData.HarvestFruits(plot, now)
 					plot.Harvested = now
 					plot.Count = (plot.Count or 0) + n
 					-- Grenze erreicht: der Baum ist abgeerntet und verschwindet
@@ -308,21 +381,58 @@ function GardenData.Act(g, action, a, b, now, taler)
 				end
 			end
 		end
-		if total <= 0 then return false, "Noch nichts reif", 0 end
+		if #order == 0 then return false, "Noch nichts reif", 0 end
+		local parts = {}
+		for _, id in ipairs(order) do
+			addFruit(g, id, got[id])
+			table.insert(parts, "+" .. GardenData.FruitLabel(GardenData.ById[id], got[id]))
+		end
 		local extra = #gone > 0 and (" · " .. table.concat(gone, ", ") .. " abgeerntet, das Beet ist frei") or ""
-		return true, "+" .. fmtNum(total) .. " Taler geerntet" .. extra, total
+		return true, table.concat(parts, ", ") .. " in den Fruchtkorb" .. extra, 0
 	elseif action == "dig" then
 		local plot = plotAt(bed)
 		if not plot then return false, "Auf dem Beet wächst nichts", 0 end
-		local value = GardenData.HarvestValue(plot, now)
+		local fruits = GardenData.HarvestFruits(plot, now)
 		local tree = GardenData.ById[plot.Tree]
 		g.Plots[tostring(bed)] = nil
+		local extra = ""
+		if fruits > 0 then
+			addFruit(g, plot.Tree, fruits)
+			extra = " · +" .. GardenData.FruitLabel(tree, fruits) .. " in den Fruchtkorb"
+		end
 		-- nur ein noch nicht ausgewachsener Baum gibt seine Samen zurück (sonst ließe sich die Erntegrenze umgehen)
 		if GardenData.Stage(plot, now) < 3 then
 			g.Inv[plot.Tree] = (g.Inv[plot.Tree] or 0) + 1
-			return true, tree.Name .. " ausgegraben, die " .. tree.SeedName .. " liegen wieder im Inventar", value
+			return true, tree.Name .. " ausgegraben, die " .. tree.SeedName .. " liegen wieder im Inventar" .. extra, 0
 		end
-		return true, tree.Name .. " ausgerissen, das Beet ist frei", value
+		return true, tree.Name .. " ausgerissen, das Beet ist frei" .. extra, 0
+	elseif action == "sell" then
+		-- Früchte am Marktstand verkaufen, zum Marktpreis von jetzt
+		local total, count, ids = 0, 0, {}
+		for id in pairs(g.Fruits) do table.insert(ids, id) end
+		for _, id in ipairs(ids) do
+			local n = g.Fruits[id]
+			if (a == "all" or id == a) and n and n > 0 and GardenData.ById[id] then
+				total = total + n * GardenData.FruitPrice(id, now)
+				count = count + n
+				g.Fruits[id] = nil
+			end
+		end
+		if count == 0 then return false, "Keine Früchte im Korb", 0 end
+		if a == "all" then
+			return true, fmtNum(count) .. " Früchte verkauft: +" .. fmtNum(total) .. " Taler", total
+		end
+		return true, GardenData.FruitLabel(GardenData.ById[a], count) .. " verkauft: +" .. fmtNum(total) .. " Taler", total
+	elseif action == "seed" then
+		-- Samen ziehen: SeedCost Früchte eines Baums gegen einen Samen desselben Baums
+		local tree = GardenData.ById[a]
+		if not tree or tree.Type ~= "Tree" then return false, "Diesen Baum gibt es nicht", 0 end
+		local cost = GardenData.SeedCost(tree)
+		if (g.Fruits[a] or 0) < cost then return false, "Dafür brauchst du " .. GardenData.FruitLabel(tree, cost), 0 end
+		g.Fruits[a] = g.Fruits[a] - cost
+		if g.Fruits[a] <= 0 then g.Fruits[a] = nil end
+		g.Inv[a] = (g.Inv[a] or 0) + 1
+		return true, GardenData.FruitLabel(tree, cost) .. " eingetauscht: 1 " .. tree.SeedName, 0
 	elseif action == "fence" then
 		local fence = GardenData.ById[a]
 		if not fence or fence.Type ~= "Fence" then return false, "Diesen Zaun gibt es nicht", 0 end
@@ -359,8 +469,8 @@ end
 `;
 
 export const LOOT_BUILDER = `${HEADER('Bäume und Gartenwerkzeug bauen')}
--- LootBuilder.Tree(tree, stage, ripe) baut einen Münzbaum (Stufe 1 Setzling, 2 Jungbaum, 3 ausgewachsen;
--- ripe = Ernten am Baum). LootBuilder.Seed(tree) baut die Samentüte, LootBuilder.Tool(tool) Gartenwerkzeug.
+-- LootBuilder.Tree(tree, stage, ripe, full, look) baut einen Münzbaum in fünf Phasen (look.Phase: Keimling,
+-- Schössling, Jungbaum, Knospen, ausgewachsen mit Früchten; ripe = Ernten am Baum; look.Golden = goldene Variante). LootBuilder.Seed(tree) baut die Samentüte, LootBuilder.Tool(tool) Gartenwerkzeug.
 -- LootBuilder.Build(item) baut, was aus einer Münzrolle kommt (Samen oder Werkzeug). Der Ursprung liegt am Boden in der Mitte,
 -- das Attribut Height gibt die Höhe in Studs an.
 
@@ -577,6 +687,49 @@ function CROWNS.rainbow(m, t, leaf, h)
 	return c, 1.75, 0
 end
 
+-- Goldeiche: kurzer, dicker Stamm, sehr breite flache Krone aus mehreren Lappen
+function CROWNS.oak(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.3, 0)
+	blob(m, "Crown", Vector3.new(5.4, 2.4, 5), CFrame.new(c), t.Leaf, leaf)
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2 + 0.3
+		blob(m, "Crown", Vector3.new(3.2, 1.9, 3), CFrame.new(c + Vector3.new(math.cos(a) * 2.3, -0.35 + (i % 2) * 0.45, math.sin(a) * 2.1)), t.Leaf, leaf)
+	end
+	blob(m, "Crown", Vector3.new(3.6, 1.7, 3.4), CFrame.new(c + Vector3.new(0.3, 1, -0.2)), t.Leaf, leaf)
+	return c, 2.7, 0.3
+end
+-- Ahorngroschen: Zwiebelkrone mit gezackten Blattspitzen rundherum
+function CROWNS.maple(m, t, leaf, h)
+	local c = Vector3.new(0, h + 1.6, 0)
+	blob(m, "Crown", Vector3.new(4.2, 3.4, 4.2), CFrame.new(c), t.Leaf, leaf)
+	blob(m, "Crown", Vector3.new(2.8, 2.2, 2.8), CFrame.new(c + Vector3.new(0, 1.5, 0)), t.Leaf, leaf)
+	for i = 0, 13 do
+		local a = i * 2.39996
+		local up = ((i * 0.37) % 1) * 1.6 - 0.5
+		local dir = Vector3.new(math.cos(a), up, math.sin(a)).Unit
+		local pos = c + dir * 2.05 + Vector3.new(0, up > 0.6 and 0.6 or 0, 0)
+		part("Part", { Name = "Laub", Size = Vector3.new(0.85, 0.85, 0.16), CFrame = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, math.rad(45)), Color = t.Leaf:Lerp(Color3.fromRGB(200, 40, 20), (i % 3) * 0.12), Material = leaf }, m)
+	end
+	return c, 2.1, 0
+end
+-- Frosttanne: schmale, hängende Etagen mit Schneekappen und Eiszapfen
+function CROWNS.spruce(m, t, leaf, h)
+	local radii = { 4.6, 3.9, 3.2, 2.5, 1.8, 1.1 }
+	for i, r in ipairs(radii) do
+		local y = h - 0.9 + i * 0.9
+		part("Part", { Name = "Crown", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.75, r, r), CFrame = CFrame.new(0, y, 0) * UP, Color = t.Leaf:Lerp(Color3.fromRGB(30, 80, 70), 0.35), Material = leaf }, m)
+		part("Part", { Name = "Schnee", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, r * 0.82, r * 0.82), CFrame = CFrame.new(0, y + 0.45, 0) * UP, Color = Color3.fromRGB(246, 252, 255), Material = Enum.Material.Snow }, m)
+		if i <= 3 then
+			for k = 0, 5 do
+				local a = k / 6 * math.pi * 2 + i
+				part("Part", { Name = "Eiszapfen", Size = Vector3.new(0.12, 0.5, 0.12), CFrame = CFrame.new(math.cos(a) * r * 0.46, y - 0.55, math.sin(a) * r * 0.46), Color = Color3.fromRGB(200, 240, 255), Material = Enum.Material.Glass, Transparency = 0.2 }, m)
+			end
+		end
+	end
+	ball(m, "Spitze", 0.6, Vector3.new(0, h + 5.2, 0), Color3.fromRGB(246, 252, 255), Enum.Material.Snow)
+	return Vector3.new(0, h + 1.4, 0), 1.9, 0
+end
+
 local function trunk(m, t, h, w, bend)
 	if bend then
 		-- Palme: gebogener Stamm aus Stücken
@@ -602,6 +755,13 @@ local function trunk(m, t, h, w, bend)
 		local r = w * (i % 2 == 0 and 0.54 or 0.44)
 		part("Part", { Name = "Rinde", Size = Vector3.new(w * 0.14, h * (i % 2 == 0 and 0.5 or 0.35), 0.05), CFrame = CFrame.new(math.cos(a) * r, h * (0.3 + (i % 3) * 0.12), math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = bark, Material = Enum.Material.Wood }, m)
 	end
+	-- Birke: weiße Rinde mit schwarzen Querstreifen
+	if t.Crown == "oval" then
+		for i = 0, 7 do
+			local a = i * 2.1
+			part("Part", { Name = "Birkenstreif", Size = Vector3.new(w * 0.42, 0.09, 0.05), CFrame = CFrame.new(math.cos(a) * w * 0.47, h * (0.12 + i * 0.1), math.sin(a) * w * 0.47) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = Color3.fromRGB(40, 38, 42), Material = Enum.Material.SmoothPlastic }, m)
+		end
+	end
 	-- Wurzeln: schräg aus der Erde, zur Spitze dünner
 	for i = 0, 4 do
 		local a = i / 5 * math.pi * 2 + 0.2
@@ -618,7 +778,7 @@ local function branch(m, t, a, b, dia)
 end
 
 -- Low-Poly-Laub: facettierte Büschel auf der Krone, oben heller, unten dunkler; Kronen-Kugeln schattiert
-local LEAFY = { round = 14, bush = 9, oval = 11, blossom = 12, cone = 8, cloud = 10, angel = 10, weeping = 8 }
+local LEAFY = { round = 14, bush = 9, oval = 11, blossom = 12, cone = 8, cloud = 10, angel = 10, weeping = 8, oak = 18, maple = 8 }
 local function foliage(m, t, leaf, center, radius)
 	local count = LEAFY[t.Crown]
 	if not count then return end
@@ -642,32 +802,164 @@ local function foliage(m, t, leaf, center, radius)
 	end
 end
 
--- full = true: Jungbaum in voller Größe bauen (GardenBuilder skaliert ihn beim Wachsen selbst)
-function LootBuilder.Tree(tree, stage, ripe, full)
+-- Frucht an einem Stiel (Form aus tree.FruitShape); reife leuchten, goldene Bäume tragen Gold
+local GOLD = Color3.fromRGB(255, 208, 64)
+local FRUITS = {}
+function FRUITS.apple(m, pos, col, mat)
+	ball(m, "Frucht", 0.62, pos, col, mat)
+	ellipsoid(m, "Fruchtblatt", Vector3.new(0.28, 0.06, 0.16), CFrame.new(pos + Vector3.new(0.12, 0.33, 0)) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(90, 160, 60))
+end
+function FRUITS.pear(m, pos, col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.5, 0.56, 0.5), CFrame.new(pos + Vector3.new(0, -0.08, 0)), col, mat)
+	ball(m, "Frucht", 0.34, pos + Vector3.new(0, 0.22, 0), col, mat)
+end
+function FRUITS.berry(m, pos, col, mat)
+	for k = 0, 2 do
+		local a = k * 2.1
+		ball(m, "Frucht", 0.3, pos + Vector3.new(math.cos(a) * 0.14, -0.05 * k, math.sin(a) * 0.14), col, mat)
+	end
+end
+function FRUITS.cone(m, pos, col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.4, 0.72, 0.4), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat)
+	for k = 0, 2 do
+		part("Part", { Name = "Schuppe", Size = Vector3.new(0.44, 0.06, 0.44), CFrame = CFrame.new(pos + Vector3.new(0, -0.3 + k * 0.2, 0)) * CFrame.Angles(0, math.rad(45 * k), 0), Color = col:Lerp(Color3.new(0, 0, 0), 0.25), Material = mat }, m)
+	end
+end
+function FRUITS.acorn(m, pos, col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.42, 0.52, 0.42), CFrame.new(pos + Vector3.new(0, -0.08, 0)), col, mat)
+	part("Part", { Name = "Huetchen", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.18, 0.5, 0.5), CFrame = CFrame.new(pos + Vector3.new(0, 0.16, 0)) * UP, Color = Color3.fromRGB(120, 82, 44), Material = Enum.Material.Wood }, m)
+end
+function FRUITS.cherry(m, pos, col, mat)
+	for _, side in ipairs({ -1, 1 }) do
+		ball(m, "Frucht", 0.36, pos + Vector3.new(side * 0.18, -0.12, 0), col, mat)
+		part("Part", { Name = "Stiel", Size = Vector3.new(0.04, 0.4, 0.04), CFrame = CFrame.new(pos + Vector3.new(side * 0.09, 0.14, 0)) * CFrame.Angles(0, 0, side * math.rad(-25)), Color = Color3.fromRGB(110, 80, 40), Material = Enum.Material.Wood }, m)
+	end
+end
+function FRUITS.drop(m, pos, col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.42, 0.62, 0.42), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat == Enum.Material.Neon and mat or Enum.Material.Glass)
+	part("Part", { Name = "Frucht", Size = Vector3.new(0.22, 0.22, 0.22), CFrame = CFrame.new(pos + Vector3.new(0, 0.16, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(45)), Color = col, Material = Enum.Material.Glass }, m)
+end
+function FRUITS.dragon(m, pos, col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.58, 0.7, 0.58), CFrame.new(pos + Vector3.new(0, -0.06, 0)), col, mat)
+	for k = 0, 4 do
+		local a = k / 5 * math.pi * 2
+		part("Part", { Name = "Schuppe", Size = Vector3.new(0.12, 0.26, 0.12), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 0.27, -0.02 + (k % 2) * 0.16, math.sin(a) * 0.27)) * CFrame.Angles(math.sin(a) * 0.6, 0, -math.cos(a) * 0.6), Color = Color3.fromRGB(120, 220, 80), Material = Enum.Material.SmoothPlastic }, m)
+	end
+end
+function FRUITS.star(m, pos, col, mat)
+	for k = 0, 2 do
+		part("Part", { Name = "Frucht", Size = Vector3.new(0.72, 0.2, 0.1), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(k * 60)), Color = col, Material = Enum.Material.Neon }, m)
+	end
+end
+function FRUITS.moon(m, pos, col, mat)
+	ball(m, "Frucht", 0.6, pos, col:Lerp(Color3.fromRGB(220, 224, 236), 0.5), Enum.Material.Slate)
+	ball(m, "Krater", 0.2, pos + Vector3.new(0.18, 0.1, -0.2), Color3.fromRGB(150, 156, 175), Enum.Material.Slate)
+end
+
+-- Größe je Seltenheit: seltene Bäume werden deutlich größer (Gewöhnlich 1, ??? 1,48), goldene noch etwas mehr
+function LootBuilder.SizeOf(tree, golden)
+	local rank = GardenData.RarityById[tree.Rarity].Index
+	return 1 + (rank - 1) * 0.06 + (golden and 0.08 or 0)
+end
+
+-- Schössling: dünner Stiel mit Zweiglein und den ersten Blattbüscheln (Sonderbäume: kleine Vorform)
+local function sapling(model, tree, leaf)
+	local stem = tree.Leaf:Lerp(tree.Trunk, 0.45)
+	part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.5, 0.2, 0.2), CFrame = CFrame.new(0, 0.75, 0) * UP, Color = stem, Material = Enum.Material.Wood }, model)
+	local special = ({ mushroom = true, crystal = true, cloud = true, star = true, planet = true, angel = true, rainbow = true })[tree.Crown]
+	if tree.Crown == "mushroom" then
+		ellipsoid(model, "Crown", Vector3.new(1.3, 0.6, 1.3), CFrame.new(0, 1.55, 0), tree.Leaf, leaf)
+	elseif tree.Crown == "crystal" then
+		part("Part", { Name = "Crown", Size = Vector3.new(0.4, 0.9, 0.4), CFrame = CFrame.new(0, 1.8, 0) * CFrame.Angles(0, math.rad(45), 0), Color = tree.Leaf, Material = leaf, Transparency = 0.15 }, model)
+	elseif tree.Crown == "cloud" then
+		for _, o in ipairs({ { 0, 0 }, { -0.4, -0.1 }, { 0.4, -0.05 } }) do
+			ball(model, "Crown", 0.75, Vector3.new(o[1], 1.7 + o[2], 0), tree.Leaf, leaf)
+		end
+	elseif special then
+		ball(model, "Knospe", 0.5, Vector3.new(0, 1.7, 0), tree.Fruit, Enum.Material.Neon)
+	end
+	for k, side in ipairs({ -1, 1 }) do
+		local a = Vector3.new(0, 0.7 + k * 0.25, 0)
+		local b = a + Vector3.new(side * 0.5, 0.4, side * 0.15)
+		local mid = (a + b) / 2
+		part("Part", { Name = "Ast", Shape = Enum.PartType.Cylinder, Size = Vector3.new((b - a).Magnitude, 0.1, 0.1), CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.rad(90), 0), Color = stem, Material = Enum.Material.Wood }, model)
+		ellipsoid(model, "Laub", Vector3.new(0.55, 0.36, 0.55), CFrame.new(b), tree.Leaf, leaf)
+	end
+	if not special then
+		ellipsoid(model, "Laub", Vector3.new(0.9, 0.6, 0.9), CFrame.new(0, 1.6, 0), tree.Leaf:Lerp(Color3.new(1, 1, 1), 0.08), leaf)
+		ellipsoid(model, "Laub", Vector3.new(0.6, 0.4, 0.6), CFrame.new(0.15, 1.95, 0.1), tree.Leaf:Lerp(Color3.new(1, 1, 1), 0.15), leaf)
+	end
+end
+
+-- Goldene Variante: Laub und Rinde mit Gold überzogen, funkelt; bei ??? schillernd (Farbe läuft in GardenBuilder.Animate)
+local function gild(model, tree)
+	local rainbow = GardenData.RarityById[tree.Rarity].Rainbow
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			if p.Name == "Crown" or p.Name == "Laub" or p.Name == "Wedel" or p.Name == "Zweig" then
+				if not rainbow then
+					p.Color = p.Color:Lerp(GOLD, 0.6)
+					p.Material = Enum.Material.Foil
+				end
+				p:SetAttribute("Schillern", true)
+			elseif p.Name == "Stamm" or p.Name == "StammOben" or p.Name == "Ast" or p.Name == "StammTeil" then
+				p.Color = p.Color:Lerp(GOLD, 0.35)
+			end
+		end
+	end
+	local holder = model:FindFirstChild("Stamm")
+	if holder then
+		local s = Instance.new("Sparkles")
+		s.SparkleColor = rainbow and Color3.new(1, 1, 1) or GOLD
+		s.Parent = holder
+		local l = Instance.new("PointLight")
+		l.Color = GOLD
+		l.Brightness = 1.2
+		l.Range = 9
+		l.Parent = holder
+	end
+	model:SetAttribute("Golden", true)
+end
+
+-- LootBuilder.Tree(tree, stage, ripe, full, look): Münzbaum bauen.
+-- look = { Phase = 1–5, Golden = bool } (ohne Phase: Stufe 1 → Keimling, 2 → Jungbaum, 3 → ausgewachsen)
+-- Phasen: 1 Keimling, 2 Schössling, 3 Jungbaum, 4 Knospen und Blüten, 5 ausgewachsen mit Früchten.
+-- full = true: Jungbaum und Knospen in voller Größe bauen (GardenBuilder skaliert sie beim Wachsen selbst)
+function LootBuilder.Tree(tree, stage, ripe, full, look)
 	stage = stage or 3
 	ripe = ripe or 0
+	look = look or {}
+	local phase = look.Phase or ({ 1, 3, 5 })[stage] or 5
+	local golden = look.Golden
 	local model = Instance.new("Model")
-	model.Name = tree.Name
+	model.Name = GardenData.TreeName(tree, golden)
+	model:SetAttribute("Phase", phase)
 	local leaf = Enum.Material[tree.Look] or Enum.Material.Grass
-	if stage <= 1 then
+	if phase <= 1 then
 		-- Keimling: aufgeplatzte Samenschale, gebogener Stiel, zwei Keimblätter und eine Knospe
-		ellipsoid(model, "Schale", Vector3.new(0.5, 0.26, 0.4), CFrame.new(0, 0.1, 0), tree.Trunk:Lerp(tree.Fruit, 0.3))
+		ellipsoid(model, "Schale", Vector3.new(0.5, 0.26, 0.4), CFrame.new(0, 0.1, 0), golden and GOLD or tree.Trunk:Lerp(tree.Fruit, 0.3), golden and Enum.Material.Foil or nil)
 		part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 0.14, 0.14), CFrame = CFrame.new(0, 0.38, 0) * UP, Color = tree.Leaf:Lerp(tree.Trunk, 0.3), Material = Enum.Material.SmoothPlastic }, model)
 		part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 0.12, 0.12), CFrame = CFrame.new(0.06, 0.85, 0) * CFrame.Angles(0, 0, math.rad(78)), Color = tree.Leaf:Lerp(tree.Trunk, 0.2), Material = Enum.Material.SmoothPlastic }, model)
 		for _, side in ipairs({ -1, 1 }) do
-			ellipsoid(model, "Blatt", Vector3.new(0.62, 0.14, 0.38), CFrame.new(side * 0.3, 1.12, 0) * CFrame.Angles(0, 0, side * math.rad(-22)), tree.Leaf, leaf)
+			ellipsoid(model, "Blatt", Vector3.new(0.62, 0.14, 0.38), CFrame.new(side * 0.3, 1.12, 0) * CFrame.Angles(0, 0, side * math.rad(-22)), golden and tree.Leaf:Lerp(GOLD, 0.5) or tree.Leaf, leaf)
 		end
 		ellipsoid(model, "Knospe", Vector3.new(0.24, 0.3, 0.24), CFrame.new(0.08, 1.2, 0), tree.Fruit, Enum.Material.Neon)
 		measure(model)
 		model:SetAttribute("TreeId", tree.Id)
 		return model
+	elseif phase == 2 then
+		sapling(model, tree, leaf)
+		if golden then gild(model, tree) end
+		measure(model)
+		model:SetAttribute("TreeId", tree.Id)
+		return model
 	end
-	local h = ({ bush = 1.3, cone = 2.2, palm = 4.8, mushroom = 1.9, cloud = 3, crystal = 2.8, angel = 3, rainbow = 3 })[tree.Crown] or (tree.Big and 3.6 or 3.2)
-	local w = tree.Big and 1.05 or (tree.Crown == "bush" and 0.5 or (tree.Crown == "mushroom" and 1.1 or 0.75))
+	local h = ({ bush = 1.3, cone = 2.2, spruce = 1.4, palm = 4.8, mushroom = 1.9, cloud = 3, crystal = 2.8, angel = 3, rainbow = 3, oak = 2.4, maple = 3.4, oval = 3.8 })[tree.Crown] or 3.2
+	local w = ({ bush = 0.5, mushroom = 1.1, oak = 1.35, oval = 0.62, spruce = 0.7 })[tree.Crown] or (tree.Big and 1.05 or 0.75)
 	trunk(model, tree, h, w, tree.Crown == "palm")
 	local center, radius, low = (CROWNS[tree.Crown] or CROWNS.round)(model, tree, leaf, h)
 	-- Äste vom Stamm in die Krone (nur bei Kronen, durch die man sie sieht)
-	local BRANCHY = { round = 4, blossom = 4, oval = 3, cloud = 4, angel = 3, weeping = 3 }
+	local BRANCHY = { round = 4, blossom = 4, oval = 3, cloud = 4, angel = 3, weeping = 3, oak = 5, maple = 4 }
 	if BRANCHY[tree.Crown] then
 		local top = Vector3.new(0, h * 0.82, 0)
 		for i = 1, BRANCHY[tree.Crown] do
@@ -679,20 +971,36 @@ function LootBuilder.Tree(tree, stage, ripe, full)
 	end
 	foliage(model, tree, leaf, center, radius)
 
-	if stage >= 3 then
-		-- Münzen als Früchte an kleinen Stielen: mehr, je mehr Ernten warten; die reifen leuchten
-		local count = 8 + ripe * 3
-		local fruit = tree.Look == "Neon" and Enum.Material.Neon or Enum.Material.Metal
+	if phase >= 4 then
+		-- Phase 4: Knospen und erste Blüten · Phase 5: Früchte an kleinen Stielen (mehr, je mehr Ernten warten; die reifen leuchten)
+		local count = phase == 4 and 14 or 8 + ripe * 3
+		local shape = FRUITS[tree.FruitShape] or FRUITS.apple
+		local base = tree.Look == "Neon" and Enum.Material.Neon or Enum.Material.Metal
+		local bud = Color3.fromRGB(255, 238, 246):Lerp(tree.Fruit, 0.2)
 		for i = 1, count do
 			local a = i * 2.39996 -- goldener Winkel
 			local y = -0.4 + ((i * 0.618) % 1) * 1.2 - (low or 0) * 0.3
 			local out = Vector3.new(math.cos(a), 0, math.sin(a))
 			local pos = center + out * (radius + 0.28) + Vector3.new(0, y - 0.15, 0)
-			local isRipe = i <= ripe * 3
-			part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.42, 0.06, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0) - out * 0.12) * UP * CFrame.Angles(0, 0, 0), Color = tree.Trunk:Lerp(tree.Leaf, 0.5), Material = Enum.Material.Wood }, model)
-			part("Part", { Name = "Muenze", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.14, 0.72, 0.72), CFrame = CFrame.new(pos) * CFrame.Angles(0, -a, 0), Color = isRipe and tree.Fruit:Lerp(Color3.new(1, 1, 1), 0.15) or tree.Fruit, Material = isRipe and Enum.Material.Neon or fruit, Reflectance = 0.1 }, model)
+			if phase == 4 then
+				if i % 3 == 0 then
+					-- offene Blüte: fünf Blütenblätter um eine gelbe Mitte
+					for k = 0, 4 do
+						local b = k / 5 * math.pi * 2
+						ellipsoid(model, "Bluete", Vector3.new(0.4, 0.1, 0.28), CFrame.lookAt(pos, pos + out) * CFrame.new(math.cos(b) * 0.26, math.sin(b) * 0.26, 0) * CFrame.Angles(math.rad(90), 0, b), bud)
+					end
+					ball(model, "Bluete", 0.22, pos + out * 0.05, Color3.fromRGB(255, 214, 80), Enum.Material.Neon)
+				else
+					ellipsoid(model, "Knospe", Vector3.new(0.4, 0.5, 0.4), CFrame.new(pos), bud)
+				end
+			else
+				local isRipe = i <= ripe * 3
+				part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.42, 0.06, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0) - out * 0.12) * UP, Color = tree.Trunk:Lerp(tree.Leaf, 0.5), Material = Enum.Material.Wood }, model)
+				local col = golden and GOLD or tree.Fruit
+				shape(model, pos, isRipe and col:Lerp(Color3.new(1, 1, 1), 0.15) or col, isRipe and Enum.Material.Neon or (golden and Enum.Material.Foil or base))
+			end
 		end
-		if ripe > 0 then
+		if phase == 5 and ripe > 0 then
 			local glow = Instance.new("PointLight")
 			glow.Color = tree.Fruit
 			glow.Brightness = 1 + ripe * 0.6
@@ -703,8 +1011,11 @@ function LootBuilder.Tree(tree, stage, ripe, full)
 			sp.Parent = model:FindFirstChild("Stamm")
 		end
 	end
-	if stage == 2 and not full then
-		scaleModel(model, 0.55)
+	if golden then gild(model, tree) end
+	-- seltene Bäume sind größer
+	scaleModel(model, LootBuilder.SizeOf(tree, golden))
+	if not full and phase < 5 then
+		scaleModel(model, phase == 3 and 0.6 or 0.9)
 	end
 	measure(model)
 	model:SetAttribute("TreeId", tree.Id)
@@ -1217,8 +1528,8 @@ return LootBuilder
 
 export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- GardenBuilder.Build(garden) baut den Garten als Model: Wiese mit Zaun, Tor und Schild, darauf die Beete
--- in Reihen zu je 4. garden = { Beds = Anzahl, Fence = Zaun-Id, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n } oder false } }
--- (Stage und Ripe aus GardenData.Stage/Ripe). Beet 1 liegt vorne links (von der Kamera vor dem Tor aus).
+-- in Reihen zu je 4. garden = { Beds = Anzahl, Fence = Zaun-Id, Plots = { [i] = { Tree = id, Stage = 1–3, Ripe = n, Progress = 0–1, Golden = bool } oder false } }
+-- (Stage und Ripe aus GardenData.Stage/Ripe; aus Progress folgt die Phase, GardenData.PhaseOf). Beet 1 liegt vorne links (von der Kamera vor dem Tor aus).
 -- Über wachsenden Bäumen schwebt ein Timer; GardenBuilder.SetTimer(model, i, text, fortschritt) zählt ihn weiter.
 -- Animation: GardenBuilder.Animate(model, zeit, dt) jedes Bild aufrufen. Bäume wachsen dann stufenlos mit dem
 -- Fortschritt (Plot.Progress bzw. SetTimer), wiegen sich im Wind, wachsende atmen leicht und lassen Blättchen
@@ -1241,7 +1552,8 @@ local function rigTree(tree, base)
 	for n, p in ipairs(tree:GetDescendants()) do
 		if p:IsA("BasePart") then
 			-- Münzen drehen sich langsam um die senkrechte Achse (jede etwas versetzt)
-			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size, Spin = p.Name == "Muenze" and n * 0.7 or nil })
+			-- Früchte schaukeln leicht an ihren Stielen (jede etwas versetzt)
+			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size, Spin = p.Name == "Frucht" and n * 0.7 or nil })
 		end
 	end
 	return function(cf, k, t)
@@ -1249,7 +1561,7 @@ local function rigTree(tree, base)
 			local o = e.Offset
 			e.Part.Size = e.Size * math.max(k, 0.01)
 			if e.Spin and t then
-				e.Part.CFrame = cf * CFrame.new(o.Position * k) * CFrame.Angles(0, t * 1.4 + e.Spin, 0) * o.Rotation
+				e.Part.CFrame = cf * CFrame.new(o.Position * k) * CFrame.Angles(math.sin(t * 2.1 + e.Spin) * 0.18, 0, math.cos(t * 1.7 + e.Spin) * 0.18) * o.Rotation
 			else
 				e.Part.CFrame = cf * CFrame.new(o.Position * k) * o.Rotation
 			end
@@ -1258,12 +1570,16 @@ local function rigTree(tree, base)
 end
 
 
--- Zielgröße eines Baums aus Stufe und Fortschritt (0–1 bis ausgewachsen)
-local function growScale(stage, progress)
-	if stage <= 1 then
-		return 0.55 + 0.75 * math.clamp(progress / 0.34, 0, 1) -- Keimling wird größer
-	elseif stage == 2 then
-		return 0.42 + 0.58 * math.clamp((progress - 0.34) / 0.66, 0, 1) -- Jungbaum wächst zur vollen Größe
+-- Zielgröße eines Baums aus Phase (1–5) und Fortschritt (0–1 bis ausgewachsen)
+local function growScale(phase, progress)
+	if phase <= 1 then
+		return 0.55 + 0.75 * math.clamp(progress / 0.15, 0, 1) -- Keimling wird größer
+	elseif phase == 2 then
+		return 0.7 + 0.5 * math.clamp((progress - 0.15) / 0.19, 0, 1) -- Schössling
+	elseif phase == 3 then
+		return 0.42 + 0.48 * math.clamp((progress - 0.34) / 0.46, 0, 1) -- Jungbaum
+	elseif phase == 4 then
+		return 0.9 + 0.1 * math.clamp((progress - 0.8) / 0.2, 0, 1) -- Knospen, fast ausgewachsen
 	end
 	return 1
 end
@@ -1277,7 +1593,7 @@ ${PART}
 local function rarityFx(model, tree, base, height, entry)
 	local rarity = GardenData.RarityById[tree.Rarity]
 	local rank = rarity.Index
-	if rank < 3 then return end
+	if rank < 2 then return end
 	local color = rarity.Color
 	local function emitter(parent, props)
 		local e = Instance.new("ParticleEmitter")
@@ -1287,6 +1603,10 @@ local function rarityFx(model, tree, base, height, entry)
 		e.Parent = parent
 		return e
 	end
+	-- Glühwürmchen schwirren um alle Bäume ab Selten (seltener = mehr)
+	local swarm = part("Part", { Name = "Gluehwuermchen", Size = Vector3.new(4, height * 0.8, 4), Transparency = 1, CFrame = base * CFrame.new(0, height * 0.5, 0) }, model)
+	emitter(swarm, { Color = ColorSequence.new(Color3.fromRGB(230, 255, 140), color), Lifetime = NumberRange.new(3, 5), Speed = NumberRange.new(0.3, 0.8), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.22), NumberSequenceKeypoint.new(0.7, 0.18), NumberSequenceKeypoint.new(1, 0) }), Rate = 0.6 + rank * 0.35, RotSpeed = NumberRange.new(-40, 40), Acceleration = Vector3.new(0, 0.15, 0) })
+	if rank < 3 then return end
 	local holder = part("Part", { Name = "Aura", Size = Vector3.new(3, height * 0.6, 3), Transparency = 1, CFrame = base * CFrame.new(0, height * 0.55, 0) }, model)
 	local motes = emitter(holder, { Color = ColorSequence.new(color, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(2, 3.2), Speed = NumberRange.new(0.2, 0.7), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.28, 0), Rate = 2 + rank, Acceleration = Vector3.new(0, 0.4, 0) })
 	entry.Fx = { motes }
@@ -1436,17 +1756,43 @@ function GardenBuilder.Build(garden)
 		if plot and plot.Tree then
 			local tree = GardenData.ById[plot.Tree]
 			local stage = plot.Stage or 1
-			local t = LootBuilder.Tree(tree, stage, plot.Ripe or 0, true)
+			local progress = plot.Progress or (stage >= 3 and 1 or 0)
+			local phase = stage >= 3 and 5 or math.min(4, GardenData.PhaseOf(progress))
+			local t = LootBuilder.Tree(tree, stage, plot.Ripe or 0, true, { Phase = phase, Golden = plot.Golden })
 			local base = CFrame.new(pos + Vector3.new(0, 0.4, 0))
 			moveModel(t, base)
 			t.Parent = model
 			-- für die Animation merken
-			local progress = plot.Progress or (stage >= 3 and 1 or 0)
-			local entry = { Place = rigTree(t, base), Base = base, Stage = stage, Progress = progress, Shown = growScale(stage, progress), Phase = i * 1.7, Fresh = plot.Fresh, Born = nil, Height = t:GetAttribute("Height") or 2 }
+			local entry = { Place = rigTree(t, base), Base = base, Stage = stage, Look = phase, Progress = progress, Shown = growScale(phase, progress), Phase = i * 1.7, Fresh = plot.Fresh, Born = nil, Height = t:GetAttribute("Height") or 2 }
 			entry.Place(base, entry.Shown)
 			anim[i] = entry
 			rarityFx(model, tree, base, entry.Height, entry)
-			-- reif: Münzregen aus der Krone und ein paar Taler liegen schon im Beet
+			-- schillernde (goldene ???) Bäume: Laub läuft durch alle Farben
+			if plot.Golden and GardenData.RarityById[tree.Rarity].Rainbow then
+				entry.Shimmer = {}
+				for _, p in ipairs(t:GetDescendants()) do
+					if p:IsA("BasePart") and p:GetAttribute("Schillern") then table.insert(entry.Shimmer, p) end
+				end
+			end
+			-- ab Jungbaum fallen ab und zu Blätter und treiben im Wind davon (der Ahorn im Herbst mehr)
+			if phase >= 3 and tree.Crown ~= "crystal" and tree.Crown ~= "star" and tree.Crown ~= "planet" and tree.Crown ~= "rainbow" then
+				local crownAt = part("Part", { Name = "Blattfall", Size = Vector3.new(3, 0.5, 3), Transparency = 1, CFrame = base * CFrame.new(0, entry.Height * 0.62, 0) }, model)
+				local fall = Instance.new("ParticleEmitter")
+				fall.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				local lc = plot.Golden and Color3.fromRGB(255, 208, 64) or tree.Leaf
+				fall.Color = ColorSequence.new(lc, lc:Lerp(Color3.fromRGB(150, 90, 40), 0.35))
+				fall.LightEmission = 0.1
+				fall.Lifetime = NumberRange.new(3, 5)
+				fall.Speed = NumberRange.new(0.2, 0.6)
+				fall.SpreadAngle = Vector2.new(180, 180)
+				fall.Acceleration = Vector3.new(0.9, -1.1, 0.3)
+				fall.RotSpeed = NumberRange.new(-120, 120)
+				fall.Rotation = NumberRange.new(0, 360)
+				fall.Size = NumberSequence.new(0.26, 0.18)
+				fall.Rate = tree.Crown == "maple" and 1.6 or 0.5
+				fall.Parent = crownAt
+			end
+			-- reif: Funkeln fällt aus der Krone und ein paar Früchte liegen schon im Beet
 			if (plot.Ripe or 0) > 0 then
 				local rain = part("Part", { Name = "Muenzregen", Size = Vector3.new(2.6, 0.2, 2.6), Transparency = 1, CFrame = base * CFrame.new(0, entry.Height * 0.6, 0) }, model)
 				local drop = Instance.new("ParticleEmitter")
@@ -1464,7 +1810,7 @@ function GardenBuilder.Build(garden)
 				for c = 1, plot.Ripe * 2 do
 					local a = rng:NextNumber(0, math.pi * 2)
 					local r = rng:NextNumber(0.9, 1.9)
-					part("Part", { Name = "Bodentaler", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.08, 0.5, 0.5), CFrame = base * CFrame.new(math.cos(a) * r, 0.04, math.sin(a) * r) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), 0, 0), Color = tree.Fruit, Material = Enum.Material.Neon }, model)
+					part("Part", { Name = "Bodenfrucht", Shape = Enum.PartType.Ball, Size = Vector3.new(0.42, 0.42, 0.42), CFrame = base * CFrame.new(math.cos(a) * r, 0.2, math.sin(a) * r), Color = plot.Golden and Color3.fromRGB(255, 208, 64) or tree.Fruit, Material = Enum.Material.Neon }, model)
 				end
 			end
 			local fx = part("Part", { Name = "Wachsen" .. i, Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = base * CFrame.new(0, 0.3, 0) }, model)
@@ -1618,7 +1964,7 @@ function GardenBuilder.Animate(model, t, dt)
 	local anim = animated[model]
 	if not anim then return end
 	for _, e in pairs(anim) do
-		local target = growScale(e.Stage, e.Progress)
+		local target = growScale(e.Look, e.Progress)
 		e.Shown = e.Shown + (target - e.Shown) * math.min(1, (dt or 0.03) * 3)
 		local k = e.Shown
 		if e.Fresh then
@@ -1637,8 +1983,16 @@ function GardenBuilder.Animate(model, t, dt)
 		if growing then
 			k = k * (1 + math.sin(t * 2.2 + e.Phase) * 0.02)
 		end
-		local rot = CFrame.Angles(math.sin(t * 1.3 + e.Phase) * 0.03 * sway, 0, math.cos(t * 1.1 + e.Phase) * 0.04 * sway)
+		-- Wind: sanftes Wiegen, dazu ab und zu eine Böe, die über den Garten zieht
+		local gust = math.max(0, math.sin(t * 0.35 + e.Base.Position.X * 0.08)) ^ 3
+		local lean = gust * 0.06
+		local rot = CFrame.Angles(math.sin(t * 1.3 + e.Phase) * 0.03 * sway, 0, math.cos(t * 1.1 + e.Phase) * 0.04 * sway - lean + math.sin(t * 6 + e.Phase) * 0.012 * gust)
 		e.Place(e.Base * rot, k, t)
+		if e.Shimmer then
+			for n, p in ipairs(e.Shimmer) do
+				p.Color = Color3.fromHSV((t * 0.2 + n * 0.07) % 1, 0.55, 1)
+			end
+		end
 		-- ???: Ring, Lichtpunkte und Licht laufen durch alle Farben
 		if e.Rainbow then
 			local hue = Color3.fromHSV((t * 0.25 + e.Phase) % 1, 0.7, 1)
@@ -1831,7 +2185,7 @@ end
 export const GARDEN_CLIENT = `-- Coinmaster Adventure · Münzbaumgarten (Client)
 -- Baut den Garten des Spielers aus dem Attribut Garden mit GardenBuilder (nur für ihn sichtbar).
 -- Platz: ein Part „GartenPlatz“ im Workspace (seine Oberseite ist der Boden), sonst neben dem Spawn.
--- Wachsen und Reifen werden jede Sekunde geprüft; neu gebaut wird nur, wenn sich etwas ändert.
+-- Wachsen und Reifen werden jede Sekunde geprüft; neu gebaut wird nur, wenn sich etwas ändert (neue Phase, reif, geerntet).
 -- Über wachsenden Bäumen zählt ein Timer die Zeit bis „ausgewachsen“ herunter. Die Bäume wachsen animiert
 -- (GardenBuilder.Animate jedes Bild), eine neue Stufe ploppt mit Funken auf.
 -- „Zum Garten“ im Garten-Fenster teleportiert hierher (UIAction gartenBesuchen).
@@ -1871,8 +2225,9 @@ local function update()
 		local p = g.Plots[tostring(i)]
 		if p then
 			local tree = GardenData.ById[p.Tree]
-			plots[i] = { Tree = p.Tree, Stage = GardenData.Stage(p, now), Ripe = GardenData.Ripe(p, now), Progress = 1 - GardenData.GrowLeft(p, now) / tree.Grow }
-			table.insert(parts, p.Tree .. plots[i].Stage .. plots[i].Ripe)
+			local progress = 1 - GardenData.GrowLeft(p, now) / tree.Grow
+			plots[i] = { Tree = p.Tree, Stage = GardenData.Stage(p, now), Ripe = GardenData.Ripe(p, now), Progress = progress, Golden = p.Golden, Look = GardenData.PhaseOf(progress) }
+			table.insert(parts, p.Tree .. plots[i].Look .. plots[i].Ripe .. (p.Golden and "g" or ""))
 		else
 			plots[i] = false
 			table.insert(parts, "-")
@@ -1883,7 +2238,7 @@ local function update()
 		local first = model == nil
 		signature = sig
 		for i = 1, g.Beds do
-			local key = plots[i] and (plots[i].Tree .. plots[i].Stage) or "-"
+			local key = plots[i] and (plots[i].Tree .. plots[i].Look) or "-"
 			if plots[i] and not first and lastStage[i] ~= key then
 				plots[i].Fresh = true -- neue Stufe: aufploppen
 			end

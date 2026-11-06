@@ -904,6 +904,9 @@ local function cloudPart(height)
 	return p
 end
 
+-- Wetter bleibt dezent: alle Partikelmengen werden auf diesen Anteil gesenkt
+local AMOUNT = 0.4
+
 local function particles(parent, props)
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
@@ -913,6 +916,7 @@ local function particles(parent, props)
 	for key, value in pairs(props) do
 		e[key] = value
 	end
+	e.Rate = math.max(1, e.Rate * AMOUNT)
 	e.Parent = parent
 	return e
 end
@@ -921,7 +925,7 @@ local function lightning(cloud)
 	local last = 0
 	table.insert(current.connections, RunService.Heartbeat:Connect(function()
 		local now = os.clock()
-		if now - last < 2.5 + math.random() * 3 then
+		if now - last < 6 + math.random() * 6 then
 			return
 		end
 		last = now
