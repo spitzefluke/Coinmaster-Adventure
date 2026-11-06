@@ -650,13 +650,25 @@ fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameU
 
 | Stufe | Seltenheit | Effekt |
 | --- | --- | --- |
-| 1 | Normal, Selten | Hinweis |
-| 2 | Sehr selten, Episch | Fundkarte mit Glanz über „Münze suchen“ |
-| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken und große Ansage |
-| 4 | Göttlich, Galaktisch, Unerreichbar | alles stärker und länger |
+| 1 | Normal, Selten | Hinweis, „+Taler“ steigt auf, Münzen fliegen zum Taler-Feld, der Knopf springt |
+| 2 | Sehr selten, Episch | dazu Fundkarte mit Glanz und leichtes Wackeln |
+| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken, Strahlenkranz, große Ansage, kräftiges Wackeln |
+| 4 | Göttlich, Galaktisch, Unerreichbar | dazu kurze Zeitlupe (Bild wird dunkel, Kamera zoomt) und Münzregen |
 
 Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den Hinweis, „Weniger Partikel“
-weniger Funken.
+halbiert Funken, Konfetti und Münzregen.
+
+**Mehr Juice** (alles aus Frames und Tweens, abschaltbar über „Animationen überspringen“):
+- *Knöpfe* drücken sich ein und federn beim Loslassen nach (Elastic), dazu ein kleiner Funkenkranz.
+- *Fenster* springen aus der Mitte auf, federn nach und kippen dabei kurz.
+- *Käufe* lassen Konfetti regnen und das Taler-Feld wippen; große Momente (neue Welt, Portal, Wiedergeburt)
+  bekommen Blitz, Wackeln, Strahlenkranz und Ansage. Geht ein Kauf nicht, schüttelt das Taler-Feld den Kopf.
+- *Taler* leuchten beim Gewinn weiß auf, das Feld wippt stärker, je mehr es ist.
+- *Level-Aufstieg*: das Abzeichen springt, Goldkonfetti, Strahlen und (im Spiel) die Ansage „LEVEL X!“.
+- *Münzrollen* enden mit Wackeln und Konfetti.
+- *Bewegung und Kamera* (LocalScript `CoinmasterJuice`, `roblox/js/juiceLuau.js`, nur im Spiel): Staub beim
+  Springen und Landen, harte Landungen lassen die Kamera wackeln und stauchen das Sichtfeld, schnelles Laufen
+  weitet es, ein Teleport blitzt auf und lässt Funken sprühen.
 
 **Icons:** Alle Icons der Oberfläche liegen auf einem Bild (`roblox/js/iconSheet.js`, 47 Icons in Gold,
 1024 × 768). Auf der Roblox-Seite gibt es `Icons.png` zum Herunterladen (Schritt 6); nach dem Hochladen die
