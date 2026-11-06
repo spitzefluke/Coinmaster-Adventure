@@ -64,7 +64,7 @@ export const MUTATIONS = [
 // weight: wie oft das Wetter vorkommt (Anteil an allen Wetterphasen)
 // sky/light: Stimmung für Roblox (Lighting, im Modul WeatherFx) und die Roblox-Vorschau der Welten
 export const WEATHER = [
-  { id: 'klar', name: 'Klar', weight: 34, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
+  { id: 'klar', name: 'Klar', weight: 166, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
   { id: 'regen', name: 'Regen', weight: 14, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.', sky: '#5a7590', light: 0.65 },
   { id: 'gewitter', name: 'Gewitter', weight: 10, color: '#ffe94a', text: 'Blitze schlagen ein und laden Münzen auf.', sky: '#2a3040', light: 0.45 },
   { id: 'erdbeben', name: 'Erdbeben', weight: 9, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.', sky: '#9a7f60', light: 0.8 },
