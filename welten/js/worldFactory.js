@@ -10,6 +10,7 @@ import { WORLDS, planetById } from './worlds.js';
 import { buildSpawnTown } from './spawnTown.js';
 import { planet1Before, planet1After } from './planet1.js';
 import { planet2Before, planet2After } from './planet2.js';
+import { planet3Before, planet3After } from './planet3.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -340,14 +341,16 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
+  planet3Before(ctx, kit); // Planet 3 ebenso
   (BUILDERS[world.id] || BUILDERS.normal)(ctx);
   EXTRAS[world.id]?.(ctx);
   planet1After(ctx, kit); // Planet 1: Kulisse, Bodendetails, Leben, Klänge
   planet2After(ctx, kit);
+  planet3After(ctx, kit);
 
   // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.

@@ -352,6 +352,19 @@ Wege: Mondgestein, Eisglas, Metallplatten mit Glutfugen, Sandstein, Alien-Fliese
 Leuchtfugen. Die Himmelskörper (Erde, Neptun, Saturn, Sonne …) zieht der Export gemeinsam in die
 Himmelskuppel und verkleinert sie im selben Maß, so sehen sie gleich groß aus und bleiben sichtbar.
 
+**Planet 3 (`welten/js/planet3.js`):** unter Wasser. Zu den großen Wahrzeichen (Wrack, Korallenbogen,
+Muschelhaus, Perlenbrunnen, Palast) kommt je eines dazu. Weil der Nebel unter Wasser dichter ist, steht die
+Kulisse näher (220–340 Studs).
+
+| Welt | neues Wahrzeichen | Kulisse (Ordner „Himmel“) | Leben |
+| --- | --- | --- | --- |
+| Korallenriff | Korallenturm mit Leuchtspitzen | bunte Korallentürme, Seetang | Luftblasen, Plankton |
+| Muschelland | Riesen-Perlmuschel, öffnet sich langsam | aufgestellte Riesenmuscheln, Felsbögen, Seetang | Luftblasen, Perlenglitzern |
+| Atlantis | Dreizack-Denkmal | versunkene Säulen (teils umgestürzt), Runensteine, Seetang | Luftblasen, Quallen |
+
+Wege: Sandsteine, Muschelsteine mit Perlenrand, Marmorfliesen mit Leuchtfugen (in Atlantis um den Palast
+herum). Klänge: Unterwasser-Rauschen und Blubbern, Wellen und Walgesang, Harfe oder Chor und ferne Glocken.
+
 **Klänge:** Jede Welt hat im Ordner `Klaenge` eine unsichtbare `Klangquelle` über der Inselmitte mit einem
 `Sound` je Platz (`Looped`, `Playing`, `RollOffMaxDistance` 700 Studs, also nur nahe der Insel hörbar).
 Die `SoundId` ist noch leer: in Roblox Studio eine Sound-ID aus der Toolbox eintragen, der `StringValue`

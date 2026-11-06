@@ -42,6 +42,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
     for (let r = 2.2; r < R - 1.6; r += 0.78) {
       const a = a0 + Math.sin(r * 0.35 + ph) * wob;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (style.avoid && !ctx.free(x, z, 0.1)) continue; // nicht durch Wahrzeichen hindurch (Atlantis)
       const tile = style.kind === 'stone'
         ? new THREE.Mesh(new THREE.CylinderGeometry(0.34 + rand() * 0.08, 0.38, 0.08, 10), mat)
         : new THREE.Mesh(new THREE.BoxGeometry(style.kind === 'plank' ? 0.9 : 0.7, 0.08, style.kind === 'plank' ? 0.32 : 0.62), mat);
