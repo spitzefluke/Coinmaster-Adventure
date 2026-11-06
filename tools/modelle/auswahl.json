@@ -443,5 +443,578 @@
   "id": "wall_straight",
   "pack": "medieval",
   "fest": true
+ },
+ {
+  "id": "city_building_A",
+  "pack": "city",
+  "fest": true,
+  "file": "building_A"
+ },
+ {
+  "id": "city_building_B",
+  "pack": "city",
+  "fest": true,
+  "file": "building_B"
+ },
+ {
+  "id": "city_building_C",
+  "pack": "city",
+  "fest": true,
+  "file": "building_C"
+ },
+ {
+  "id": "city_building_D",
+  "pack": "city",
+  "fest": true,
+  "file": "building_D"
+ },
+ {
+  "id": "city_building_E",
+  "pack": "city",
+  "fest": true,
+  "file": "building_E"
+ },
+ {
+  "id": "city_building_F",
+  "pack": "city",
+  "fest": true,
+  "file": "building_F"
+ },
+ {
+  "id": "city_building_G",
+  "pack": "city",
+  "fest": true,
+  "file": "building_G"
+ },
+ {
+  "id": "city_building_H",
+  "pack": "city",
+  "fest": true,
+  "file": "building_H"
+ },
+ {
+  "id": "city_car_hatchback",
+  "pack": "city",
+  "fest": true,
+  "file": "car_hatchback"
+ },
+ {
+  "id": "city_car_police",
+  "pack": "city",
+  "fest": true,
+  "file": "car_police"
+ },
+ {
+  "id": "city_car_sedan",
+  "pack": "city",
+  "fest": true,
+  "file": "car_sedan"
+ },
+ {
+  "id": "city_car_stationwagon",
+  "pack": "city",
+  "fest": true,
+  "file": "car_stationwagon"
+ },
+ {
+  "id": "city_car_taxi",
+  "pack": "city",
+  "fest": true,
+  "file": "car_taxi"
+ },
+ {
+  "id": "city_streetlight",
+  "pack": "city",
+  "fest": true,
+  "file": "streetlight"
+ },
+ {
+  "id": "city_trafficlight_A",
+  "pack": "city",
+  "fest": true,
+  "file": "trafficlight_A"
+ },
+ {
+  "id": "city_trafficlight_C",
+  "pack": "city",
+  "fest": true,
+  "file": "trafficlight_C"
+ },
+ {
+  "id": "city_firehydrant",
+  "pack": "city",
+  "fest": true,
+  "file": "firehydrant"
+ },
+ {
+  "id": "city_bench",
+  "pack": "city",
+  "fest": true,
+  "file": "bench"
+ },
+ {
+  "id": "city_dumpster",
+  "pack": "city",
+  "fest": true,
+  "file": "dumpster"
+ },
+ {
+  "id": "city_watertower",
+  "pack": "city",
+  "fest": true,
+  "file": "watertower"
+ },
+ {
+  "id": "city_road_straight",
+  "pack": "city",
+  "fest": true,
+  "file": "road_straight"
+ },
+ {
+  "id": "city_road_junction",
+  "pack": "city",
+  "fest": true,
+  "file": "road_junction"
+ },
+ {
+  "id": "city_road_straight_crossing",
+  "pack": "city",
+  "fest": true,
+  "file": "road_straight_crossing"
+ },
+ {
+  "id": "city_bush",
+  "pack": "city",
+  "fest": false,
+  "file": "bush"
+ },
+ {
+  "id": "city_trash_A",
+  "pack": "city",
+  "fest": false,
+  "file": "trash_A"
+ },
+ {
+  "id": "city_box_A",
+  "pack": "city",
+  "fest": false,
+  "file": "box_A"
+ },
+ {
+  "id": "chest_gold",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "pillar",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "pillar_decorated",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "column",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "rubble_half",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "rubble_large",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "barrel_large",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "crates_stacked",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "box_stacked",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "keg",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "trunk_large_A",
+  "pack": "dungeon",
+  "fest": true
+ },
+ {
+  "id": "torch_lit",
+  "pack": "dungeon",
+  "fest": false
+ },
+ {
+  "id": "torch_mounted",
+  "pack": "dungeon",
+  "fest": false
+ },
+ {
+  "id": "candle_triple",
+  "pack": "dungeon",
+  "fest": false
+ },
+ {
+  "id": "tree_dead_large",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "tree_dead_medium",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "tree_dead_small",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "lantern_standing",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "post_lantern",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "arch",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "tree_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "tree_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "trees_A_large",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "trees_A_medium",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "trees_A_small",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "rock_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "rock_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "rock_single_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "rock_single_E",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "mountain_A_grass_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "mountain_B_grass_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "mountain_C_grass_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "hills_A_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "hills_B_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "mountain_B_grass",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "building_tower_A_blue",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "eis"
+ },
+ {
+  "id": "rock_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "rock_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "rock_single_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "rock_single_D",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "rock_single_E",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "mountain_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "mountain_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "mountain_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "mountain_A_grass",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "hills_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "hills_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "building_destroyed",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "tree_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "lava"
+ },
+ {
+  "id": "trees_A_cut",
+  "pack": "medieval",
+  "fest": false,
+  "variant": "lava"
+ },
+ {
+  "id": "rock_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "rock_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "rock_single_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "rock_single_D",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "rock_single_E",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "mountain_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "mountain_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "building_mine_blue",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "hoehle"
+ },
+ {
+  "id": "building_mine_blue",
+  "pack": "medieval",
+  "fest": true
+ },
+ {
+  "id": "tree_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "tree_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "trees_B_small",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "trees_B_medium",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "rock_single_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "hills_A_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "hills_B_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "mountain_B_grass_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "mountain_C_grass_trees",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "building_home_A_red",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "building_home_B_red",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "building_windmill_red",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "building_well_blue",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
+ },
+ {
+  "id": "fence_wood_straight",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "candy"
  }
 ]

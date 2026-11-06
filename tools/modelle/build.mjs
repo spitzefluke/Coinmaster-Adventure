@@ -38,6 +38,7 @@ function packFiles(pack) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
       else if (e.name.endsWith('.gltf')) out[e.name.slice(0, -5)] = p;
+      else if (e.name.endsWith('.glb')) out[e.name.replace(/(\.gltf)?\.glb$/, '')] = p; // Dungeon: name.gltf.glb
     }
   };
   walk(path.join(dir, q.gltf));
@@ -54,13 +55,19 @@ scene.addChild(rootNode);
 
 const catalog = {};
 const seen = new Set();
+// Farbvarianten (atlanten.py): der Atlas des Modells wird durch atlanten/<variante>.png ersetzt
+const atlas = {};
+const atlasOf = (v) => (atlas[v] ??= fs.readFileSync(path.join(HERE, 'atlanten', v + '.png')));
 for (const entry of auswahl) {
-  const id = entry.id;
+  const base = entry.id;
+  const id = entry.variant ? `${base}@${entry.variant}` : base;
   if (seen.has(id)) throw new Error(`doppelte Id ${id}`);
   seen.add(id);
-  const file = packFiles(entry.pack)[entry.file || id];
+  const file = packFiles(entry.pack)[entry.file || base];
   if (!file) throw new Error(`${id}: nicht im Paket ${entry.pack}`);
   const src = await io.read(file);
+  if (entry.variant)
+    for (const t of src.getRoot().listTextures()) t.setImage(atlasOf(entry.variant)).setMimeType('image/png').setURI('').setName('atlas_' + entry.variant);
   const map = mergeDocuments(doc, src);
   // Knoten der eingelesenen Szene unter den Wurzelknoten hängen
   const srcScene = src.getRoot().listScenes()[0];
@@ -78,7 +85,7 @@ for (const entry of auswahl) {
   const b = getBounds(node);
   const size = b.max.map((v, i) => +(v - b.min[i]).toFixed(4));
   const center = b.max.map((v, i) => +((v + b.min[i]) / 2).toFixed(4));
-  catalog[id] = { size, center, fest: entry.fest !== false, pack: entry.pack };
+  catalog[id] = { size, center, fest: entry.fest !== false, pack: entry.pack, ...(entry.variant ? { variant: entry.variant } : {}) };
 }
 // Alle Puffer zu einem zusammenfassen, doppelte Texturen und Materialien entfernen
 const buffer = doc.getRoot().listBuffers()[0];

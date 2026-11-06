@@ -349,8 +349,13 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   planet2Before(ctx, kit); // Planet 2 ebenso
   planet3Before(ctx, kit); // Planet 3 ebenso
   // Welten aus Modellen der CC0-Pakete ersetzen den alten Grundbau (modelWorlds.js)
-  if (ctx.modelWorld) ctx.modelWorld.build(ctx, kit);
-  else {
+  // keepBase: das Typische der Welt (Vulkan, Felsbogen, Iglu, Süßigkeiten) bleibt, die Modelle kommen dazu
+  // Die Modelle kommen zuerst (große Gebäude brauchen Platz); feste Plätze des Grundbaus sind vorher belegt
+  if (ctx.modelWorld) {
+    for (const [x, z, d] of ctx.modelWorld.baseSpots || []) reserve(x, z, d);
+    ctx.modelWorld.build(ctx, kit);
+  }
+  if (!ctx.modelWorld || ctx.modelWorld.keepBase) {
     (BUILDERS[world.id] || BUILDERS.normal)(ctx);
     EXTRAS[world.id]?.(ctx);
   }
@@ -1989,7 +1994,7 @@ const BUILDERS = {
     return [c1, c2];
   },
 
-  eis({ put, scatter, rand, rr, root }) {
+  eis({ put, scatter, rand, rr, root, modelWorld }) {
     const ig = new THREE.Group();
     const shell = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), M('#ffffff', { roughness: 0.5 }));
     const door = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.8, 10, 1, false, 0, Math.PI), M('#f2f8ff'));
@@ -2001,7 +2006,7 @@ const BUILDERS = {
     ig.add(shell, door, hole);
     put(ig, -1.5, -1, { rot: false });
     scatter(9, () => crystal(rr(0.9, 1.6), rand() < 0.5 ? '#8ae6ff' : '#bfe8ff', rand, 0.7), 0.6);
-    scatter(7, () => pine(rr(1.6, 2.4), '#e8f4ff', rand), 0.7);
+    if (!modelWorld) scatter(7, () => pine(rr(1.6, 2.4), '#e8f4ff', rand), 0.7); // sonst verschneite Modell-Tannen
     // Schneemann
     const sm = new THREE.Group();
     [[0.42, 0.38], [0.3, 0.95], [0.22, 1.35]].forEach(([r, y]) => sm.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), M('#ffffff')), 0, y, 0)));
@@ -2015,7 +2020,7 @@ const BUILDERS = {
     put(lake, 1.6, -2, { sink: -0.04, rot: false });
   },
 
-  lava({ put, scatter, rand, rr, root, anims, world }) {
+  lava({ put, scatter, rand, rr, root, anims, world, modelWorld }) {
     const vol = new THREE.Group();
     const cone = new THREE.Mesh(jitter(new THREE.CylinderGeometry(0.7, 2.4, 2.8, 12, 3, true), rand, 0.25, (x, y) => y > 1.3), M('#2a201c'));
     cone.position.y = 1.4;
@@ -2043,6 +2048,7 @@ const BUILDERS = {
       lavaTop.material.emissiveIntensity = 1.1 + Math.sin(t * 3) * 0.35;
       glow.intensity = 22 + Math.sin(t * 3) * 6;
     });
+    if (modelWorld) return; // Felsen und tote Bäume kommen als Modelle (modelWorlds.js)
     scatter(10, () => rockMesh(rr(0.25, 0.6), '#1a1614', rand, rand() < 0.3 ? E('#ff3a0a', 0.6) : null), 0.45);
     scatter(5, () => {
       const t = group(trunk(rr(0.8, 1.3), '#1a1412', 0.08));
@@ -2081,14 +2087,14 @@ const BUILDERS = {
     anims.push((t) => (light.intensity = 18 + Math.sin(t * 1.5) * 5));
   },
 
-  candy({ put, scatter, rand, rr }) {
+  candy({ put, scatter, rand, rr, modelWorld }) {
     const cols = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a', '#b07bff', '#ff8a3d'];
     scatter(4, (i) => lollipop(cols[i % cols.length], rand), 0.8, 1, R - 1);
     scatter(4, () => candyCane(), 0.7);
     scatter(4, () => donut(['#ff9ad5', '#7a4a2a', '#bfe8ff'][Math.floor(rand() * 3)]), 0.6);
     scatter(12, (i) => gumdrop(cols[i % cols.length]), 0.3);
-    scatter(5, () => {
-      // Zuckerwatte-Baum
+    if (!modelWorld) scatter(5, () => {
+      // Zuckerwatte-Baum (sonst Bäume als Modelle in Zuckerfarben)
       return roundTree(rr(1.4, 2), ['#ffc2e2', '#c2e8ff', '#e2c2ff'][Math.floor(rand() * 3)], rand);
     }, 0.8);
   },
