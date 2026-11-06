@@ -1492,5 +1492,75 @@
   "pack": "space",
   "fest": true,
   "variant": "sonne"
+ },
+ {
+  "id": "rock_single_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "rock_single_B",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "rock_single_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "rock_single_D",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "rock_single_E",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "mountain_A",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "mountain_C",
+  "pack": "medieval",
+  "fest": true,
+  "variant": "meer"
+ },
+ {
+  "id": "waterplant_A",
+  "pack": "medieval",
+  "fest": false,
+  "variant": "meer"
+ },
+ {
+  "id": "waterplant_B",
+  "pack": "medieval",
+  "fest": false,
+  "variant": "meer"
+ },
+ {
+  "id": "waterplant_C",
+  "pack": "medieval",
+  "fest": false,
+  "variant": "meer"
+ },
+ {
+  "id": "arch_gate",
+  "pack": "halloween",
+  "fest": true
+ },
+ {
+  "id": "shrine",
+  "pack": "halloween",
+  "fest": true
  }
 ]

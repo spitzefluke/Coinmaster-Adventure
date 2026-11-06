@@ -696,7 +696,7 @@ export function buildSpawnTown(ctx, K) {
   scatter(14, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, 5.6, 9.2);
 
   // ── Grün ──
-  scatter(12, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 11, 13.4);
+  if (!ctx.modelWorld) scatter(12, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 11, 13.4); // sonst Bäume als Modelle
   scatter(24, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 5.6, 13.4);
   scatter(60, () => flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2, 5.6, 13.4);
 }

@@ -518,4 +518,82 @@ const SONNE = {
   backdrop: (ctx) => spaceBackdrop(ctx, 'sonne'),
 };
 
-export const MODEL_WORLDS = { normal: NORMAL, wald: WALD, stadt: STADT, eis: EIS, lava: LAVA, hoehle: HOEHLE, candy: CANDY, mond: MOND, neptun: NEPTUN, mars: MARS, saturn: SATURN, alien: ALIEN, sonne: SONNE };
+// ── Planet 3 unter Wasser: Felsen in Meeresfarben (@meer), Wasserpflanzen, Schätze, Ruinen ──
+// Seetang-Felder aus den Wasserpflanzen des Pakets, groß gezogen
+function seaweedBeds(ctx, n) {
+  for (let i = 0; i < n; i++) {
+    const c = clearing(ctx, 1.4, 2, ctx.R - 1.5);
+    if (!c) continue;
+    for (let j = 0; j < 4; j++) {
+      const a = ctx.rand() * TAU, d = ctx.rr(0.2, 1.1);
+      stand(ctx, model(pick(ctx.rand, ['waterplant_A@meer', 'waterplant_B@meer', 'waterplant_C@meer']), ctx.rr(6, 9)), c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d);
+    }
+  }
+}
+function seaRocks(ctx, n = 7) {
+  scatterModels(ctx, n, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer', 'rock_single_E@meer'], 2.8, 4.6, { gap: 0.8 });
+  scatterModels(ctx, 2, ['mountain_A@meer', 'mountain_C@meer'], 1.3, 1.8, { rMin: ctx.R * 0.6, gap: 0.7 });
+}
+
+const KORALLENRIFF = {
+  landmark: true, // Korallenturm
+  keepBase: true, // Wrack, Korallenbogen, Korallen, Fische
+  build(ctx) {
+    const { R } = ctx;
+    // Schatzplatz: offene Truhe zwischen Fässern und Kisten, wie aus dem Wrack gespült
+    const loot = clearing(ctx, 2.6, 4, R - 3);
+    if (loot) {
+      stand(ctx, model('chest_gold', 0.85), loot[0], loot[1]);
+      around(ctx, loot, [['barrel_large', 0.6], ['crates_stacked', 0.6], ['trunk_large_A', 0.7], ['barrel', 3]], 1.4, 2.4);
+    }
+    seaweedBeds(ctx, 5);
+    seaRocks(ctx);
+  },
+};
+
+const MUSCHELLAND = {
+  landmark: true, // Riesen-Perlmuschel
+  keepBase: true, // Muschelhaus, Perlenbrunnen, Muscheln, Seesterne
+  build(ctx) {
+    const { R } = ctx;
+    // Felsentor aus Stein mit Laternen davor
+    const gate = place(ctx, 'arch', 0.75, { rMin: 5, rMax: R - 3, face: [0, 0] });
+    if (gate) around(ctx, [gate.position.x, gate.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.7]], 2.4, 3.2);
+    seaweedBeds(ctx, 4);
+    seaRocks(ctx, 8);
+  },
+};
+
+const ATLANTIS = {
+  landmark: true, // Dreizack-Denkmal
+  keepBase: true, // Palast mit Säulenallee, Tempel
+  build(ctx) {
+    const { R } = ctx;
+    // Ruinenfeld: Säulen (manche verziert), Trümmer, ein Tor mit Gitter, ein Schrein mit Laternen
+    scatterModels(ctx, 6, ['pillar', 'pillar_decorated', 'column'], 0.7, 0.85, { rMin: 4, gap: 0.9 });
+    scatterModels(ctx, 4, ['rubble_half', 'rubble_large'], 0.35, 0.5, { rMin: 4, gap: 0.8 });
+    const gate = place(ctx, 'arch_gate', 0.75, { rMin: 6, rMax: R - 3, face: [0, 0] });
+    const shrine = place(ctx, 'shrine', 0.9, { rMin: 4, rMax: R - 3, face: [0, 0] });
+    if (shrine) around(ctx, [shrine.position.x, shrine.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.75]], 1.6, 2.4);
+    void gate;
+    seaweedBeds(ctx, 3);
+    seaRocks(ctx, 5);
+  },
+};
+
+// ── Spawn: die Münzstadt bleibt; Modelle füllen nur freie Plätze (Bäume im äußeren Ring, Marktkram, Laternen) ──
+const SPAWN = {
+  landmark: true,
+  keepBase: true,
+  after: true,
+  build(ctx) {
+    const { R } = ctx;
+    scatterModels(ctx, 14, ['tree_single_A', 'tree_single_B'], 2.2, 2.8, { rMin: 11, rMax: R - 1.4, gap: 0.7 });
+    scatterModels(ctx, 3, ['trees_B_small'], 2, 2.2, { rMin: 11, rMax: R - 1.6, gap: 0.65 });
+    scatterModels(ctx, 6, ['post_lantern'], 0.8, 0.8, { rMin: 5.6, rMax: 9.4, gap: 1 });
+    scatterModels(ctx, 8, ['barrel', 'crate_A_big', 'sack', 'crate_long_C', 'bucket_water'], 3, 3.4, { rMin: 5.6, rMax: 13, gap: 1 });
+    scatterModels(ctx, 4, ['rock_single_A', 'rock_single_C', 'rock_single_E'], 2.6, 3.4, { rMin: 11, rMax: R - 1.4, gap: 0.8 });
+  },
+};
+
+export const MODEL_WORLDS = { normal: NORMAL, wald: WALD, stadt: STADT, eis: EIS, lava: LAVA, hoehle: HOEHLE, candy: CANDY, mond: MOND, neptun: NEPTUN, mars: MARS, saturn: SATURN, alien: ALIEN, sonne: SONNE, korallenriff: KORALLENRIFF, muschelland: MUSCHELLAND, atlantis: ATLANTIS, spawn: SPAWN };

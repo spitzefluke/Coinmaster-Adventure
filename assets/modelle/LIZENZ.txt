@@ -10,5 +10,5 @@ Lizenz: Creative Commons Zero (CC0 1.0), http://creativecommons.org/publicdomain
 Frei nutzbar in privaten, schulischen und kommerziellen Projekten (auch Roblox-Spielen).
 Eine Nennung ist nicht nötig, aber willkommen.
 
-Farbvarianten (@eis, @lava, @hoehle, @candy, @mond, @neptun, @saturn, @alien, @sonne): umgefärbter Farbatlas aus tools/modelle/atlanten.py.
+Farbvarianten (@eis, @lava, @hoehle, @candy, @mond, @neptun, @saturn, @alien, @sonne, @meer): umgefärbter Farbatlas aus tools/modelle/atlanten.py.
 Gebaut mit tools/modelle/build.mjs (Auswahl: tools/modelle/auswahl.json).
