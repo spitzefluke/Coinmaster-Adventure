@@ -167,7 +167,7 @@ end
 local function stars(k, n, colors, minEl)
 	local twinkle = {}
 	for i = 1, n do
-		local az, el = rnd(k, 0, TAU), math.asin(rnd(math.sin(minEl or 0.1), 0.98))
+		local az, el = rnd(k, 0, TAU), math.asin(rnd(k, math.sin(minEl or 0.1), 0.98))
 		local s = rnd(k, 1.4, 3.2)
 		local p = P(k, "Ball", V(s, s, s), CFrame.new(skyPos(k, az, el, 600)), colors[i % #colors + 1], "Neon", 0, "Stern")
 		if i % 4 == 0 then table.insert(twinkle, p) end
