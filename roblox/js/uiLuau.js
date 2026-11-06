@@ -1749,9 +1749,10 @@ function Juice.rays(at, color, size, hold)
 	if Juice.calm() or not ui.fx then return end
 	local holder = new("Frame", { Name = "Strahlen", Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, at.X, 0, at.Y), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 2, Parent = ui.fx })
 	local scale = new("UIScale", { Scale = 0.2, Parent = holder })
-	for i = 0, 11 do
-		new("Frame", { Size = UDim2.new(0, size * 0.09, 0, size * 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 1), Rotation = i * 30, BackgroundColor3 = color, BackgroundTransparency = 0.55, BorderSizePixel = 0, ZIndex = 2, Parent = holder }, {
-			new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0, 1) }),
+	-- GUI-Elemente drehen sich um ihre eigene Mitte: jeder Strahl geht durch die Mitte (zwei Strahlen je Frame)
+	for i = 0, 5 do
+		new("Frame", { Size = UDim2.new(0, size * 0.08, 0, size), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = i * 30, BackgroundColor3 = color, BackgroundTransparency = 0.6, BorderSizePixel = 0, ZIndex = 2, Parent = holder }, {
+			new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.15), NumberSequenceKeypoint.new(1, 1) }) }),
 		})
 	end
 	TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
