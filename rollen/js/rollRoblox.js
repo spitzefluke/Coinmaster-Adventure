@@ -28,13 +28,13 @@ function __buildLoot(key, itemId)
 	model.Parent = workspace
 	previews[key] = model
 end
--- plots: "baumId,stufe,reif,fortschritt,neu;;…" (leeres Feld = leeres Beet; neu = 1: Stufe gerade erreicht)
+-- plots: "baumId,stufe,reif,fortschritt,neu,golden;;…" (leeres Feld = leeres Beet; neu = 1: Phase gerade erreicht)
 function __buildGarden(key, beds, plots, fence, fenceFrom)
 	local list, i = {}, 0
 	for entry in string.gmatch(plots .. ";", "([^;]*);") do
 		i = i + 1
-		local id, stage, ripe, progress, fresh = string.match(entry, "([%w-]+),(%d+),(%d+),([%d.]+),(%d)")
-		list[i] = id and { Tree = id, Stage = tonumber(stage), Ripe = tonumber(ripe), Progress = tonumber(progress), Fresh = fresh == "1" } or false
+		local id, stage, ripe, progress, fresh, golden = string.match(entry, "([%w-]+),(%d+),(%d+),([%d.]+),(%d),(%d)")
+		list[i] = id and { Tree = id, Stage = tonumber(stage), Ripe = tonumber(ripe), Progress = tonumber(progress), Fresh = fresh == "1", Golden = golden == "1" } or false
 	end
 	local model = GardenBuilder.Build({ Beds = beds, Plots = list, Fence = fence ~= "" and fence or nil, FenceFrom = fenceFrom ~= "" and fenceFrom or nil })
 	model.Parent = workspace
@@ -118,9 +118,9 @@ async function staticModel(fn, args, opts = {}) {
 export const createRobloxRoll = (roll, { shadows = false } = {}) => staticModel('__buildRoll', [roll.id], { shadows });
 // Baum oder Werkzeug (LootBuilder)
 export const createRobloxLoot = (item, { shadows = false } = {}) => staticModel('__buildLoot', [item.id], { shadows });
-// ganzer Garten (GardenBuilder); plots: [{ tree, stage, ripe, progress, fresh } | null]
+// ganzer Garten (GardenBuilder); plots: [{ tree, stage, ripe, progress, fresh, golden } | null]
 export const createRobloxGarden = (beds, plots, { shadows = true, fence = '', fenceFrom = '' } = {}) =>
-  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe},${(p.progress ?? 1).toFixed(3)},${p.fresh ? 1 : 0}` : '')).join(';'), fence, fenceFrom], { shadows, area: 22 });
+  staticModel('__buildGarden', [beds, plots.map((p) => (p ? `${p.tree},${p.stage},${p.ripe},${(p.progress ?? 1).toFixed(3)},${p.fresh ? 1 : 0},${p.golden ? 1 : 0}` : '')).join(';'), fence, fenceFrom], { shadows, area: 22 });
 
 // Öffnen: RollFx.Play wie im Spiel (die Sache ist vorher gezogen); window = halbe Breite des Rollbands
 const doneHandlers = new Map();
