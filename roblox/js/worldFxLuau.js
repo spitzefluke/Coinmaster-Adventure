@@ -355,8 +355,14 @@ local function volcanoes(k, n, rock, lava)
 		prism(k, cf, w, h, w * 0.6, tint(k, rock, 0.15), "Basalt", 0, "Vulkan")
 		-- abgeflachte Spitze mit Glut und Lavaströmen
 		P(k, "Cyl", V(w * 0.22, 8, w * 0.3), cf * CFrame.new(0, h / 2 - h * 0.12, -w * 0.05), lava, "Neon", 0, "Glut")
+		-- Lavaströme laufen innen an den Flanken vom Krater herab
+		local slope = math.atan2(w / 2, h)
 		for s = -1, 1, 2 do
-			P(k, "Block", V(5, h * 0.55, 2), cf * CFrame.new(s * w * 0.12, h * 0.08, -w * 0.31) * CFrame.Angles(0, 0, s * 0.42), lava, "Neon", 0.15, "Lavastrom")
+			local L = h * 0.42
+			local top = V(s * w * 0.04, h * 0.36, -w * 0.31)
+			local dir = V(s * math.sin(slope), -math.cos(slope), 0)
+			local mid = top + dir * (L / 2)
+			P(k, "Block", V(5, L, 2), cf * CFrame.new(mid) * CFrame.Angles(0, 0, s * slope), lava, "Neon", 0.15, "Lavastrom")
 		end
 		local smoke = P(k, "Block", V(30, 4, 30), cf * CFrame.new(0, h / 2, -w * 0.05), WHITE, "SmoothPlastic", 1, "Rauchquelle")
 		local e = Instance.new("ParticleEmitter")
