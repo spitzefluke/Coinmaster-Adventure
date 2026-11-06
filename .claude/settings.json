@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "roblox-brain": {
+      "source": {
+        "source": "github",
+        "repo": "AkitoDevs/roblox-brain"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "roblox-brain@roblox-brain": true
+  }
+}
