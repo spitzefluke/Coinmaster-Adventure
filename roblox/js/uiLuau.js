@@ -241,18 +241,36 @@ local function mmss(seconds)
 	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
--- Knopf mit Hover-Vergrößerung und Klick-Wippe
+-- Spielgefühl („Juice“): die Effekte stehen weiter unten bei den Funden; hier schon bekannt, damit Knöpfe,
+-- Fenster und Käufe sie aufrufen können. Juice.calm() = „Animationen überspringen“ ist an.
+local Juice = { calm = function() return false end }
+local SPRING = TweenInfo.new(0.42, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out, 0, false, 0)
+local SQUASH = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+-- Knopf mit Hover-Vergrößerung, Eindrücken beim Drücken und Federn beim Loslassen
 local function pressable(button, onClick)
 	local scale = new("UIScale", { Scale = 1, Parent = button })
+	local hover = false
 	button.MouseEnter:Connect(function()
-		TweenService:Create(scale, M.Fast, { Scale = 1.06 }):Play()
+		hover = true
+		TweenService:Create(scale, M.Fast, { Scale = 1.07 }):Play()
 	end)
 	button.MouseLeave:Connect(function()
+		hover = false
 		TweenService:Create(scale, M.Fast, { Scale = 1 }):Play()
 	end)
+	button.MouseButton1Down:Connect(function()
+		if Juice.calm() then return end
+		TweenService:Create(scale, SQUASH, { Scale = 0.88 }):Play()
+	end)
 	button.Activated:Connect(function()
-		scale.Scale = 0.92
-		TweenService:Create(scale, M.Pop, { Scale = 1.06 }):Play()
+		if Juice.calm() then
+			scale.Scale = hover and 1.07 or 1
+		else
+			scale.Scale = 0.86
+			TweenService:Create(scale, SPRING, { Scale = hover and 1.07 or 1 }):Play()
+			if Juice.tap then Juice.tap(button) end
+		end
 		onClick()
 	end)
 	return button
@@ -474,8 +492,11 @@ local function actionButton(parent, text, color, enabled, onClick)
 	end)
 	return b
 end
-local function result(ok, text, color)
+-- big: großer Moment (Welt gekauft, Portal, Wiedergeburt) mit Ansage
+local function result(ok, text, color, big)
 	GameUI.Toast(text or (ok and "Gekauft" or "Das geht gerade nicht"), ok and (color or C.gold) or C.red)
+	if ok and Juice.bought then Juice.bought(color or C.gold, big, text) end
+	if not ok and Juice.denied then Juice.denied() end
 	return ok
 end
 
@@ -740,10 +761,20 @@ function GameUI.Open(key, tab)
 	w.closing = false
 	w.gui.Enabled = true
 	if not wasOpen then
-		w.scale.Scale = 0.85 * w.baseScale
 		w.dim.BackgroundTransparency = 1
-		TweenService:Create(w.scale, M.Pop, { Scale = w.baseScale }):Play()
 		TweenService:Create(w.dim, M.Normal, { BackgroundTransparency = 0.45 }):Play()
+		if Juice.calm() then
+			w.scale.Scale = w.baseScale
+		else
+			-- springt aus der Mitte auf und federt nach, dabei kippt es kurz
+			w.scale.Scale = 0.6 * w.baseScale
+			TweenService:Create(w.scale, TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out, 0, false, 0), { Scale = w.baseScale }):Play()
+			local frame = w.scale.Parent
+			if frame and frame:IsA("GuiObject") then
+				frame.Rotation = -4
+				TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Rotation = 0 }):Play()
+			end
+		end
 	end
 	rebuild(w)
 end
@@ -1136,7 +1167,7 @@ local function worldCard(parent, st, world, number, order, here)
 			local reason = WorldData.CanBuy(now, world.Id)
 			if reason == "Zu wenig Taler" then
 				result(false, "Dafür fehlen noch " .. GameUI.Format(math.ceil(world.Price - now.Taler)) .. " Taler")
-			elseif result(options.Invoke("buyWorld", world.Id)) then
+			elseif result(options.Invoke("buyWorld", world.Id), nil, world.Accent or C.gold, "Neue Welt!") then
 				GameUI.Close("welten")
 			end
 		end)
@@ -1172,7 +1203,7 @@ local function portalBanner(parent, st, planet)
 	local why = WorldData.CanOpenPortal(st, planet.Id)
 	local holder = new("Frame", { Size = UDim2.new(0, 210, 0, 44), Position = UDim2.new(1, -20, 0.5, 22), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Parent = banner })
 	actionButton(holder, why and "Noch verschlossen" or (planet.Portal.Name .. " starten"), C.green, why == nil, function()
-		result(options.Invoke("portal", planet.Id), nil, planet.Color)
+		result(options.Invoke("portal", planet.Id), nil, planet.Color, "Portal offen!")
 	end)
 	return 124
 end
@@ -1262,7 +1293,7 @@ local function fillRebirth(w, st)
 			return
 		end
 		ui.rebirthArmed = nil
-		result(options.Invoke("rebirth"), nil, C.goldHi)
+		result(options.Invoke("rebirth"), nil, C.goldHi, "Wiedergeboren!")
 		GameUI.Refresh("welten")
 	end)
 	b.Size = UDim2.new(1, 0, 1, 0)
@@ -1536,7 +1567,9 @@ function GameUI._showTaler(target)
 		end)
 		if gain > 0 then
 			ui.talerScale.Scale = 1
-			TweenService:Create(ui.talerScale, M.Pop, { Scale = 1.08 }):Play()
+			ui.taler.TextColor3 = Color3.new(1, 1, 1)
+			TweenService:Create(ui.taler, M.Slow, { TextColor3 = C.goldHi }):Play()
+			TweenService:Create(ui.talerScale, M.Pop, { Scale = 1.08 + math.min(0.12, math.log10(math.max(10, gain)) * 0.015) }):Play()
 			task.delay(0.25, function() TweenService:Create(ui.talerScale, M.Normal, { Scale = 1 }):Play() end)
 			GameUI.FloatText("+" .. GameUI.Format(gain), ui.talerPill.AbsolutePosition + Vector2.new(-70, ui.talerPill.AbsoluteSize.Y * 0.5), C.green)
 		end
@@ -1553,6 +1586,7 @@ function GameUI._showXp(fraction, level)
 	if ui.xpLevel == nil or setting("skipAnimations", false) then
 		ui.xpFill.Size = size
 	elseif level > ui.xpLevel then
+		Juice.levelUp(level)
 		TweenService:Create(ui.xpFill, M.Normal, { Size = UDim2.new(1, 0, 1, 0) }):Play()
 		task.delay(0.24, function()
 			ui.xpFill.Size = UDim2.new(0.02, 0, 1, 0)
@@ -1661,6 +1695,171 @@ local function foundCard(entry, text, value, hold)
 	end)
 end
 
+-- ══ Juice: Wackeln, Konfetti, Strahlen, Münzregen, Zeitlupe ══
+-- Alles aus Frames im Effekt-Gui; „Animationen überspringen“ schaltet es ab, „Weniger Partikel“ halbiert.
+Juice.calm = function() return setting("skipAnimations", false) end
+local function few() return setting("fewerParticles", false) end
+
+-- Bildschirm wackeln: HUD-Teile und Kamera kurz versetzen, klingt schnell ab
+local shakeToken
+function Juice.shake(strength, duration)
+	if Juice.calm() or not ui.hud then return end
+	local token = {}
+	shakeToken = token
+	local items = {}
+	for _, g in ipairs(ui.hud:GetChildren()) do
+		if g:IsA("GuiObject") then table.insert(items, { G = g, P = g.Position }) end
+	end
+	local cam = workspace.CurrentCamera
+	task.spawn(function()
+		local start = os.clock()
+		while shakeToken == token do
+			local k = (os.clock() - start) / duration
+			if k >= 1 then break end
+			local s = strength * (1 - k) * (1 - k)
+			local dx, dy = (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s
+			for _, e in ipairs(items) do e.G.Position = e.P + UDim2.new(0, dx, 0, dy) end
+			if cam and player.Character then cam.CFrame = cam.CFrame * CFrame.new(dx * 0.012, dy * 0.012, 0) end
+			task.wait()
+		end
+		for _, e in ipairs(items) do e.G.Position = e.P end
+	end)
+end
+
+-- Konfetti fällt von oben über den Bildschirm
+local CONFETTI = { Color3.fromRGB(255, 90, 165), Color3.fromRGB(255, 224, 122), Color3.fromRGB(90, 209, 255), Color3.fromRGB(125, 255, 138), Color3.fromRGB(180, 156, 255) }
+function Juice.confetti(count, colors)
+	if Juice.calm() or not ui.fx then return end
+	colors = colors or CONFETTI
+	count = few() and math.floor(count / 2) or count
+	for i = 1, count do
+		local x = math.random()
+		local piece = new("Frame", { Name = "Konfetti", Size = UDim2.new(0, math.random(8, 14), 0, math.random(5, 9)), Position = UDim2.new(x, 0, 0, -20), BackgroundColor3 = colors[i % #colors + 1], BorderSizePixel = 0, Rotation = math.random(0, 360), ZIndex = 7, Parent = ui.fx })
+		local t = 1.4 + math.random() * 1.2
+		task.delay(math.random() * 0.35, function()
+			TweenService:Create(piece, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(x + (math.random() - 0.5) * 0.25, 0, 1, 20), Rotation = piece.Rotation + math.random(-540, 540) }):Play()
+			task.delay(t * 0.7, function() TweenService:Create(piece, TweenInfo.new(t * 0.3), { BackgroundTransparency = 1 }):Play() end)
+			task.delay(t + 0.05, function() piece:Destroy() end)
+		end)
+	end
+end
+
+-- Strahlenkranz hinter einem Punkt (dreht sich und verblasst)
+function Juice.rays(at, color, size, hold)
+	if Juice.calm() or not ui.fx then return end
+	local holder = new("Frame", { Name = "Strahlen", Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, at.X, 0, at.Y), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, ZIndex = 2, Parent = ui.fx })
+	local scale = new("UIScale", { Scale = 0.2, Parent = holder })
+	for i = 0, 11 do
+		new("Frame", { Size = UDim2.new(0, size * 0.09, 0, size * 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 1), Rotation = i * 30, BackgroundColor3 = color, BackgroundTransparency = 0.55, BorderSizePixel = 0, ZIndex = 2, Parent = holder }, {
+			new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0, 1) }),
+		})
+	end
+	TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
+	TweenService:Create(holder, TweenInfo.new(hold + 0.4, Enum.EasingStyle.Linear), { Rotation = 90 }):Play()
+	task.delay(hold, function()
+		TweenService:Create(scale, M.Exit, { Scale = 1.3 }):Play()
+		for _, r in ipairs(holder:GetChildren()) do
+			if r:IsA("Frame") then TweenService:Create(r, M.Exit, { BackgroundTransparency = 1 }):Play() end
+		end
+		task.delay(0.3, function() holder:Destroy() end)
+	end)
+end
+
+-- Münzregen: goldene Münzen fallen und drehen sich
+function Juice.coinRain(count)
+	if Juice.calm() or not ui.fx then return end
+	count = few() and math.floor(count / 2) or count
+	for i = 1, count do
+		local x = math.random()
+		local coin = new("Frame", { Name = "Muenzregen", Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(x, 0, 0, -30), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.goldHi, ZIndex = 6, Parent = ui.fx }, {
+			corner(R.Round), stroke(C.goldDark, 2), new("UIGradient", { Rotation = 45, Color = ColorSequence.new(C.cream, C.goldDark) }),
+		})
+		local t = 1 + math.random() * 0.8
+		task.delay(math.random() * 0.6, function()
+			TweenService:Create(coin, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(x, 0, 1, 30), Size = UDim2.new(0, 8, 0, 26) }):Play()
+			task.delay(t + 0.05, function() coin:Destroy() end)
+		end)
+	end
+end
+
+-- Zeitlupe: Bild wird dunkel, alles hält kurz an, dann geht es weiter
+function Juice.slowmo(color, hold)
+	if Juice.calm() or not ui.flashGui then return end
+	local veil = new("Frame", { Name = "Zeitlupe", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = ui.flashGui }, {
+		new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0) }), Rotation = 90 }),
+	})
+	TweenService:Create(veil, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
+	local cam = workspace.CurrentCamera
+	local fov = cam and cam.FieldOfView
+	if cam and player.Character then TweenService:Create(cam, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = fov - 12 }):Play() end
+	task.delay(hold, function()
+		TweenService:Create(veil, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+		if cam and fov and player.Character then TweenService:Create(cam, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { FieldOfView = fov }):Play() end
+		task.delay(0.55, function() veil:Destroy() end)
+	end)
+end
+
+-- Wippen eines Elements (UIScale vorhanden oder neu)
+function Juice.punch(object, amount)
+	if Juice.calm() or not object then return end
+	local scale = object:FindFirstChildOfClass("UIScale") or new("UIScale", { Scale = 1, Parent = object })
+	scale.Scale = 1 + (amount or 0.18)
+	TweenService:Create(scale, SPRING, { Scale = 1 }):Play()
+end
+
+-- Kleiner Funkenkranz um einen Knopf beim Drücken
+function Juice.tap(button)
+	if not ui.fx or few() then return end
+	local c = centerOf(button)
+	for i = 1, 5 do
+		local a = i / 5 * math.pi * 2 + math.random() * 0.6
+		local d = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 0.5 + 10
+		local dot = new("Frame", { Size = UDim2.new(0, 6, 0, 6), Position = UDim2.new(0, c.X + math.cos(a) * d * 0.6, 0, c.Y + math.sin(a) * d * 0.6), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.goldHi, BorderSizePixel = 0, ZIndex = 8, Parent = ui.fx }, { corner(R.Round) })
+		TweenService:Create(dot, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(0, c.X + math.cos(a) * d, 0, c.Y + math.sin(a) * d), Size = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1 }):Play()
+		task.delay(0.4, function() dot:Destroy() end)
+	end
+end
+
+-- Kauf geklappt: Glanz, Konfetti, bei großen Momenten Ansage, Blitz und Wackeln
+function Juice.bought(color, big, text)
+	if Juice.calm() then return end
+	if options.Sound then options.Sound(big and "big" or "buy", big and 3 or 1) end
+	if big then
+		flash(color, 0.45)
+		Juice.shake(10, 0.45)
+		Juice.confetti(70)
+		Juice.rays(Vector2.new(ui.fx.AbsoluteSize.X * 0.5, ui.fx.AbsoluteSize.Y * 0.36), color, 520, 1.6)
+		banner(GameUI.Upper(big), text or "", color, 1.8)
+	else
+		Juice.confetti(26)
+		Juice.punch(ui.talerPill, 0.12)
+	end
+end
+-- Kauf ging nicht: Taler-Feld schüttelt den Kopf
+function Juice.denied()
+	if Juice.calm() or not ui.talerPill then return end
+	local p = ui.talerPill.Position
+	task.spawn(function()
+		for i = 1, 6 do
+			ui.talerPill.Position = p + UDim2.new(0, (i % 2 == 0 and -1 or 1) * (8 - i), 0, 0)
+			task.wait(0.03)
+		end
+		ui.talerPill.Position = p
+	end)
+end
+-- Level-Aufstieg: Abzeichen springt, Goldregen, Konfetti
+function Juice.levelUp(level)
+	if Juice.calm() then return end
+	if options.Sound then options.Sound("levelup", 3) end
+	Juice.punch(ui.levelBadge, 0.6)
+	flash(C.goldHi, 0.3)
+	Juice.confetti(60, { C.goldHi, C.gold, Color3.new(1, 1, 1), C.xp })
+	if ui.levelBadge then
+		Juice.rays(centerOf(ui.levelBadge), C.goldHi, 220, 1.2)
+	end
+	if options.LevelBanner ~= false then banner("LEVEL " .. level .. "!", "Neue Skillpunkte warten", C.goldHi, 1.8) end
+end
+
 -- Fund anzeigen: je seltener, desto größer
 --   Stufe 1 (Normal, Selten): Hinweis
 --   Stufe 2 (Sehr selten, Episch): Karte mit Glanz
@@ -1680,17 +1879,32 @@ function GameUI.Found(info)
 	local line = tier.Name .. (mutation and (" · " .. mutation.Name) or "") .. (count > 1 and " · ×" .. count or "") .. (info.Upgraded and " · Goldene Hand!" or "") .. " · +" .. (info.Xp or 0) .. " EP"
 	local color = mutation and mutation.Color or tier.Color
 	if options.Sound then options.Sound("found", level) end
-	if level == 1 or setting("skipAnimations", false) then
+	if setting("skipAnimations", false) then
 		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Taler", color)
+		return
+	end
+	-- jeder Fund: der Knopf springt, Münzen fliegen zum Taler-Feld, die Zahl steigt auf
+	Juice.punch(ui.find, 0.14 + level * 0.05)
+	GameUI.FlyCoins(ui.find, 2 + level * 2)
+	if level == 1 then
+		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Taler", color)
+		GameUI.FloatText("+" .. GameUI.Format(value), centerOf(ui.find) - Vector2.new(0, 46), color)
 		return
 	end
 	local entry = { Coin = coin, Tier = tier, Mutation = mutation }
 	foundCard(entry, line, value, level == 2 and 1.8 or (level == 3 and 2.4 or 3.2))
+	Juice.shake(level == 2 and 4 or (level == 3 and 10 or 16), level == 4 and 0.7 or 0.4)
 	if level >= 3 then
 		local few = setting("fewerParticles", false)
 		flash(color, level == 3 and 0.35 or 0.6)
 		burst(color, few and (level == 3 and 4 or 8) or (level == 3 and 14 or 26))
+		Juice.rays(Vector2.new(ui.fx.AbsoluteSize.X * 0.5, ui.fx.AbsoluteSize.Y * 0.36), color, level == 3 and 420 or 620, level == 3 and 1.6 or 2.4)
 		banner(GameUI.Upper(tier.Name) .. "!", coin.Name .. (mutation and (" · " .. mutation.Name) or ""), color, level == 3 and 1.6 or 2.4)
+	end
+	if level == 4 then
+		-- Göttlich und seltener: kurz Zeitlupe, dann regnet es Münzen
+		Juice.slowmo(color, 0.9)
+		task.delay(0.5, function() Juice.coinRain(40) end)
 	end
 end
 
@@ -2107,9 +2321,10 @@ function GameUI.Start(opts)
 	options.Query = opts.Query or defaultQuery
 	options.CodeHint = opts.CodeHint
 	options.Sound = opts.Sound
+	options.LevelBanner = opts.LevelBanner
 	options.PlayRoll = opts.PlayRoll
 	local playerGui = player:WaitForChild("PlayerGui")
-	buildHud(playerGui)
+	ui.hud = buildHud(playerGui)
 	-- Ebenen für Effekte: über allen Fenstern; der Blitz deckt auch die Roblox-Leiste ab
 	ui.flashGui = new("ScreenGui", { Name = "CoinmasterBlitz", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 19, Parent = playerGui })
 	ui.fx = new("ScreenGui", { Name = "CoinmasterEffekte", ResetOnSpawn = false, DisplayOrder = 20, Parent = playerGui })

@@ -304,7 +304,7 @@ end
 -- Das Wahrzeichen steht gegenüber der Startkamera (Richtung HELD), damit man die Welt im ersten Bild erkennt.
 local DEPTH = {
 	nah = { R0 = 380, R1 = 460, Tint = 0.15, H = 0.4 },
-	mitte = { R0 = 480, R1 = 560, Tint = 0.4, H = 0.75 },
+	mitte = { R0 = 480, R1 = 560, Tint = 0.4, H = 0.55 },
 	fern = { R0 = 600, R1 = 630, Tint = 0.7, H = 1 },
 }
 local HELD = 4.0 -- Kamera beim Start bei Winkel 0,86: gegenüber
@@ -407,7 +407,8 @@ end
 -- Burg-Silhouette auf einem Waldrücken
 function EL.castle(k, cf, s, c)
 	EL.trees(k, cf, s, c)
-	local top = cf * CFrame.new(0, 130 * s, -50 * s)
+	local top = cf * CFrame.new(0, 130 * s - 6, -50 * s)
+	s = s * 0.55
 	local stone = hex("#b8b4c0"):Lerp(k.W.Horizon, 0.45)
 	P(k, "Block", V(40 * s, 70 * s, 30 * s), top * CFrame.new(0, 35 * s, 0), stone, "Cobblestone", 0, "Burg")
 	for sx = -1, 1, 2 do
@@ -809,8 +810,12 @@ function HELD_BUILD.lava(k)
 	local rock = hex("#2a1e1a")
 	prism(k, cf * CFrame.new(0, 230, 0), 460, 460, 260, rock, "Basalt", 0, "Grosser Vulkan")
 	local crater = P(k, "Cyl", V(90, 10, 110), cf * CFrame.new(0, 410, -20), hex("#ff6a1a"), "Neon", 0, "Krater")
+	-- Lavaströme laufen innen an den Flanken vom Krater herab (Flanke: Breite 460, Höhe 460)
+	local slope = math.atan2(230, 460)
 	for s = -1, 1, 2 do
-		P(k, "Block", V(8, 260, 2), cf * CFrame.new(s * 70, 260, -131) * CFrame.Angles(0, 0, s * 0.42), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
+		local top, L = V(s * 18, 400, -131), 300
+		local mid = top + V(s * math.sin(slope), -math.cos(slope), 0) * (L / 2)
+		P(k, "Block", V(8, L, 2), cf * CFrame.new(mid) * CFrame.Angles(0, 0, s * slope), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
 	end
 	local host = P(k, "Block", V(40, 2, 40), cf * CFrame.new(0, 416, -20), WHITE, "SmoothPlastic", 1, "Ausbruch")
 	local e = Instance.new("ParticleEmitter")
@@ -1081,7 +1086,7 @@ LAYERS.spawn = function(k, w)
 	layer(k, "fern", 4, 4, { hex("#c0a890"), hex("#d0b8a0") }, function(cf, s, c) EL.peak(k, cf, s, c, hex("#fff4e8")) end)
 end
 LAYERS.normal = function(k, w)
-	layer(k, "nah", 4, 2, { hex("#5fae4f"), hex("#4f9a46") }, function(cf, s, c) EL.farm(k, cf, s, c) end)
+	layer(k, "nah", 4, 2, { hex("#5fae4f"), hex("#4f9a46") }, function(cf, s, c) EL.hill(k, cf, s, c) end)
 	layer(k, "mitte", 4, 3, { hex("#3f7a3a"), hex("#4a8a44") }, function(cf, s, c, i) if i == 1 then EL.castle(k, cf, s, c) else EL.trees(k, cf, s, c) end end)
 	layer(k, "fern", 4, 4, { hex("#5f7f9a"), hex("#6d8aa3") }, function(cf, s, c) EL.peak(k, cf, s, c, WHITE) end)
 end
