@@ -1,23 +1,28 @@
-// Schlüpf-Ansicht 1:1 wie in Roblox: Das Modul HatchFx aus dem Installer spielt die Animation
-// (Ei wackelt, leuchtet, platzt; das Tier wächst heraus; Name und Chance als BillboardGui).
-// Die Seite zeigt sie im Vollbild; Tippen spult vor, danach schließt ein Tippen die Ansicht.
+// Schlüpf-Ansicht 1:1 wie in Roblox: Das Modul HatchFx aus dem Installer spielt die Animation in fünf Akten
+// (Wackeln, Aufladen, Platzen, Enthüllung, Name). Die Seite zeigt sie im Vollbild, schreibt den Akt dazu,
+// blitzt beim Platzen auf und lässt die Kamera wackeln. Tippen spult vor, danach schließt ein Tippen die Ansicht.
 
 import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { rollPet, fmtChance } from '../../haustiere/js/pets.js';
 import { createRobloxHatch, eggLua, orbitEgg } from './eggRoblox.js';
 
+const PHASE_TEXT = { wobble: 'Es wackelt …', charge: 'Es lädt auf …', burst: '!!!' };
+
 export class Hatch {
   constructor(el) {
     this.el = el;
     this.ui = {
       canvas: el.querySelector('.hatch-canvas'),
+      flash: el.querySelector('.hatch-flash'),
       text: el.querySelector('.hatch-text'),
       eyebrow: el.querySelector('.hatch-eyebrow'),
       note: el.querySelector('.hatch-note'),
       name: el.querySelector('.hatch-name'),
       from: el.querySelector('.hatch-from'),
       done: el.querySelector('.hatch-done'),
+      again: el.querySelector('.hatch-again'),
+      actions: el.querySelector('.hatch-actions'),
       hint: el.querySelector('.hatch-hint'),
       stage: el.querySelector('.hatch-stage'),
     };
@@ -33,6 +38,7 @@ export class Hatch {
 
     el.addEventListener('click', (e) => {
       if (e.target.closest('.hatch-done')) return this.close();
+      if (e.target.closest('.hatch-again')) return this.again();
       if (!this.view) return;
       if (!this.view.done) this.view.skip();
       else this.close();
@@ -52,14 +58,29 @@ export class Hatch {
     const w = this.el.clientWidth, h = this.el.clientHeight;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    this.dist = w / h < 0.8 ? 19 : 14;
+    this.dist = w / h < 0.8 ? 21 : 16;
     this.camera.updateProjectionMatrix();
+  }
+
+  setPhase(phase) {
+    const u = this.ui;
+    this.phase = phase;
+    if (PHASE_TEXT[phase]) {
+      u.stage.textContent = PHASE_TEXT[phase];
+      u.stage.classList.add('is-shown');
+    } else u.stage.classList.remove('is-shown');
+    if (phase === 'burst') {
+      this.flash = 1;
+      this.shake = 0.5 + this.egg.rank * 0.06;
+    }
+    if (phase === 'reveal') this.revealAt = this.time;
   }
 
   play(egg) {
     const pet = rollPet(egg.id);
     this.view?.dispose();
     this.view = null;
+    this.egg = egg;
     const u = this.ui;
     this.el.style.setProperty('--egg', egg.glow);
     this.el.dataset.egg = egg.id;
@@ -69,26 +90,33 @@ export class Hatch {
     u.eyebrow.textContent = pet.epic ? 'Episch geschlüpft!' : 'Geschlüpft!';
     u.note.textContent = `${pet.epic ? 'Episch' : 'Normal'} · ${fmtChance(pet.chance)} Schlupfchance`;
     u.text.classList.remove('is-shown');
-    u.done.hidden = true;
+    u.actions.hidden = true;
     u.hint.hidden = false;
-    u.stage?.classList.remove('is-shown');
+    u.stage.classList.remove('is-shown');
+    u.flash.style.opacity = 0;
+    Object.assign(this, { flash: 0, shake: 0, phase: 'start', revealAt: null, time: 0 });
     this.el.hidden = false;
     document.body.style.overflow = 'hidden';
     this.resize();
-    this.time = 0;
     const finish = () => {
       u.hint.hidden = true;
-      u.done.hidden = false;
+      u.actions.hidden = false;
+      u.stage.classList.remove('is-shown');
       setTimeout(() => u.text.classList.add('is-shown'), 200);
     };
-    createRobloxHatch(egg, pet, { onDone: finish }).then((view) => {
+    createRobloxHatch(egg, pet, { onDone: finish, onPhase: (p) => this.setPhase(p) }).then((view) => {
       if (this.el.hidden) return view.dispose();
       this.view = view;
       if (skipAnimations()) view.skip();
     });
     this.clock = new THREE.Clock();
     this.renderer.setAnimationLoop(() => this.frame());
-    return new Promise((res) => (this.resolve = res));
+    this.closed ||= new Promise((res) => (this.resolve = res));
+    return this.closed;
+  }
+
+  again() {
+    if (this.egg) this.play(this.egg);
   }
 
   close() {
@@ -98,6 +126,7 @@ export class Hatch {
     document.body.style.overflow = '';
     this.view?.dispose();
     this.view = null;
+    this.closed = null;
     this.resolve?.();
   }
 
@@ -107,10 +136,20 @@ export class Hatch {
     if (!this.view) return;
     this.lua?.frame(dt);
     this.view.step(dt);
-    // langsam heranfahren, nach dem Schlüpfen leicht um das Tier kreisen
-    const k = Math.min(1, this.time / 2.5);
-    const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.35 : -0.15 + k * 0.15;
-    orbitEgg(this.camera, angle, 0.16, this.dist * (1.15 - 0.15 * k), 2.8);
+    this.flash = Math.max(0, this.flash - dt * 2.2);
+    this.shake = Math.max(0, this.shake - dt * 1.4);
+    this.ui.flash.style.opacity = this.flash.toFixed(3);
+    // langsam ans Ei heran, nach dem Platzen etwas zurück (Tier und Namensschild im Bild); am Ende leicht kreisen
+    const charging = this.phase === 'wobble' || this.phase === 'charge';
+    const k = charging || this.revealAt == null ? Math.min(1, this.time / 3) : 1;
+    const kr = this.revealAt == null ? 0 : Math.min(1, (this.time - this.revealAt) / 1.2);
+    const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.35 : -0.25 + k * 0.25;
+    const dist = this.dist * (1.12 - 0.14 * k) * (1 + 0.06 * kr);
+    orbitEgg(this.camera, angle, 0.16, dist, 2.7 + 0.5 * kr);
+    if (this.shake > 0) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake;
+    }
     this.view.world.render(this.renderer, this.camera);
   }
 }

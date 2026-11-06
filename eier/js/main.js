@@ -1,9 +1,10 @@
 // Eierhalle: Galerie aller Eier, Detailansicht zum Drehen und Schlüpf-Animation.
 // Wie im Münzkabinett rendert ein einziges WebGL-Canvas alle Karten per Scissor-Test.
-// Alles 1:1 wie in Roblox: EggBuilder und HatchFx aus dem Installer (eggRoblox.js).
+// Alles 1:1 wie in Roblox: EggBuilder und HatchFx aus dem Installer (eggRoblox.js, Luau in roblox/js/eggLuau.js).
 
 import * as THREE from 'three';
 import { EGGS, fmtPrice } from './eggs.js';
+import { EGG_EXTRAS } from '../../roblox/js/eggLuau.js';
 import { createRobloxEgg, eggLua, orbitEgg } from './eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { Hatch } from './hatch.js';
@@ -32,6 +33,7 @@ const cards = EGGS.map((egg) => {
       <p class="rank-pill">${egg.rankName}</p>
       <h2 class="card-name">${egg.name}${egg.alias ? ` <span class="alias">${egg.alias}</span>` : ''}</h2>
       <p class="card-text">${egg.text}</p>
+      <ul class="extras" aria-label="Neu an diesem Ei">${(EGG_EXTRAS[egg.id] || []).map((x) => `<li>${x}</li>`).join('')}</ul>
       <dl class="card-facts">
         <div><dt>Preis</dt><dd class="${egg.price ? '' : 'is-locked'}">${fmtPrice(egg.price)}</dd></div>
         <div><dt>Erhältlich</dt><dd>${egg.availability}</dd></div>
@@ -162,6 +164,7 @@ function openDetail(egg) {
   document.getElementById('detail-text').textContent = egg.text;
   document.getElementById('detail-price').textContent = fmtPrice(egg.price);
   document.getElementById('detail-avail').textContent = egg.availability;
+  document.getElementById('detail-extras').textContent = (EGG_EXTRAS[egg.id] || []).join(', ');
   detail.hidden = false;
   overlayOpen = true;
   document.body.style.overflow = 'hidden';

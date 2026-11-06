@@ -67,7 +67,7 @@ function __hatch(key, eggId, petId)
 	holder.Parent = workspace
 	previews[key] = holder
 	task.spawn(function()
-		HatchFx.Play(eggId, petId, { Parent = holder })
+		HatchFx.Play(eggId, petId, { Parent = holder, OnPhase = function(phase) if __hatchPhase then __hatchPhase(key, phase) end end })
 		if __hatchDone then __hatchDone(key) end
 	end)
 end
@@ -115,7 +115,7 @@ function makeWorld({ shadows, sky }) {
   return world;
 }
 
-// Ei auf seinem Sockel (EggBuilder)
+// Ei auf seinem Sockel (EggBuilder); parts = Anzahl der Teile
 export async function createRobloxEgg(egg, { shadows = false } = {}) {
   const lua = await eggLua();
   const world = makeWorld({ shadows, sky: false });
@@ -134,12 +134,14 @@ export async function createRobloxEgg(egg, { shadows = false } = {}) {
   };
 }
 
-// Schlüpfen: HatchFx.Play wie im Spiel (das Tier ist vorher gezogen)
+// Schlüpfen: HatchFx.Play wie im Spiel (das Tier ist vorher gezogen); onPhase meldet die fünf Akte
 const doneHandlers = new Map();
-export async function createRobloxHatch(egg, pet, { shadows = true, onDone } = {}) {
+const phaseHandlers = new Map();
+export async function createRobloxHatch(egg, pet, { shadows = true, onDone, onPhase } = {}) {
   const lua = await eggLua();
   if (!lua.hatchHook) {
     lua.register('__hatchDone', (key) => doneHandlers.get(key)?.());
+    lua.register('__hatchPhase', (key, phase) => phaseHandlers.get(key)?.(phase));
     lua.hatchHook = true;
   }
   definePet(lua, pet.id);
@@ -150,6 +152,7 @@ export async function createRobloxHatch(egg, pet, { shadows = true, onDone } = {
     done = true;
     onDone?.();
   });
+  if (onPhase) phaseHandlers.set(key, onPhase);
   lua.setWorld(world);
   lua.call('__hatch', key, egg.id, pet.id);
   return {
@@ -170,6 +173,7 @@ export async function createRobloxHatch(egg, pet, { shadows = true, onDone } = {
     },
     dispose() {
       doneHandlers.delete(key);
+      phaseHandlers.delete(key);
       lua.call('__drop', key);
       world.dispose();
     },

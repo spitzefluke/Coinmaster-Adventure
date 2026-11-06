@@ -124,23 +124,33 @@ häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesam
 ## Eierhalle
 
 Sieben Eier (`eier/js/eggs.js`), 1:1 wie in Roblox: Jedes Ei baut das Modul `EggBuilder` aus dem
-Installer (Ei auf Sockel mit Leuchtband, Extras je Ei), die Seite führt es aus (`eier/js/eggRoblox.js`).
+Installer, die Seite führt es aus (`eier/js/eggRoblox.js`). Der Luau-Code steht in `roblox/js/eggLuau.js`.
+Die Eier sind die v2-Eier aus Claude Design („Haustiere und Eier v2“): Sockel in drei Stufen mit Leuchtband,
+Nieten und Einlage, ab Episch ein schwebender Runenring, dazu viel Deko je Ei, alles aus Parts (Block,
+Kugel/SpecialMesh, Zylinder, Keile für Kegel). Bewegte Deko (Runen, Flügel, Heiligenschein, Planeten,
+Scanner, Glitch, Ballons) läuft von selbst; für Kopien aus einem Ordner `EggBuilder.Start(model)` aufrufen.
 
-| Ei | Stufe | Preis (Vorschlag) | Extras in Roblox |
+| Ei | Stufe | Preis (Vorschlag) | Neu in v2 |
 |---|---|---|---|
-| Normal Egg | Normal | 250 Münzen | – |
-| Wald Egg | Selten | 2.500 Münzen | Moos-Material, Pilze am Sockel |
-| Eis Egg | Episch | 15.000 Münzen | Eis-Material, Kristalle |
-| Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Flügel |
-| Galaxie Egg | Galaktisch | 400.000 Münzen | Glas, Sternenring, Funkeln |
-| Admin Egg | Admin | nicht kaufbar | Diamond-Plate, Neonband |
-| Release Egg (Robux Egg) | Limitiert | R$ 199 | Folie, Schleife, Funkeln |
+| Normal Egg | Normal | 250 Münzen | Strohnest mit Halmen und Federn, Sprenkel, Münzhaufen |
+| Wald Egg | Selten | 2.500 Münzen | Ranken mit Blättern, Moos, Blüten, Wurzeln, Farn, Fliegenpilze, Glühwürmchen |
+| Eis Egg | Episch | 15.000 Münzen | Leuchtkern, Frostkappe, Eiszapfen, Kristallgruppen, schwebende Splitter, Schneefall |
+| Engels Egg | Engelsgleich | 75.000 Münzen | Goldfiligran, Perlen, gefiederte Flügel (schlagen), Heiligenschein, Lichtfunken |
+| Galaxie Egg | Galaktisch | 400.000 Münzen | Nebel in der Glasschale, Sternenring, kreisende Planeten |
+| Admin Egg | Admin | nicht kaufbar | Panzerplatten, Neon-Leiterbahnen, Scanner, Warnstreifen, Glitch |
+| Release Egg (Robux Egg) | Limitiert | R$ 199 | Geschenkband, Schleife, Luftballons, Konfetti |
 
-**Schlüpfen** zeigt das Roblox-Modul `HatchFx`: Das Ei wackelt immer stärker (seltene Eier länger), leuchtet
-auf und platzt mit Lichtblitz, Funken und Druckwelle. Dann wächst das Tier heraus, darüber stehen Name und
-Chance (BillboardGui); epische Tiere bekommen einen Lichtkranz. Das Tier wird nach Schlupfchance gewürfelt.
-Tippen spult vor. In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = … })`, am besten auf dem
-Client; das Tier zieht `PetData.Roll(eggId)`.
+**Schlüpfen** zeigt das Roblox-Modul `HatchFx` in fünf Akten: 1. Wackeln (immer stärker, Risse leuchten
+auf), 2. Aufladen (Licht wird eingesogen, Strahlen drehen sich, die Schale glüht), 3. Platzen (zehn
+Schalenstücke fliegen weg, Druckwelle, Funken, Blitz), 4. Enthüllung (das Tier wächst mit Drehung heraus,
+Leuchtring am Boden, bei epischen Tieren Konfetti), 5. Name und Chance (BillboardGui). Seltene Eier wackeln
+und laden länger und platzen größer. Die Seite zeigt den Akt als Text, blitzt beim Platzen und lässt die
+Kamera wackeln; Tippen spult vor, „Nochmal“ lässt dasselbe Ei noch einmal schlüpfen.
+In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = …, OnPhase = function(akt) … end })`, am besten
+auf dem Client; das Tier zieht `PetData.Roll(eggId)`.
+
+Noch nicht übernommen aus v2: Varianten (Shiny, Gold, Regenbogen), Level und Mutationen der Haustiere
+und damit der fünfte Schlupf-Akt „Variante“. Die gehören zu den Haustieren v2.
 
 ## Münzrollen
 
@@ -716,7 +726,7 @@ Dann <http://localhost:8000> öffnen.
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite
 - `css/theme.css` – gemeinsame Farben, Schriften und Grundlayout
-- `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggFactory.js` (Eier), `js/hatch.js` (Schlüpfen)
+- `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggRoblox.js` (Eier und Schlüpfen über Luau), `js/hatch.js` (Schlüpf-Ansicht); Luau in `roblox/js/eggLuau.js`
 - `muenzindex/` – Münzindex: `js/main.js` (Fächer, Ziehen, Spielstand), `js/discovery.js` (Animation)
 - `muenzen/` – Münzkabinett:
   - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv-Schlüssel, Metallfarben, Text)
