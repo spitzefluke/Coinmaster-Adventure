@@ -28,11 +28,11 @@ export const PLANETS = [
     portal: { name: 'Tiefsee-Portal', rebirths: 3, text: 'Ein Strudel zieht dich in die Tiefe.' },
   },
   {
-    id: 'p4', name: 'Planet 4', title: 'Coming soon', color: '#8f879b', glow: '#cfc8d8',
-    surface: ['#1a1722', '#3a3446', '#6b6478'],
-    text: 'Noch ein Geheimnis.',
-    portal: { name: '???', rebirths: 6, text: 'Kommt mit einem späteren Update.' },
-    soon: true,
+    id: 'p4', name: 'Planet 4', title: 'Himmelreich', color: '#f3d48c', glow: '#fff3c4',
+    surface: ['#8a7ad8', '#fff3c4', '#9fd8ff'],
+    text: 'Hoch über allen Wolken: eine Marmorburg, ein Garten aus Licht und der Thron der Götter.',
+    portal: { name: 'Himmelsleiter', rebirths: 6, text: 'Eine goldene Leiter führt durch die Wolken nach oben.' },
+    neu: true,
   },
 ];
 
@@ -105,11 +105,48 @@ export const WORLDS = [
   { id: 'atlantis', planet: 'p3', name: 'Atlantis', price: 10000000000, luck: 5.8, value: 75,
     text: 'Die versunkene Stadt: Säulen, ein Tempel und eine goldene Kuppel.',
     sky: ['#021a30', '#0e6a8a'], ground: '#d8e4ea', side: '#8aa4b0', rock: '#5a7480', accent: '#ffd76a', fx: 'bubbles', water: true },
-  { id: 'p3-soon', planet: 'p3', name: 'Coming soon', soon: true },
+  { id: 'tiefseegraben', neu: true, planet: 'p3', name: 'Tiefseegraben', price: 30000000000, luck: 7, value: 100,
+    text: 'Der tiefste Ort des Meeres: schwarze Felswände, Leuchtquallen und ein Anglerfisch so groß wie ein Haus.',
+    sky: ['#01060f', '#0a2a3a'], ground: '#2a3440', side: '#1a222c', rock: '#10161e', accent: '#5affd8', fx: 'bubbles', water: true },
 
   // ── Planet 4 ──
-  { id: 'p4-soon', planet: 'p4', name: 'Coming soon', soon: true },
+  { id: 'wolkenburg', neu: true, planet: 'p4', name: 'Wolkenburg', price: 100000000000, luck: 8.5, value: 140,
+    text: 'Eine Burg aus weißem Marmor auf Wolken. Goldene Brücken führen zu kleineren Wolkeninseln.',
+    sky: ['#8a9ae8', '#fff3e0'], ground: '#f4f0ff', side: '#d8d4ec', rock: '#b8b4d0', accent: '#ffd76a', fx: 'pollen' },
+  { id: 'engelsgarten', neu: true, planet: 'p4', name: 'Engelsgarten', price: 300000000000, luck: 10, value: 190,
+    text: 'Weiße Bäume mit goldenem Laub, Springbrunnen aus Licht und Treppen, die ins Nichts führen.',
+    sky: ['#c8a8ff', '#fff6e8'], ground: '#e8f4d8', side: '#c8d4b8', rock: '#a8b098', accent: '#fff2a0', fx: 'pollen' },
+  { id: 'goetterthron', neu: true, planet: 'p4', name: 'Götterthron', price: 1000000000000, luck: 12, value: 260,
+    text: 'Ein Thron auf dem höchsten Gipfel über allen Wolken. Hier sind die Münzen am meisten wert.',
+    sky: ['#1a1040', '#ffcf7a'], ground: '#fff0c8', side: '#d8c090', rock: '#a08858', accent: '#ffe7a8', fx: 'flares' },
 ];
+
+// Fernkulisse je Welt (Kulissen-Konzept): ein Wahrzeichen gegenüber der Startkamera und drei Tiefen.
+// Nah 380–460 Studs (satt), Mitte 480–560, Fern 600–630 (stark in die Horizontfarbe getönt).
+// Gebaut wird sie vom Roblox-Modul WorldFx (roblox/js/worldFxLuau.js), hier stehen die Texte für die Weltkarte.
+export const KULISSE = {
+  spawn: { held: 'Goldener Münzberg mit Wasserfall aus Münzen', nah: 'Schwebende Marktinseln mit Ballons', mitte: 'Waldhügel mit Windrädern', fern: 'Schneeberge, warm getönt', horizont: '#fde8c8' },
+  normal: { held: 'Großer Wasserfallberg, der Bach fällt ins Wolkenmeer', nah: 'Grüne Hügel mit Hofhäusern und Feldern', mitte: 'Waldrücken mit Burg-Silhouette', fern: 'Schneeberge in Himmelblau', horizont: '#d6eefa' },
+  wald: { held: 'Weltenbaum, 450 Studs hoch, die Krone im Nebel', nah: 'Riesenpilze und umgestürzte Stämme', mitte: 'Tannenwand mit Nebelschwaden', fern: 'Blaugrüne Bergkämme in Stufen', horizont: '#bfe3c4' },
+  stadt: { held: 'Fernsehturm mit drehendem Licht', nah: 'Brücken und Hochbahn auf Pfeilern', mitte: 'Hochhauscluster in drei Gruppen, Lücken dazwischen', fern: 'Flache Skyline, Fenster blinken einzeln', horizont: '#ffe0b8' },
+  eis: { held: 'Gletscherwand mit blauen Spalten', nah: 'Treibende Eisschollen im Wolkenmeer', mitte: 'Eisspitzen in Gruppen', fern: 'Weiße Gipfel, fast eins mit dem Himmel', horizont: '#eef8ff' },
+  lava: { held: 'Großer Vulkan, der alle 40 Sekunden ausbricht', nah: 'Lavaseen mit Glutblasen', mitte: 'Basaltsäulen und kleine Vulkane', fern: 'Rauchwand mit rotem Glühen von unten', horizont: '#a8381c' },
+  hoehle: { held: 'Riesenkristall in der Höhlendecke, leuchtet nach unten', nah: 'Stalagmiten mit Leuchtpilzen', mitte: 'Kristallwände in Violett und Türkis', fern: 'Höhlenwand mit einer Öffnung voll Tageslicht', horizont: '#2c2448' },
+  candy: { held: 'Torte als Berg mit Schokoladenfluss', nah: 'Zuckerwatte-Wolken und Lollis', mitte: 'Waffelberge mit Eiskugeln', fern: 'Pastellhügel, rosa getönt', horizont: '#ffe3f3' },
+  mond: { held: 'Die Erde, groß und halb beleuchtet', nah: 'Kraterränder in Grau', mitte: 'Schwebende Brocken', fern: 'Milchstraße als Nebelstreifen', horizont: '#1a1d2e' },
+  neptun: { held: 'Großer dunkler Fleck: ein Sturmauge mit Blitzen', nah: 'Eisspitzen im Wind', mitte: 'Sturmring, der schneller dreht', fern: 'Tritons Silhouette vor blauem Dunst', horizont: '#1a3a8a' },
+  mars: { held: 'Olympus Mons, flacher Riesenvulkan am Horizont', nah: 'Dünenkämme mit Staubfahnen', mitte: 'Tafelberge in Schichten, gruppiert', fern: 'Die zwei Monde Phobos und Deimos', horizont: '#c4602e' },
+  saturn: { held: 'Saturn selbst mit Ring, schräg über dem Horizont', nah: 'Ein großer Brocken des Rings zieht nah vorbei', mitte: 'Gesteinsring', fern: 'Goldener Nebel', horizont: '#4a3a24' },
+  alien: { held: 'Mutterschiff schwebt über dem Horizont', nah: 'Leuchtpflanzen mit pulsierenden Knollen', mitte: 'Riesenpilze in Gruppen', fern: 'Zwei Sonnen in Grün und Violett', horizont: '#3a1460' },
+  sonne: { held: 'Große Protuberanz, 500 Studs, pulsiert', nah: 'Glühende Brocken', mitte: 'Sonnenbögen in zwei Größen', fern: 'Korona-Ring', horizont: '#ff7a1a' },
+  korallenriff: { held: 'Riffwand mit Höhle, ein Wal schwimmt hindurch', nah: 'Seetangwald', mitte: 'Korallentürme in Gruppen', fern: 'Riffkante, dahinter Tiefblau', horizont: '#2ab0c8' },
+  muschelland: { held: 'Riesenmuschel öffnet sich, die Perle leuchtet', nah: 'Seesterne auf Felsen', mitte: 'Muscheln und Felsbögen', fern: 'Sandbänke mit Lichtstrahlen', horizont: '#4ab0d0' },
+  atlantis: { held: 'Versunkener Tempelberg mit goldener Kuppel', nah: 'Umgestürzte Säulen', mitte: 'Ruinenstadt in Terrassen', fern: 'Riesenstatue, nur als Umriss', horizont: '#0e6a8a' },
+  tiefseegraben: { held: 'Anglerfisch mit Leuchtköder in der Dunkelheit', nah: 'Schwarze Felswände mit Leuchtadern', mitte: 'Schlote mit Blasen (Black Smoker)', fern: 'Fast schwarz, nur leuchtende Punkte', horizont: '#0a2a3a' },
+  wolkenburg: { held: 'Burg auf einer Wolkensäule', nah: 'Goldene Brücken zu Wolkeninseln', mitte: 'Wolkentürme', fern: 'Regenbogen über dem Horizont', horizont: '#fff3e0' },
+  engelsgarten: { held: 'Lichtbaum mit goldenem Laub', nah: 'Schwebende Treppen', mitte: 'Weiße Bäume in Gruppen', fern: 'Lichtsäulen aus den Wolken', horizont: '#fff6e8' },
+  goetterthron: { held: 'Thron auf dem höchsten Gipfel', nah: 'Goldene Säulen', mitte: 'Gipfel über den Wolken', fern: 'Sternenhimmel bei Sonnenuntergang', horizont: '#ffcf7a' },
+};
 
 export const planetById = Object.fromEntries([HUB, ...PLANETS].map((p) => [p.id, p]));
 export const worldById = Object.fromEntries(WORLDS.map((w) => [w.id, w]));
@@ -130,7 +167,7 @@ export const fmtLuck = (w) => (w.luck ? `+${Math.round(w.luck * 100).toLocaleStr
 export const fmtValue = (w) => `×${w.value.toLocaleString('de-DE')}`;
 export function fmtPrice(n) {
   if (!n) return 'Gratis';
-  const units = [[1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']];
+  const units = [[1e12, ' Bio.'], [1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']];
   for (const [v, u] of units) if (n >= v) return (n / v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + u;
   return n.toLocaleString('de-DE');
 }

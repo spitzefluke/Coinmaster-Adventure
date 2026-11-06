@@ -34,19 +34,19 @@ export function model(id, s = 1, { sky = false } = {}) {
 const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
 
 // Modell auf einen freien Platz stellen (Abstand aus der Grundfläche); gibt die Gruppe oder null zurück
-function place(ctx, id, s, { rMin = 0, rMax = ctx.R - 1, face = null, sink = 0.08, gap = 0.9 } = {}) {
+export function place(ctx, id, s, { rMin = 0, rMax = ctx.R - 1, face = null, sink = 0.08, gap = 0.9 } = {}) {
   const g = model(id, s);
   const p = ctx.spot(g.userData.radius * gap, rMin, rMax);
   if (!p) return null;
   return stand(ctx, g, p[0], p[1], { face, sink });
 }
-function stand(ctx, g, x, z, { face = null, sink = 0.08, rot = null, origin = false } = {}) {
+export function stand(ctx, g, x, z, { face = null, sink = 0.08, rot = null, origin = false } = {}) {
   // origin: Nullpunkt des Modells auf den Boden (Brücke: der Bogen reicht ins Wasser), sonst die Unterseite
   ctx.put(g, x, z, { rot: false, sink: origin ? sink : sink + g.userData.base });
   g.rotation.y = rot ?? (face ? Math.atan2(face[0] - x, face[1] - z) : ctx.rand() * TAU);
   return g;
 }
-function scatterModels(ctx, n, ids, sMin, sMax, opts = {}) {
+export function scatterModels(ctx, n, ids, sMin, sMax, opts = {}) {
   for (let i = 0; i < n; i++) place(ctx, pick(ctx.rand, ids), ctx.rr(sMin, sMax), opts);
 }
 
@@ -206,7 +206,7 @@ const WALD = {
 };
 
 // Gegenstände rund um einen Punkt verteilen (nur auf freien Plätzen innerhalb der Insel)
-function around(ctx, c, items, dMin = 2, dMax = 3.4) {
+export function around(ctx, c, items, dMin = 2, dMax = 3.4) {
   const { rand, rr, R } = ctx;
   for (const [id, s] of items) {
     for (let tries = 0; tries < 8; tries++) {
@@ -220,7 +220,7 @@ function around(ctx, c, items, dMin = 2, dMax = 3.4) {
   }
 }
 // freien Platz mit Radius d suchen, aber nur die Mitte belegen (für Gruppen von Gegenständen)
-function clearing(ctx, d, rMin, rMax) {
+export function clearing(ctx, d, rMin, rMax) {
   const { rand, rr } = ctx;
   for (let i = 0; i < 80; i++) {
     const a = rand() * TAU, r = rr(rMin, rMax), x = Math.cos(a) * r, z = Math.sin(a) * r;

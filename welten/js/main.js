@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice } from './worlds.js';
+import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice, KULISSE } from './worlds.js';
 import { ISLAND_RADIUS } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
@@ -219,6 +219,7 @@ function renderPlanets() {
         <span class="planet-name">${p.name}</span>
         <span class="planet-title">${p.title}</span>
         <span class="planet-sub">${sub}</span>
+        ${p.neu ? '<span class="new-badge">Neu</span>' : ''}
       </button>`;
   }).join('');
   // gewählten Planeten in der (auf dem Handy scrollbaren) Leiste sichtbar machen
@@ -247,6 +248,21 @@ function unlockText(w) {
   return parts.length ? parts.join(' · ') : 'Startwelt, von Anfang an offen';
 }
 
+// Fernkulisse: Wahrzeichen und drei Tiefen, die Farbstreifen gehen vom Boden der Welt zur Horizontfarbe
+function kulisseHtml(w) {
+  const k = KULISSE[w.id];
+  if (!k) return '';
+  const sw = (a, b) => `color-mix(in srgb, ${w.ground} ${a}%, ${b})`;
+  const layer = (name, text, swatch) => `<div class="kulisse-layer"><span>${name}<i style="--sw:${swatch}"></i></span><span>${text}</span></div>`;
+  return `<div class="kulisse">
+      <p class="kulisse-title">Fernkulisse</p>
+      <div class="kulisse-held"><span>Wahrzeichen am Horizont</span><span>${k.held}</span></div>
+      ${layer('Nah', k.nah, sw(85, '#000'))}
+      ${layer('Mitte', k.mitte, sw(55, k.horizont))}
+      ${layer('Fern', k.fern, sw(25, k.horizont))}
+    </div>`;
+}
+
 function renderInfo() {
   const w = current, p = planetById[w.planet];
   const info = $('info');
@@ -265,6 +281,7 @@ function renderInfo() {
       </dl>
       <p class="area-title">Bereiche ansehen</p>
       <div class="area-list">${areas.map((a, i) => `<button type="button" class="area-btn" data-area="${i}">${a.name}</button>`).join('')}</div>
+      ${kulisseHtml(w)}
       <div class="info-nav">
         <button type="button" class="btn" data-step="-1" aria-label="Vorige Welt">← Vorige</button>
         <button type="button" class="btn" data-step="1" aria-label="Nächste Welt">Nächste →</button>
@@ -309,6 +326,7 @@ function renderInfo() {
       <div><dt>Münzen</dt><dd>alle 50</dd></div>
       <div class="wide"><dt>Freischalten</dt><dd>${unlockText(w)}</dd></div>
     </dl>
+    ${kulisseHtml(w)}
     <div class="info-nav">
       <button type="button" class="btn" data-step="-1" aria-label="Vorige Welt">← Vorige</button>
       <button type="button" class="btn" data-step="1" aria-label="Nächste Welt">Nächste →</button>
@@ -340,7 +358,7 @@ function renderStrip() {
       <li>
         <button type="button" class="card${w.soon ? ' is-soon' : ''}" data-world="${w.id}" aria-pressed="${w === current}" style="--c:${w.accent || p.color}">
           <span class="card-img">${w.soon ? '<span class="card-q">?</span>' : `<img alt="" data-thumb="${w.id}">`}</span>
-          <span class="card-num">${w.soon ? '···' : `Welt ${i + 1}`}</span>
+          <span class="card-num">${w.soon ? '···' : `Welt ${i + 1}`}${w.neu ? '<span class="new-badge">Neu</span>' : ''}</span>
           <span class="card-name">${w.name}</span>
           <span class="card-price">${w.soon ? 'Bald' : w.price ? `${fmtPrice(w.price)} Taler` : 'Startwelt'}</span>
         </button>
@@ -367,7 +385,7 @@ function renderStrip() {
 $('rebirth-text').textContent = `Für ${fmtPrice(REBIRTH.cost(0))} Taler (danach jeweils viermal so viel) wirst du wiedergeboren: Deine Taler sind weg, aber jede Münze ist für immer ${Math.round(REBIRTH.bonus * 100)} % mehr wert. Welten, Münzen, Level und Skills bleiben.`;
 $('portal-text').textContent = PLANETS.filter((p) => p.portal && !p.soon)
   .map((p) => `${p.name} (${p.title}): ${p.portal.name}, braucht die letzte Welt des vorigen Planeten und ${p.portal.rebirths} Wiedergeburt${p.portal.rebirths > 1 ? 'en' : ''}.`)
-  .join(' ') + ' Planet 4 kommt mit einem späteren Update.';
+  .join(' ');
 $('rebirth-table').innerHTML = `
   <caption>Wiedergeburten</caption>
   <thead><tr><th scope="col">Nr.</th><th scope="col">Kosten</th><th scope="col">Münzwert danach</th><th scope="col">Öffnet</th></tr></thead>
