@@ -272,13 +272,14 @@ export const PLANET2 = new Set(Object.keys(PATHS));
 
 export function planet2Before(ctx, kit) {
   if (!PLANET2.has(ctx.world.id)) return;
-  LANDMARK[ctx.world.id](ctx, kit);
+  if (!ctx.modelWorld || ctx.modelWorld.landmark) LANDMARK[ctx.world.id](ctx, kit);
   paths(ctx, kit, PATHS[ctx.world.id]);
 }
 
 export function planet2After(ctx, kit) {
   if (!PLANET2.has(ctx.world.id)) return;
-  backdrop(ctx, kit);
+  if (ctx.modelWorld?.backdrop) ctx.modelWorld.backdrop(ctx, kit);
+  else backdrop(ctx, kit);
   details(ctx, kit);
   emitters(ctx);
   ctx.shared.sounds = SOUNDS[ctx.world.id].map(([name, hint, volume]) => ({ name, hint, volume }));

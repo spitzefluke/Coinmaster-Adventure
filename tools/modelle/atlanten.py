@@ -5,9 +5,11 @@ holt seine Farben über UV-Koordinaten aus diesen Feldern. Eine Variante ersetzt
 Verläufe (oben -> unten); build.mjs legt die Modelle dann ein zweites Mal mit dem neuen Atlas in die
 Bibliothek (Name „modell@variante“).
 
-    python3 atlanten.py <pfad/zu/hexagons_medieval.png>
+    python3 atlanten.py medieval <pfad/zu/hexagons_medieval.png>
+    python3 atlanten.py space <pfad/zu/spacebits_texture.png>
 
-schreibt atlanten/<variante>.png neben dieses Skript.
+schreibt atlanten/<variante>.png neben dieses Skript (Variantennamen sind über alle Pakete eindeutig).
+Das Space-Paket hat dasselbe Raster; Felsen und Geländeblöcke nutzen nur Feld 7 (orange).
 
 Felder (Zeile, Spalte -> Index z * 8 + s):
   0 dunkelgrau   1 weiß        2 Stein hell  3 Stein dunkel 4 schwarz    5 Ziegel      6 Holz rot    7 orange
@@ -21,7 +23,7 @@ import sys
 
 from PIL import Image
 
-VARIANTS = {
+MEDIEVAL = {
     # Schnee und Eis: Gras und Laub weiß bis eisblau, Stein bläulich hell
     'eis': {
         12: ('#ffffff', '#d4ecfa'), 16: ('#ffffff', '#cfe6f7'),
@@ -53,18 +55,30 @@ VARIANTS = {
 }
 
 
+# Space Base Bits: Feld 7 (Felsen, Gelände, Zierstreifen) je Planet umgefärbt; Mars bleibt orange
+SPACE = {
+    'mond': {7: ('#d8dbe2', '#6a6d76')},
+    'neptun': {7: ('#bfe8ff', '#2a4fa0')},
+    'saturn': {7: ('#f4e2b8', '#a07848')},
+    'alien': {7: ('#c89aff', '#3a1a60')},
+    'sonne': {7: ('#ffd24a', '#a02a08')},
+}
+
+SOURCES = {'medieval': MEDIEVAL, 'space': SPACE}
+
+
 def hex_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
-def main(src):
+def main(source, src):
     base = Image.open(src).convert('RGBA')
     w, h = base.size
     cw, ch = w // 8, h // 4
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'atlanten')
     os.makedirs(out_dir, exist_ok=True)
-    for name, cells in VARIANTS.items():
+    for name, cells in SOURCES[source].items():
         im = base.copy()
         px = im.load()
         for idx, (top, bottom) in cells.items():
@@ -80,4 +94,4 @@ def main(src):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])
