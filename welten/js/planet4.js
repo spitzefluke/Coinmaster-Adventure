@@ -284,10 +284,10 @@ const ENGELSGARTEN = {
       root.add(stairs);
       ctx.reserve(x0, z0, 1.4);
     }
-    ctx.scatter(9, () => goldTree(kit, rand, rr(2.2, 3.2)), 1, 4, R - 1);
-    ctx.scatter(10, () => kit.bush(rr(0.35, 0.5), '#e8f4d8', rand), 0.5, 3, R - 1);
-    ctx.scatter(16, () => kit.flower(rand() < 0.5 ? '#ffffff' : '#ffd76a'), 0.2, 2, R - 1);
-    ctx.scatter(4, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 1.5);
+    ctx.scatter(2, () => goldTree(kit, rand, rr(2.2, 3.2)), 1.2, 4, R - 1);
+    ctx.scatter(3, () => kit.bush(rr(0.35, 0.5), '#e8f4d8', rand), 0.5, 3, R - 1);
+    ctx.scatter(6, () => kit.flower(rand() < 0.5 ? '#ffffff' : '#ffd76a'), 0.2, 2, R - 1);
+    ctx.scatter(1, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 1.5);
   },
   emitters(ctx, add) {
     add('Lichtfunken', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#fff2a0', '#ffffff'], 0.16, 14, [0.1, 0.4], [5, 8], { light: 1 });
