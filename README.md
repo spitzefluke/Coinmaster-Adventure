@@ -326,12 +326,27 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
-**Modelle aus kostenlosen Grafikpaketen (CC0):** Normal und Wald sind aus Modellen der KayKit-Pakete von
-Kay Lousberg gebaut (Medieval Hexagon Pack, CC0, auch für Roblox frei). Die übrigen Welten folgen in den
-nächsten Etappen.
+**Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten von Planet 1 sind mit Modellen der KayKit-Pakete
+von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween; CC0, auch für Roblox frei).
+Planet 2 und 3 folgen.
+
+| Welt | Modelle |
+| --- | --- |
+| Normal | Startdorf: Windmühle, Häuser um einen Brunnen, Feld, Steinbrücke, Bäume, Felsen |
+| Wald | Nadelwald, Sägemühle mit Holzlager, Zeltlager (Riesenbaum bleibt) |
+| Stadt | Straßenkreuz aus Straßenplatten, Häuserzeilen, Autos, Laternen, Ampeln, Hydranten, Bänke, Wasserturm |
+| Eis | verschneite Tannen und Felsen (@eis), Wachturm, Zeltlager mit Laterne; Iglu, See, Kristalle bleiben |
+| Lava | Schmiede mit Fackeln und Fässern, Ruine mit Schatztruhe, tote und verkohlte Bäume, Basaltfelsen (@lava) |
+| Höhle | Mine mit Lager, Säulenhalle mit Schatztruhe und Kerzen, violette Felsen (@hoehle), Fackeln, Laternen |
+| Candy | Lebkuchendorf mit Windmühle und Brunnen, Pastellbäume und -felsen (@candy); Süßigkeiten bleiben |
+
+Farbvarianten: `tools/modelle/atlanten.py` färbt den Farbatlas des Medieval-Pakets um (Schnee, Asche und Glut,
+Höhlenviolett, Zuckerguss und Schokolade). Die Modelle liegen dann ein zweites Mal als `name@variante` in der
+Bibliothek. Bei Eis, Lava, Höhle und Candy bleibt das Typische der Welt stehen (`keepBase`), die Modelle kommen
+dazu und werden zuerst gesetzt.
 
 - `tools/modelle/build.mjs` holt die Pakete (git) und legt die Auswahl (`auswahl.json`) in **eine** Datei
-  `assets/modelle/bibliothek.glb` (89 Modelle, ein Farbatlas, 2,6 MB) und schreibt `welten/js/modelCatalog.js`
+  `assets/modelle/bibliothek.glb` (188 Modelle, 8 Farbatlanten, 4,4 MB) und schreibt `welten/js/modelCatalog.js`
   mit Größe und Mitte jedes Modells. Neu bauen: `cd tools/modelle && npm install && npm run build`.
 - `welten/js/modelWorlds.js` baut die Welten: Normal ist ein Startdorf (Windmühle, fünf Häuser um einen
   Brunnen, Kisten und Fässer, Weizenfeld mit Zaun, Steinbrücke und Wasserpflanzen am Bach, Bäume, Felsen),

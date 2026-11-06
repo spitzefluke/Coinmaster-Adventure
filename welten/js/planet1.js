@@ -351,7 +351,7 @@ export function planet1Before(ctx, kit) {
 
 export function planet1After(ctx, kit) {
   if (!PLANET1.has(ctx.world.id)) return;
-  if (ctx.modelWorld) ctx.modelWorld.backdrop(ctx, kit);
+  if (ctx.modelWorld?.backdrop) ctx.modelWorld.backdrop(ctx, kit);
   else backdrop(ctx, kit);
   details(ctx, kit);
   emitters(ctx);

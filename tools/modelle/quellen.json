@@ -1,5 +1,27 @@
 {
-  "medieval": { "repo": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0", "gltf": "addons/kaykit_medieval_hexagon_pack/Assets/gltf", "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)" },
-  "city": { "repo": "https://github.com/KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0", "gltf": "addons/kaykit_city_builder_bits/Assets/gltf", "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)" },
-  "space": { "repo": "https://github.com/KayKit-Game-Assets/KayKit-Space-Base-Bits-1.0", "gltf": "addons/kaykit_space_base_bits/Assets/gltf", "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)" }
+  "medieval": {
+    "repo": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0",
+    "gltf": "addons/kaykit_medieval_hexagon_pack/Assets/gltf",
+    "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)"
+  },
+  "city": {
+    "repo": "https://github.com/KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0",
+    "gltf": "addons/kaykit_city_builder_bits/Assets/gltf",
+    "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)"
+  },
+  "space": {
+    "repo": "https://github.com/KayKit-Game-Assets/KayKit-Space-Base-Bits-1.0",
+    "gltf": "addons/kaykit_space_base_bits/Assets/gltf",
+    "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)"
+  },
+  "dungeon": {
+    "repo": "https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0",
+    "gltf": "addons/kaykit_dungeon_remastered/Assets/gltf",
+    "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)"
+  },
+  "halloween": {
+    "repo": "https://github.com/KayKit-Game-Assets/KayKit-Halloween-Bits-1.0",
+    "gltf": "addons/kaykit_halloween_bits/Assets/gltf",
+    "license": "CC0 1.0, Kay Lousberg (www.kaylousberg.com)"
+  }
 }
