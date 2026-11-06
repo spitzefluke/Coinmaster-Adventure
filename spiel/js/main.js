@@ -557,6 +557,11 @@ try {
     onAction: uiAction,
     onInvoke: invoke,
     onQuery: query,
+    // Klänge zu den Effekten der Oberfläche (Fund und Level spielt die Seite schon selbst)
+    onSound: (kind) => {
+      if (kind === 'buy') sound(1.25);
+      else if (kind === 'big') [0, 120, 240, 360].forEach((d, i) => setTimeout(() => sound(0.9 + i * 0.2), d));
+    },
     devTools: true,
     codeHint: `In der Vorschau: ${Object.keys(CODES).join(', ')}.`,
   });

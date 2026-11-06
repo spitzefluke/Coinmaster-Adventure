@@ -7,6 +7,7 @@ import { auraDataSource, AURA_FX, AURA_SERVER, AURA_CLIENT, AURA_SHOWCASE } from
 import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { EGG_BUILDER } from './eggLuau.js';
 import { worldFxSource, WORLD_FX_CLIENT } from './worldFxLuau.js';
+import { JUICE_CLIENT } from './juiceLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
 import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
@@ -1303,6 +1304,7 @@ export function installerSource(data) {
 --   StarterPlayerScripts > CoinmasterWeatherClient   Wettereffekte und Ansage beim Wechsel
 --   StarterPlayerScripts > CoinmasterWorldLighting   Licht und Himmel der Welt, in der man gerade ist
 --   StarterPlayerScripts > CoinmasterWorldFx   Umgebung der Welt: Himmel, Fernkulisse, Partikel und Leben (WorldFx)
+--   StarterPlayerScripts > CoinmasterJuice     Spielgefühl: Staub beim Springen und Landen, Kamera federt, Teleport-Blitz
 --   ServerScriptService > CoinmasterModelle   setzt die Modelle (bibliothek.glb) in die Welten ein
 --   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
 --   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
@@ -1465,6 +1467,7 @@ addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather",
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldFx", ${longString(WORLD_FX_CLIENT)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterJuice", ${longString(JUICE_CLIENT)})
 -- Modelle der Welten: Skript mit Modul „Einsetzen“ (Bibliothek: ServerStorage > CoinmasterModelle)
 do
 	local placer = addScript("Script", game:GetService("ServerScriptService"), "CoinmasterModelle", ${longString(MODEL_PLACER_START)})

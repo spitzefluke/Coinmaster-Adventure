@@ -26,7 +26,7 @@ import { ROLLS } from '../../rollen/js/rolls.js';
 
 const q = (s) => JSON.stringify(String(s));
 
-export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devTools = false, codeHint = '' }) {
+export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSound, devTools = false, codeHint = '' }) {
   const canvas = document.createElement('canvas');
   canvas.className = 'rbx-ui';
   canvas.setAttribute('aria-hidden', 'true');
@@ -51,6 +51,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
+  lua.register('__uiSound', (kind, level) => onSound?.(kind, level));
   // Daten für Fenster (Vorhersage, Rangliste) als JSON; in Roblox kämen sie vom Server
   lua.registerFn('__uiQuery', (kind, arg) => [JSON.stringify(onQuery(kind, arg) ?? null)]);
   // Icon-Bild wie in Roblox nach dem Hochladen (UITheme.IconSheet)
@@ -69,6 +70,8 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, devToo
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       PlayRoll = function(rollId, itemId) __uiAction("playRoll", rollId .. "|" .. itemId) end,
       OnAction = function(name, arg) __uiAction(name, arg or "") end,
+      Sound = function(kind, level) __uiSound(kind, level or 1) end,
+      LevelBanner = false, -- die Vorschau zeigt den Level-Aufstieg als eigene Karte
       DevTools = ${devTools ? 'true' : 'false'},
       CodeHint = ${codeHint ? q(codeHint) : 'nil'},
       Query = function(kind, arg) return game:GetService("HttpService"):JSONDecode(__uiQuery(kind, arg or "")) end,

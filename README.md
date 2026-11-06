@@ -358,6 +358,10 @@ frei).
 | Korallenriff | Schatzplatz mit Truhe, Fässern und Kisten, Seetangfelder, Felsen in Meeresfarben (@meer) |
 | Muschelland | Felsentor mit Laternen und Truhe, Seetangfelder, Meeresfelsen |
 | Atlantis | Ruinenfeld aus Säulen und Trümmern, Gittertor, Schrein mit Laternen und Truhe, Seetang |
+| Tiefseegraben (neu) | Anglerfisch mit Leuchtköder, Schlote mit Glut (Black Smoker), Felsen mit Leuchtadern, Leuchtquallen, Truhe (`welten/js/planet4.js`) |
+| Wolkenburg (neu) | Marmorburg mit vier Ecktürmen und Wehrgang, goldene Brücken zu Wolkeninseln mit Pavillon, Wolkenbäusche, Brunnen, Laternen |
+| Engelsgarten (neu) | Lichtbaum mit Heiligenschein, weiße Bäume mit Goldlaub, Lichtbrunnen, Treppen ins Nichts |
+| Götterthron (neu) | Stufengipfel mit goldenem Thron, Sonnenscheibe und Feuerschalen, Ring aus Goldsäulen, Schatztruhen |
 | Spawn | Münzstadt bleibt; Bäume im äußeren Ring, Fässer, Kisten und Säcke, Felsen auf freien Plätzen (`after`) |
 
 Farbvarianten: `tools/modelle/atlanten.py` färbt den Farbatlas des Medieval-Pakets um (Schnee, Asche und Glut,
@@ -464,7 +468,7 @@ antippen, und die Spawn-Leiste öffnet **Belohnungen** (sieben Tage Serie, Glüc
 Vorschau-Codes: COINMASTER, SPAWN, GLUECK, RELEASE, DANKE). Im Roblox-Export ist `00-Spawn.rbxmx` dabei,
 mit `SpawnLocation`, Teilen `Portal_<WeltId>` und Schildern mit SurfaceGui-Text.
 
-`welten/` zeigt die Weltkarte: vier Planeten mit ihren Welten, jede als drehbare 3D-Insel mit
+`welten/` zeigt die Weltkarte (Design aus Claude Design „Weltkarte“): Spawn und vier Planeten mit zwanzig Welten, jede als drehbare 3D-Insel mit
 eigener Landschaft, Himmel und Partikeln (Pollen, Glühwürmchen, Schnee, Glut, Streusel, Sterne,
 Sturm, Blasen …).
 
@@ -472,8 +476,8 @@ Sturm, Blasen …).
 |---|---|---|
 | Planet 1 · Heimatplanet | Normal, Wald, Stadt, Eis, Lava, Höhle, Candy | Startplanet |
 | Planet 2 · Weltraum | Mond, Neptun, Mars, Saturn, Alien, Sonne | Rakete: Candy + 1 Wiedergeburt |
-| Planet 3 · Tiefsee | Korallenriff, Muschelland, Atlantis, Coming soon | Tiefsee-Portal: Sonne + 3 Wiedergeburten |
-| Planet 4 | Coming soon | später |
+| Planet 3 · Tiefsee | Korallenriff, Muschelland, Atlantis, Tiefseegraben (neu) | Tiefsee-Portal: Sonne + 3 Wiedergeburten |
+| Planet 4 · Himmelreich (neu) | Wolkenburg, Engelsgarten, Götterthron | Himmelsleiter: Tiefseegraben + 6 Wiedergeburten |
 
 - In jeder Welt findet man **alle Münzen**. Spätere Welten erhöhen die Chance auf seltene Stufen
   (`luck`) und den Münzwert (`value`).
@@ -498,11 +502,18 @@ Sturm, Blasen …).
   - *Himmel & Licht:* Sonne mit Schein, Mond, funkelnde Sterne, wogendes Polarlicht (Eis, Neptun),
     Nebelschleier und Kometen im All, Lichtstrahlen von der Wasseroberfläche, eine sanfte Farbstimmung
     (ColorCorrection) je Welt. Der Nebel reicht weiter als vorher, damit die Ferne zu sehen ist.
-  - *Fernkulisse* am Rand der Himmelskuppel: Schneeberge und Waldhügel (Normal, Wald, Spawn), Skyline
-    (Stadt), Eisberge mit Polarlicht (Eis), Vulkane mit Lavaströmen und Rauch (Lava), Tropfsteine und
-    Riesenkristalle (Höhle), Zuckerhügel und Riesenlollis (Candy), Asteroidengürtel (Mond, Sonne), Eisspitzen
-    und Sturmwirbel (Neptun), Tafelberge (Mars), Gesteinsring (Saturn), Leuchtpflanzen (Alien),
-    Sonnenbögen (Sonne), Korallentürme, Riesenmuscheln und Tempelruinen mit wogendem Seetang (Tiefsee).
+  - *Fernkulisse* nach dem Kulissen-Konzept aus Claude Design: drei Tiefen statt eines Rings – **Nah**
+    380–460 Studs (niedrig, satt), **Mitte** 480–560, **Fern** 600–630 (stark in die Horizontfarbe getönt) –,
+    in drei bis vier Gruppen mit Tälern dazwischen, dazu ein flaches **Horizontband** in Horizontfarbe knapp über
+    dem Meer. Gegenüber der Startkamera steht je Welt ein riesiges **Wahrzeichen** mit einer ruhigen Bewegung:
+    Münzberg mit Münzfall (Spawn), Wasserfallberg (Normal), Weltenbaum (Wald), Fernsehturm mit drehendem Licht
+    (Stadt), Gletscherwand (Eis), Vulkan mit Ausbruch alle 40 s (Lava), Riesenkristall in der Decke (Höhle),
+    Tortenberg (Candy), die Erde (Mond), Sturmauge mit Blitzen (Neptun), Olympus Mons (Mars), Saturn mit
+    drehendem Ring, Mutterschiff (Alien), Protuberanz (Sonne), Riffwand mit Höhle (Korallenriff), sich öffnende
+    Riesenmuschel (Muschelland), Tempelberg mit Goldkuppel (Atlantis), Anglerfisch mit Leuchtköder
+    (Tiefseegraben), Burg auf einer Wolkensäule (Wolkenburg), Lichtbaum (Engelsgarten) und der Thron auf dem
+    höchsten Gipfel (Götterthron). Die Texte je Welt stehen in `KULISSE` (`welten/js/worlds.js`) und in der
+    Weltkarte unter „Fernkulisse“.
   - *Atmosphäre-Partikel:* Lichtstaub, fallende Blätter, Schneeflocken, Asche, Leuchtsporen, Sternenstaub,
     Staubwind, Funken, Meeresschnee.
   - *Leben:* kreisende Vogelschwärme, Fledermäuse, Schmetterlinge, Heißluftballons, ein Luftschiff,
@@ -639,13 +650,25 @@ fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameU
 
 | Stufe | Seltenheit | Effekt |
 | --- | --- | --- |
-| 1 | Normal, Selten | Hinweis |
-| 2 | Sehr selten, Episch | Fundkarte mit Glanz über „Münze suchen“ |
-| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken und große Ansage |
-| 4 | Göttlich, Galaktisch, Unerreichbar | alles stärker und länger |
+| 1 | Normal, Selten | Hinweis, „+Taler“ steigt auf, Münzen fliegen zum Taler-Feld, der Knopf springt |
+| 2 | Sehr selten, Episch | dazu Fundkarte mit Glanz und leichtes Wackeln |
+| 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken, Strahlenkranz, große Ansage, kräftiges Wackeln |
+| 4 | Göttlich, Galaktisch, Unerreichbar | dazu kurze Zeitlupe (Bild wird dunkel, Kamera zoomt) und Münzregen |
 
 Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den Hinweis, „Weniger Partikel“
-weniger Funken.
+halbiert Funken, Konfetti und Münzregen.
+
+**Mehr Juice** (alles aus Frames und Tweens, abschaltbar über „Animationen überspringen“):
+- *Knöpfe* drücken sich ein und federn beim Loslassen nach (Elastic), dazu ein kleiner Funkenkranz.
+- *Fenster* springen aus der Mitte auf, federn nach und kippen dabei kurz.
+- *Käufe* lassen Konfetti regnen und das Taler-Feld wippen; große Momente (neue Welt, Portal, Wiedergeburt)
+  bekommen Blitz, Wackeln, Strahlenkranz und Ansage. Geht ein Kauf nicht, schüttelt das Taler-Feld den Kopf.
+- *Taler* leuchten beim Gewinn weiß auf, das Feld wippt stärker, je mehr es ist.
+- *Level-Aufstieg*: das Abzeichen springt, Goldkonfetti, Strahlen und (im Spiel) die Ansage „LEVEL X!“.
+- *Münzrollen* enden mit Wackeln und Konfetti.
+- *Bewegung und Kamera* (LocalScript `CoinmasterJuice`, `roblox/js/juiceLuau.js`, nur im Spiel): Staub beim
+  Springen und Landen, harte Landungen lassen die Kamera wackeln und stauchen das Sichtfeld, schnelles Laufen
+  weitet es, ein Teleport blitzt auf und lässt Funken sprühen.
 
 **Icons:** Alle Icons der Oberfläche liegen auf einem Bild (`roblox/js/iconSheet.js`, 47 Icons in Gold,
 1024 × 768). Auf der Roblox-Seite gibt es `Icons.png` zum Herunterladen (Schritt 6); nach dem Hochladen die
