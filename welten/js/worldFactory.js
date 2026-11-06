@@ -351,14 +351,17 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Welten aus Modellen der CC0-Pakete ersetzen den alten Grundbau (modelWorlds.js)
   // keepBase: das Typische der Welt (Vulkan, Felsbogen, Iglu, Süßigkeiten) bleibt, die Modelle kommen dazu
   // Die Modelle kommen zuerst (große Gebäude brauchen Platz); feste Plätze des Grundbaus sind vorher belegt
-  if (ctx.modelWorld) {
-    for (const [x, z, d] of ctx.modelWorld.baseSpots || []) reserve(x, z, d);
-    ctx.modelWorld.build(ctx, kit);
+  // after: der Grundbau steht fest (Spawn), die Modelle füllen danach nur freie Plätze
+  const mw = ctx.modelWorld;
+  if (mw && !mw.after) {
+    for (const [x, z, d] of mw.baseSpots || []) reserve(x, z, d);
+    mw.build(ctx, kit);
   }
-  if (!ctx.modelWorld || ctx.modelWorld.keepBase) {
+  if (!mw || mw.keepBase) {
     (BUILDERS[world.id] || BUILDERS.normal)(ctx);
     EXTRAS[world.id]?.(ctx);
   }
+  if (mw?.after) mw.build(ctx, kit);
   planet1After(ctx, kit); // Planet 1: Kulisse, Bodendetails, Leben, Klänge
   planet2After(ctx, kit);
   planet3After(ctx, kit);

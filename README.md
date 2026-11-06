@@ -336,9 +336,9 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
 
 ## Welten
 
-**Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten von Planet 1 und 2 sind mit Modellen der
-KayKit-Pakete von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween, Space Base; CC0,
-auch für Roblox frei). Planet 3 und der Spawn folgen.
+**Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten und der Spawn sind mit Modellen der KayKit-Pakete
+von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween, Space Base; CC0, auch für Roblox
+frei).
 
 | Welt | Modelle |
 | --- | --- |
@@ -355,15 +355,19 @@ auch für Roblox frei). Planet 3 und der Spawn folgen.
 | Saturn | Handelsposten: drei Frachtlager um einen Landeplatz, goldene Felsen und Klippen (@saturn) |
 | Alien | Forschungslager der Menschen, Landefähre, violette Felsen und Klippen (@alien) |
 | Sonne | Sonnenkraftwerk aus Solarpaneel-Reihen mit Masten, glühende Felsen (@sonne) |
+| Korallenriff | Schatzplatz mit Truhe, Fässern und Kisten, Seetangfelder, Felsen in Meeresfarben (@meer) |
+| Muschelland | Felsentor mit Laternen und Truhe, Seetangfelder, Meeresfelsen |
+| Atlantis | Ruinenfeld aus Säulen und Trümmern, Gittertor, Schrein mit Laternen und Truhe, Seetang |
+| Spawn | Münzstadt bleibt; Bäume im äußeren Ring, Fässer, Kisten und Säcke, Felsen auf freien Plätzen (`after`) |
 
 Farbvarianten: `tools/modelle/atlanten.py` färbt den Farbatlas des Medieval-Pakets um (Schnee, Asche und Glut,
 Höhlenviolett, Zuckerguss und Schokolade) und beim Space-Paket die Felsen je Planet (grau, eisblau, golden,
-violett, glühend). Die Modelle liegen dann ein zweites Mal als `name@variante` in der
+violett, glühend) und für den Meeresgrund (`@meer`). Die Modelle liegen dann ein zweites Mal als `name@variante` in der
 Bibliothek. Bei Eis, Lava, Höhle und Candy bleibt das Typische der Welt stehen (`keepBase`), die Modelle kommen
 dazu und werden zuerst gesetzt.
 
 - `tools/modelle/build.mjs` holt die Pakete (git) und legt die Auswahl (`auswahl.json`) in **eine** Datei
-  `assets/modelle/bibliothek.glb` (275 Modelle, 14 Farbatlanten, 5,9 MB) und schreibt `welten/js/modelCatalog.js`
+  `assets/modelle/bibliothek.glb` (287 Modelle, 15 Farbatlanten, 6 MB) und schreibt `welten/js/modelCatalog.js`
   mit Größe und Mitte jedes Modells. Neu bauen: `cd tools/modelle && npm install && npm run build`.
 - `welten/js/modelWorlds.js` baut die Welten: Normal ist ein Startdorf (Windmühle, fünf Häuser um einen
   Brunnen, Kisten und Fässer, Weizenfeld mit Zaun, Steinbrücke und Wasserpflanzen am Bach, Bäume, Felsen),

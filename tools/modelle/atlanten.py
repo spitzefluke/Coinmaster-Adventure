@@ -52,6 +52,12 @@ MEDIEVAL = {
         10: ('#a8704a', '#5a3018'), 5: ('#b07850', '#6a3a20'), 6: ('#9a6040', '#4a2414'), 15: ('#8a6048', '#4a2a1a'),
         9: ('#7ae8ff', '#3aa8e8'), 24: ('#7ae8ff', '#3aa8e8'), 25: ('#ff7aa8', '#e03a7a'),
     },
+    # Meeresgrund: Stein sandig-grau, Moos wird Koralle, Wasserpflanzen leuchtend meergrün
+    'meer': {
+        12: ('#ff9a8a', '#c85a6a'), 16: ('#ffb08a', '#d0705a'),
+        17: ('#5affc8', '#0a7a6a'), 27: ('#5affc8', '#0a7a6a'),
+        2: ('#e2d8cc', '#7a7064'), 18: ('#e2d8cc', '#7a7064'), 14: ('#d0c8bc', '#6a6258'),
+    },
 }
 
 
