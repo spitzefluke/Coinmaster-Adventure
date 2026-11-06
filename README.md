@@ -443,20 +443,21 @@ ergibt sich aus der Uhrzeit (für alle Spieler gleich, `muenzen/js/mutations.js`
 
 | Wetter | Anteil | Mutation | Chance | Wert |
 |---|---|---|---|---|
-| Klar | 34 % | – | – | – |
-| Regen | 14 % | Nass | 25 % | ×1,1 |
-| Gewitter | 10 % | Elektrisch | 10 % | ×1,75 |
-| Erdbeben | 9 % | Gestein | 18 % | ×1,25 |
-| Schneesturm | 9 % | Gefroren | 20 % | ×1,3 |
-| Disconacht | 8 % | Disco | 12 % | ×1,5 |
-| Blutmond | 5 % | Dämonisch | 8 % | ×2 |
-| Neonsturm | 4 % | Augenkrebs | 5 % | ×2,5 |
-| Goldregen | 3 % | Golden | 4 % | ×4 |
-| Datensturm | 3 % | Hacked | 3 % | ×3 |
-| Sternschnuppen | 2 % | Kosmisch | 2 % | ×5 |
+| Klar | 72 % | – | – | – |
+| Regen | 6 % | Nass | 25 % | ×1,1 |
+| Gewitter | 4 % | Elektrisch | 10 % | ×1,75 |
+| Erdbeben | 4 % | Gestein | 18 % | ×1,25 |
+| Schneesturm | 4 % | Gefroren | 20 % | ×1,3 |
+| Disconacht | 3 % | Disco | 12 % | ×1,5 |
+| Blutmond | 2 % | Dämonisch | 8 % | ×2 |
+| Neonsturm | 1,5 % | Augenkrebs | 5 % | ×2,5 |
+| Goldregen | 1,3 % | Golden | 4 % | ×4 |
+| Datensturm | 1,1 % | Hacked | 3 % | ×3 |
+| Sternschnuppen | 0,9 % | Kosmisch | 2 % | ×5 |
 
 - **3D-Wetter:** Die Weltkarte (Auswahl „Wetter“), die Wetter-Seite und der Spiel-Hintergrund führen
-  das Roblox-Modul `WeatherFx` aus: Licht, Nebel, Partikel und Blitze genau wie im Spiel.
+  das Roblox-Modul `WeatherFx` aus: Licht, Nebel, Partikel und Blitze genau wie im Spiel. Das Wetter ist
+  bewusst dezent: meist ist es klar, und die Effekte nutzen nur 40 % der Partikel, Blitze kommen alle 6–12 Sekunden.
 - **Spiel:** Ansage beim Wetterwechsel, Fenster „Wetter“ (Taste V oder Wetter-Anzeige antippen) mit
   Vorhersage und allen Wettern.
 - **Roblox:** Modul `WeatherFx` (Licht, Nebel, Partikel, Blitze, Ansage) und zwei Skripte, die der
