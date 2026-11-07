@@ -162,9 +162,12 @@ function undersideLights(ctx, n, { pipe = '#7a7f8a', glow = '#ffd27a' } = {}) {
 }
 
 // ── Eiszapfen unter dem Inselrand: umgedrehte, durchscheinende Kegel ──
-function icicles(ctx, n, { color = '#cfeeff' } = {}) {
+function icicles(ctx, n, { color = '#cfeeff', glow = false } = {}) {
   const { rr, R, root } = ctx;
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85 });
+  // glow: leuchtende Lavatropfen (Neon) statt Eis
+  const mat = glow
+    ? new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.6 })
+    : new THREE.MeshStandardMaterial({ color, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85 });
   for (let i = 0; i < n; i++) {
     // am äußersten Rand (vor den Felsen der Unterseite), oben am Grasrand angesetzt
     const a = (i / n) * TAU + rr(-0.06, 0.06), r = R + rr(0.6, 1.1);
@@ -468,6 +471,14 @@ const LAVA = {
     scatterModels(ctx, 9, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.8, 4.4, { gap: 0.8 });
     scatterModels(ctx, 3, ['mountain_A@lava', 'mountain_C@lava'], 1.6, 2.2, { rMin: R * 0.55, gap: 0.7 });
   },
+  backdrop(ctx, kit) {
+    // keine gestuften Vulkane aus planet1.js: die Fernkulisse von WorldFx hat schon Vulkane
+    void kit;
+    // Umgebung: schwebende Vulkanbrocken, Basaltunterseite mit Lavatropfen (Glutmeer siehe skyboxes.js)
+    floatingIsles(ctx, { far: 7, near: 6, tops: ['mountain_A@lava', 'mountain_C@lava', 'hills_A@lava', 'rock_single_D@lava'], small: ['rock_single_C@lava', 'rock_single_E@lava'], rock: 'rock_single_B@lava' });
+    rockUnderside(ctx, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava']);
+    icicles(ctx, 18, { color: '#ff6a1a', glow: true });
+  }
 };
 
 // ── Höhle: Mine mit Lager, Säulenruinen, Fackeln, Schatztruhen zwischen den Kristallen ──

@@ -462,12 +462,22 @@ function skyShield(sky, built, world) {
       const w = step * (1.5 + rand() * 0.6), h = kind === 'duene' ? 22 + rand() * 18 : 34 + rand() * 30;
       // nahe der Insel etwas höher, damit sie auf den Wolken zu liegen scheint
       const near = Math.max(0, 1 - Math.hypot(jx, jz) / (R * 1.6));
+      // Glutmeer (Lava): zwischen der dunklen Kruste leuchten flachere Lavabecken etwas tiefer
+      const glow = SKYBOXES[world.id]?.seaGlow;
+      if (glow && rand() < glow.share) {
+        sky.push({
+          shape: 'Ellipsoid', name: 'Lavameer', pos: [jx, y0 + 4 + rand() * 6 + near * 30, jz], rot: id,
+          size: [w * 1.1, h * 0.45, w], color: glow.colors[Math.floor(rand() * glow.colors.length)],
+          material: 'Neon', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
+        });
+        continue;
+      }
       sky.push({
         shape: 'Ellipsoid', name: kind === 'duene' ? 'Duene' : kind === 'nebel' ? 'Nebel' : 'Wolkenmeer',
         pos: [jx, y0 + rand() * 18 + near * 40, jz], rot: id,
         size: [w, h, w * (0.8 + rand() * 0.4)],
         color: colors[Math.floor(rand() * colors.length)],
-        material: kind === 'duene' ? 'Sand' : 'SmoothPlastic',
+        material: kind === 'duene' ? 'Sand' : SKYBOXES[world.id]?.seaMaterial || 'SmoothPlastic',
         transparency: kind === 'nebel' ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
       });
     }
