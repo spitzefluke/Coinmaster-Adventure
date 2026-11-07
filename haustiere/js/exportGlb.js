@@ -1,6 +1,7 @@
 // Export der Haustiere als .glb (glTF binär) – direkt in Blender importierbar (Datei › Import › glTF 2.0).
-import { THREE } from './kit.js';
-import { createPet } from './petFactory.js';
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { buildPet } from '../../roblox/js/petParts.js';
 import { PETS } from './pets.js';
 
 async function loadExporter() {
@@ -8,20 +9,55 @@ async function loadExporter() {
   return GLTFExporter;
 }
 
+// Wedge wie im Design: Boden unten, hohe Kante bei −Z
+function wedgeGeo() {
+  const a = [-0.5, -0.5, -0.5], b = [0.5, -0.5, -0.5], c = [0.5, -0.5, 0.5], d = [-0.5, -0.5, 0.5], e = [0.5, 0.5, -0.5], f = [-0.5, 0.5, -0.5];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([a, b, c, a, c, d, a, e, b, a, f, e, f, d, c, f, c, e, a, d, f, b, e, c].flat(), 3));
+  g.computeVertexNormals();
+  return g;
+}
+const GEO = {
+  Block: () => new THREE.BoxGeometry(1, 1, 1).toNonIndexed(),
+  Wedge: wedgeGeo,
+  Ball: () => new THREE.IcosahedronGeometry(0.5, 2),
+  Cylinder: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 18).toNonIndexed(),
+};
+function material(name) {
+  const m = { Neon: { emissive: '#ffffff', emissiveIntensity: 1, roughness: 1 }, Metal: { metalness: 0.85, roughness: 0.3 }, Smooth: { roughness: 0.28 }, Wood: { roughness: 0.9 }, Glass: { roughness: 0.05, transparent: true, opacity: 0.55 } }[name] || { roughness: 0.62 };
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, ...m });
+  mat.name = name;
+  return mat;
+}
+
+// Ein Tier als Gruppe: je Material ein Mesh, Farbe je Teil als Vertexfarbe. Füße auf y = 0, Blick nach +Z.
 function petNode(pet) {
-  const obj = createPet(pet, { pedestal: false });
-  obj.update(1);
-  const model = obj.model;
-  obj.spinner.remove(model);
-  const drop = [];
-  model.traverse((o) => (o.isSprite || o.isPoints || o.isLine || o.userData.outline) && drop.push(o));
-  drop.forEach((o) => o.parent.remove(o));
-  model.name = pet.name;
-  // Sockel-Höhe herausrechnen: Füße auf y = 0
-  model.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(model);
-  model.position.y -= box.min.y;
-  return model;
+  const { parts, box } = buildPet(pet);
+  const byMat = new Map(), col = new THREE.Color();
+  for (const p of parts) {
+    const g = GEO[p.shape]();
+    g.applyMatrix4(p.m);
+    col.set(p.color);
+    const n = g.attributes.position.count, c = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) col.toArray(c, i * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k);
+    if (!byMat.has(p.mat)) byMat.set(p.mat, []);
+    byMat.get(p.mat).push(g);
+  }
+  const grp = new THREE.Group();
+  grp.name = pet.name;
+  for (const [mat, list] of byMat) {
+    const mesh = new THREE.Mesh(mergeGeometries(list), material(mat));
+    mesh.name = `${pet.name} · ${mat}`;
+    grp.add(mesh);
+  }
+  const c = box.getCenter(new THREE.Vector3());
+  grp.position.set(-c.x, -box.min.y, -c.z);
+  const wrap = new THREE.Group();
+  wrap.name = pet.name;
+  wrap.add(grp);
+  return wrap;
 }
 
 function save(blob, name) {

@@ -335,18 +335,26 @@ In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und F
 
 ## Haustiere
 
-`haustiere/` zeigt alle 49 Haustiere aus den Claude-Design-Projekten „Haustiere“ und „Haustiere Roblox“, sieben pro Ei:
-fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %).
+`haustiere/` zeigt alle 49 Haustiere aus dem Claude-Design-Projekt „Haustiere Viewer“, sieben pro Ei:
+fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie ersetzen die frühere Fassung
+(„Haustiere“ und „Haustiere Roblox“).
 
-- **1:1 wie in Roblox:** Jedes Tier besteht aus Roblox-Teilen (Blöcke, Kugeln, Zylinder), umgewandelt aus
-  den Roblox-Stil-Bauplänen (`roblox/js/petParts.js`). Genau diese Teile stehen in der Datei
-  `Haustiere.rbxmx` (Seite „Nach Roblox Studio“, Schritt 5). Normale Tiere sind 3 Studs hoch, epische 3,6.
-  Die runden Kanten, Konturen und Effekte der früheren Fassung gibt es so in Roblox nicht.
+- **Voxel-Stil aus Roblox-Teilen:** Jedes Tier ist aus kleinen Würfeln gebaut, dazu Keile (WedgePart),
+  Kugeln und Zylinder, mit den Roblox-Materialien Plastic, SmoothPlastic, Metal, Wood, Neon und Glass.
+  Normale Tiere haben feines Block-Detail, epische dunkle Facetten, Neonadern und Kristalldornen.
+  Rund 200 bis 750 Teile pro Tier, zusammen etwa 19.000.
+- **1:1 wie in Roblox:** `roblox/js/petParts.js` rechnet die Teile in Studs um (Blick nach −Z, Zylinder
+  entlang X, Keile mit der hohen Seite hinten). Genau diese Teile stehen in der Datei `Haustiere.rbxmx`
+  (Seite „Nach Roblox Studio“, Schritt 5). Normale Tiere sind 3 Studs hoch, epische 3,6; sehr lange Tiere
+  werden nach der Länge begrenzt.
+- **Detailansicht:** Das Tier steht auf der achteckigen Sockelinsel aus dem Design, je Ei mit eigenem
+  Material, bei epischen mit Leuchtkante und Kristallen. Im Spiel gibt es den Sockel nicht.
 - **Roblox:** `PetData` (Tiere, Chancen, `Roll`), `PetBuilder.Build(petId)` klont das Tier aus dem Ordner
   `Haustiere` (fehlt er, gibt es eine Ersatzkugel). Ein neuer Import des Installers behält den Ordner.
-- `haustiere/js/rbx-kit.js`, `rbx-a/b/c.js` – Roblox-Baupläne, daraus werden die Teile
+- `haustiere/js/engine.js` – Builder: Würfelhüllen (`vox`, `voxBox`), Dornen, Achtecke, Ringe
+- `haustiere/js/kit.js` – Archetypen Vierbeiner, Vogel, Echse und Zubehör (Krone, Heiligenschein, Flügel …)
+- `haustiere/js/models.js` – die 49 Tiere und der Sockel
 - `haustiere/js/pets.js` – Daten, Schlupfchancen, `rollPet(eggId)`
-- `haustiere/js/petFactory.js` und `builders-a/b/c.js` – 3D-Baupläne (auch die erste Fassung)
 - `haustiere/js/exportGlb.js` – Export als .glb für Blender (einzeln oder alle 49)
 
 
@@ -770,7 +778,7 @@ Dann <http://localhost:8000> öffnen.
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
-- `haustiere/` – Haustiere: Daten, 3D-Baupläne, Galerie, Export für Blender
+- `haustiere/` – Haustiere: Daten, Voxel-Baupläne, Galerie, Export für Blender
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)

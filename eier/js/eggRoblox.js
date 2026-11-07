@@ -35,10 +35,12 @@ function __definePet(id, height)
 	rootPart.CFrame = CFrame.new(0, height / 2, 0)
 	rootPart.Parent = model
 	for _, d in ipairs(__petParts[id]) do
-		local p = Instance.new("Part")
+		local p = Instance.new(d[1] == "Wedge" and "WedgePart" or "Part")
 		p.Anchored = true
 		p.CanCollide = false
-		p.Shape = d[1] == "Cylinder" and Enum.PartType.Cylinder or Enum.PartType.Block
+		if d[1] ~= "Wedge" then
+			p.Shape = d[1] == "Cylinder" and Enum.PartType.Cylinder or d[1] == "Ball" and Enum.PartType.Ball or Enum.PartType.Block
+		end
 		p.Size = Vector3.new(d[2], d[3], d[4])
 		p.CFrame = CFrame.new(d[5], d[6], d[7], d[8], d[9], d[10], d[11], d[12], d[13], d[14], d[15], d[16])
 		p.Color = Color3.fromHex(d[17])
