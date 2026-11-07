@@ -1,55 +1,80 @@
-// Macht aus einem Haustier (Roblox-Stil, haustiere/js/rbx-*.js) Roblox-Teile: abgerundete Blöcke werden
-// zu Blöcken, Kugeln zu Kugeln (SpecialMesh), Zylinder zu Zylindern. Gleiche Umwandlung wie bei den Welten
-// (worldParts.js). Ergebnis in Studs, Füße auf y = 0, Blick nach −Z wie Roblox-Figuren.
+// Macht aus einem Haustier (Claude Design „Haustiere Viewer“, haustiere/js/models.js) Roblox-Teile.
+// Die Tiere bestehen dort schon nur aus Block, Wedge, Ball und Cylinder mit Roblox-Materialien; hier werden
+// sie in Studs umgerechnet: Füße auf y = 0, Blick nach −Z wie Roblox-Figuren, Zylinder entlang X,
+// Keile mit der hohen Seite nach +Z (WedgePart).
 
 import * as THREE from 'three';
-import { createPet } from '../../haustiere/js/petFactory.js';
-import { convertMesh, STUDS } from './worldParts.js';
+import { Builder, hash, bounds } from '../../haustiere/js/engine.js';
+import { MODELS, pedestal } from '../../haustiere/js/models.js';
 
 // Größe im Spiel: normale Tiere 3 Studs hoch, epische 3,6
 export const PET_HEIGHT = { normal: 3, epic: 3.6 };
 
+const MAT = { Plastic: 'Plastic', Smooth: 'SmoothPlastic', Metal: 'Metal', Wood: 'Wood', Neon: 'Neon', Glass: 'Glass' };
+const FLIP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+const CYL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+// Teile des Designs (Matrix je Teil) bauen; pedestal: Sockelinsel des Viewers mitbauen
+export function buildPet(pet, { withPedestal = false } = {}) {
+  const make = MODELS[pet.id];
+  if (!make) throw new Error(`Kein Modell für ${pet.id}`);
+  const b = new Builder(hash(pet.id));
+  make(b);
+  const own = b.parts.length;
+  if (withPedestal) pedestal(b, pet.egg, pet.epic, pet.glow);
+  return { parts: b.parts, box: bounds(b.parts.slice(0, own)) };
+}
+
 const cache = new Map();
-export function petToParts(pet) {
-  if (cache.has(pet.id)) return cache.get(pet.id);
-  const obj = createPet(pet, { pedestal: false, style: 'rbx' });
-  obj.update(0);
-  const holder = new THREE.Group();
-  // Tiere schauen auf der Webseite nach +Z, in Roblox nach −Z
-  holder.rotation.y = Math.PI;
-  holder.add(obj.model);
-  holder.updateMatrixWorld(true);
-  const box = new THREE.Box3(), tmp = new THREE.Box3();
-  const meshes = [];
-  holder.traverse((o) => {
-    if (!o.isMesh || !o.visible || o.userData.outline) return;
-    const m = Array.isArray(o.material) ? o.material[0] : o.material;
-    if (!m || m.blending === THREE.AdditiveBlending || (m.isMeshBasicMaterial && m.transparent)) return;
-    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-    tmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
-    box.union(tmp);
-    meshes.push(o);
-  });
+export function petToParts(pet, { withPedestal = false } = {}) {
+  const key = pet.id + (withPedestal ? '+sockel' : '');
+  if (cache.has(key)) return cache.get(key);
+  const { parts: raw, box } = buildPet(pet, { withPedestal });
   // auf Zielhöhe skalieren (lange Tiere auch nach der Länge begrenzen) und auf den Boden stellen
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-  const H = pet.epic ? PET_HEIGHT.epic : PET_HEIGHT.normal, W = H * 1.15;
-  const studsPerUnit = Math.min(H / Math.max(0.001, size.y), W / Math.max(0.001, size.x, size.z * 0.65));
-  const k = studsPerUnit / STUDS;
-  const height = size.y * studsPerUnit;
-  const wrap = new THREE.Group();
-  wrap.scale.setScalar(k);
-  wrap.position.set(-c.x * k, -box.min.y * k, -c.z * k);
-  wrap.add(holder);
-  wrap.updateMatrixWorld(true);
+  const H = pet.epic ? PET_HEIGHT.epic : PET_HEIGHT.normal, W = H * 1.5;
+  const k = Math.min(H / Math.max(0.001, size.y), W / Math.max(0.001, size.x, size.z * 0.6));
+  const height = size.y * k;
+  // größte waagrechte Ausdehnung (für die Kamera der Vorschau), mit Sockel dessen Breite
+  const full = withPedestal ? bounds(raw).getSize(new THREE.Vector3()) : size;
+  const width = Math.max(full.x, full.z) * k;
+  const pos = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3(), r = new THREE.Matrix4();
   const parts = [];
-  for (const m of meshes) convertMesh(parts, m, null);
-  for (const p of parts) {
-    p.canCollide = false;
-    p.castShadow = true;
-    if (p.material === 'SmoothPlastic' || !p.material) p.material = 'SmoothPlastic';
+  for (const p of raw) {
+    p.m.decompose(pos, q, s);
+    // Mitte auf x/z = 0, Füße auf y = 0, dann um 180° drehen (Blick nach −Z)
+    pos.set(-(pos.x - c.x) * k, (pos.y - box.min.y) * k, -(pos.z - c.z) * k);
+    q.premultiply(FLIP);
+    let size3 = [s.x * k, s.y * k, s.z * k];
+    if (p.shape === 'Cylinder') {
+      // Design-Zylinder stehen entlang Y, Roblox-Zylinder liegen entlang X
+      q.multiply(CYL);
+      size3 = [s.y * k, s.x * k, s.z * k];
+    } else if (p.shape === 'Wedge') {
+      // hohe Kante im Design bei −Z, beim WedgePart bei +Z
+      q.multiply(FLIP);
+    } else if (p.shape === 'Ball') {
+      const d = Math.min(...size3);
+      size3 = [d, d, d];
+    }
+    r.makeRotationFromQuaternion(q);
+    const e = r.elements; // spaltenweise → Zeilen für CFrame
+    const mat = MAT[p.mat] ?? 'Plastic';
+    parts.push({
+      shape: p.shape,
+      className: p.shape === 'Wedge' ? 'WedgePart' : undefined,
+      name: p.ped ? 'Sockel' : undefined,
+      pos: [pos.x, pos.y, pos.z],
+      rot: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
+      size: size3,
+      color: p.color,
+      material: mat,
+      transparency: mat === 'Glass' ? 0.45 : 0,
+      canCollide: false,
+      castShadow: mat !== 'Neon' && mat !== 'Glass',
+    });
   }
-  obj.dispose();
-  const out = { pet, parts, height };
-  cache.set(pet.id, out);
+  const out = { pet, parts, height, width };
+  cache.set(key, out);
   return out;
 }

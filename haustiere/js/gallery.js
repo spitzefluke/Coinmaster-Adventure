@@ -10,11 +10,11 @@ import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 // Unterkante der klebenden Navigation (js/nav.js)
 const navBottom = () => document.querySelector('.site-nav')?.getBoundingClientRect().bottom ?? 0;
 
-function petWorld(pet) {
-  const { parts, height } = petToParts(pet);
+function petWorld(pet, withPedestal = false) {
+  const { parts, height, width } = petToParts(pet, { withPedestal });
   const world = new RbxWorld({ shadows: false, sky: false });
   world.addStaticParts(parts);
-  return { world, height };
+  return { world, height, width };
 }
 // Kamera vor dem Tier (Roblox-Modelle schauen nach −Z)
 function orbit(cam, yaw, pitch, dist, height) {
@@ -89,7 +89,7 @@ export function createGallery(stage) {
       en.spin += reducedMotion ? 0 : dt * (en.hover ? 1.4 : 0.35);
       camera.aspect = r.width / r.height;
       camera.updateProjectionMatrix();
-      orbit(camera, -0.5 + Math.sin(t * 0.45 + en.ph) * (reducedMotion ? 0 : 0.6) + en.spin, 0.18, 3.6 * en.obj.height + 0.6, en.obj.height);
+      orbit(camera, -0.5 + Math.sin(t * 0.45 + en.ph) * (reducedMotion ? 0 : 0.6) + en.spin, 0.18, Math.max(3.6 * en.obj.height, 2.3 * en.obj.width) + 0.6, en.obj.height);
       renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
       renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
       en.obj.world.render(renderer, camera);
@@ -114,12 +114,13 @@ export function createGallery(stage) {
       canvas.addEventListener('pointerup', () => (d.drag = null));
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
-        d.dist = Math.max(4.5, Math.min(20, d.dist + e.deltaY * 0.01));
+        d.dist = Math.max(5, Math.min(40, d.dist + e.deltaY * 0.01));
       }, { passive: false });
     }
     d.obj?.world.dispose();
-    d.obj = petWorld(pet);
-    Object.assign(d, { yaw: -0.5, pitch: 0.18, dist: 9.5 });
+    // Detailansicht mit der Sockelinsel aus dem Design
+    d.obj = petWorld(pet, true);
+    Object.assign(d, { yaw: -0.5, pitch: 0.32, dist: Math.max(3.4 * d.obj.height, 2.5 * d.obj.width) });
     overlay = true;
     sizeDetail();
   }

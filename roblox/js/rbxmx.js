@@ -90,7 +90,8 @@ function part(p, offset = [0, 0, 0], extraChildren = '') {
       prop.token('Material', MATERIAL[p.material] ?? MATERIAL.SmoothPlastic),
       prop.float('Transparency', p.transparency || 0),
       prop.float('Reflectance', 0),
-      prop.token('shape', SHAPE[isEllipsoid ? 'Block' : p.shape]),
+      // WedgePart hat keine Shape-Eigenschaft
+      ...(p.shape === 'Wedge' ? [] : [prop.token('shape', SHAPE[isEllipsoid ? 'Block' : p.shape])]),
       prop.vec3('size', size),
       prop.token('TopSurface', 0),
       prop.token('BottomSurface', 0),
