@@ -193,6 +193,17 @@ HIMMEL = {
             {'band': (20, 35), 'scale': 8, 'cover': 0.5, 'soft': 0.35, 'light': '#ffffff', 'shadow': '#e2ecf8', 'streaks': True, 'alpha': 0.45, 'blur': 4},
         ],
     },
+    # Wald: Morgenhimmel, grünlich-golden am Horizont, Nebelbänder tief über den Wipfeln, lockere Wolken
+    'wald': {
+        'seed': 23,
+        'gradient': [(-5, '#d8ecd2'), (6, '#e6f2d6'), (16, '#b8dccb'), (38, '#6fae9e'), (90, '#3f7a6c')],
+        'below': [(-90, '#9cc8a8'), (0, '#d8ecd2')],
+        'clouds': [
+            {'band': (2, 13), 'scale': 4, 'cover': 0.7, 'soft': 0.4, 'light': '#f4fbef', 'shadow': '#cfe4cc', 'streaks': True, 'alpha': 0.75, 'blur': 5},
+            {'band': (12, 27), 'scale': 7, 'cover': 0.5, 'soft': 0.08, 'light': '#fffdf0', 'shadow': '#a9c8b4', 'stretch': 2.0, 'blur': 1.8},
+            {'band': (22, 35), 'scale': 8, 'cover': 0.42, 'soft': 0.35, 'light': '#fffbe8', 'shadow': '#e2efe0', 'streaks': True, 'alpha': 0.4, 'blur': 4},
+        ],
+    },
 }
 
 if __name__ == '__main__':

@@ -449,9 +449,11 @@ function skyShield(sky, built, world) {
     ? [vivid(world.side, 0.1), shade(vivid(world.side, 0.1), 0, 0.05), shade(vivid(world.side, 0.1), 0, -0.05)]
     : space
       ? ['#' + horizon.clone().lerp(new THREE.Color(world.accent), 0.4).getHexString(), '#' + horizon.getHexString(), '#' + top.clone().lerp(new THREE.Color(world.accent), 0.25).getHexString()]
-      : night
-        ? ['#3c3852', '#47425f', '#2f2c43']
-        : ['#ffffff', '#f2f6ff', '#e6eefc'];
+      : SKYBOXES[world.id]?.sea
+        ? SKYBOXES[world.id].sea // Farbe passend zum Himmelsbild
+        : night
+          ? ['#3c3852', '#47425f', '#2f2c43']
+          : ['#ffffff', '#f2f6ff', '#e6eefc'];
   const step = 92;
   for (let x = -D; x <= D; x += step)
     for (let z = -D; z <= D; z += step) {

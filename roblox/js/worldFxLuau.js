@@ -1093,7 +1093,7 @@ end
 LAYERS.wald = function(k, w)
 	layer(k, "nah", 4, 2, { hex("#3a6a3a") }, function(cf, s, c, i) EL.mushroom(k, cf, s, c, i == 0 and hex("#d8322e") or hex("#c88a3a")) end)
 	layer(k, "mitte", 3, 5, { hex("#2f5a38"), hex("#355e40") }, function(cf, s, c) EL.trees(k, cf, s, c) end)
-	cloudBank(k, 8, hex("#e6f2ea"), 0.5, -40, 40)
+	-- Nebelschwaden malt das Himmelsbild (assets/himmel/wald)
 	layer(k, "fern", 4, 4, { hex("#3a6a6a"), hex("#4a7a7a") }, function(cf, s, c) EL.ridge(k, cf, s, c) end)
 end
 LAYERS.stadt = function(k, w)
