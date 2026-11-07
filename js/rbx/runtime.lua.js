@@ -8,6 +8,8 @@ local unpack = table.unpack
 
 -- ── Kleinkram, den Luau zusätzlich kennt ──
 function math.clamp(x, a, b) if x < a then return a elseif x > b then return b end return x end
+-- Luau kennt math.log10, Lua 5.3 nicht
+math.log10 = math.log10 or function(x) return math.log(x, 10) end
 function math.round(x) return floor(x + 0.5) end
 function math.sign(x) if x > 0 then return 1 elseif x < 0 then return -1 end return 0 end
 function math.noise(x, y, z) return (sin((x or 0) * 12.9898 + (y or 0) * 78.233 + (z or 0) * 37.719) * 0.5) end

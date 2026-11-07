@@ -441,8 +441,17 @@ local function refreshHud()
 	if w then
 		local m = MutationData.ForWeather(wid)
 		local left = (ReplicatedStorage:GetAttribute("WeatherEnds") or os.time()) - os.time()
-		ui.weatherText.Text = w.Name .. (m and (" · " .. m.Name .. " " .. m.Chance .. " %") or "") .. "  " .. mmss(left)
-		ui.weatherStroke.Color = w.Color
+		local nextW = MutationData.WeatherById[ReplicatedStorage:GetAttribute("WeatherNext") or ""]
+		local nextLeft = (ReplicatedStorage:GetAttribute("WeatherNextAt") or 0) - os.time()
+		local r = w.Rarity and MutationData.WeatherRarityById[w.Rarity]
+		if wid == "klar" and nextW and nextLeft > 0 and nextLeft <= (MutationData.WeatherWarn or 60) then
+			-- Vorwarnung: das nächste Wetter zieht auf
+			ui.weatherText.Text = "⚠ " .. nextW.Name .. " zieht auf  " .. mmss(nextLeft)
+			ui.weatherStroke.Color = (os.time() % 2 == 0) and nextW.Color or C.line
+		else
+			ui.weatherText.Text = w.Name .. (r and (" (" .. r.Name .. ")") or "") .. (m and (" · " .. m.Name .. " " .. m.Chance .. " %") or "") .. "  " .. mmss(left)
+			ui.weatherStroke.Color = r and r.Color or w.Color
+		end
 	end
 	-- aktive Boosts: Zeilen bleiben stehen, nur die Zeit ändert sich
 	ui.boostRows = ui.boostRows or {}
@@ -2319,13 +2328,7 @@ end
 local function defaultQuery(kind, arg)
 	if kind == "forecast" then
 		local Gacha = require(root:WaitForChild("Gacha"))
-		local out, d, t = {}, MutationData.WeatherDuration, os.time()
-		for i = 0, 8 do
-			local w, left = Gacha.CurrentWeather(t + i * d)
-			local ends = t + i * d + left
-			table.insert(out, { Id = w.Id, Starts = ends - d, Ends = ends })
-		end
-		return out
+		return Gacha.Forecast(9, os.time())
 	end
 	local remote = root:FindFirstChild("PlayerRemote")
 	if remote then return remote:InvokeServer(kind, arg) end

@@ -11,7 +11,7 @@ import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI, UI_THEME } from '../../roblox/js/uiLuau.js';
 import { skillDataSource, rewardDataSource } from '../../roblox/js/uiMoreLuau.js';
 import { EGGS } from '../../eier/js/eggs.js';
-import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
+import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from '../../muenzen/js/mutations.js';
 import { AURAS, RARITIES, THEMES, BONUSES } from '../../auren/js/auras.js';
 import { BOOSTS, ROBUX, pointsForLevel } from './state.js';
 import { BRANCHES, SKILLS } from './skills.js';
@@ -35,7 +35,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
   lua.call('__addModule', 'EggData', eggDataSource({ EGGS }));
   lua.call('__addModule', 'CoinData', coinDataSource({ TIERS, COINS }));
   lua.call('__addModule', 'WorldData', worldDataSource({ PLANETS, WORLDS, REBIRTH }));
-  lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
+  lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
   lua.call('__addModule', 'AuraData', auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }));
   lua.call('__addModule', 'ShopData', shopDataSource({ BOOSTS, ROBUX }));
   lua.call('__addModule', 'SkillData', skillDataSource({ BRANCHES, SKILLS, pointsForLevel }));
@@ -136,12 +136,18 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
     setAttr(name, value) {
       lua.call('__setAttr', name, value);
     },
-    setWeather(id, endsMs) {
+    setWeather(id, endsMs, nextId = '', nextAtMs = 0) {
+      lua.call('__setRSAttr', 'WeatherNext', nextId);
+      lua.call('__setRSAttr', 'WeatherNextAt', Math.round(nextAtMs / 1000));
       lua.call('__setRSAttr', 'WeatherEnds', Math.round(endsMs / 1000));
       lua.call('__setRSAttr', 'Weather', id);
     },
     announce(id) {
       lua.run(`__WeatherFx.Announce(${q(id)}, game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))`, 'Ansage');
+    },
+    // Vorwarnung mit Countdown bis zum Beginn (WeatherFx.Warn)
+    warn(id, startsMs) {
+      lua.run(`__WeatherFx.Warn(${q(id)}, ${Math.round(startsMs / 1000)}, game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))`, 'Vorwarnung');
     },
     // Fund mit Effekten je nach Seltenheit (GameUI.Found)
     found({ coinId, mutation, count, value, xp, upgraded }) {

@@ -7,7 +7,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { RbxWorld, registerImage } from '../../js/rbx/engine.js';
 import { coinDataSource, mutationDataSource, COIN_BUILDER, MUTATION_FX } from '../../roblox/js/luau.js';
 import { TIERS, COINS, tierById } from './coins.js';
-import { MUTATIONS, WEATHER, WEATHER_MS } from './mutations.js';
+import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from './mutations.js';
 import { renderEmblem } from './emblems.js';
 import { pixelRatio } from '../../js/settings.js';
 
@@ -45,7 +45,7 @@ export function coinLua() {
   luaReady ||= (async () => {
     const lua = await createLua();
     lua.call('__addModule', 'CoinData', coinDataSource({ TIERS, COINS }));
-    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
+    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
     lua.call('__addModule', 'CoinBuilder', COIN_BUILDER);
     lua.call('__addModule', 'MutationFx', MUTATION_FX);
     lua.run(PREVIEW, 'Münz-Vorschau');

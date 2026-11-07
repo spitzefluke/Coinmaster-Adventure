@@ -4,7 +4,7 @@
 // Rückrufe (invoke), Daten für Fenster als Abfragen (query).
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { weatherAt, weatherById, mutationForWeather, forecast, WEATHER } from '../../muenzen/js/mutations.js';
+import { weatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
 import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
@@ -119,13 +119,24 @@ function sendInventory() {
 // Nur Vorschau: ein Wetter für eine Minute erzwingen (Knopf im Wetter-Fenster)
 let testWeather = null;
 function currentWeather() {
-  if (testWeather && Date.now() < testWeather.until) return { w: weatherById[testWeather.id], ends: testWeather.until };
+  if (testWeather && Date.now() < testWeather.until) return { w: weatherById[testWeather.id], starts: testWeather.until - testWeather.ms, ends: testWeather.until };
   return weatherAt();
 }
+// Nächstes Wetter (für Vorwarnung und HUD); im Test kommt erst danach wieder der Zeitplan
+function upcoming() {
+  return nextWeather(testWeather && Date.now() < testWeather.until ? testWeather.until : Date.now());
+}
+let warned = 0;
 function renderWeather() {
   const { w, ends } = currentWeather();
   const m = mutationForWeather(w.id);
-  rui?.setWeather(w.id, ends);
+  const next = upcoming();
+  rui?.setWeather(w.id, ends, next ? next.w.id : '', next ? next.starts : 0);
+  // eine Minute vorher kündigt sich das nächste Wetter an
+  if (next && w.id === 'klar' && next.starts - Date.now() <= WEATHER_WARN * 1000 && warned !== next.starts) {
+    warned = next.starts;
+    rui?.warn(next.w.id, next.starts);
+  }
   $('world').dataset.weather = w.id;
   worldBg.setWeather(w.id);
   if (lastWeather && lastWeather !== w.id) announceWeather(w);
@@ -514,7 +525,7 @@ function invoke(action, a, b) {
   if (action === 'testWeather') {
     const list = WEATHER.filter((w) => w.id !== 'klar' && w.id !== currentWeather().w.id);
     const w = list[Math.floor(Math.random() * list.length)];
-    testWeather = { id: w.id, until: Date.now() + 60000 };
+    testWeather = { id: w.id, until: Date.now() + 60000, ms: 60000 };
     renderWeather();
     return [true, `Test: ${w.name} für eine Minute`];
   }
@@ -525,8 +536,8 @@ function invoke(action, a, b) {
 function query(kind, arg) {
   if (kind === 'forecast') {
     const now = currentWeather();
-    const rest = forecast(9).slice(1).filter((f) => f.starts >= now.ends - 1);
-    return [{ w: now.w, starts: now.ends - 60000, ends: now.ends }, ...rest].map((f) => ({ Id: f.w.id, Starts: Math.round(f.starts / 1000), Ends: Math.round(f.ends / 1000) }));
+    const rest = forecast(10, now.ends).filter((f) => f.ends > now.ends);
+    return [now, ...rest].slice(0, 9).map((f) => ({ Id: f.w.id, Starts: Math.round(f.starts / 1000), Ends: Math.round(f.ends / 1000) }));
   }
   if (kind === 'board') {
     const { top, me, place } = board(state, arg);

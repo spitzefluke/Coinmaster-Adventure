@@ -653,19 +653,34 @@ do
 			toolButton(w.tools, "Test: Wetter", 1, true, function() result(options.Invoke("testWeather"), nil, C.blue) end)
 		end
 		local bonus = SkillData.Effect(levels(), "wetter")
+		-- Anteil an der Zeit: Wetter = Chance im Block × Dauer / Block, klar = der Rest
+		local total = 0
+		for _, x in ipairs(MutationData.Weather) do total = total + x.Weight end
+		local function share(x)
+			if x.Id ~= "klar" then return x.Weight / total * (x.Duration or 0) / MutationData.WeatherBlock end
+			local rest = 1
+			for _, y in ipairs(MutationData.Weather) do
+				if y.Id ~= "klar" then rest = rest - y.Weight / total * (y.Duration or 0) / MutationData.WeatherBlock end
+			end
+			return rest
+		end
+		local function pct(x)
+			local p = share(x) * 100
+			if p >= 10 then return tostring(math.floor(p + 0.5)) end
+			return (string.format(p < 1 and "%.2f" or "%.1f", p):gsub("%.", ","))
+		end
 		if w.tab == "alle" then
-			local total = 0
-			for _, x in ipairs(MutationData.Weather) do total = total + x.Weight end
 			local grid = scroller(w, w.body, "Alle", { Size = UDim2.new(1, 8, 1, 0) }, {
 				new("UIGridLayout", { CellSize = UDim2.new(0, 214, 0, 178), CellPadding = UDim2.new(0, 10, 0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
 				new("UIPadding", { PaddingRight = UDim.new(0, 14), PaddingBottom = UDim.new(0, 10) }),
 			})
 			for i, x in ipairs(MutationData.Weather) do
 				local m = MutationData.ForWeather(x.Id)
-				local c = card(grid, x.Color)
+				local r = x.Rarity and MutationData.WeatherRarityById[x.Rarity]
+				local c = card(grid, r and r.Color or x.Color)
 				c.LayoutOrder = i
 				label({ Size = UDim2.new(1, 0, 0, 22), Text = x.Name, Font = FONT, TextSize = T.Large, TextColor3 = x.Color, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
-				label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 24), Text = math.floor(x.Weight / total * 100 + 0.5) .. " % der Zeit", TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
+				label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 24), Text = r and (string.upper(r.Name) .. " · " .. pct(x) .. " % · " .. math.floor((x.Duration or 0) / 60 + 0.5) .. " min") or (pct(x) .. " % der Zeit"), TextSize = T.Tiny, Font = MONO, TextColor3 = r and r.Color or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
 				label({ Size = UDim2.new(1, 0, 0, 46), Position = UDim2.new(0, 0, 0, 42), Text = x.Text, TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.ink, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = c })
 				label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 92), Text = m and (m.Name .. " · " .. (m.Chance + bonus) .. " % · ×" .. tostring(m.Multiplier):gsub("%.", ",")) or "Keine Mutation", TextSize = T.Small, TextColor3 = m and m.Color or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = c })
 				if m then
@@ -692,7 +707,8 @@ do
 				local time = label({ Size = UDim2.new(0, 110, 1, 0), Position = UDim2.new(0, 14, 0, 0), Text = i == 1 and ("noch " .. mmss(f.Ends - os.time())) or os.date("%H:%M", f.Starts), TextSize = T.Small, Font = MONO, TextColor3 = i == 1 and C.ink or C.muted, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 				if i == 1 then firstTime, firstEnds = time, f.Ends end
 				new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 128, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = x.Color, Parent = row }, { corner(R.Round) })
-				label({ Size = UDim2.new(1, -170, 1, 0), Position = UDim2.new(0, 156, 0, 0), Text = x.Name .. (m and ("  ·  " .. m.Name .. " " .. (m.Chance + bonus) .. " % (×" .. tostring(m.Multiplier):gsub("%.", ",") .. ")") or ""), TextSize = T.Body, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+				local r = x.Rarity and MutationData.WeatherRarityById[x.Rarity]
+				label({ Size = UDim2.new(1, -170, 1, 0), Position = UDim2.new(0, 156, 0, 0), Text = x.Name .. (r and (" (" .. r.Name .. ")") or "") .. (m and ("  ·  " .. m.Name .. " " .. (m.Chance + bonus) .. " % (×" .. tostring(m.Multiplier):gsub("%.", ",") .. ")") or ""), TextSize = T.Body, TextColor3 = r and r.Color or C.ink, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 			end
 		end
 		-- jede Sekunde nur die Zeiten
@@ -701,7 +717,7 @@ do
 			w.sub.Text = now.Name .. " · wechselt in " .. mmss(ends - os.time())
 			if firstTime then firstTime.Text = "noch " .. mmss(firstEnds - os.time()) end
 		end
-		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 1, -32), Text = "Die Vorhersage ist sicher: Das Wetter ergibt sich aus der Uhrzeit und ist für alle gleich.", TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
+		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 1, -32), Text = "Die Vorhersage ist sicher: Das Wetter ergibt sich aus der Uhrzeit und ist für alle gleich. Eine Minute vorher kündigt es sich an.", TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
 	end
 
 	-- ── Belohnungen ──

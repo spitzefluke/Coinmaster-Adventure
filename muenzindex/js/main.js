@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { TIERS, COINS, tierById, rollCoin } from '../../muenzen/js/coins.js';
 import { createRobloxCoin, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
-import { MUTATIONS, WEATHER, WEATHER_MS, weatherById, weatherAt, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { MUTATIONS, WEATHER, weatherById, weatherAt, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { Discovery } from './discovery.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -160,7 +160,7 @@ COINS.forEach((_, i) => renderSlot(i));
 renderProgress();
 
 // ── Wetter ───────────────────────────────────────────────────────────────────
-// Das Wetter wechselt alle drei Minuten. Welches Wetter gerade herrscht, ergibt sich aus der Uhrzeit,
+// Meist ist es klar; ab und zu kommt ein Wetter für ein paar Minuten. Welches gerade herrscht, ergibt sich aus der Uhrzeit,
 // damit es nach einem Neuladen gleich bleibt. Über die Test-Knöpfe lässt es sich festlegen.
 
 let manualWeather = null;
@@ -193,7 +193,7 @@ for (const w of WEATHER) {
   b.style.setProperty('--tier', w.color);
   b.textContent = w.name;
   b.addEventListener('click', () => {
-    manualWeather = { id: w.id, until: Date.now() + WEATHER_MS };
+    manualWeather = { id: w.id, until: Date.now() + (w.duration || 300) * 1000 };
     renderWeather();
   });
   weatherBtns.append(b);
