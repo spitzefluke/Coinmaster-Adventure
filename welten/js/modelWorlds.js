@@ -161,6 +161,22 @@ function undersideLights(ctx, n, { pipe = '#7a7f8a', glow = '#ffd27a' } = {}) {
   }
 }
 
+// ── Eiszapfen unter dem Inselrand: umgedrehte, durchscheinende Kegel ──
+function icicles(ctx, n, { color = '#cfeeff' } = {}) {
+  const { rr, R, root } = ctx;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < n; i++) {
+    // am äußersten Rand (vor den Felsen der Unterseite), oben am Grasrand angesetzt
+    const a = (i / n) * TAU + rr(-0.06, 0.06), r = R + rr(0.6, 1.1);
+    const len = rr(1.4, 3.8), w = rr(0.2, 0.42);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(w, len, 6), mat);
+    m.rotation.x = Math.PI;
+    m.position.set(Math.cos(a) * r, -0.5 - len / 2, Math.sin(a) * r);
+    m.userData.rbx = { sky: true };
+    root.add(m);
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -428,7 +444,10 @@ const EIS = {
   },
   backdrop(ctx) {
     mountainRing(ctx, ['mountain_A_grass_trees@eis', 'mountain_B_grass_trees@eis', 'mountain_C_grass_trees@eis', 'hills_A_trees@eis', 'hills_B_trees@eis', 'mountain_B_grass@eis']);
-    cloudRing(ctx, 6);
+    // Umgebung: schwebende Eisschollen mit verschneiten Tannen, bläuliche Felsunterseite mit Eiszapfen
+    floatingIsles(ctx, { far: 7, near: 6, tops: ['hills_A_trees@eis', 'hills_B_trees@eis', 'trees_A_medium@eis', 'mountain_B_grass@eis'], small: ['rock_single_C@eis', 'trees_A_small@eis'], rock: 'rock_single_B@eis' });
+    rockUnderside(ctx, ['rock_single_A@eis', 'rock_single_B@eis', 'rock_single_C@eis', 'rock_single_E@eis']);
+    icicles(ctx, 34);
   },
 };
 

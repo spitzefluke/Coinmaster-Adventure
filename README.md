@@ -367,13 +367,14 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Normal, Wald und Stadt.
+**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Normal, Wald, Stadt und Eis.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
 | Normal | Sommerhimmel mit Haufen- und Schleierwolken | schwebende Grasinseln mit Bäumen, Grasbrocken am Rand, Felsunterseite, weiße Wolkenwand |
 | Wald | Morgenhimmel, grünlich-golden, Nebelbänder über den Wipfeln | schwebende Waldinseln mit Tannengruppen, Felsunterseite mit hängenden Wurzeln, hellgrünes Nebelmeer |
 | Stadt | Sonnenuntergang (Gelb, Orange, Rosa, oben Violett), angestrahlte Wolken, erste Sterne | schwebende Häuserinseln, Skyline in der Ferne, Felsunterseite mit Rohren und Lampen, pfirsichfarbenes Wolkenmeer |
+| Eis | Winterhimmel zur blauen Stunde mit grünem und violettem Polarlicht, Schneedunst, erste Sterne | schwebende Eisschollen mit verschneiten Tannen, bläuliche Felsunterseite, Eiszapfen am Rand, weißes Schneenebelmeer |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle

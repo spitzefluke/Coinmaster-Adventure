@@ -1465,7 +1465,8 @@ end
 R.eis = function(k, w)
 	sun(k, -1.2, 0.3, hex("#f4fbff"), 40, hex("#d8f0ff"))
 	aurora(k, { hex("#5affb0"), hex("#7ad0ff"), hex("#b07bff") }, HELD + 1.3, 2.2, 160)
-	cloudBank(k, 7, hex("#eef8ff"), 0.2, 20, 110)
+	-- Wolken und Polarlicht malt auch das Himmelsbild (assets/himmel/eis); hier nur wenige Wolkenbänke
+	cloudBank(k, 4, hex("#eef8ff"), 0.35, 60, 120)
 	birds(k, 1, hex("#ffffff"), 2.2, hex("#e8f2ff"))
 	motes(k, { Name = "Schneeflocken", Colors = { WHITE }, Rate = 30, Size0 = 1.4, Size1 = 1.1, Speed = 3, Direction = Enum.NormalId.Bottom, Spread = 20, Acceleration = V(1, 0, 0.5), Y = 160, Size = V(520, 10, 520), Light = 0.3, Alpha = 0.15, Life = 16 })
 	grade(k, hex("#d8f0ff"), 0.04, 0.05)
