@@ -204,6 +204,19 @@ HIMMEL = {
             {'band': (22, 35), 'scale': 8, 'cover': 0.42, 'soft': 0.35, 'light': '#fffbe8', 'shadow': '#e2efe0', 'streaks': True, 'alpha': 0.4, 'blur': 4},
         ],
     },
+    # Stadt: Abendhimmel, Sonnenuntergang (Gelb-Orange am Horizont, Rosa, oben Violett), Wolken von unten
+    # orange angestrahlt, oben die ersten Sterne. Die Sonne selbst zeigt Roblox (sie darf nicht viermal im Bild sein).
+    'stadt': {
+        'seed': 37,
+        'gradient': [(-5, '#ffd9a8'), (4, '#ffc184'), (12, '#ff9c7a'), (24, '#e8789a'), (45, '#8a5aa8'), (90, '#3a2a6a')],
+        'below': [(-90, '#e8a07a'), (0, '#ffd9a8')],
+        'clouds': [
+            {'band': (3, 12), 'scale': 4, 'cover': 0.6, 'soft': 0.4, 'light': '#ffe0b8', 'shadow': '#f4b090', 'streaks': True, 'alpha': 0.7, 'blur': 5},
+            {'band': (10, 26), 'scale': 6, 'cover': 0.55, 'soft': 0.08, 'light': '#ffd090', 'shadow': '#b06a8a', 'stretch': 2.2, 'blur': 1.6},
+            {'band': (22, 35), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#ffb8a0', 'shadow': '#c88aa8', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+        'stars': 900,
+    },
 }
 
 if __name__ == '__main__':

@@ -1454,7 +1454,8 @@ end
 
 R.stadt = function(k, w)
 	sun(k, 0.2, 0.18, hex("#ffc27a"), 70, hex("#ff9a5a"))
-	cloudBank(k, 9, hex("#ffd2b0"), 0.1, 40, 170)
+	-- Wolken malt das Himmelsbild (assets/himmel/stadt); hier nur wenige, durchscheinende
+	cloudBank(k, 5, hex("#ffd2b0"), 0.35, 100, 170)
 	airship(k, hex("#d8d4e0"))
 	birds(k, 2, hex("#6a6a78"), 1.6)
 	motes(k, { Colors = { hex("#ffe6c0") }, Rate = 10, Size0 = 0.8, Speed = 0.6, Light = 0.4, Alpha = 0.5 })
