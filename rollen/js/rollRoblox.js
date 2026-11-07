@@ -45,6 +45,18 @@ function __gardenAnimate(key, t, dt)
 	local m = previews[key]
 	if m then GardenBuilder.Animate(m, t, dt) end
 end
+-- Uhrzeit für Tag und Nacht (Lighting.ClockTime, liest GardenBuilder.Animate)
+function __gardenClock(key, hours, still)
+	local L = game:GetService("Lighting")
+	L.ClockTime = hours
+	-- nur Vorschau: nachts bläuliches, gedämpftes Umgebungslicht (im Spiel macht das die Welt selbst)
+	local n = GardenBuilder.NightFactor()
+	L.OutdoorAmbient = Color3.fromRGB(128, 128, 128):Lerp(Color3.fromRGB(34, 44, 86), n)
+	L.Ambient = Color3.fromRGB(70, 70, 70):Lerp(Color3.fromRGB(18, 22, 44), n)
+	L.Brightness = 2 - n * 1.3
+	local m = previews[key]
+	if m and still then GardenBuilder.UpdateNight(m) end
+end
 -- Timer über wachsenden Bäumen: "beet,text,fortschritt;…"
 function __gardenTimers(key, list)
 	local m = previews[key]
