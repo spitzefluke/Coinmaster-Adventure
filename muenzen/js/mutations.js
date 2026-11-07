@@ -61,20 +61,32 @@ export const MUTATIONS = [
   },
 ];
 
-// weight: wie oft das Wetter vorkommt (Anteil an allen Wetterphasen)
+// Seltenheit eines Wetters: je seltener, desto stärker die Effekte und desto größer die Ansage
+export const WEATHER_RARITIES = [
+  { id: 'gewoehnlich', name: 'Gewöhnlich', color: '#c9c0ae' },
+  { id: 'ungewoehnlich', name: 'Ungewöhnlich', color: '#7fd0ff' },
+  { id: 'selten', name: 'Selten', color: '#5fd38d' },
+  { id: 'episch', name: 'Episch', color: '#b07bff' },
+  { id: 'legendaer', name: 'Legendär', color: '#ffb02e' },
+  { id: 'mythisch', name: 'Mythisch', color: '#ff5f8a' },
+];
+export const weatherRarityById = Object.fromEntries(WEATHER_RARITIES.map((r, i) => [r.id, { ...r, index: i }]));
+
+// weight: wie oft das Wetter in einem Zeitblock gewählt wird (klar = der ganze Block bleibt klar)
+// duration: Sekunden, die das Wetter anhält · intensity: Stärke der Effekte (Partikel, Licht, Nebel)
 // sky/light: Stimmung für Roblox (Lighting, im Modul WeatherFx) und die Roblox-Vorschau der Welten
 export const WEATHER = [
-  { id: 'klar', name: 'Klar', weight: 166, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
-  { id: 'regen', name: 'Regen', weight: 14, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.', sky: '#5a7590', light: 0.65 },
-  { id: 'gewitter', name: 'Gewitter', weight: 10, color: '#ffe94a', text: 'Blitze schlagen ein und laden Münzen auf.', sky: '#2a3040', light: 0.45 },
-  { id: 'erdbeben', name: 'Erdbeben', weight: 9, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.', sky: '#9a7f60', light: 0.8 },
-  { id: 'schneesturm', name: 'Schneesturm', weight: 9, color: '#9fe8ff', text: 'Eisiger Wind friert Münzen ein.', sky: '#b8d0e4', light: 0.8 },
-  { id: 'disconacht', name: 'Disconacht', weight: 8, color: '#ff5fd2', text: 'Die Münzen tanzen mit.', sky: '#1d0f3a', light: 0.35 },
-  { id: 'blutmond', name: 'Blutmond', weight: 5, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht.', sky: '#2a0505', light: 0.35 },
-  { id: 'neonsturm', name: 'Neonsturm', weight: 3.5, color: '#c6ff00', text: 'Grelle Farben überall. Bitte nicht direkt hinsehen.', sky: '#0a2a1a', light: 0.5 },
-  { id: 'goldregen', name: 'Goldregen', weight: 3, color: '#ffd23a', text: 'Es regnet pures Gold. Münzen werden golden.', sky: '#e0b050', light: 1.0 },
-  { id: 'datensturm', name: 'Datensturm', weight: 2.5, color: '#3dff7a', text: 'Das System ist kompromittiert.', sky: '#031008', light: 0.35 },
-  { id: 'sternschnuppen', name: 'Sternschnuppen', weight: 2, color: '#b07bff', text: 'Sterne fallen vom Himmel und machen Münzen kosmisch.', sky: '#0a0820', light: 0.4 },
+  { id: 'klar', name: 'Klar', weight: 93.3, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
+  { id: 'regen', name: 'Regen', rarity: 'gewoehnlich', weight: 30, duration: 360, intensity: 0.35, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.', sky: '#5a7590', light: 0.65 },
+  { id: 'gewitter', name: 'Gewitter', rarity: 'ungewoehnlich', weight: 16, duration: 300, intensity: 0.5, color: '#ffe94a', text: 'Blitze schlagen ein und laden Münzen auf.', sky: '#2a3040', light: 0.45 },
+  { id: 'erdbeben', name: 'Erdbeben', rarity: 'ungewoehnlich', weight: 13, duration: 150, intensity: 0.55, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.', sky: '#9a7f60', light: 0.8 },
+  { id: 'schneesturm', name: 'Schneesturm', rarity: 'ungewoehnlich', weight: 13, duration: 300, intensity: 0.5, color: '#9fe8ff', text: 'Eisiger Wind friert Münzen ein.', sky: '#b8d0e4', light: 0.8 },
+  { id: 'disconacht', name: 'Disconacht', rarity: 'selten', weight: 8, duration: 240, intensity: 0.7, color: '#ff5fd2', text: 'Die Münzen tanzen mit.', sky: '#1d0f3a', light: 0.35 },
+  { id: 'blutmond', name: 'Blutmond', rarity: 'selten', weight: 6, duration: 240, intensity: 0.75, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht.', sky: '#2a0505', light: 0.35 },
+  { id: 'neonsturm', name: 'Neonsturm', rarity: 'episch', weight: 3, duration: 180, intensity: 0.9, color: '#c6ff00', text: 'Grelle Farben überall. Bitte nicht direkt hinsehen.', sky: '#0a2a1a', light: 0.5 },
+  { id: 'goldregen', name: 'Goldregen', rarity: 'episch', weight: 2.5, duration: 150, intensity: 1, color: '#ffd23a', text: 'Es regnet pures Gold. Münzen werden golden.', sky: '#e0b050', light: 1.0 },
+  { id: 'datensturm', name: 'Datensturm', rarity: 'legendaer', weight: 1.2, duration: 150, intensity: 1.05, color: '#3dff7a', text: 'Das System ist kompromittiert.', sky: '#031008', light: 0.35 },
+  { id: 'sternschnuppen', name: 'Sternschnuppen', rarity: 'mythisch', weight: 0.6, duration: 120, intensity: 1.2, color: '#b07bff', text: 'Sterne fallen vom Himmel und machen Münzen kosmisch.', sky: '#0a0820', light: 0.4 },
 ];
 
 export const mutationById = Object.fromEntries(MUTATIONS.map((m) => [m.id, m]));
@@ -88,24 +100,65 @@ export function rollMutation(weatherId, random = Math.random, bonus = 0) {
   return m && random() * 100 < m.chance + bonus ? m : null;
 }
 
-// Das Wetter wechselt alle drei Minuten. Es ergibt sich aus der Uhrzeit, damit es überall
-// (Münzindex, Spiel-HUD, nach einem Neuladen) gleich ist.
-export const WEATHER_MS = 180000;
+// Zeitplan: Die Zeit ist in Blöcke von WEATHER_BLOCK Sekunden geteilt. Pro Block wird gewürfelt: meist bleibt
+// er klar, sonst kommt genau ein Wetter für seine `duration` an einer gewürfelten Stelle im Block. So ist es
+// lange und oft klar. Alles ergibt sich aus der Uhrzeit (für alle gleich, auch nach dem Neuladen). Dieselbe
+// Ganzzahl-Rechnung steht in Luau in Gacha (WeatherAt, NextWeather), damit Webseite und Spiel gleich sind.
+export const WEATHER_BLOCK = 900;
+export const WEATHER_WARN = 60; // so viele Sekunden vorher kündigt sich ein Wetter an
 const totalWeight = WEATHER.reduce((s, w) => s + w.weight, 0);
-export function weatherAt(now = Date.now()) {
-  const slot = Math.floor(now / WEATHER_MS);
-  const x = Math.sin(slot * 12.9898) * 43758.5453;
-  let roll = (x - Math.floor(x)) * totalWeight;
-  const w = WEATHER.find((w) => (roll -= w.weight) < 0) || WEATHER[0];
-  return { w, starts: slot * WEATHER_MS, ends: (slot + 1) * WEATHER_MS };
+const hashR = (block, salt) => {
+  const h1 = ((((block % 10007) + 10007) % 10007) * 7919 + salt * 104729) % 10007;
+  return ((h1 * h1 + 12345) % 10007) / 10007;
+};
+// Wetter im Block (Zeiten in ms) oder null, wenn der Block klar bleibt
+export function weatherEvent(block) {
+  let roll = hashR(block, 1) * totalWeight;
+  const w = WEATHER.find((x) => (roll -= x.weight) < 0) || WEATHER[0];
+  if (w.id === 'klar') return null;
+  const start = block * WEATHER_BLOCK + Math.floor(hashR(block, 2) * (WEATHER_BLOCK - w.duration));
+  return { w, starts: start * 1000, ends: (start + w.duration) * 1000 };
 }
-
-// Die nächsten n Wetterphasen ab jetzt (für die Vorhersage)
+// Nächstes Wetter, das nach `now` beginnt
+export function nextWeather(now = Date.now()) {
+  const b = Math.floor(now / 1000 / WEATHER_BLOCK);
+  for (let k = 0; k < 48; k++) {
+    const e = weatherEvent(b + k);
+    if (e && e.starts > now) return e;
+  }
+  return null;
+}
+// Wetter jetzt: { w, starts, ends } (klar reicht vom Ende des letzten bis zum Beginn des nächsten Wetters)
+export function weatherAt(now = Date.now()) {
+  const b = Math.floor(now / 1000 / WEATHER_BLOCK);
+  const cur = weatherEvent(b);
+  if (cur && now >= cur.starts && now < cur.ends) return cur;
+  let starts = b * WEATHER_BLOCK * 1000;
+  for (let k = 0; k < 48; k++) {
+    const e = weatherEvent(b - k);
+    if (e && e.ends <= now) {
+      starts = e.ends;
+      break;
+    }
+  }
+  const next = nextWeather(now);
+  return { w: WEATHER[0], starts, ends: next ? next.starts : (b + 1) * WEATHER_BLOCK * 1000 };
+}
+// Die nächsten n Phasen ab jetzt (klar und Wetter im Wechsel) für die Vorhersage
 export function forecast(n = 8, now = Date.now()) {
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(weatherAt(now + i * WEATHER_MS));
+  const out = [weatherAt(now)];
+  while (out.length < n) out.push(weatherAt(out[out.length - 1].ends));
   return out;
 }
+// Anteil an der Zeit (0–1): Wetter = Chance im Block × Dauer / Block, klar = der Rest
+export function weatherShare(w) {
+  if (w.id !== 'klar') return (w.weight / totalWeight) * (w.duration / WEATHER_BLOCK);
+  return 1 - WEATHER.filter((x) => x.id !== 'klar').reduce((a, x) => a + weatherShare(x), 0);
+}
+export const fmtShare = (w) => {
+  const p = weatherShare(w) * 100;
+  return `${p >= 10 ? Math.round(p) : p.toLocaleString('de-DE', { maximumFractionDigits: p < 1 ? 2 : 1 })} %`;
+};
 
 // Nennwert mit Multiplikator. '∞' bleibt unendlich.
 export function mutatedValue(value, mutation) {
