@@ -208,7 +208,7 @@ const LANDMARK = {
 };
 
 // ── Kulisse: ein Ring aus großen Formen in der Ferne (40–70 Einheiten), aus dem Wolkenmeer ragend ──
-function backdrop(ctx, kit) {
+export function backdrop(ctx, kit) {
   const { M, E, at } = kit;
   const { root, rand } = ctx;
   const id = ctx.world.id;

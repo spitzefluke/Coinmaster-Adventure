@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { MODELS } from './modelCatalog.js';
+import { backdrop as planet1Backdrop } from './planet1.js';
 
 const TAU = Math.PI * 2;
 const HIDDEN = new THREE.MeshBasicMaterial({ visible: false });
@@ -129,6 +130,37 @@ function hangingRoots(ctx, n, { color = '#6b4a2e', tip = '#4f3a26' } = {}) {
   }
 }
 
+// ── Lichter und Rohre unter einer Insel (Stadt): Leitungen hängen aus dem Fels, an den Enden leuchten Lampen ──
+function undersideLights(ctx, n, { pipe = '#7a7f8a', glow = '#ffd27a' } = {}) {
+  const { rand, rr, R, root } = ctx;
+  const pm = new THREE.MeshStandardMaterial({ color: pipe, metalness: 0.6, roughness: 0.4 });
+  const lm = new THREE.MeshStandardMaterial({ color: glow, emissive: glow, emissiveIntensity: 1.6 });
+  const add = (m) => {
+    m.userData.rbx = { sky: true };
+    root.add(m);
+  };
+  for (let i = 0; i < n; i++) {
+    // Lampen hängen unter den Felsspitzen der äußeren Ringe (Felskegel siehe rockUnderside)
+    const a = (i / n) * TAU + rr(-0.1, 0.1), r = rr(R * 0.45, R * 0.8);
+    const y0 = -3 - (1 - r / R) * 10, len = rr(4, 7);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, len, 8), pm);
+    p.position.set(x, y0 - len / 2, z);
+    add(p);
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), lm);
+    l.position.set(x, y0 - len - 0.25, z);
+    add(l);
+    if (rand() < 0.4) {
+      // waagrechtes Stück zum Nachbarrohr
+      const h = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 8), pm);
+      h.rotation.z = Math.PI / 2;
+      h.rotation.y = -a;
+      h.position.set(x, y0 - len * 0.4, z);
+      add(h);
+    }
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -143,11 +175,11 @@ function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   root.add(rk);
 }
 // Inselchen in mittlerer Entfernung und kleine Brocken direkt am Inselrand
-function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees', 'hills_B_trees', 'hill_single_C'], small = ['hill_single_A', 'hill_single_C'], rock = 'rock_single_D' } = {}) {
+function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees', 'hills_B_trees', 'hill_single_C'], small = ['hill_single_A', 'hill_single_C'], rock = 'rock_single_D', farW = [5, 9], farR = [12, 28] } = {}) {
   const { rand, rr, R } = ctx;
   for (let i = 0; i < far; i++) {
-    const a = (i / far) * TAU + rr(-0.25, 0.25), r = rr(R + 12, R + 28);
-    floatingIsle(ctx, Math.cos(a) * r, rr(-4, 7), Math.sin(a) * r, rr(5, 9), pick(rand, tops), rock);
+    const a = (i / far) * TAU + rr(-0.25, 0.25), r = rr(R + farR[0], R + farR[1]);
+    floatingIsle(ctx, Math.cos(a) * r, rr(-4, 7), Math.sin(a) * r, rr(farW[0], farW[1]), pick(rand, tops), rock);
   }
   for (let i = 0; i < near; i++) {
     const a = rand() * TAU, r = rr(R + 2.5, R + 6.5);
@@ -368,6 +400,13 @@ const STADT = {
     place(ctx, 'city_watertower', 3.2, { rMin: 4, rMax: R - 2 });
     scatterModels(ctx, 6, ['tree_single_B', 'tree_single_A'], 2.2, 2.8, { gap: 0.8 });
   },
+  backdrop(ctx, kit) {
+    planet1Backdrop(ctx, kit); // Skyline mit Warnlichtern in der Ferne
+    // Umgebung: schwebende Häuserinseln, Felsunterseite mit Rohren und Lampen (Wolken malt das Himmelsbild)
+    floatingIsles(ctx, { far: 6, near: 5, tops: ['city_building_C', 'city_building_D', 'city_building_G', 'city_building_H', 'city_building_E'], small: ['hill_single_A', 'hill_single_C'], farW: [3.2, 4.6], farR: [18, 32] });
+    rockUnderside(ctx, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_E']);
+    undersideLights(ctx, 16);
+  }
 };
 
 // ── Eis: verschneiter Tannenwald, Wachturm, Zeltlager mit Laternen ──
