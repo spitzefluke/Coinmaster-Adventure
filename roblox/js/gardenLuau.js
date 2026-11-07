@@ -730,130 +730,252 @@ function CROWNS.spruce(m, t, leaf, h)
 	return Vector3.new(0, h + 1.4, 0), 1.9, 0
 end
 
+-- Zylinder zwischen zwei Punkten (für Äste, Wurzeln, Stammstücke)
+local function limb(m, name, a, b, dia, color, material)
+	local mid = (a + b) / 2
+	return part("Part", { Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new((b - a).Magnitude + dia * 0.3, dia, dia), CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.rad(90), 0), Color = color, Material = material or Enum.Material.Wood }, m)
+end
+
 local function trunk(m, t, h, w, bend)
 	if bend then
-		-- Palme: gebogener Stamm aus Stücken
+		-- Palme: gebogener Stamm aus Stücken, dazwischen dunkle Ringe
 		local pos = Vector3.new(0, 0, 0)
-		for i = 1, 5 do
-			local x = 0.9 * (i / 5) ^ 2
-			local y = h * i / 5
-			local mid = Vector3.new((pos.X + x) / 2, (pos.Y + y) / 2, 0)
-			local len = (Vector3.new(x, y, 0) - pos).Magnitude
-			local angle = math.atan((x - pos.X) / (y - pos.Y))
-			part("Part", { Name = i == 5 and "Stamm" or "StammTeil", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len + 0.1, w * (1 - i * 0.08), w * (1 - i * 0.08)), CFrame = CFrame.new(mid) * CFrame.Angles(0, 0, -angle) * UP, Color = i % 2 == 0 and t.Trunk or t.Trunk:Lerp(Color3.new(0, 0, 0), 0.2), Material = Enum.Material.Wood }, m)
+		for i = 1, 6 do
+			local x = 0.9 * (i / 6) ^ 2
+			local y = h * i / 6
+			local d = w * (1 - i * 0.07)
+			limb(m, i == 6 and "Stamm" or "StammTeil", pos, Vector3.new(x, y, 0), d, i % 2 == 0 and t.Trunk or t.Trunk:Lerp(Color3.new(0, 0, 0), 0.15))
+			part("Part", { Name = "Ring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, d * 1.12, d * 1.12), CFrame = CFrame.new(Vector3.new(x, y, 0)) * CFrame.Angles(0, 0, math.rad(90) - math.atan(1.8 * (i / 6) * 0.9 / (h / 6) * 0.5)), Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.35), Material = Enum.Material.Wood }, m)
 			pos = Vector3.new(x, y, 0)
 		end
 		return
 	end
-	-- Stamm in zwei Stücken: unten dicker, oben schlanker
-	part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.55, w * 1.08, w * 1.08), CFrame = CFrame.new(0, h * 0.275, 0) * UP, Color = t.Trunk, Material = Enum.Material.Wood }, m)
-	part("Part", { Name = "StammOben", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h * 0.5, w * 0.86, w * 0.86), CFrame = CFrame.new(0, h * 0.75, 0) * UP, Color = t.Trunk:Lerp(Color3.new(1, 1, 1), 0.06), Material = Enum.Material.Wood }, m)
-	-- Rindenstreifen
 	local bark = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.28)
+	-- Stamm in vier Stücken, nach oben schlanker und leicht geschwungen, Knoten an den Übergängen
+	local prev = Vector3.new(0, 0, 0)
+	for i = 1, 4 do
+		local y = h * i / 4
+		local nextPos = Vector3.new(math.sin(i * 1.7) * w * 0.07, y, math.cos(i * 1.3) * w * 0.05)
+		local d = w * (1.16 - i * 0.1)
+		limb(m, i == 1 and "Stamm" or "StammOben", prev, nextPos, d, t.Trunk:Lerp(Color3.new(1, 1, 1), (i - 1) * 0.025))
+		ball(m, "StammOben", d * 0.98, nextPos, t.Trunk:Lerp(Color3.new(1, 1, 1), i * 0.025), Enum.Material.Wood)
+		prev = nextPos
+	end
+	-- Fuß: breiter Ansatz
+	part("Part", { Name = "Stamm", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, w * 1.45, w * 1.45), CFrame = CFrame.new(0, 0.12, 0) * UP, Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.08), Material = Enum.Material.Wood }, m)
+	-- Rinde: zehn Rippen in hell und dunkel
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2 + 0.2
+		local r = w * (0.5 - (i % 3) * 0.015)
+		local len = h * (0.35 + ((i * 0.37) % 1) * 0.35)
+		local c = i % 2 == 0 and bark or t.Trunk:Lerp(Color3.new(1, 1, 1), 0.08)
+		part("Part", { Name = "Rinde", Size = Vector3.new(w * 0.11, len, 0.06), CFrame = CFrame.new(math.cos(a) * r, 0.15 + len / 2 + (i % 3) * 0.12, math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = c, Material = Enum.Material.Wood }, m)
+	end
+	-- Astloch mit hellem Rand
+	if h > 2 then
+		local a = 1.1
+		local cf = CFrame.new(math.cos(a) * w * 0.47, h * 0.48, math.sin(a) * w * 0.47) * CFrame.Angles(0, -a + math.pi / 2, 0)
+		ellipsoid(m, "Astloch", Vector3.new(w * 0.42, w * 0.52, 0.16), cf, t.Trunk:Lerp(Color3.new(1, 1, 1), 0.18), Enum.Material.Wood)
+		ellipsoid(m, "Astloch", Vector3.new(w * 0.26, w * 0.36, 0.2), cf * CFrame.new(0, 0, -0.04), Color3.fromRGB(28, 18, 12), Enum.Material.SmoothPlastic)
+	end
+	-- Moos an der Wetterseite
 	for i = 0, 4 do
-		local a = i / 5 * math.pi * 2 + 0.4
-		local r = w * (i % 2 == 0 and 0.54 or 0.44)
-		part("Part", { Name = "Rinde", Size = Vector3.new(w * 0.14, h * (i % 2 == 0 and 0.5 or 0.35), 0.05), CFrame = CFrame.new(math.cos(a) * r, h * (0.3 + (i % 3) * 0.12), math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = bark, Material = Enum.Material.Wood }, m)
+		local a = 3.6 + i * 0.32
+		ellipsoid(m, "Moos", Vector3.new(w * 0.4, w * (0.24 + (i % 2) * 0.1), 0.16), CFrame.new(math.cos(a) * w * 0.52, 0.22 + (i % 3) * 0.22, math.sin(a) * w * 0.52) * CFrame.Angles(0, -a + math.pi / 2, 0), Color3.fromRGB(88 + i * 6, 136, 54), Enum.Material.Grass)
 	end
 	-- Birke: weiße Rinde mit schwarzen Querstreifen
 	if t.Crown == "oval" then
-		for i = 0, 7 do
+		for i = 0, 9 do
 			local a = i * 2.1
-			part("Part", { Name = "Birkenstreif", Size = Vector3.new(w * 0.42, 0.09, 0.05), CFrame = CFrame.new(math.cos(a) * w * 0.47, h * (0.12 + i * 0.1), math.sin(a) * w * 0.47) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = Color3.fromRGB(40, 38, 42), Material = Enum.Material.SmoothPlastic }, m)
+			part("Part", { Name = "Birkenstreif", Size = Vector3.new(w * 0.42, 0.09, 0.05), CFrame = CFrame.new(math.cos(a) * w * 0.47, h * (0.1 + i * 0.085), math.sin(a) * w * 0.47) * CFrame.Angles(0, -a + math.pi / 2, 0), Color = Color3.fromRGB(40, 38, 42), Material = Enum.Material.SmoothPlastic }, m)
 		end
 	end
-	-- Wurzeln: schräg aus der Erde, zur Spitze dünner
-	for i = 0, 4 do
-		local a = i / 5 * math.pi * 2 + 0.2
-		local len = w * (1.1 + (i % 2) * 0.4)
-		part("Part", { Name = "Wurzel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len, w * 0.34, w * 0.34), CFrame = CFrame.new(math.cos(a) * w * 0.62, 0.16, math.sin(a) * w * 0.62) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.rad(-24)), Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.12), Material = Enum.Material.Wood }, m)
-		part("Part", { Name = "Wurzel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len * 0.7, w * 0.2, w * 0.2), CFrame = CFrame.new(math.cos(a) * (w * 0.62 + len * 0.55), 0.04, math.sin(a) * (w * 0.62 + len * 0.55)) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, math.rad(-8)), Color = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.18), Material = Enum.Material.Wood }, m)
+	-- Wurzeln: sieben, je drei Stücke, die sich in die Erde krümmen und dünner werden
+	local root = t.Trunk:Lerp(Color3.new(0, 0, 0), 0.14)
+	for i = 0, 6 do
+		local a = i / 7 * math.pi * 2 + 0.3
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local len = w * (1.1 + (i % 3) * 0.3)
+		local p0 = dir * w * 0.42 + Vector3.new(0, 0.45, 0)
+		local p1 = dir * (w * 0.42 + len * 0.45) + Vector3.new(0, 0.18, 0) + Vector3.new(-dir.Z, 0, dir.X) * 0.1
+		local p2 = dir * (w * 0.42 + len * 0.8) + Vector3.new(0, 0.05, 0) - Vector3.new(-dir.Z, 0, dir.X) * 0.08
+		local p3 = dir * (w * 0.42 + len * 1.05) + Vector3.new(0, -0.05, 0)
+		limb(m, "Wurzel", p0, p1, w * 0.36, root)
+		ball(m, "Wurzel", w * 0.33, p1, root, Enum.Material.Wood)
+		limb(m, "Wurzel", p1, p2, w * 0.24, root:Lerp(Color3.new(0, 0, 0), 0.05))
+		limb(m, "Wurzel", p2, p3, w * 0.13, root:Lerp(Color3.new(0, 0, 0), 0.1))
 	end
 end
 
--- Ast zwischen zwei Punkten (Zylinder entlang der Verbindung)
+-- Ast zwischen zwei Punkten, mit Knoten am Ende (weiche Übergänge)
 local function branch(m, t, a, b, dia)
-	local mid = (a + b) / 2
-	part("Part", { Name = "Ast", Shape = Enum.PartType.Cylinder, Size = Vector3.new((b - a).Magnitude, dia, dia), CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.rad(90), 0), Color = t.Trunk, Material = Enum.Material.Wood }, m)
+	limb(m, "Ast", a, b, dia, t.Trunk)
+	ball(m, "Ast", dia * 0.95, b, t.Trunk, Enum.Material.Wood)
 end
 
--- Low-Poly-Laub: facettierte Büschel auf der Krone, oben heller, unten dunkler; Kronen-Kugeln schattiert
-local LEAFY = { round = 14, bush = 9, oval = 11, blossom = 12, cone = 8, cloud = 10, angel = 10, weeping = 8, oak = 18, maple = 8 }
+-- Laubfarbe mit Abwandlung: k > 0 sonniger (gelblicher, heller), k < 0 schattiger (bläulich, dunkler)
+local function leafTone(c, k)
+	if k >= 0 then
+		return c:Lerp(Color3.fromRGB(255, 246, 170), k)
+	end
+	return c:Lerp(Color3.fromRGB(16, 40, 34), -k)
+end
+
+-- Krone in drei Lagen: dunkler Kern füllt Lücken, facettierte Büschel außen, helle Spitzen oben,
+-- einzelne Blätter am Rand brechen die Silhouette auf. Seltenere Bäume bekommen mehr Laub.
+local LEAFY = { round = 14, bush = 9, oval = 11, blossom = 12, cone = 6, cloud = 10, angel = 10, weeping = 8, oak = 18, maple = 8, spruce = 5 }
 local function foliage(m, t, leaf, center, radius)
-	local count = LEAFY[t.Crown]
-	if not count then return end
-	if t.Big then count = count + 4 end
+	local base = LEAFY[t.Crown]
+	if not base then return end
+	local rank = GardenData.RarityById[t.Rarity].Index
+	local count = math.floor(base * 2.2 + rank * 2 + (t.Big and 6 or 0))
 	for _, p in ipairs(m:GetChildren()) do
 		if p:IsA("BasePart") and p.Name == "Crown" then
 			local dy = p.Position.Y - center.Y
-			p.Color = dy < -0.2 and t.Leaf:Lerp(Color3.new(0, 0, 0), 0.16) or (dy > 0.4 and t.Leaf:Lerp(Color3.new(1, 1, 1), 0.08) or t.Leaf)
+			p.Color = dy < -0.2 and leafTone(t.Leaf, -0.18) or (dy > 0.4 and leafTone(t.Leaf, 0.08) or t.Leaf)
 		end
 	end
 	local rng = Random.new(#t.Id * 7 + count)
+	local cone = t.Crown == "cone" or t.Crown == "spruce"
+	local function dirAt(i, phiMin, phiMax)
+		local a = i * 2.39996 + rng:NextNumber(-0.35, 0.35)
+		local phi = rng:NextNumber(phiMin, phiMax) -- 0 = oben, π/2 = seitlich
+		return Vector3.new(math.cos(a) * math.sin(phi), math.cos(phi), math.sin(a) * math.sin(phi))
+	end
+	-- 1) Kern: große, dunkle Kugeln knapp unter der Oberfläche
+	if not cone then
+		for i = 1, math.floor(count * 0.35) do
+			local dir = dirAt(i, 0.5, 2)
+			local size = rng:NextNumber(1, 1.5) * (t.Big and 1.2 or 1)
+			ellipsoid(m, "Laub", Vector3.new(size, size * 0.8, size), CFrame.new(center + dir * radius * 0.72), leafTone(t.Leaf, -rng:NextNumber(0.18, 0.3)), leaf)
+		end
+	end
+	-- 2) Außen: facettierte Büschel, oben sonnig, unten schattig
 	for i = 1, count do
-		local a = i * 2.39996 + rng:NextNumber(-0.3, 0.3)
-		local phi = rng:NextNumber(0.15, 1.45) -- 0 = oben, π/2 = seitlich
-		local dir = Vector3.new(math.cos(a) * math.sin(phi), math.cos(phi), math.sin(a) * math.sin(phi))
+		local dir = dirAt(i, 0.12, cone and 1.7 or 1.75)
 		local up = dir.Y
-		local shadeK = up > 0.5 and rng:NextNumber(0.1, 0.26) or rng:NextNumber(-0.22, 0.05)
-		local c = shadeK >= 0 and t.Leaf:Lerp(Color3.new(1, 1, 1), shadeK) or t.Leaf:Lerp(Color3.new(0, 0, 0), -shadeK)
-		local size = rng:NextNumber(0.55, 0.95) * (t.Big and 1.25 or 1)
-		part("Part", { Name = "Laub", Size = Vector3.new(size, size * 0.8, size), CFrame = CFrame.new(center + dir * radius * 0.92) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)), Color = c, Material = leaf }, m)
+		local k = up > 0.45 and rng:NextNumber(0.06, 0.24) or (up < -0.1 and -rng:NextNumber(0.12, 0.28) or rng:NextNumber(-0.1, 0.1))
+		local size = rng:NextNumber(0.5, 0.95) * (t.Big and 1.25 or 1)
+		local pos = cone and Vector3.new(center.X + dir.X * radius * (1.2 - math.max(0, up) * 0.8), center.Y + up * radius * 1.6, center.Z + dir.Z * radius * (1.2 - math.max(0, up) * 0.8)) or (center + dir * radius * 0.94)
+		part("Part", { Name = "Laub", Size = Vector3.new(size, size * 0.78, size), CFrame = CFrame.new(pos) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)), Color = leafTone(t.Leaf, k), Material = leaf }, m)
+	end
+	-- 3) Helle Spitzen oben (leuchten bei seltenen Bäumen nachts)
+	for i = 1, math.floor(count * 0.3) do
+		local dir = dirAt(i, 0, 0.7)
+		local size = rng:NextNumber(0.35, 0.6)
+		local p = part("Part", { Name = "Laub", Size = Vector3.new(size, size * 0.7, size), CFrame = CFrame.new(center + dir * radius * (cone and 1.1 or 1.02) + Vector3.new(0, cone and radius * 0.6 or 0, 0)) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)), Color = leafTone(t.Leaf, rng:NextNumber(0.22, 0.36)), Material = leaf }, m)
+		p:SetAttribute("Spitze", true)
+	end
+	-- 4) Einzelne Blätter am Rand, schräg abstehend
+	if not cone then
+		for i = 1, math.floor(count * 0.45) do
+			local dir = dirAt(i, 0.6, 1.9)
+			local pos = center + dir * radius * 1.08
+			ellipsoid(m, "Laub", Vector3.new(0.46, 0.07, 0.28), CFrame.lookAt(pos, pos + dir) * CFrame.Angles(rng:NextNumber(-0.6, 0.6), 0, rng:NextNumber(0, 6)), leafTone(t.Leaf, rng:NextNumber(-0.1, 0.2)), leaf)
+		end
 	end
 end
 
--- Frucht an einem Stiel (Form aus tree.FruitShape); reife leuchten, goldene Bäume tragen Gold
+-- Frucht an einem Stiel (Form aus tree.FruitShape); reife leuchten und pulsieren, goldene Bäume tragen Gold.
+-- Jede Frucht hat einen Glanzpunkt, Stiel und meist ein Blättchen. Die Hauptteile heißen „Frucht“.
 local GOLD = Color3.fromRGB(255, 208, 64)
+local LEAF_GREEN = Color3.fromRGB(96, 168, 64)
+local STEM = Color3.fromRGB(110, 76, 40)
+local function shine(m, pos, size)
+	local p = ball(m, "Glanz", size, pos, Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 0.45)
+	return p
+end
+local function fruitLeaf(m, pos, a)
+	ellipsoid(m, "Fruchtblatt", Vector3.new(0.32, 0.05, 0.17), CFrame.new(pos) * CFrame.Angles(0, a or 0, math.rad(-28)) * CFrame.new(0.13, 0, 0), LEAF_GREEN)
+end
 local FRUITS = {}
 function FRUITS.apple(m, pos, col, mat)
-	ball(m, "Frucht", 0.62, pos, col, mat)
-	ellipsoid(m, "Fruchtblatt", Vector3.new(0.28, 0.06, 0.16), CFrame.new(pos + Vector3.new(0.12, 0.33, 0)) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(90, 160, 60))
+	ball(m, "Frucht", 0.64, pos, col, mat)
+	ball(m, "Frucht", 0.5, pos + Vector3.new(0, -0.14, 0), col:Lerp(Color3.new(0, 0, 0), 0.08), mat)
+	part("Part", { Name = "Fruchtgrube", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.04, 0.2, 0.2), CFrame = CFrame.new(pos + Vector3.new(0, 0.31, 0)) * UP, Color = col:Lerp(Color3.new(0, 0, 0), 0.35), Material = Enum.Material.SmoothPlastic }, m)
+	part("Part", { Name = "Stiel", Size = Vector3.new(0.05, 0.22, 0.05), CFrame = CFrame.new(pos + Vector3.new(0.02, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(-12)), Color = STEM, Material = Enum.Material.Wood }, m)
+	fruitLeaf(m, pos + Vector3.new(0.04, 0.44, 0), 0.4)
+	shine(m, pos + Vector3.new(-0.15, 0.14, -0.2), 0.14)
 end
 function FRUITS.pear(m, pos, col, mat)
-	ellipsoid(m, "Frucht", Vector3.new(0.5, 0.56, 0.5), CFrame.new(pos + Vector3.new(0, -0.08, 0)), col, mat)
-	ball(m, "Frucht", 0.34, pos + Vector3.new(0, 0.22, 0), col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.54, 0.6, 0.54), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat)
+	ellipsoid(m, "Frucht", Vector3.new(0.36, 0.42, 0.36), CFrame.new(pos + Vector3.new(0, 0.2, 0)), col:Lerp(Color3.new(1, 1, 1), 0.06), mat)
+	part("Part", { Name = "Stiel", Size = Vector3.new(0.05, 0.24, 0.05), CFrame = CFrame.new(pos + Vector3.new(0.03, 0.48, 0)) * CFrame.Angles(0, 0, math.rad(-18)), Color = STEM, Material = Enum.Material.Wood }, m)
+	fruitLeaf(m, pos + Vector3.new(0.05, 0.52, 0), 1.2)
+	shine(m, pos + Vector3.new(-0.13, 0.02, -0.2), 0.12)
 end
 function FRUITS.berry(m, pos, col, mat)
-	for k = 0, 2 do
-		local a = k * 2.1
-		ball(m, "Frucht", 0.3, pos + Vector3.new(math.cos(a) * 0.14, -0.05 * k, math.sin(a) * 0.14), col, mat)
+	for k = 0, 5 do
+		local a = k * 1.25
+		local r = k == 5 and 0 or 0.16
+		local b = ball(m, "Frucht", 0.28 - (k % 2) * 0.03, pos + Vector3.new(math.cos(a) * r, -0.06 * (k % 3) - (k == 5 and 0.18 or 0), math.sin(a) * r), col:Lerp(Color3.new(0, 0, 0), (k % 3) * 0.06), mat)
+		b.Reflectance = 0.15
 	end
+	for k = 0, 2 do
+		fruitLeaf(m, pos + Vector3.new(0, 0.16, 0), k * 2.1)
+	end
+	shine(m, pos + Vector3.new(-0.1, 0.06, -0.15), 0.08)
 end
 function FRUITS.cone(m, pos, col, mat)
-	ellipsoid(m, "Frucht", Vector3.new(0.4, 0.72, 0.4), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat)
-	for k = 0, 2 do
-		part("Part", { Name = "Schuppe", Size = Vector3.new(0.44, 0.06, 0.44), CFrame = CFrame.new(pos + Vector3.new(0, -0.3 + k * 0.2, 0)) * CFrame.Angles(0, math.rad(45 * k), 0), Color = col:Lerp(Color3.new(0, 0, 0), 0.25), Material = mat }, m)
+	ellipsoid(m, "Frucht", Vector3.new(0.4, 0.74, 0.4), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat)
+	for k = 0, 4 do
+		local w = 0.48 - math.abs(k - 1.5) * 0.08
+		part("Part", { Name = "Schuppe", Size = Vector3.new(w, 0.07, w), CFrame = CFrame.new(pos + Vector3.new(0, -0.38 + k * 0.15, 0)) * CFrame.Angles(math.rad(8), math.rad(45 * k + 20), 0), Color = col:Lerp(Color3.new(0, 0, 0), 0.22 + (k % 2) * 0.1), Material = mat }, m)
 	end
+	part("Part", { Name = "Stiel", Size = Vector3.new(0.06, 0.2, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.34, 0)), Color = STEM, Material = Enum.Material.Wood }, m)
 end
 function FRUITS.acorn(m, pos, col, mat)
-	ellipsoid(m, "Frucht", Vector3.new(0.42, 0.52, 0.42), CFrame.new(pos + Vector3.new(0, -0.08, 0)), col, mat)
-	part("Part", { Name = "Huetchen", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.18, 0.5, 0.5), CFrame = CFrame.new(pos + Vector3.new(0, 0.16, 0)) * UP, Color = Color3.fromRGB(120, 82, 44), Material = Enum.Material.Wood }, m)
+	ellipsoid(m, "Frucht", Vector3.new(0.42, 0.56, 0.42), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat)
+	ball(m, "Frucht", 0.08, pos + Vector3.new(0, -0.39, 0), col:Lerp(Color3.new(0, 0, 0), 0.3), mat)
+	ellipsoid(m, "Huetchen", Vector3.new(0.52, 0.26, 0.52), CFrame.new(pos + Vector3.new(0, 0.15, 0)), Color3.fromRGB(122, 84, 46), Enum.Material.Wood)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		ball(m, "Huetchen", 0.1, pos + Vector3.new(math.cos(a) * 0.21, 0.1, math.sin(a) * 0.21), Color3.fromRGB(100, 68, 36), Enum.Material.Wood)
+	end
+	part("Part", { Name = "Stiel", Size = Vector3.new(0.06, 0.16, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.32, 0)), Color = STEM, Material = Enum.Material.Wood }, m)
+	shine(m, pos + Vector3.new(-0.1, -0.08, -0.16), 0.09)
 end
 function FRUITS.cherry(m, pos, col, mat)
 	for _, side in ipairs({ -1, 1 }) do
-		ball(m, "Frucht", 0.36, pos + Vector3.new(side * 0.18, -0.12, 0), col, mat)
-		part("Part", { Name = "Stiel", Size = Vector3.new(0.04, 0.4, 0.04), CFrame = CFrame.new(pos + Vector3.new(side * 0.09, 0.14, 0)) * CFrame.Angles(0, 0, side * math.rad(-25)), Color = Color3.fromRGB(110, 80, 40), Material = Enum.Material.Wood }, m)
+		local c = pos + Vector3.new(side * 0.2, -0.16 + side * 0.04, 0)
+		ball(m, "Frucht", 0.38, c, col, mat)
+		shine(m, c + Vector3.new(-0.08, 0.08, -0.12), 0.08)
+		limb(m, "Stiel", c + Vector3.new(0, 0.17, 0), pos + Vector3.new(0, 0.32, 0), 0.04, STEM)
 	end
+	fruitLeaf(m, pos + Vector3.new(0, 0.32, 0), 2)
 end
 function FRUITS.drop(m, pos, col, mat)
-	ellipsoid(m, "Frucht", Vector3.new(0.42, 0.62, 0.42), CFrame.new(pos + Vector3.new(0, -0.1, 0)), col, mat == Enum.Material.Neon and mat or Enum.Material.Glass)
-	part("Part", { Name = "Frucht", Size = Vector3.new(0.22, 0.22, 0.22), CFrame = CFrame.new(pos + Vector3.new(0, 0.16, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(45)), Color = col, Material = Enum.Material.Glass }, m)
+	local glass = mat == Enum.Material.Neon and mat or Enum.Material.Glass
+	part("Part", { Name = "Frucht", Size = Vector3.new(0.38, 0.38, 0.38), CFrame = CFrame.new(pos + Vector3.new(0, -0.06, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(45)), Color = col, Material = glass, Transparency = 0.1 }, m)
+	part("Part", { Name = "Frucht", Size = Vector3.new(0.2, 0.42, 0.2), CFrame = CFrame.new(pos + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, math.rad(45), 0), Color = col, Material = glass, Transparency = 0.1 }, m)
+	ball(m, "Kern", 0.16, pos + Vector3.new(0, -0.04, 0), col:Lerp(Color3.new(1, 1, 1), 0.5), Enum.Material.Neon)
 end
 function FRUITS.dragon(m, pos, col, mat)
-	ellipsoid(m, "Frucht", Vector3.new(0.58, 0.7, 0.58), CFrame.new(pos + Vector3.new(0, -0.06, 0)), col, mat)
-	for k = 0, 4 do
-		local a = k / 5 * math.pi * 2
-		part("Part", { Name = "Schuppe", Size = Vector3.new(0.12, 0.26, 0.12), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 0.27, -0.02 + (k % 2) * 0.16, math.sin(a) * 0.27)) * CFrame.Angles(math.sin(a) * 0.6, 0, -math.cos(a) * 0.6), Color = Color3.fromRGB(120, 220, 80), Material = Enum.Material.SmoothPlastic }, m)
+	ellipsoid(m, "Frucht", Vector3.new(0.6, 0.72, 0.6), CFrame.new(pos + Vector3.new(0, -0.06, 0)), col, mat)
+	for k = 0, 8 do
+		local a = k / 9 * math.pi * 2
+		local y = -0.25 + (k % 3) * 0.2
+		local dir = Vector3.new(math.cos(a), 0.6, math.sin(a)).Unit
+		local at = pos + Vector3.new(math.cos(a) * 0.28, y, math.sin(a) * 0.28)
+		ellipsoid(m, "Schuppe", Vector3.new(0.1, 0.06, 0.26), CFrame.lookAt(at, at + dir), Color3.fromRGB(120, 220, 80):Lerp(Color3.fromRGB(255, 230, 90), (k % 3) * 0.2))
 	end
+	shine(m, pos + Vector3.new(-0.15, 0.1, -0.22), 0.12)
 end
 function FRUITS.star(m, pos, col, mat)
-	for k = 0, 2 do
-		part("Part", { Name = "Frucht", Size = Vector3.new(0.72, 0.2, 0.1), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(k * 60)), Color = col, Material = Enum.Material.Neon }, m)
+	-- fünfzackiger Stern aus Zacken um eine Mitte
+	for k = 0, 4 do
+		local a = k / 5 * math.pi * 2
+		part("Part", { Name = "Frucht", Size = Vector3.new(0.14, 0.42, 0.12), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, a) * CFrame.new(0, 0.2, 0), Color = col, Material = Enum.Material.Neon }, m)
 	end
+	ball(m, "Frucht", 0.26, pos, col:Lerp(Color3.new(1, 1, 1), 0.4), Enum.Material.Neon)
 end
 function FRUITS.moon(m, pos, col, mat)
-	ball(m, "Frucht", 0.6, pos, col:Lerp(Color3.fromRGB(220, 224, 236), 0.5), Enum.Material.Slate)
-	ball(m, "Krater", 0.2, pos + Vector3.new(0.18, 0.1, -0.2), Color3.fromRGB(150, 156, 175), Enum.Material.Slate)
+	local c = col:Lerp(Color3.fromRGB(220, 224, 236), 0.5)
+	ball(m, "Frucht", 0.6, pos, c, Enum.Material.Slate)
+	for k, o in ipairs({ { 0.18, 0.1, -0.2, 0.2 }, { -0.12, -0.12, -0.22, 0.14 }, { 0.05, 0.2, -0.18, 0.1 } }) do
+		ball(m, "Krater", o[4], pos + Vector3.new(o[1], o[2], o[3]), c:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Slate)
+	end
+	part("Part", { Name = "Mondring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.03, 0.82, 0.82), CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(70)), Color = col, Material = Enum.Material.Neon, Transparency = 0.4 }, m)
 end
 
 -- Größe je Seltenheit: seltene Bäume werden deutlich größer (Gewöhnlich 1, ??? 1,48), goldene noch etwas mehr
@@ -958,15 +1080,26 @@ function LootBuilder.Tree(tree, stage, ripe, full, look)
 	local w = ({ bush = 0.5, mushroom = 1.1, oak = 1.35, oval = 0.62, spruce = 0.7 })[tree.Crown] or (tree.Big and 1.05 or 0.75)
 	trunk(model, tree, h, w, tree.Crown == "palm")
 	local center, radius, low = (CROWNS[tree.Crown] or CROWNS.round)(model, tree, leaf, h)
-	-- Äste vom Stamm in die Krone (nur bei Kronen, durch die man sie sieht)
-	local BRANCHY = { round = 4, blossom = 4, oval = 3, cloud = 4, angel = 3, weeping = 3, oak = 5, maple = 4 }
+	-- Äste vom Stamm in die Krone: Hauptäste mit Seitenzweigen, an deren Spitzen kleine Laubbüschel sitzen
+	local BRANCHY = { round = 6, blossom = 6, oval = 4, cloud = 5, angel = 4, weeping = 5, oak = 8, maple = 6 }
 	if BRANCHY[tree.Crown] then
-		local top = Vector3.new(0, h * 0.82, 0)
-		for i = 1, BRANCHY[tree.Crown] do
-			local a = i / BRANCHY[tree.Crown] * math.pi * 2 + 0.5
-			local tip = center + Vector3.new(math.cos(a) * radius * 0.75, -radius * 0.25, math.sin(a) * radius * 0.75)
-			branch(model, tree, top, tip, w * 0.32)
-			branch(model, tree, tip, tip + Vector3.new(math.cos(a + 0.6) * 0.5, 0.45, math.sin(a + 0.6) * 0.5), w * 0.18)
+		local n = BRANCHY[tree.Crown]
+		for i = 1, n do
+			local a = i / n * math.pi * 2 + 0.5
+			local top = Vector3.new(0, h * (0.62 + (i % 3) * 0.1), 0)
+			local tip = center + Vector3.new(math.cos(a) * radius * 0.78, -radius * (0.3 - (i % 2) * 0.15), math.sin(a) * radius * 0.78)
+			local mid = top:Lerp(tip, 0.5) + Vector3.new(0, 0.25, 0)
+			branch(model, tree, top, mid, w * 0.34)
+			branch(model, tree, mid, tip, w * 0.24)
+			for _, da in ipairs({ -0.7, 0.7 }) do
+				local twig = tip + Vector3.new(math.cos(a + da) * 0.6, 0.4, math.sin(a + da) * 0.6)
+				branch(model, tree, tip, twig, w * 0.13)
+				ellipsoid(model, "Laub", Vector3.new(0.6, 0.44, 0.6), CFrame.new(twig), leafTone(tree.Leaf, 0.05), leaf)
+			end
+			-- kurzer Seitentrieb unterhalb der Krone
+			local side = mid + Vector3.new(math.cos(a + 1.2) * 0.55, 0.15, math.sin(a + 1.2) * 0.55)
+			branch(model, tree, mid, side, w * 0.1)
+			ellipsoid(model, "Laub", Vector3.new(0.42, 0.3, 0.42), CFrame.new(side), leafTone(tree.Leaf, -0.05), leaf)
 		end
 	end
 	foliage(model, tree, leaf, center, radius)
@@ -997,7 +1130,17 @@ function LootBuilder.Tree(tree, stage, ripe, full, look)
 				local isRipe = i <= ripe * 3
 				part("Part", { Name = "Stiel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.42, 0.06, 0.06), CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0) - out * 0.12) * UP, Color = tree.Trunk:Lerp(tree.Leaf, 0.5), Material = Enum.Material.Wood }, model)
 				local col = golden and GOLD or tree.Fruit
+				local before = #model:GetChildren()
 				shape(model, pos, isRipe and col:Lerp(Color3.new(1, 1, 1), 0.15) or col, isRipe and Enum.Material.Neon or (golden and Enum.Material.Foil or base))
+				-- Teile dieser Frucht markieren: reife pulsieren in GardenBuilder.Animate, alle leuchten nachts
+				local kids = model:GetChildren()
+				for n = before + 1, #kids do
+					local p = kids[n]
+					if p.Name == "Frucht" then
+						if p.Material == Enum.Material.Metal or p.Material == Enum.Material.Foil then p.Reflectance = 0.22 end
+						p:SetAttribute("Reif", isRipe or nil)
+					end
+				end
 			end
 		end
 		if phase == 5 and ripe > 0 then
@@ -1534,6 +1677,8 @@ export const GARDEN_BUILDER = `${HEADER('Münzbaumgarten bauen')}
 -- Animation: GardenBuilder.Animate(model, zeit, dt) jedes Bild aufrufen. Bäume wachsen dann stufenlos mit dem
 -- Fortschritt (Plot.Progress bzw. SetTimer), wiegen sich im Wind, wachsende atmen leicht und lassen Blättchen
 -- aufsteigen. Plot.Fresh = true: Das Beet hat gerade eine neue Stufe erreicht, der Baum ploppt mit Funken auf.
+-- Tag und Nacht: Animate liest Lighting.ClockTime. Nachts leuchten Früchte (bei Legendär+ auch die Laubspitzen),
+-- ein Licht in der Krone geht an und Glühwürmchen kommen heraus.
 -- Zaunwechsel: garden.FenceFrom = alter Zaun → der alte versinkt, der neue wächst vom Tor aus rundherum (in Animate).
 -- GardenBuilder.BedPosition(i, beds) gibt die Mitte eines Beets zurück.
 
@@ -1546,20 +1691,28 @@ local GardenBuilder = {}
 local animated = setmetatable({}, { __mode = "k" })
 local fenceAnim = setmetatable({}, { __mode = "k" }) -- Zaunwechsel
 
--- Teile eines Baums relativ zu seinem Fußpunkt merken; gibt eine Funktion zum Setzen (Ort, Größe) zurück
+-- Teile eines Baums relativ zu seinem Fußpunkt merken; gibt eine Funktion zum Setzen (Ort, Größe) zurück.
+-- Früchte schaukeln, reife pulsieren. Größen werden nur gesetzt, wenn sich die Größe ändert (spart Arbeit je Bild).
 local function rigTree(tree, base)
 	local parts = {}
 	for n, p in ipairs(tree:GetDescendants()) do
 		if p:IsA("BasePart") then
-			-- Münzen drehen sich langsam um die senkrechte Achse (jede etwas versetzt)
-			-- Früchte schaukeln leicht an ihren Stielen (jede etwas versetzt)
-			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size, Spin = p.Name == "Frucht" and n * 0.7 or nil })
+			local fruit = p.Name == "Frucht"
+			table.insert(parts, { Part = p, Offset = base:ToObjectSpace(p.CFrame), Size = p.Size, Spin = fruit and n * 0.7 or nil, Pulse = fruit and p:GetAttribute("Reif") and n or nil })
 		end
 	end
+	local lastK = nil
 	return function(cf, k, t)
+		local resize = lastK == nil or math.abs(k - lastK) > 0.0005
+		lastK = k
+		local kk = math.max(k, 0.01)
 		for _, e in ipairs(parts) do
 			local o = e.Offset
-			e.Part.Size = e.Size * math.max(k, 0.01)
+			if e.Pulse and t then
+				e.Part.Size = e.Size * kk * (1 + math.sin(t * 3.2 + e.Pulse) * 0.09)
+			elseif resize then
+				e.Part.Size = e.Size * kk
+			end
 			if e.Spin and t then
 				e.Part.CFrame = cf * CFrame.new(o.Position * k) * CFrame.Angles(math.sin(t * 2.1 + e.Spin) * 0.18, 0, math.cos(t * 1.7 + e.Spin) * 0.18) * o.Rotation
 			else
@@ -1569,6 +1722,16 @@ local function rigTree(tree, base)
 	end
 end
 
+-- Nacht 0–1 aus der Uhrzeit (Lighting.ClockTime): ab 17 Uhr dunkler, 20–5 Uhr ganz Nacht, bis 7 Uhr wieder Tag
+local Lighting = game:GetService("Lighting")
+local function nightFactor()
+	local h = Lighting.ClockTime % 24
+	if h >= 20 or h < 5 then return 1 end
+	if h >= 17 then return (h - 17) / 3 end
+	if h < 7 then return 1 - (h - 5) / 2 end
+	return 0
+end
+GardenBuilder.NightFactor = nightFactor
 
 -- Zielgröße eines Baums aus Phase (1–5) und Fortschritt (0–1 bis ausgewachsen)
 local function growScale(phase, progress)
@@ -1767,6 +1930,33 @@ function GardenBuilder.Build(garden)
 			entry.Place(base, entry.Shown)
 			anim[i] = entry
 			rarityFx(model, tree, base, entry.Height, entry)
+			-- Nacht: Früchte (und bei Legendär+ die hellen Laubspitzen) leuchten, ein Licht in der Krone, Glühwürmchen
+			do
+				local rank = GardenData.RarityById[tree.Rarity].Index
+				local glow = {}
+				for _, p in ipairs(t:GetDescendants()) do
+					if p:IsA("BasePart") and (p.Name == "Frucht" or (rank >= 4 and p:GetAttribute("Spitze"))) then
+						table.insert(glow, { Part = p, Material = p.Material })
+					end
+				end
+				local holder = part("Part", { Name = "Nacht", Size = Vector3.new(3.4, entry.Height * 0.7, 3.4), Transparency = 1, CFrame = base * CFrame.new(0, entry.Height * 0.6, 0) }, model)
+				local light = Instance.new("PointLight")
+				light.Color = rank >= 4 and GardenData.RarityById[tree.Rarity].Color or tree.Fruit
+				light.Brightness = 0
+				light.Range = 9 + rank
+				light.Parent = holder
+				local flies = Instance.new("ParticleEmitter")
+				flies.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				flies.Color = ColorSequence.new(Color3.fromRGB(220, 255, 120), Color3.fromRGB(255, 236, 140))
+				flies.LightEmission = 1
+				flies.Lifetime = NumberRange.new(3, 6)
+				flies.Speed = NumberRange.new(0.2, 0.7)
+				flies.SpreadAngle = Vector2.new(180, 180)
+				flies.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.25, 0.2), NumberSequenceKeypoint.new(0.75, 0.16), NumberSequenceKeypoint.new(1, 0) })
+				flies.Rate = 0
+				flies.Parent = holder
+				entry.Night = { Glow = glow, Light = light, Flies = flies, MaxRate = 1.5 + rank * 0.4, Power = 1 + rank * 0.18 + ((plot.Ripe or 0) > 0 and 0.6 or 0), Lit = false }
+			end
 			-- schillernde (goldene ???) Bäume: Laub läuft durch alle Farben
 			if plot.Golden and GardenData.RarityById[tree.Rarity].Rainbow then
 				entry.Shimmer = {}
@@ -1958,12 +2148,37 @@ function GardenBuilder.SetProgress(model, i, progress)
 	end
 end
 
+-- Nachtlicht eines Baums setzen (night 0–1)
+local function applyNight(e, night, t)
+	local nt = e.Night
+	if not nt then return end
+	nt.Light.Brightness = night * nt.Power * (1 + math.sin(t * 1.5 + e.Phase) * 0.12)
+	nt.Flies.Rate = night * nt.MaxRate
+	local lit = night > 0.5
+	if lit ~= nt.Lit then
+		nt.Lit = lit
+		for _, g in ipairs(nt.Glow) do
+			g.Part.Material = lit and Enum.Material.Neon or g.Material
+		end
+	end
+end
+
+-- Nur Tag und Nacht anwenden, ohne Bewegung (für „weniger Bewegung“)
+function GardenBuilder.UpdateNight(model)
+	local anim = animated[model]
+	if not anim then return end
+	local night = nightFactor()
+	for _, e in pairs(anim) do applyNight(e, night, 0) end
+end
+
 -- Jedes Bild aufrufen: Bäume wachsen sanft, wiegen sich, wachsende atmen; neue Stufen ploppen auf
 function GardenBuilder.Animate(model, t, dt)
 	animateFence(model, t)
 	local anim = animated[model]
 	if not anim then return end
+	local night = nightFactor()
 	for _, e in pairs(anim) do
+		applyNight(e, night, t)
 		local target = growScale(e.Look, e.Progress)
 		e.Shown = e.Shown + (target - e.Shown) * math.min(1, (dt or 0.03) * 3)
 		local k = e.Shown

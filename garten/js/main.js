@@ -15,6 +15,13 @@ import { orbitEgg } from '../../eier/js/eggRoblox.js';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let state = loadState();
+// Tageszeit im 3D-Garten: 'tag', 'nacht' oder 'echt' (Uhrzeit dieses Geräts); nur eine Vorliebe dieses Browsers
+let daytime = 'tag';
+try {
+  daytime = localStorage.getItem('coinmaster.garten.tageszeit') || 'tag';
+} catch {}
+const targetHour = () => (daytime === 'nacht' ? 23 : daytime === 'echt' ? new Date().getHours() + new Date().getMinutes() / 60 : 13);
+let clockHour = targetHour();
 let selected = null; // Id einer Sache aus dem Inventar, die man gerade auf ein Beet anwenden will
 
 const $ = (id) => document.getElementById(id);
@@ -212,6 +219,7 @@ function seed(id) {
 function renderBar() {
   $('taler').textContent = fmt(state.taler);
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === state.clock.speed));
+  for (const b of document.querySelectorAll('[data-daytime]')) b.setAttribute('aria-pressed', String(b.dataset.daytime === daytime));
   const buy = $('buy');
   buy.hidden = state.owned;
   $('buy-text').textContent = `${GARDEN.startBeds} Beete, umzäunt, mit Tor und Schild. Später auf bis zu ${GARDEN.maxBeds} Beete erweiterbar.`;
@@ -414,7 +422,13 @@ document.addEventListener('click', (e) => {
   else if (b.dataset.dig) dig(Number(b.dataset.dig));
   else if (b.dataset.sell) sell(b.dataset.sell);
   else if (b.dataset.seed) seed(b.dataset.seed);
-  else if (b.dataset.speed) {
+  else if (b.dataset.daytime) {
+    daytime = b.dataset.daytime;
+    try {
+      localStorage.setItem('coinmaster.garten.tageszeit', daytime);
+    } catch {}
+    renderBar();
+  } else if (b.dataset.speed) {
     setSpeed(state, Number(b.dataset.speed));
     save();
   }
@@ -450,6 +464,7 @@ const canvas = $('garden-canvas');
 const renderer = rbxRenderer(canvas, { shadows: true });
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 800);
+const baseExposure = renderer.toneMappingExposure;
 let lua = null;
 let garden = null, sig = '', building = false;
 const cam = { angle: 0, tilt: 0.62, drag: null, zoom: 1 };
@@ -550,6 +565,14 @@ renderer.setAnimationLoop(() => {
   }
   if (!garden) return;
   lua?.frame(dt);
+  // Tageszeit gleitet zur gewählten Stunde (über den Abend bzw. Morgen), GardenBuilder.Animate liest sie
+  const goal = targetHour();
+  const diff = ((goal - clockHour + 36) % 24) - 12;
+  clockHour = reducedMotion ? goal : (clockHour + diff * Math.min(1, dt * 1.5) + 24) % 24;
+  garden.call('__gardenClock', clockHour, reducedMotion);
+  // nachts das ganze Bild abdunkeln (die Umgebungsspiegelung der Vorschau kennt keine Uhrzeit); wie GardenBuilder.NightFactor
+  const night = clockHour >= 20 || clockHour < 5 ? 1 : clockHour >= 17 ? (clockHour - 17) / 3 : clockHour < 7 ? 1 - (clockHour - 5) / 2 : 0;
+  renderer.toneMappingExposure = baseExposure * (1 - night * 0.42);
   // Bäume wachsen sanft, wiegen sich und ploppen bei neuer Stufe auf (GardenBuilder.Animate)
   if (!reducedMotion) garden.call('__gardenAnimate', clock.elapsedTime, dt);
   garden.step(dt);

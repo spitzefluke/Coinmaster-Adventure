@@ -215,6 +215,13 @@ im Browser.
 - **Goldene Bäume:** Mit 5 % Chance wächst ein gesäter Baum golden (`Plot.Golden`): goldenes Laub, Funkeln, etwas
   größer und doppelte Früchte. Bei ??? heißt er „schillernd“ und sein Laub läuft durch alle Farben.
 - **Jeder Baum hat seine eigene Form** (Spalte „Form“), seltene Bäume sind größer (bis ×1,48 bei ???).
+- **Detailreich:** Stamm aus vier geschwungenen Stücken mit Knoten, breitem Fuß, Rindenrippen, Astloch und Moos;
+  sieben Wurzeln, die sich in die Erde krümmen; Hauptäste mit Seitenzweigen und Laubbüscheln. Die Krone hat
+  vier Lagen: dunkler Kern, facettierte Büschel (sonnig oben, schattig unten), helle Spitzen und einzelne Blätter
+  am Rand. Seltenere Bäume bekommen mehr Laub. Früchte mit Glanzpunkt, Stiel und Blättchen; reife pulsieren.
+- **Tag und Nacht:** `GardenBuilder.Animate` liest `Lighting.ClockTime`. Nachts leuchten die Früchte (ab Legendär
+  auch die Laubspitzen), ein Licht in der Krone geht an und Glühwürmchen kommen heraus. Auf der Gartenseite
+  schaltet man zwischen Tag, Nacht und echter Uhrzeit um.
 - **Lebendig:** Bäume wiegen sich, Windböen ziehen über den Garten, Blätter fallen und treiben davon (beim Ahorn
   mehr), ab Selten schwirren Glühwürmchen um den Baum. Früchte schaukeln an ihren Stielen.
 
