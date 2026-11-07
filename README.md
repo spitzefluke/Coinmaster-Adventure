@@ -367,6 +367,24 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
+**Umgebung je Welt (eine Welt pro Etappe, begonnen mit Normal):**
+
+- **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
+  `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle
+  vier Seiten ohne Naht. Welche Welten eines haben, steht in `welten/js/skyboxes.js`.
+- **Roblox:** Im Ordner `Licht` der Welt liegt `Himmelsbild` mit den NumberValues `Seite`, `Oben`, `Unten` (Bild-IDs,
+  anfangs 0) und `Sonne`. Bilder aus dem Welten-ZIP (`welten/himmel/<welt>/`) im Asset Manager hochladen und die
+  IDs eintragen; `CoinmasterWorldLighting` baut daraus ein `Sky` und blendet die Himmelskuppel aus.
+- **Wolkenwand:** Statt der einfarbigen Kuppel verdecken große weiße Wolken am Horizont (600–630 Studs) die
+  Nachbarinseln. Der Wolkenring direkt an der Insel fällt weg, die Wolken malt das Himmelsbild.
+- **Felsunterseite aus Modellen:** umgedrehte Felsen aus dem Paket in sechs Ringen, die nach unten enger werden,
+  statt gestapelter Scheiben. Die Ranken am Rand bleiben.
+- **Schwebende Inseln:** Grashügel mit Bäumen auf umgedrehten Felsen in mittlerer Entfernung, kleine Grasbrocken
+  direkt am Inselrand.
+- Vorschau: Die Engine zeigt das `Sky` mit den Bildern; Keile (WedgePart) werden jetzt von außen gezeichnet (vorher
+  sah man nur ihre Innenseite, z. B. bei den Bergen der Fernkulisse). Teile ohne Schatten (Himmel, Kulisse) bekommen
+  auch keine Schatten mehr ab.
+
 **Modelle aus kostenlosen Grafikpaketen (CC0):** Alle Welten und der Spawn sind mit Modellen der KayKit-Pakete
 von Kay Lousberg gebaut (Medieval Hexagon, City Builder, Dungeon, Halloween, Space Base; CC0, auch für Roblox
 frei).

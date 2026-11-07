@@ -992,6 +992,59 @@ local function scan()
 	end
 end
 
+-- Himmelsbild (Ordner „Himmelsbild“ mit den Bild-IDs Seite, Oben, Unten): eigenes Sky-Objekt, die
+-- Himmelskuppeln der Welten werden auf diesem Gerät ausgeblendet. Eigene Skies der Place werden solange
+-- beiseitegelegt und danach zurückgegeben.
+local stash = {}
+local function setSky(box, on)
+	local sky = Lighting:FindFirstChild("CoinmasterSky")
+	if on then
+		for _, s in ipairs(Lighting:GetChildren()) do
+			if s:IsA("Sky") and s.Name ~= "CoinmasterSky" then
+				table.insert(stash, s)
+				s.Parent = nil
+			end
+		end
+		if not sky then
+			sky = Instance.new("Sky")
+			sky.Name = "CoinmasterSky"
+			sky.Parent = Lighting
+		end
+		local function asset(name)
+			local v = box:FindFirstChild(name)
+			if v and v.Value > 0 then
+				return "rbxassetid://" .. tostring(v.Value)
+			end
+			return nil
+		end
+		local side = asset("Seite")
+		sky.SkyboxBk, sky.SkyboxFt, sky.SkyboxLf, sky.SkyboxRt = side, side, side, side
+		sky.SkyboxUp = asset("Oben") or side
+		sky.SkyboxDn = asset("Unten") or side
+		local sun = box:FindFirstChild("Sonne")
+		sky.CelestialBodiesShown = sun == nil or sun.Value
+		sky.StarCount = 0
+	else
+		if sky then
+			sky:Destroy()
+		end
+		for _, s in ipairs(stash) do
+			s.Parent = Lighting
+		end
+		stash = {}
+	end
+	for _, f in ipairs(folders) do
+		local himmel = f.Parent and f.Parent:FindFirstChild("Himmel")
+		if himmel then
+			for _, p in ipairs(himmel:GetChildren()) do
+				if p.Name == "Himmelskuppel" and p:IsA("BasePart") then
+					p.LocalTransparencyModifier = on and 1 or 0
+				end
+			end
+		end
+	end
+end
+
 local current = nil
 local function apply(folder)
 	for _, v in ipairs(folder:GetChildren()) do
@@ -1021,6 +1074,9 @@ local function apply(folder)
 			atm[key] = source[key]
 		end
 	end
+	local box = folder:FindFirstChild("Himmelsbild")
+	local seite = box and box:FindFirstChild("Seite")
+	setSky(box, seite ~= nil and seite.Value > 0)
 end
 
 local elapsed = 0

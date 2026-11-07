@@ -126,10 +126,26 @@ function lightFolder(L) {
   const bloom = L.bloom
     ? item('BloomEffect', [prop.string('Name', 'Bloom'), prop.float('Intensity', L.bloom.Intensity), prop.float('Size', L.bloom.Size), prop.float('Threshold', L.bloom.Threshold)])
     : '';
+  // Himmelsbild: drei Bild-IDs (Seite für alle vier Seiten, Oben, Unten), 0 = noch nicht hochgeladen.
+  // Das Licht-Skript baut daraus ein Sky-Objekt und blendet die Himmelskuppel aus.
+  const H = L.himmel;
+  const himmel = H
+    ? folder(
+        'Himmelsbild',
+        [
+          value('NumberValue', 'Seite', 0),
+          value('NumberValue', 'Oben', 0),
+          value('NumberValue', 'Unten', 0),
+          value('BoolValue', 'Sonne', H.sun),
+          value('StringValue', 'Dateien', `himmel/${H.id}/seite.jpg, himmel/${H.id}/oben.jpg, himmel/${H.id}/unten.jpg (im Welten-ZIP)`),
+        ].join(''),
+      )
+    : '';
   return folder(
     'Licht',
     atmosphere +
       bloom +
+      himmel +
       [
         value('NumberValue', 'ClockTime', L.ClockTime),
         value('NumberValue', 'Brightness', L.Brightness),

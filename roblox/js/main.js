@@ -228,6 +228,13 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
     status.textContent = 'Lade Modellbibliothek …';
     const glb = await fetch(new URL('../../assets/modelle/bibliothek.glb', import.meta.url)).then((r) => r.arrayBuffer());
     files.push({ name: 'welten/bibliothek.glb', data: new Uint8Array(glb) });
+    // Himmelsbilder (Skybox) der Welten, die schon eines haben
+    const { SKYBOXES, skyboxFiles } = await import('../../welten/js/skyboxes.js');
+    for (const id of Object.keys(SKYBOXES))
+      for (const [part, file] of Object.entries(skyboxFiles(id))) {
+        const img = await fetch(new URL('../../' + file, import.meta.url)).then((r) => r.arrayBuffer());
+        files.push({ name: `welten/himmel/${id}/${part}.jpg`, data: new Uint8Array(img) });
+      }
     files.push({
       name: 'welten/LIESMICH.txt',
       data: new TextEncoder().encode(`Coinmaster Adventure · Welten für Roblox Studio
@@ -259,6 +266,14 @@ MODELLE (Häuser, Bäume, Felsen, Berge in der Ferne) – einmalig:
      einmal in die Befehlsleiste (Ansicht > Befehlsleiste) schreiben und Enter drücken:
        require(game.ServerScriptService.CoinmasterModelle.Einsetzen)()
   Die Modelle stammen aus den kostenlosen KayKit-Paketen von Kay Lousberg (CC0, www.kaylousberg.com).
+
+HIMMELSBILDER (gemalter Himmel mit Wolken) – je Welt einmal:
+  Im Ordner welten/himmel/<welt>/ liegen seite.jpg, oben.jpg und unten.jpg.
+  1. In Studio „Home“ > „Asset Manager“ (oder „Bulk Import“) die drei Bilder hochladen.
+  2. Rechtsklick auf jedes Bild > „Copy ID“ und die Zahl im Explorer eintragen:
+     Welt_<Name> > Licht > Himmelsbild > Seite, Oben, Unten (NumberValue).
+  Das Skript CoinmasterWorldLighting zeigt dann in dieser Welt das Himmelsbild und blendet die
+  einfarbige Himmelskuppel aus. Solange die IDs 0 sind, bleibt die Kuppel.
 
 Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 256 Studs breit.
 Animationen (UFO, Fische, Wasser) sind in Studio noch nicht dabei, die Teile stehen in ihrer Grundhaltung.

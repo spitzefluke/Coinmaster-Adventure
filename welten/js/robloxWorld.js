@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { RbxWorld, Inst, rgb, hexColor } from '../../js/rbx/engine.js';
 import { createLua } from '../../js/rbx/lua.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
+import { skyboxFiles } from './skyboxes.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
 import { WORLDS } from './worlds.js';
@@ -42,6 +43,13 @@ export function applyLighting(rw, L) {
   if (!atm) atm = inst('Atmosphere', {}, rw.lighting);
   const a = L.atmosphere;
   Object.assign(atm.props, { Density: a.Density, Offset: a.Offset, Color: hexColor(a.Color), Decay: hexColor(a.Decay), Glare: a.Glare, Haze: a.Haze });
+  // Himmelsbild: Sky wie das Licht-Skript es in Roblox aus dem Ordner „Himmelsbild“ baut
+  let sky = rw.lighting.children.find((c) => c.ClassName === 'Sky');
+  if (L.himmel) {
+    const f = skyboxFiles(L.himmel.id), url = (p) => new URL('../../' + p, import.meta.url).href;
+    if (!sky) sky = inst('Sky', {}, rw.lighting);
+    Object.assign(sky.props, { SkyboxBk: url(f.seite), SkyboxFt: url(f.seite), SkyboxLf: url(f.seite), SkyboxRt: url(f.seite), SkyboxUp: url(f.oben), SkyboxDn: url(f.unten), CelestialBodiesShown: L.himmel.sun });
+  } else if (sky) sky.setParent(null);
 }
 
 // Baut die Welt in einer Roblox-Engine-Welt; gibt { rw, data } zurück
@@ -52,7 +60,9 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
   const model = inst('Model', { Name: 'Welt_' + world.name }, rw.workspace);
   // Teile mit Schrift (SurfaceGui) einzeln, alle anderen gebündelt
   const plain = [], signs = [];
-  for (const p of [...data.parts, ...data.sky]) (p.text ? signs : plain).push(p);
+  // mit Himmelsbild ist die Kuppel ausgeblendet (in Roblox macht das das Licht-Skript)
+  const hideDome = !!data.lighting?.himmel;
+  for (const p of [...data.parts, ...data.sky]) if (!(hideDome && p.name === 'Himmelskuppel')) (p.text ? signs : plain).push(p);
   rw.addStaticParts(plain);
   for (const p of signs) {
     const part = inst(p.className || 'Part', {

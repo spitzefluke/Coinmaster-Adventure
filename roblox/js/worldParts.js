@@ -7,6 +7,7 @@
 //
 // Ergebnis: { name, parts, lights, emitter, sky } mit Teilen in Studs (1 Einheit = STUDS).
 
+import { SKYBOXES } from '../../welten/js/skyboxes.js';
 import * as THREE from 'three';
 import { buildWorld, FX } from '../../welten/js/worldFactory.js';
 
@@ -268,7 +269,9 @@ function underside(out, world, R) {
     size: [0.76 * STUDS, 2 * R * 0.985 * STUDS, 2 * R * 0.985 * STUDS],
     color: side, material: 'SmoothPlastic', transparency: 0,
   });
-  for (let i = 0; i < layers; i++) {
+  // Welten mit Himmelsbild: die Felsunterseite kommt aus Modellen (modelWorlds.js rockUnderside), hier nur Ranken
+  const modelRock = !!SKYBOXES[world.id];
+  for (let i = 0; i < (modelRock ? 0 : layers); i++) {
     const k = i / layers, r = R * 0.96 * (1 - k) + 0.25, y = -1 - (i + 0.5) * (depth / layers);
     out.push({
       shape: 'Cylinder', name: 'Fels',
@@ -287,7 +290,7 @@ function underside(out, world, R) {
     });
   }
   // hängende Felsspitzen: je drei schmaler werdende Stücke
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < (modelRock ? 0 : 16); i++) {
     const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * R * 0.72;
     const top = -1 - depth * (1 - r / (R * 0.96)) + 0.4;
     const len = 1.4 + rand() * 3.4, w = 0.45 + rand() * 0.5;
@@ -371,7 +374,8 @@ function waterfalls(out, emitters, built, world) {
 function clouds(out, built, world) {
   const c = new THREE.Color(world.sky[0]);
   const day = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b > 0.2;
-  if (!day || world.water || world.planet === 'p2') return;
+  // mit Himmelsbild malt das Bild die Wolken, der Ring direkt an der Insel fällt weg
+  if (!day || world.water || world.planet === 'p2' || SKYBOXES[world.id]) return;
   const R = built.radius, rand = seededRand(world.id + ':wolken');
   const tint = '#ffffff';
   for (let i = 0; i < 12; i++) {
@@ -385,7 +389,8 @@ function clouds(out, built, world) {
         pos: [(Math.cos(a) * r - Math.sin(a) * off) * STUDS, (y + rand() * 0.6) * STUDS, (Math.sin(a) * r + Math.cos(a) * off) * STUDS],
         rot: around(a),
         size: [s * 1.3 * STUDS, s * 0.8 * STUDS, s * STUDS],
-        color: tint, material: 'SmoothPlastic', transparency: 0,
+        // ohne Schatten: im Schatten der Insel sähen die Wolken grau aus
+        color: tint, material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
       });
     }
   }
@@ -407,7 +412,31 @@ function skyShield(sky, built, world) {
   // Kuppel: oben die Himmelsfarbe, zum Horizont hin hellt sie die Atmosphäre auf
   sky.push({ shape: 'Ellipsoid', name: 'Himmelskuppel', inside: true, pos: [0, 0, 0], rot: id, size: [2 * D, 2 * D, 2 * D], color: '#' + top.getHexString(), material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true });
   // ein zweiter, etwas kleinerer Ring in Horizontfarbe macht den Übergang weich
-  sky.push({ shape: 'Ellipsoid', name: 'Himmelskuppel', inside: true, pos: [0, -D * 0.5, 0], rot: id, size: [2 * D * 0.97, D * 0.9, 2 * D * 0.97], color: '#' + horizon.getHexString(), material: 'SmoothPlastic', transparency: 0.6, canCollide: false, castShadow: false, noShadow: true });
+  sky.push({ shape: 'Ellipsoid', name: 'Horizont', inside: true, pos: [0, -D * 0.5, 0], rot: id, size: [2 * D * 0.97, D * 0.9, 2 * D * 0.97], color: '#' + horizon.getHexString(), material: 'SmoothPlastic', transparency: 0.6, canCollide: false, castShadow: false, noShadow: true });
+  // Mit Himmelsbild: eine Wolkenwand am Horizont verdeckt die Nachbarinseln (1500 Studs entfernt), darüber sieht
+  // man das Himmelsbild. Sie steht hinter der fernen Kulisse von WorldFx (600–630 Studs) und noch in der Kuppel.
+  // Die Kuppel blendet das Licht-Skript aus, sobald die Bild-IDs eingetragen sind.
+  const box = SKYBOXES[world.id];
+  if (box?.wall) {
+    const W = box.wall, wr = seededRand(world.id + ':wand');
+    const rows = [
+      { y: -70, h: [200, 260], w: [300, 380], c: W.low },
+      { y: 40, h: [130, 170], w: [190, 260], c: W.top },
+    ];
+    rows.forEach((row, ri) => {
+      const n = Math.round((2 * Math.PI * 620) / ((row.w[0] + row.w[1]) / 2) * 1.15);
+      for (let i = 0; i < n; i++) {
+        const a = ((i + wr() * 0.6 + ri * 0.5) / n) * Math.PI * 2, r = 600 + wr() * 30;
+        const w = row.w[0] + wr() * (row.w[1] - row.w[0]), h = row.h[0] + wr() * (row.h[1] - row.h[0]);
+        // obere Reihe mit Lücken: dort schaut das Himmelsbild durch
+        if (ri === 1 && wr() < 0.4) continue;
+        sky.push({
+          shape: 'Ellipsoid', name: 'Wolkenwand', pos: [Math.cos(a) * r, row.y + (wr() - 0.5) * 24, Math.sin(a) * r], rot: around(a),
+          size: [w, h, w * 0.95], color: row.c[Math.floor(wr() * row.c.length)], material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
+        });
+      }
+    });
+  }
   if (water) {
     // Wasseroberfläche hoch über der Insel
     sky.push({ shape: 'Block', name: 'Wasseroberflaeche', pos: [0, D * 0.62, 0], rot: id, size: [2 * D * 0.8, 2, 2 * D * 0.8], color: '#9fe8ff', material: 'Glass', transparency: 0.45, canCollide: false, castShadow: false, noShadow: true });
@@ -502,6 +531,8 @@ export function worldLighting(world) {
     atmosphere: { Density: world.water ? 0.55 : night ? 0.4 : 0.42, Offset: 0.08, Color: horizon, Decay: top, Glare: night ? 0 : 0.25, Haze: world.water ? 2.6 : 1.8 },
     // Neon und Lava leuchten weich nach (nur in Roblox; die Vorschau zeigt kein Bloom)
     bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },
+    // Himmelsbild (Skybox) der Welt, falls gemalt (welten/js/skyboxes.js)
+    himmel: SKYBOXES[world.id] ? { id: world.id, sun: SKYBOXES[world.id].sun !== false } : null,
   };
 }
 
