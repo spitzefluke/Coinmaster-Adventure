@@ -152,6 +152,27 @@ def clouds(img, elev, u, layer, seed):
     img[:] = img * (1 - a[..., None]) + col * a[..., None]
 
 
+# Polarlicht: senkrechte Vorhänge (in Richtung fein gestreift), die sich als Bänder über den Himmel ziehen
+def aurora(img, elev, u, cfg, seed):
+    lo, hi = cfg['band']
+    # Unterkante wellt sich mit der Richtung
+    wave = fbm(u, np.zeros_like(elev), 3, 3, seed, 0.5)
+    base = lo + (wave - 0.5) * cfg.get('wave', 10)
+    h = (elev - base) / (hi - lo)
+    vert = smooth(-0.02, 0.06, h) * (1 - smooth(0.25, 1.0, h))
+    streak = fbm(u, np.zeros_like(elev), cfg.get('streaks', 24), 3, seed + 1, 0.6)
+    streak = np.clip((streak - 0.35) * 2.2, 0, 1)
+    patches = np.clip((fbm(u, np.zeros_like(elev), 2, 2, seed + 2, 0.5) - 0.3) * 2.5, 0, 1)
+    k = (vert * streak * patches * cfg.get('strength', 0.7))[..., None]
+    # unten grün, oben violett
+    c0, c1 = rgb(cfg['colors'][0]), rgb(cfg['colors'][1])
+    t = np.clip(h, 0, 1)[..., None]
+    col = c0 * (1 - t) + c1 * t
+    # mischen statt addieren, sonst wird Grün auf Blau zu Türkis
+    a = np.clip(blur_wrap(k[..., 0], 2), 0, 1)[..., None]
+    img[:] = np.clip(img * (1 - a) + col * a * 1.15, 0, 1)
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -160,6 +181,8 @@ def render(name, cfg):
     # Seiten
     elev, u = side_dirs()
     img = gradient(elev, cfg['gradient'])
+    if cfg.get('aurora'):
+        aurora(img, elev, u, cfg['aurora'], seed + 55)
     for i, layer in enumerate(cfg.get('clouds', [])):
         clouds(img, elev, u, layer, seed + 101 * (i + 1))
     if cfg.get('stars'):
@@ -216,6 +239,18 @@ HIMMEL = {
             {'band': (22, 35), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#ffb8a0', 'shadow': '#c88aa8', 'streaks': True, 'alpha': 0.45, 'blur': 4},
         ],
         'stars': 900,
+    },
+    # Eis: kalter Winterhimmel zur blauen Stunde, tief ein Schneedunst-Band, darüber Polarlicht und erste Sterne
+    'eis': {
+        'seed': 41,
+        'gradient': [(-5, '#eaf4ff'), (5, '#cde3f8'), (14, '#7fa8de'), (30, '#34559e'), (55, '#1c2a62'), (90, '#111a42')],
+        'below': [(-90, '#a8c4e6'), (0, '#eaf4ff')],
+        'aurora': {'band': (13, 38), 'colors': ['#4affa8', '#a86aff'], 'strength': 0.85, 'streaks': 28, 'wave': 12},
+        'stars': 700,
+        'clouds': [
+            {'band': (2, 11), 'scale': 4, 'cover': 0.7, 'soft': 0.4, 'light': '#ffffff', 'shadow': '#dcecf8', 'streaks': True, 'alpha': 0.8, 'blur': 5},
+            {'band': (24, 36), 'scale': 8, 'cover': 0.4, 'soft': 0.35, 'light': '#ffffff', 'shadow': '#e8f2fc', 'streaks': True, 'alpha': 0.35, 'blur': 4},
+        ],
     },
 }
 
