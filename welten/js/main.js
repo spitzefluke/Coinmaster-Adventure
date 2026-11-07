@@ -40,6 +40,8 @@ controls.maxPolarAngle = Math.PI * 0.62;
 controls.target.set(0, 0.6 * STUDS, 0);
 controls.autoRotate = !skipAnimations();
 controls.autoRotateSpeed = 0.6;
+// Für Tests: ?debug gibt Kamera und Steuerung frei (Ansicht von der Insel aus)
+if (new URLSearchParams(location.search).has('debug')) window.__welt = { camera, controls, built: () => built };
 let idleTimer;
 controls.addEventListener('start', () => {
   controls.autoRotate = false;

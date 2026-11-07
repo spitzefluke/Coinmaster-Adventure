@@ -72,6 +72,62 @@ function cloudRing(ctx, n = 7) {
   }
 }
 
+// ── Felsunterseite aus Modellen: umgedrehte Felsen in Ringen, die nach unten enger werden (ein Felskegel) ──
+// Ersetzt die Schichtscheiben aus worldParts.js (bei Welten mit Himmelsbild, siehe underside dort).
+function rockUnderside(ctx, ids, { rings = 6, depth = 13, top = -1.1 } = {}) {
+  const { rand, rr, R, root } = ctx;
+  for (let i = 0; i < rings; i++) {
+    const k = i / (rings - 1);
+    const r = (R - 1.1) * (1 - k * 0.88) ** 0.9, y = top - 0.6 - k * depth;
+    const w = 4.2 - k * 2;
+    const n = Math.max(3, Math.round((TAU * r) / (w * 0.62)));
+    for (let j = 0; j < n; j++) {
+      const a = (j / n) * TAU + rr(-0.06, 0.06) + i * 0.4;
+      const id = pick(rand, ids);
+      const g = model(id, w / MODELS[id].size[0], { sky: true });
+      g.rotation.set(Math.PI, rand() * TAU, rr(-0.12, 0.12));
+      g.scale.y *= 1.3 + k * 1.6 + rand() * 1.2; // oben kurz (die Ranken am Rand bleiben sichtbar), unten lange Spitzen
+      g.position.set(Math.cos(a) * r, y + rr(-0.3, 0.3), Math.sin(a) * r);
+      root.add(g);
+    }
+  }
+  // Mitte: dicker Kern und eine lange Spitze ganz unten
+  for (const [rad, y, w, sy] of [[0, top - depth * 0.55, R * 0.9, 3], [0, top - depth * 0.95, 4, 5]]) {
+    const id = pick(rand, ids);
+    const g = model(id, w / MODELS[id].size[0], { sky: true });
+    g.rotation.set(Math.PI, rand() * TAU, 0);
+    g.scale.y *= sy;
+    g.position.set(rad, y, 0);
+    root.add(g);
+  }
+}
+
+// ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
+function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
+  const { rand, root } = ctx;
+  const top = model(topId, w / MODELS[topId].size[0], { sky: true });
+  top.position.set(x, y - top.userData.base, z);
+  top.rotation.y = rand() * TAU;
+  root.add(top);
+  const rk = model(rockId, (w * 0.92) / MODELS[rockId].size[0], { sky: true });
+  rk.rotation.set(Math.PI, rand() * TAU, 0); // Spitze nach unten
+  rk.scale.y *= 1.8 + rand() * 0.8;
+  rk.position.set(x, y + 0.04 * w, z);
+  root.add(rk);
+}
+// Inselchen in mittlerer Entfernung und kleine Brocken direkt am Inselrand
+function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees', 'hills_B_trees', 'hill_single_C'], small = ['hill_single_A', 'hill_single_C'], rock = 'rock_single_D' } = {}) {
+  const { rand, rr, R } = ctx;
+  for (let i = 0; i < far; i++) {
+    const a = (i / far) * TAU + rr(-0.25, 0.25), r = rr(R + 12, R + 28);
+    floatingIsle(ctx, Math.cos(a) * r, rr(-4, 7), Math.sin(a) * r, rr(5, 9), pick(rand, tops), rock);
+  }
+  for (let i = 0; i < near; i++) {
+    const a = rand() * TAU, r = rr(R + 2.5, R + 6.5);
+    floatingIsle(ctx, Math.cos(a) * r, rr(-3, 1.5), Math.sin(a) * r, rr(1.2, 2.6), pick(rand, small), rock);
+  }
+}
+
 // ── Normal: Startdorf mit Windmühle, Brunnen, Häusern, Feld und Bach ──
 function stream(ctx, kit) {
   const { root, height, reserve, R, shared } = ctx;
@@ -161,7 +217,8 @@ const NORMAL = {
   },
   backdrop(ctx) {
     mountainRing(ctx, ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees', 'hills_B_trees', 'hills_C_trees', 'mountain_B_grass']);
-    cloudRing(ctx);
+    floatingIsles(ctx); // Umgebung: schwebende Inseln und Brocken am Rand (Wolken malt das Himmelsbild)
+    rockUnderside(ctx, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E']);
   },
 };
 

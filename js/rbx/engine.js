@@ -192,7 +192,8 @@ function wedgeGeometry() {
   const p = [
     [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, -0.5, 0.5], [-0.5, 0.5, 0.5], [0.5, 0.5, 0.5],
   ];
-  const faces = [[0, 2, 1], [0, 3, 2], [3, 5, 2], [3, 4, 5], [0, 1, 5], [0, 5, 4], [0, 4, 3], [1, 2, 5]];
+  // Dreiecke gegen den Uhrzeigersinn von außen gesehen (sonst sieht man nur die Innenseiten)
+  const faces = [[0, 1, 2], [0, 2, 3], [3, 2, 5], [3, 5, 4], [0, 5, 1], [0, 4, 5], [0, 3, 4], [1, 5, 2]];
   const pos = [];
   for (const f of faces) for (const i of f) pos.push(...p[i]);
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -461,14 +462,15 @@ export class RbxWorld {
       if ((p.transparency ?? 0) >= 1) continue;
       const shape = p.shape === 'Ellipsoid' ? 'Sphere' : p.shape;
       // inside: von innen sichtbar (Himmelskuppel, in Roblox SpecialMesh mit negativer Skalierung)
-      const key = `${shape}|${p.material}|${p.transparency || 0}|${p.inside ? 1 : 0}`;
+      // noShadow (Himmel, Kulisse) eigener Topf: wirft und empfängt keine Schatten
+      const key = `${shape}|${p.material}|${p.transparency || 0}|${p.inside ? 1 : 0}|${p.noShadow ? 1 : 0}`;
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push(p);
     }
     const group = new THREE.Group();
     const m4 = new THREE.Matrix4(), sc = new THREE.Matrix4();
     for (const [key, ps] of buckets) {
-      const [shape, material, tr, inside] = key.split('|');
+      const [shape, material, tr, inside, noSh] = key.split('|');
       let mat = partMaterial(material, { instanced: true, transparency: Number(tr) });
       if (inside === '1') {
         mat = mat.clone();
@@ -487,8 +489,8 @@ export class RbxWorld {
       });
       inst.instanceMatrix.needsUpdate = true;
       if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
-      inst.castShadow = material !== 'Neon' && Number(tr) < 0.5 && inside !== '1' && !ps[0].noShadow;
-      inst.receiveShadow = material !== 'Neon' && inside !== '1';
+      inst.castShadow = material !== 'Neon' && Number(tr) < 0.5 && inside !== '1' && noSh !== '1';
+      inst.receiveShadow = material !== 'Neon' && inside !== '1' && noSh !== '1';
       inst.userData.parts = ps; // für Raycasts: Treffer → Teil
       group.add(inst);
     }
@@ -602,7 +604,24 @@ export class RbxWorld {
       this.scene.fog.near = L.FogStart;
       this.scene.fog.far = L.FogEnd;
     } else this.scene.fog = null;
-    if (this.skyMesh) updateSky(this.skyMesh, camera, sunDir, day, atm?.props, L);
+    if (this.skyMesh) {
+      updateSky(this.skyMesh, camera, sunDir, day, atm?.props, L);
+      // Sky mit Skybox-Bildern (SkyboxRt/Lf/Up/Dn/Bk/Ft) wie in Roblox
+      const skyObj = this.lighting.children.find((c) => c.ClassName === 'Sky');
+      const u = this.skyMesh.material.uniforms;
+      const P = skyObj?.props;
+      if (P && P.SkyboxBk) {
+        const key = [P.SkyboxRt, P.SkyboxLf, P.SkyboxUp, P.SkyboxDn, P.SkyboxBk, P.SkyboxFt].join('|');
+        if (!skyboxCache.has(key)) {
+          const tex = new THREE.CubeTextureLoader().load(key.split('|'));
+          tex.colorSpace = THREE.NoColorSpace; // Bildfarben unverändert wie in Roblox
+          skyboxCache.set(key, tex);
+        }
+        u.box.value = skyboxCache.get(key);
+        u.useBox.value = 1;
+        if (P.CelestialBodiesShown === false) u.sunCol.value.setRGB(0, 0, 0);
+      } else u.useBox.value = 0;
+    }
   }
   placeLights(camera) {
     // Die 8 hellsten Lichter in Kameranähe (Roblox zeigt sehr viele, die Vorschau rechnet mit 8)
@@ -635,6 +654,7 @@ export class RbxWorld {
 }
 
 const envCache = new WeakMap();
+const skyboxCache = new Map();
 function buildEnvironment(renderer) {
   const scene = new THREE.Scene();
   const sky = makeSky();
@@ -654,9 +674,9 @@ function buildEnvironment(renderer) {
 // ── Himmel wie der Roblox-Standardhimmel, getönt von Atmosphere ──
 function makeSky() {
   const mat = new THREE.ShaderMaterial({
-    uniforms: { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, haze: { value: new THREE.Color() }, sunDir: { value: V3(0, 1, 0) }, sunCol: { value: new THREE.Color(1, 1, 0.9) }, clouds: { value: 1 }, glare: { value: 0 }, night: { value: 0 } },
+    uniforms: { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, haze: { value: new THREE.Color() }, sunDir: { value: V3(0, 1, 0) }, sunCol: { value: new THREE.Color(1, 1, 0.9) }, clouds: { value: 1 }, glare: { value: 0 }, night: { value: 0 }, box: { value: null }, useBox: { value: 0 } },
     vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
-    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 haze; uniform vec3 sunDir; uniform vec3 sunCol; uniform float clouds; uniform float glare; uniform float night; varying vec3 vDir;
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 haze; uniform vec3 sunDir; uniform vec3 sunCol; uniform float clouds; uniform float glare; uniform float night; uniform samplerCube box; uniform float useBox; varying vec3 vDir;
       float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
       void main(){ vec3 d = normalize(vDir); float y = d.y;
@@ -664,6 +684,8 @@ function makeSky() {
         c = mix(c, haze, smoothstep(0.25, -0.05, y) * 0.9);
         if (y > 0.0) { vec2 uv = d.xz / (y + 0.12) * 1.6; float cl = n(uv) * 0.6 + n(uv * 2.3) * 0.3 + n(uv * 5.1) * 0.1; cl = smoothstep(0.55, 0.85, cl) * smoothstep(0.0, 0.25, y) * clouds; c = mix(c, vec3(1.0) * (0.85 + 0.15 * top.b), cl * 0.85); }
         if (night > 0.0 && y > 0.0) { vec3 g = floor(d * 260.0); float st = h(g.xy + g.z * 17.0); c += vec3(step(0.9975, st) * night * (0.6 + 0.4 * h(g.zx))); }
+        // Himmelsbild (Sky mit Skybox-Bildern) statt des Standardhimmels; Atmosphere trübt den Horizont
+        if (useBox > 0.5) { c = textureCube(box, d).rgb; c = mix(c, haze, smoothstep(0.2, -0.05, y) * 0.55); }
         float s = max(dot(d, normalize(sunDir)), 0.0);
         c += sunCol * (pow(s, 900.0) * 3.0 + pow(s, 12.0) * (0.12 + glare * 0.6));
         gl_FragColor = vec4(c, 1.0); }`,

@@ -1436,7 +1436,8 @@ end
 
 R.normal = function(k, w)
 	sun(k, -0.6, 0.6, hex("#fff6d0"), 46, hex("#ffe9a0"))
-	cloudBank(k, 10, WHITE, 0)
+	-- Wolken malt das Himmelsbild (assets/himmel/normal); hier nur ein paar zarte, durchscheinende
+	cloudBank(k, 5, WHITE, 0.35, 90, 170)
 	birds(k, 2, hex("#3a3a48"))
 	butterflies(k, 6, { hex("#ffcf4a"), hex("#ff8ac8"), hex("#8ad0ff") })
 	motes(k, { Colors = { hex("#fff6c0"), hex("#ffffff") }, Rate = 14, Size0 = 0.8, Speed = 0.5, Alpha = 0.4 })

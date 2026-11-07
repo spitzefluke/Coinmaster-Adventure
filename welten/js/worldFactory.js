@@ -12,6 +12,7 @@ import { planet1Before, planet1After } from './planet1.js';
 import { planet2Before, planet2After } from './planet2.js';
 import { planet3Before, planet3After } from './planet3.js';
 import { MODEL_WORLDS } from './modelWorlds.js';
+import { SKYBOXES } from './skyboxes.js';
 import { NEW_WORLDS, planet4Before, planet4After } from './planet4.js';
 
 const R = 16; // Radius der Insel
@@ -287,8 +288,8 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   skirt.userData.rbx = { name: 'Rand' };
   rock.position.y = -1 - depth / 2;
   root.add(rock);
-  // kleine schwebende Brocken
-  for (let i = 0; i < 7; i++) {
+  // kleine schwebende Brocken (bei Welten mit Himmelsbild kommen Grasbrocken aus Modellen, modelWorlds.js)
+  for (let i = 0; i < (SKYBOXES[world.id] ? 0 : 7); i++) {
     const s = rr(0.3, 0.9);
     const b = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.4), M(world.rock));
     const a = rr(0, Math.PI * 2), r = rr(R + 0.8, R + 2.2);
