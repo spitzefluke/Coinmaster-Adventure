@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { WEATHER, WEATHER_MS, weatherById, weatherAt, forecast, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { WEATHER, weatherById, weatherAt, forecast, nextWeather, weatherEvent, weatherRarityById, fmtShare, WEATHER_BLOCK, WEATHER_WARN, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { COINS } from '../../muenzen/js/coins.js';
 import { createRobloxCoin, coinLua, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
@@ -12,8 +12,13 @@ import { WORLDS, worldById } from '../../welten/js/worlds.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 
 const $ = (id) => document.getElementById(id);
-const total = WEATHER.reduce((a, w) => a + w.weight, 0);
-const share = (w) => `${Math.round((w.weight / total) * 100)} %`;
+const share = fmtShare;
+const rarityOf = (w) => (w.rarity ? weatherRarityById[w.rarity] : null);
+const rarityTag = (w) => {
+  const r = rarityOf(w);
+  return r ? `<span class="rar" style="--rar:${r.color}">${r.name}</span>` : '';
+};
+const minutes = (w) => (w.duration ? `${Math.round(w.duration / 60)} min` : '–');
 const mmss = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -104,14 +109,18 @@ renderer.setAnimationLoop(() => {
 function renderNow() {
   const { w, ends } = weatherAt();
   const m = mutationForWeather(w.id);
-  $('now').style.setProperty('--weather', w.color);
-  $('now').innerHTML = `<p class="now-label">Gerade</p><p class="now-name">${w.name}</p><p class="now-mut">${m ? `${m.chance} % ${m.name} · ${fmtMultiplier(m)}` : 'Keine Mutation'}</p><p class="now-time">wechselt in ${mmss(ends - Date.now())}</p>`;
+  const next = nextWeather();
+  const warn = w.id === 'klar' && next && next.starts - Date.now() <= WEATHER_WARN * 1000;
+  $('now').style.setProperty('--weather', warn ? next.w.color : w.color);
+  $('now').classList.toggle('is-warn', !!warn);
+  $('now').innerHTML = `<p class="now-label">Gerade ${rarityTag(w)}</p><p class="now-name">${w.name}</p><p class="now-mut">${m ? `${m.chance} % ${m.name} · ${fmtMultiplier(m)}` : 'Keine Mutation'}</p>
+    <p class="now-time">${warn ? `⚠ ${next.w.name} zieht auf · ${mmss(next.starts - Date.now())}` : `wechselt in ${mmss(ends - Date.now())}`}</p>`;
 }
 function renderInfo() {
   const w = weatherById[selected], m = mutationForWeather(w.id);
   $('info').style.setProperty('--weather', w.color);
   $('info-text').innerHTML = `
-    <p class="info-eyebrow">${share(w)} der Zeit</p>
+    <p class="info-eyebrow">${rarityTag(w)} ${share(w)} der Zeit · dauert ${minutes(w)}</p>
     <h2>${w.name}</h2>
     <p class="info-text">${w.text}</p>
     ${m ? `<dl class="facts">
@@ -123,11 +132,17 @@ function renderInfo() {
 }
 function nextTime(id) {
   const now = Date.now();
-  for (let i = 0; i < 400; i++) {
-    const p = weatherAt(now + i * WEATHER_MS);
-    if (p.w.id === id) return i === 0 ? 'jetzt' : `um ${hhmm(p.starts)}`;
+  if (weatherAt(now).w.id === id) return 'jetzt';
+  const b = Math.floor(now / 1000 / WEATHER_BLOCK);
+  // bis zu 14 Tage voraus (seltene Wetter kommen nur alle paar Tage)
+  for (let k = 0; k < 1344; k++) {
+    const e = weatherEvent(b + k);
+    if (e && e.w.id === id && e.starts > now) {
+      const sameDay = new Date(e.starts).toDateString() === new Date(now).toDateString();
+      return sameDay ? `um ${hhmm(e.starts)}` : new Date(e.starts).toLocaleString('de-DE', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    }
   }
-  return 'in über 20 Stunden';
+  return 'in über 14 Tagen';
 }
 function renderChips() {
   $('chips').innerHTML = WEATHER.filter((w) => w.id !== 'klar')
@@ -141,7 +156,7 @@ function renderForecast() {
       const m = mutationForWeather(w.id);
       return `<li style="--weather:${w.color}" class="${i === 0 ? 'is-now' : ''}"><button type="button" data-w="${w.id}" ${w.id === 'klar' ? 'disabled' : ''}>
         <span class="fc-time">${i === 0 ? `noch ${mmss(ends - Date.now())}` : hhmm(starts)}</span>
-        <span class="fc-name">${w.name}</span>
+        <span class="fc-name">${w.name} ${rarityTag(w)}</span>
         <span class="fc-mut">${m ? `${m.name} ${fmtMultiplier(m)}` : '–'}</span></button></li>`;
     })
     .join('');
@@ -150,7 +165,7 @@ function renderForecast() {
 function renderTable() {
   $('table').innerHTML = WEATHER.map((w) => {
     const m = mutationForWeather(w.id);
-    return `<tr style="--weather:${w.color}"><th scope="row"><span class="dot"></span>${w.name}</th><td>${share(w)}</td><td>${m ? m.name : '–'}</td><td>${m ? `${m.chance} %` : '–'}</td><td>${m ? fmtMultiplier(m) : '–'}</td><td>${m ? m.effect : w.text}</td></tr>`;
+    return `<tr style="--weather:${w.color}"><th scope="row"><span class="dot"></span>${w.name}</th><td>${rarityTag(w) || '–'}</td><td>${share(w)}</td><td>${minutes(w)}</td><td>${m ? m.name : '–'}</td><td>${m ? `${m.chance} %` : '–'}</td><td>${m ? fmtMultiplier(m) : '–'}</td><td>${m ? m.effect : w.text}</td></tr>`;
   }).join('');
 }
 function select(id) {

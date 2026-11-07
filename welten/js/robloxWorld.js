@@ -10,7 +10,8 @@ import { skyboxFiles } from './skyboxes.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
 import { WORLDS } from './worlds.js';
-import { MUTATIONS, WEATHER, WEATHER_MS } from '../../muenzen/js/mutations.js';
+import { skipAnimations } from '../../js/settings.js';
+import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from '../../muenzen/js/mutations.js';
 
 const partsCache = new Map();
 export function partsOf(world) {
@@ -101,13 +102,13 @@ let luaReady = null;
 export function worldLua() {
   luaReady ||= (async () => {
     const lua = await createLua();
-    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_MS }));
+    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
     lua.call('__addModule', 'WorldFx', worldFxSource({ WORLDS }));
     lua.run(`
       local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
-      function __weather(id)
+      function __weather(id, instant)
         local fx = require(root.WeatherFx)
-        fx.Apply(id)
+        fx.Apply(id, instant)
       end
       local worldFx = nil
       function __worldFx(id)
@@ -119,7 +120,7 @@ export function worldLua() {
       end
       function __weatherReset()
         local m = root:FindFirstChild("WeatherFx")
-        if m then pcall(function() require(m).Apply("klar") end) end
+        if m then pcall(function() require(m).Apply("klar", true) end) end
       end
     `, 'Wetter-Vorschau');
     return lua;
@@ -136,12 +137,18 @@ export async function showWorldFx(rw, worldId) {
 }
 
 // Wetter in einer Welt anzeigen: neues WeatherFx-Modul (merkt sich das Licht dieser Welt als Grundlage)
-export async function showWeather(rw, weatherId) {
+// In derselben Welt wechselt das Wetter sanft (WeatherFx blendet über); in einer neuen Welt beginnt es frisch.
+export async function showWeather(rw, weatherId, { instant = skipAnimations() } = {}) {
   const lua = await worldLua();
-  lua.call('__weatherReset');
-  lua.setWorld(rw);
-  lua.call('__addModule', 'WeatherFx', WEATHER_FX);
-  lua.call('__weather', weatherId);
+  if (lua.weatherWorld !== rw) {
+    lua.call('__weatherReset');
+    lua.setWorld(rw);
+    lua.call('__addModule', 'WeatherFx', WEATHER_FX);
+    lua.weatherWorld = rw;
+  } else {
+    lua.setWorld(rw);
+  }
+  lua.call('__weather', weatherId, instant);
   return lua;
 }
 

@@ -56,3 +56,10 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); }
 .dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: var(--weather); }
 .muted { margin: 0; color: var(--muted); font-size: var(--step--1); }
 @media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } .viewer { aspect-ratio: 4 / 3; } }
+
+/* Seltenheit eines Wetters und Vorwarnung */
+.rar { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--rar); color: var(--rar); font: 600 0.625rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle; background: color-mix(in srgb, var(--rar) 12%, transparent); }
+.now.is-warn { animation: warn-pulse 1s ease-in-out infinite alternate; }
+.now.is-warn .now-time { color: var(--weather); font-weight: 700; }
+@keyframes warn-pulse { from { box-shadow: 0 0 0 0 transparent; } to { box-shadow: 0 0 0 3px color-mix(in srgb, var(--weather) 45%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .now.is-warn { animation: none; } }
