@@ -60,6 +60,22 @@ und Motivplatte, ein Perlkreis und das Motiv als Decal auf beiden Seiten (so, wi
 der Motive und dem Eintragen der `DecalId` aussieht). Stufen-Effekte und Mutationen kommen aus denselben
 Skripten. Die Beschreibung unten gilt für die gezeichneten Motive (`emblems.js`), die als Decals dienen.
 
+**Mutationen, zweite Fassung** (aus Claude Design „Mutationseffekte“, Modul `MutationFx` in
+`roblox/js/mutationLuau.js`): alles aus Parts, Beams, ParticleEmittern, Lichtern und SurfaceGuis auf den Prägungen.
+
+| Mutation | Effekt |
+|---|---|
+| Nass | dunkler, spiegelnder Wasserfilm, Tropfen rinnen ruckweise, Regen prallt oben ab, Pfütze mit Ringen |
+| Gestein | Risse, Brocken (unten dichter), Beben alle paar Sekunden mit Staub und Krümeln, schwebende Kiesel |
+| Gefroren | Eisblumen, tropfende Eiszapfen, Kristalle, kalter Nebel, Schneeflocken, Funkeln |
+| Disco | Spiegelkacheln im Takt (2× pro Sekunde), Discokugel mit Lichtkegeln, leuchtende Tanzfläche, Lichtflecken |
+| Elektrisch | Blitze mit Kern und Schein, Einschläge mit Funken, kriechende Ladungen, Leuchten steigt mit jedem Blitz |
+| Dämonisch | Lavarisse im Herzschlag, geschwungene Hörner, Flammen und Rauch, drehender Beschwörungskreis |
+| Augenkrebs | Op-Art dreht sich, Neon-Formen mit Kontur (Highlight), Strahlenkranz, Farben laufen weich durch |
+| Hacked | Code-Spalten, Scanlinien, Glitch mit Farbversatz und Drahtgitter, Fehlermeldungen, Pixelzerfall |
+| Golden | massives Gold, Glanzstreifen, Funkeln, Strahlenkranz, Goldtropfen, Münzregen |
+| Kosmisch | Sternenmetall mit Spiralgalaxie, Sternbild, Sternenstaub-Scheibe, Planeten, Sternschnuppen, Nebel |
+
 Alle Münzen sind rund. Die Prägung hat einen spiegelpolierten Grund und ein mattiertes Relief
 mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster und Zierband.
 Jedes der 50 Motive ist als eigenes Relief gezeichnet (`muenzen/js/emblems.js`) und sieht
