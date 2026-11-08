@@ -28,6 +28,7 @@ export const SKYBOXES = {
     sun: false, sea: ['#a02a08', '#8a2006', '#c03a10'], seaMaterial: 'CrackedLava', seaOpaque: true, seaGlow: { share: 0.45, colors: ['#ffb02e', '#ffd84a', '#ff7a1a'] },
     wall: { low: ['#ff9a2a', '#ff8a1a'], mid: ['#ffb84a', '#ffa83a'], top: ['#ffd06a', '#ffc05a'] },
   },
+  korallenriff: { sun: false }, // unter Wasser: Nebel verdeckt die Nachbarn, keine Wand; Dünen aus worldParts
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 
