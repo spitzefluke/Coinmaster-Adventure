@@ -358,6 +358,19 @@ HIMMEL = {
         'starBright': 2.5,
         'starsFrom': -2,
     },
+    # Neptun: tiefblauer Sturmhimmel; lange Wolkenbänder in Blau und Türkis jagen um den Horizont, oben dunkel mit Sternen
+    'neptun': {
+        'seed': 97,
+        'gradient': [(-5, '#3a6ad8'), (6, '#2a52b8'), (18, '#183888'), (40, '#0c1e52'), (90, '#050b24')],
+        'below': [(-90, '#1a3a8a'), (0, '#3a6ad8')],
+        'clouds': [
+            {'band': (0, 12), 'scale': 4, 'cover': 0.75, 'soft': 0.4, 'light': '#7ad0ff', 'shadow': '#2a4fa0', 'streaks': True, 'alpha': 0.8, 'blur': 4},
+            {'band': (8, 24), 'scale': 6, 'cover': 0.65, 'soft': 0.35, 'light': '#a8e8ff', 'shadow': '#3a6ad8', 'streaks': True, 'alpha': 0.6, 'blur': 3},
+            {'band': (18, 34), 'scale': 8, 'cover': 0.5, 'soft': 0.4, 'light': '#5aa8ff', 'shadow': '#1a3a8a', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+        'stars': 1400,
+        'starBright': 1.8,
+    },
 }
 
 if __name__ == '__main__':

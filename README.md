@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig ist Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und von Planet 2 der Mond.
+**Umgebung je Welt (eine Welt pro Etappe):** fertig ist Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und von Planet 2 Mond und Neptun.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -379,6 +379,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 | Höhle | Höhlendecke statt Himmel: dunkler Fels mit Tropfsteinen und vereinzelten Kristalladern, violetter Leuchtnebel, Glimmer | schwebende Felsbrocken, violette Felsunterseite, leuchtende Kristallspitzen am Rand, violettes Nebelmeer mit Leuchtbecken |
 | Candy | Zuckerwattehimmel in Pastell, Regenbogenband rundherum, Wolken in Rosa und Hellblau | schwebende Pastellinseln mit Bäumen, Pastell-Felsunterseite, Zuckergusstropfen am Rand, Zuckerwattemeer |
 | Mond | schwarzer Weltraum, Milchstraße als Band über dem Horizont, viele helle Sterne (die Erde bleibt als Himmelskörper) | schwebende Mondbrocken, Unterseite aus grauem Mondgestein, dunkles Nebelmeer |
+| Neptun | tiefblauer Sturmhimmel mit Wolkenbändern in Blau und Türkis, Sterne | schwebende Eisbrocken, Unterseite aus blauem Eisgestein mit Eiszapfen, blaues Sturmnebelmeer |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle

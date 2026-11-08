@@ -641,7 +641,13 @@ const NEPTUN = {
     scatterModels(ctx, 3, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
     rocksOf(ctx, 'neptun');
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, 'neptun'),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, 'neptun');
+    // Umgebung: schwebende Eisbrocken, Unterseite aus blauem Eisgestein mit Eiszapfen
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B@neptun', 'rocks_A@neptun', 'rock_B@neptun'], small: ['rock_A@neptun', 'rock_B@neptun'], rock: 'rock_A@neptun' });
+    rockUnderside(ctx, ['rock_A@neptun', 'rock_B@neptun']);
+    icicles(ctx, 26, { color: '#9fe0ff' });
+  },
 };
 
 const MARS = {
