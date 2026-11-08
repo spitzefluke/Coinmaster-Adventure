@@ -745,7 +745,13 @@ const SONNE = {
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'sonne');
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, 'sonne'),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, 'sonne');
+    // Umgebung: schwebende glühende Felsbrocken, Felsunterseite mit Glut-Tropfen (Plasmameer siehe skyboxes.js)
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B@sonne', 'rocks_A@sonne', 'rock_B@sonne'], small: ['rock_A@sonne', 'rock_B@sonne'], rock: 'rock_A@sonne' });
+    rockUnderside(ctx, ['rock_A@sonne', 'rock_B@sonne']);
+    icicles(ctx, 22, { color: '#ffb02e', glow: true });
+  },
 };
 
 // ── Planet 3 unter Wasser: Felsen in Meeresfarben (@meer), Wasserpflanzen, Schätze, Ruinen ──
