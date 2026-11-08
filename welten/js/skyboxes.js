@@ -22,6 +22,7 @@ export const SKYBOXES = {
   mond: { sun: false, sea: ['#2a2e3e', '#22263a', '#30344a'], wall: { low: ['#1a1e30', '#161a2a'], mid: ['#1e2236', '#1a1e30'], top: ['#22263a', '#1e2236'] } },
   neptun: { sun: false, sea: ['#3a6ad8', '#2a52b8', '#4a7ae0'], wall: { low: ['#2a52b8', '#2448a8'], mid: ['#3a62c8', '#2e56b8'], top: ['#4a72d8', '#3a62c8'] } },
   mars: { sun: false, sea: ['#c4582e', '#b04c26', '#d06a3a'], seaMaterial: 'Sand', seaOpaque: true, wall: { low: ['#a84a24', '#9a4220'], mid: ['#c0603a', '#b05430'], top: ['#d07a4a', '#c06a3e'] } },
+  saturn: { sun: false, sea: ['#b0905a', '#c8a870', '#a08050'], wall: { low: ['#7a6440', '#6a5638'], mid: ['#8a7048', '#7a6440'], top: ['#9a7c50', '#8a7048'] } },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 

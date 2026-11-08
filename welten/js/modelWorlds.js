@@ -692,7 +692,12 @@ const SATURN = {
     scatterModels(ctx, 2, ['structure_low', 'space_lights'], 2.4, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'saturn');
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, 'saturn'),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, 'saturn');
+    // Umgebung: schwebende goldene Felsbrocken, Unterseite aus Sandstein (Ringe malt das Himmelsbild)
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B@saturn', 'rocks_A@saturn', 'rock_B@saturn'], small: ['rock_A@saturn', 'rock_B@saturn'], rock: 'rock_A@saturn' });
+    rockUnderside(ctx, ['rock_A@saturn', 'rock_B@saturn']);
+  },
 };
 
 const ALIEN = {
