@@ -221,6 +221,21 @@ def milky(img, elev, u, cfg, seed):
     img[:] = np.clip(img + dense[..., None], 0, 1)
 
 
+# Planetenringe von innen: viele feine Streifen in Gold- und Beigetönen, mit dunklen Lücken (Cassini-Teilung)
+def rings(img, elev, cfg):
+    lo, hi = cfg['band']
+    t = (elev - lo) / (hi - lo)
+    cols = [rgb(c) for c in cfg['colors']]
+    k = np.floor(np.clip(t, 0, 0.999) * 26).astype(int)
+    rng = np.random.default_rng(5)
+    pick = rng.integers(0, len(cols), 26)
+    strength = rng.uniform(0.4, 1.0, 26)
+    strength[[8, 9, 17]] = 0.05  # Lücken
+    col = np.stack([cols[i] for i in pick])[k]
+    a = (strength[k] * smooth(-0.02, 0.05, t) * (1 - smooth(0.95, 1.02, t)) * cfg.get('alpha', 0.7))[..., None]
+    img[:] = img * (1 - a) + col * a
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -233,6 +248,8 @@ def render(name, cfg):
         aurora(img, elev, u, cfg['aurora'], seed + 55)
     if cfg.get('rainbow'):
         rainbow(img, elev, cfg['rainbow'])
+    if cfg.get('rings'):
+        rings(img, elev, cfg['rings'])
     if cfg.get('milky'):
         milky(img, elev, u, cfg['milky'], seed + 91)
     if cfg.get('cave'):
@@ -382,6 +399,20 @@ HIMMEL = {
         ],
         'stars': 1200,
         'starBright': 1.6,
+    },
+    # Saturn: warm-goldener Weltraum; ein helles, fein gestreiftes Ringband zieht um den Himmel (die Ringe von innen),
+    # darunter goldener Dunst, darüber Sterne
+    'saturn': {
+        'seed': 127,
+        'gradient': [(-5, '#8a6a3a'), (6, '#5a4424'), (20, '#2a1e12'), (90, '#0c0a14')],
+        'below': [(-90, '#4a3a24'), (0, '#8a6a3a')],
+        'rings': {'band': (18, 30), 'colors': ['#e8d0a0', '#c8a060', '#f0dcb0', '#b08850'], 'alpha': 0.75},
+        'clouds': [
+            {'band': (0, 10), 'scale': 4, 'cover': 0.65, 'soft': 0.45, 'light': '#e0c08a', 'shadow': '#8a6a3a', 'streaks': True, 'alpha': 0.6, 'blur': 5},
+        ],
+        'stars': 2000,
+        'starBright': 2.0,
+        'starsFrom': -2,
     },
 }
 

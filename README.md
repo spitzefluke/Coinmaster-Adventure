@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig ist Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und von Planet 2 Mond, Neptun und Mars.
+**Umgebung je Welt (eine Welt pro Etappe):** fertig ist Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und von Planet 2 Mond, Neptun, Mars und Saturn.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -381,6 +381,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 | Mond | schwarzer Weltraum, Milchstraße als Band über dem Horizont, viele helle Sterne (die Erde bleibt als Himmelskörper) | schwebende Mondbrocken, Unterseite aus grauem Mondgestein, dunkles Nebelmeer |
 | Neptun | tiefblauer Sturmhimmel mit Wolkenbändern in Blau und Türkis, Sterne | schwebende Eisbrocken, Unterseite aus blauem Eisgestein mit Eiszapfen, blaues Sturmnebelmeer |
 | Mars | rostroter Staubhimmel mit Staubschleiern, oben dunkel mit Sternen | schwebende rote Felsbrocken, Unterseite aus rotem Gestein, Staubdünen (Sand, nicht durchscheinend) |
+| Saturn | warm-goldener Weltraum, die Saturnringe als fein gestreiftes Band mit Lücken, goldener Dunst, Sterne | schwebende goldene Felsbrocken, Unterseite aus Sandstein, goldenes Ringstaubmeer |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle
