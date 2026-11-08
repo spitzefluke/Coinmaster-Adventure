@@ -213,6 +213,23 @@ function frostingDrips(ctx, n, colors) {
   }
 }
 
+// ── Perlenschnüre unter dem Inselrand (Muschelland): Ketten aus schimmernden Perlen, unten eine große ──
+function pearlStrings(ctx, n) {
+  const { rr, R, root } = ctx;
+  const mat = new THREE.MeshStandardMaterial({ color: '#fff4f8', metalness: 0.3, roughness: 0.2, emissive: '#ffe0f0', emissiveIntensity: 0.35 });
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + rr(-0.05, 0.05), r = R + rr(0.5, 1);
+    const count = 4 + Math.floor(rr(0, 5));
+    for (let j = 0; j <= count; j++) {
+      const big = j === count, s = big ? rr(0.28, 0.4) : 0.15;
+      const m = new THREE.Mesh(new THREE.SphereGeometry(s, 10, 8), mat);
+      m.position.set(Math.cos(a) * r, -0.5 - j * 0.42 - (big ? 0.1 : 0), Math.sin(a) * r);
+      m.userData.rbx = { sky: true };
+      root.add(m);
+    }
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -804,6 +821,12 @@ const MUSCHELLAND = {
     seaweedBeds(ctx, 4);
     seaRocks(ctx, 8);
   },
+  backdrop(ctx) {
+    // Umgebung: schwebende Muschelfelsen, Felsunterseite in Meeresfarben, Perlenschnüre am Rand
+    floatingIsles(ctx, { far: 6, near: 7, tops: ['mountain_C@meer', 'mountain_A@meer', 'rock_single_D@meer'], small: ['rock_single_C@meer', 'rock_single_E@meer'], rock: 'rock_single_B@meer' });
+    rockUnderside(ctx, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer', 'rock_single_E@meer']);
+    pearlStrings(ctx, 26);
+  }
 };
 
 const ATLANTIS = {
