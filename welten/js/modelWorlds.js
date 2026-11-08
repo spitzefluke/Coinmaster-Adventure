@@ -898,7 +898,13 @@ const SPAWN = {
     scatterModels(ctx, 6, ['post_lantern'], 0.8, 0.8, { rMin: 5.6, rMax: 9.4, gap: 1 });
     scatterModels(ctx, 8, ['barrel', 'crate_A_big', 'sack', 'crate_long_C', 'bucket_water'], 3, 3.4, { rMin: 5.6, rMax: 13, gap: 1 });
     scatterModels(ctx, 4, ['rock_single_A', 'rock_single_C', 'rock_single_E'], 2.6, 3.4, { rMin: 11, rMax: R - 1.4, gap: 0.8 });
+    SPAWN.backdrop(ctx); // der Spawn gehört zu keinem Planeten, darum ruft planet1/2/3 die Kulisse nicht auf
   },
+  backdrop(ctx) {
+    // Umgebung: schwebende Inseln mit Bäumen und Häuschen, Felsunterseite mit Ranken (Wolken malt das Himmelsbild)
+    floatingIsles(ctx, { far: 7, near: 5, tops: ['hills_A_trees', 'hills_B_trees', 'hills_C_trees'], small: ['trees_B_small', 'trees_A_small'] });
+    rockUnderside(ctx, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E']);
+  }
 };
 
 export const MODEL_WORLDS = { normal: NORMAL, wald: WALD, stadt: STADT, eis: EIS, lava: LAVA, hoehle: HOEHLE, candy: CANDY, mond: MOND, neptun: NEPTUN, mars: MARS, saturn: SATURN, alien: ALIEN, sonne: SONNE, korallenriff: KORALLENRIFF, muschelland: MUSCHELLAND, atlantis: ATLANTIS, spawn: SPAWN };

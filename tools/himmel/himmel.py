@@ -495,6 +495,17 @@ HIMMEL = {
         'starBright': 1.6,
         'starsFrom': -2,
     },
+    # Spawn: warmer, goldener Nachmittag; oben klares Blau, zum Horizont Pfirsich und Gold, Haufenwolken golden angestrahlt
+    'spawn': {
+        'seed': 19,
+        'gradient': [(-5, '#ffe2b0'), (6, '#fde8c8'), (16, '#f2e0c8'), (30, '#a8d4f0'), (55, '#6ab4ea'), (90, '#4a96e0')],
+        'below': [(-90, '#e8c090'), (0, '#ffe2b0')],
+        'clouds': [
+            {'band': (3, 14), 'scale': 4, 'cover': 0.6, 'soft': 0.4, 'light': '#fff4d8', 'shadow': '#f4c890', 'streaks': True, 'alpha': 0.6, 'blur': 5},
+            {'band': (9, 28), 'scale': 5, 'cover': 0.62, 'soft': 0.08, 'light': '#fffaf0', 'shadow': '#eab890', 'stretch': 2.0, 'blur': 1.6},
+            {'band': (22, 35), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#ffffff', 'shadow': '#f4e4d4', 'streaks': True, 'alpha': 0.4, 'blur': 4},
+        ],
+    },
 }
 
 if __name__ == '__main__':
