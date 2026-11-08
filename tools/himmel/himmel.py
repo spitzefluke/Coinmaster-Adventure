@@ -192,6 +192,20 @@ def cave(img, elev, u, cfg, seed):
     img[:] = img * (1 - a[..., None]) + col * a[..., None]
 
 
+# Regenbogenband rundherum (nur von der Höhe abhängig, darum ohne Naht), weich und durchscheinend
+def rainbow(img, elev, cfg):
+    lo, hi = cfg['band']
+    t = (elev - lo) / (hi - lo)
+    cols = [rgb(c) for c in ['#ff6a8a', '#ffb05a', '#ffe86a', '#7ae88a', '#6ac8ff', '#a88aff']]
+    out = np.zeros(elev.shape + (3,), np.float32)
+    n = len(cols)
+    for i, c in enumerate(cols):
+        w = np.clip(1 - np.abs(t * n - (i + 0.5)), 0, 1)
+        out += c[None, None, :] * w[..., None]
+    a = (smooth(-0.05, 0.1, t) * (1 - smooth(0.9, 1.05, t)) * cfg.get('alpha', 0.4))[..., None]
+    img[:] = img * (1 - a) + out * a
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -202,6 +216,8 @@ def render(name, cfg):
     img = gradient(elev, cfg['gradient'])
     if cfg.get('aurora'):
         aurora(img, elev, u, cfg['aurora'], seed + 55)
+    if cfg.get('rainbow'):
+        rainbow(img, elev, cfg['rainbow'])
     if cfg.get('cave'):
         cave(img, elev, u, cfg['cave'], seed + 77)
     for i, layer in enumerate(cfg.get('clouds', [])):
@@ -302,6 +318,17 @@ HIMMEL = {
         ],
         'stars': 600,
         'cave': {'rock': '#2a2238', 'vein': '#7ae8ff', 'ceiling': 34, 'reach': 24, 'spikes': 26},
+    },
+    # Candy: Zuckerwattehimmel in Pastell, rosa Horizont, Regenbogenband, dicke Zuckerwattewolken in Rosa und Hellblau
+    'candy': {
+        'seed': 71,
+        'gradient': [(-5, '#ffe6f4'), (8, '#ffd0ea'), (20, '#f4b8e8'), (40, '#c8a8f4'), (90, '#9ab8f4')],
+        'below': [(-90, '#ffc2e2'), (0, '#ffe6f4')],
+        'rainbow': {'band': (16, 26), 'alpha': 0.35},
+        'clouds': [
+            {'band': (4, 20), 'scale': 6, 'cover': 0.62, 'soft': 0.1, 'light': '#fff4fb', 'shadow': '#f4a8d8', 'stretch': 2.0, 'blur': 1.8},
+            {'band': (12, 30), 'scale': 7, 'cover': 0.45, 'soft': 0.1, 'light': '#f0faff', 'shadow': '#a8c8f4', 'stretch': 2.2, 'blur': 1.8},
+        ],
     },
 }
 
