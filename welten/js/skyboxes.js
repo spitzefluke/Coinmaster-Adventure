@@ -17,6 +17,7 @@ export const SKYBOXES = {
     sun: false, sea: ['#6a4aa8', '#5a3e96', '#7a56b8'], seaGlow: { share: 0.3, colors: ['#8a5aff', '#5ad8ff', '#c87aff'] },
     wall: { low: ['#2a2238', '#241e30'], mid: ['#2e2640', '#2a2238'], top: ['#322a44', '#2e2640'] },
   },
+  candy: { sun: true, sea: ['#ffd6ec', '#ffe6f4', '#d8ecff'], wall: { low: ['#ffd0ea', '#ffc6e4'], mid: ['#ffe2f2', '#e2f0ff'], top: ['#fff0f8', '#eef6ff'] } },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 

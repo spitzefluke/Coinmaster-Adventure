@@ -1488,9 +1488,8 @@ end
 
 R.candy = function(k, w)
 	sun(k, -0.4, 0.55, hex("#fff6fb"), 44, hex("#ffd0ea"))
-	cloudBank(k, 10, hex("#ffd8f0"), 0, 30, 150)
-	cloudBank(k, 6, hex("#c8ecff"), 0, 60, 170)
-	islets(k, 3, w.Ground, hex("#c88b5a"))
+	-- Zuckerwatte und schwebende Inseln kommen aus dem Himmelsbild und modelWorlds.js; hier nur wenige Wolken
+	cloudBank(k, 5, hex("#ffd8f0"), 0.2, 90, 160)
 	birds(k, 2, hex("#ff7ac8"), 1.8, hex("#7ad0ff"))
 	butterflies(k, 7, { hex("#ff5fb0"), hex("#5fd3ff"), hex("#ffe25f"), hex("#7aff8a") })
 	motes(k, { Colors = { hex("#ffffff"), hex("#ffd0ea") }, Rate = 16, Size0 = 0.9, Speed = 0.6, Alpha = 0.3 })

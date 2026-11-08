@@ -194,6 +194,24 @@ function hangingCrystals(ctx, kit, n, colors) {
   }
 }
 
+// ── Zuckergusstropfen am Inselrand (Candy): kurze, runde Tropfen in Pastellfarben ──
+function frostingDrips(ctx, n, colors) {
+  const { rr, R, root } = ctx;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + rr(-0.05, 0.05), r = R + rr(0.4, 0.9);
+    const len = rr(0.6, 2.2), w = rr(0.25, 0.45), c = colors[i % colors.length];
+    const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 });
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(w, w, len, 10), mat);
+    stem.position.set(Math.cos(a) * r, -0.4 - len / 2, Math.sin(a) * r);
+    const drop = new THREE.Mesh(new THREE.SphereGeometry(w * 1.25, 10, 8), mat);
+    drop.position.set(Math.cos(a) * r, -0.4 - len, Math.sin(a) * r);
+    for (const m of [stem, drop]) {
+      m.userData.rbx = { sky: true };
+      root.add(m);
+    }
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -549,6 +567,13 @@ const CANDY = {
     scatterModels(ctx, 4, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
     void kit;
   },
+  backdrop(ctx, kit) {
+    planet1Backdrop(ctx, kit); // Eisberge (Waffel und Kugeln) in der Ferne
+    // Umgebung: schwebende Pastellinseln mit Bäumen, Felsunterseite, Zuckergusstropfen am Rand
+    floatingIsles(ctx, { far: 7, near: 6, tops: ['hills_A_trees@candy', 'hills_B_trees@candy', 'trees_B_medium@candy'], small: ['rock_single_C@candy', 'tree_single_A@candy'], rock: 'rock_single_C@candy' });
+    rockUnderside(ctx, ['rock_single_C@candy']);
+    frostingDrips(ctx, 30, ['#ff8ac8', '#ffffff', '#8ad8ff', '#fff28a']);
+  }
 };
 
 // ── Planet 2: Weltraumbasen aus Space Base Bits; Felsen und Geländeblöcke je Planet umgefärbt (@mond …) ──
