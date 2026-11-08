@@ -371,6 +371,18 @@ HIMMEL = {
         'stars': 1400,
         'starBright': 1.8,
     },
+    # Mars: rostroter Staubhimmel; am Horizont orange Staubdunst, darüber lange Staubschleier, oben dunkel mit Sternen
+    'mars': {
+        'seed': 109,
+        'gradient': [(-5, '#e8905a'), (6, '#d0703e'), (18, '#9a4424'), (40, '#4a1c10'), (90, '#1c0806')],
+        'below': [(-90, '#a84a24'), (0, '#e8905a')],
+        'clouds': [
+            {'band': (0, 12), 'scale': 4, 'cover': 0.7, 'soft': 0.45, 'light': '#ffb07a', 'shadow': '#c4602e', 'streaks': True, 'alpha': 0.7, 'blur': 5},
+            {'band': (10, 28), 'scale': 7, 'cover': 0.5, 'soft': 0.4, 'light': '#e88a5a', 'shadow': '#8a3a1e', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+        'stars': 1200,
+        'starBright': 1.6,
+    },
 }
 
 if __name__ == '__main__':
