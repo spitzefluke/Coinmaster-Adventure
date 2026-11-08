@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne) und Planet 3 (Korallenriff, Muschelland, Atlantis).
+**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy), Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne) und Planet 3 (Korallenriff, Muschelland, Atlantis).
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
