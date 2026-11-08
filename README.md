@@ -367,10 +367,11 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy), Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne) und Planet 3 (Korallenriff, Muschelland, Atlantis).
+**Umgebung je Welt:** alle 17 Welten (Spawn und Planet 1 bis 3) haben ein eigenes Himmelsbild, eine Felsunterseite aus Modellen, schwebende Inseln oder Brocken und Details am Rand.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
+| Spawn | warmer, goldener Nachmittag: blau oben, Pfirsich und Gold am Horizont, golden angestrahlte Haufenwolken | schwebende Inseln mit Bäumen, Felsunterseite, Ranken, helles Wolkenmeer (die Münzstadt bleibt) |
 | Normal | Sommerhimmel mit Haufen- und Schleierwolken | schwebende Grasinseln mit Bäumen, Grasbrocken am Rand, Felsunterseite, weiße Wolkenwand |
 | Wald | Morgenhimmel, grünlich-golden, Nebelbänder über den Wipfeln | schwebende Waldinseln mit Tannengruppen, Felsunterseite mit hängenden Wurzeln, hellgrünes Nebelmeer |
 | Stadt | Sonnenuntergang (Gelb, Orange, Rosa, oben Violett), angestrahlte Wolken, erste Sterne | schwebende Häuserinseln, Skyline in der Ferne, Felsunterseite mit Rohren und Lampen, pfirsichfarbenes Wolkenmeer |

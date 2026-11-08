@@ -1427,7 +1427,8 @@ local R = {}
 
 R.spawn = function(k, w)
 	sun(k, -0.9, 0.55, hex("#fff3c4"), 44, hex("#ffe08a"))
-	cloudBank(k, 9, WHITE, 0)
+	-- Wolken malt das Himmelsbild (assets/himmel/spawn); hier nur wenige, durchscheinende
+	cloudBank(k, 5, WHITE, 0.35, 100, 170)
 	balloons(k, 4, { hex("#ff5a5a"), hex("#ffd76a"), hex("#5ad1ff"), hex("#7dff8a") })
 	birds(k, 2, hex("#3a3a48"))
 	motes(k, { Colors = { hex("#fff6c0"), hex("#ffffff") }, Rate = 12, Size0 = 0.9, Speed = 0.6, Alpha = 0.35 })
