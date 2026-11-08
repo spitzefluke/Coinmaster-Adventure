@@ -230,6 +230,39 @@ function pearlStrings(ctx, n) {
   }
 }
 
+// ── Runensteine am Inselrand (Atlantis): leuchtende Tafeln am Fels, nach außen gedreht, darunter Leuchttropfen ──
+function runeStones(ctx, n, { color = '#5affd8' } = {}) {
+  const { rr, R, root } = ctx;
+  const glow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8 });
+  const stone = new THREE.MeshStandardMaterial({ color: '#4a6470', flatShading: true, roughness: 0.8 });
+  const add = (m) => {
+    m.userData.rbx = { sky: true };
+    root.add(m);
+  };
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + rr(-0.04, 0.04), r = R + 0.75, y = -1.6 - rr(0, 1.2);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 0.3), stone);
+    plate.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    plate.rotation.y = -a + Math.PI / 2;
+    add(plate);
+    // Rune ᛉ: senkrechter Strich und zwei schräge Arme nach oben, leicht vor der Tafel
+    const rune = new THREE.Group();
+    rune.position.set(Math.cos(a) * (r + 0.18), y, Math.sin(a) * (r + 0.18));
+    rune.rotation.y = plate.rotation.y;
+    const stroke = (x, yy, rot, h) => {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(0.16, h, 0.08), glow);
+      g.position.set(x, yy, 0);
+      g.rotation.z = rot;
+      g.userData.rbx = { sky: true };
+      rune.add(g);
+    };
+    stroke(0, 0, 0, 1.3);
+    stroke(-0.22, 0.32, 0.6, 0.6);
+    stroke(0.22, 0.32, -0.6, 0.6);
+    root.add(rune);
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -844,6 +877,13 @@ const ATLANTIS = {
     seaweedBeds(ctx, 3);
     seaRocks(ctx, 5);
   },
+  backdrop(ctx) {
+    // Umgebung: schwebende Ruinenfelsen mit Säulen, Felsunterseite, leuchtende Runensteine am Rand
+    floatingIsles(ctx, { far: 6, near: 6, tops: ['mountain_A@meer', 'column', 'rock_single_D@meer', 'column'], small: ['pillar', 'rock_single_C@meer'], rock: 'rock_single_B@meer', farW: [4, 6.5] });
+    rockUnderside(ctx, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer', 'rock_single_E@meer']);
+    runeStones(ctx, 14);
+    icicles(ctx, 16, { color: '#5affd8', glow: true });
+  }
 };
 
 // ── Spawn: die Münzstadt bleibt; Modelle füllen nur freie Plätze (Bäume im äußeren Ring, Marktkram, Laternen) ──

@@ -30,6 +30,7 @@ export const SKYBOXES = {
   },
   korallenriff: { sun: false }, // unter Wasser: Nebel verdeckt die Nachbarn, keine Wand; Dünen aus worldParts
   muschelland: { sun: false },
+  atlantis: { sun: false },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 
