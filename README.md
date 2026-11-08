@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne), von Planet 3 Korallenriff und Muschelland.
+**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy), Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne) und Planet 3 (Korallenriff, Muschelland, Atlantis).
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -386,6 +386,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 | Sonne | glühender Himmel von Gelb-Weiß bis Tiefrot, Flammenschleier, Sonnenwind-Vorhänge | schwebende glühende Felsbrocken, Felsunterseite mit Glut-Tropfen, Plasmameer aus Glutkruste mit leuchtenden Feldern |
 | Korallenriff | unter Wasser: oben die helle Oberfläche mit Lichtnetz, schräge Lichtstrahlen, zum Horizont Tiefblau | schwebende Riff-Felsen, Felsunterseite in Meeresfarben, Seetang hängt vom Rand; keine Wand (der Wassernebel verdeckt die Nachbarn), die Glas-Wasseroberfläche entfällt |
 | Muschelland | perlmuttfarbenes Wasser: oben Rosa mit Lichtnetz, Lichtstrahlen, zum Horizont Türkis und Blau | schwebende Muschelfelsen, Felsunterseite in Meeresfarben, Perlenschnüre am Rand |
+| Atlantis | tiefes, geheimnisvolles Wasser: oben schwach türkis leuchtende Oberfläche, wenige kräftige Lichtstrahlen, Leuchtplankton | schwebende Ruinenfelsen mit Säulen, Felsunterseite, Runensteine (ᛉ) und Leuchttropfen am Rand |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle

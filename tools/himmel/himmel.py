@@ -484,6 +484,17 @@ HIMMEL = {
         'water': {'light': '#ffd8f0', 'shafts': 16, 'strength': 0.35, 'from': 2, 'to': 22, 'topLight': 0.5},
         'stars': 500,
     },
+    # Atlantis: tiefes, geheimnisvolles Wasser; oben schwach türkis leuchtende Oberfläche, wenige kräftige Lichtstrahlen,
+    # zum Horizont fast schwarzblau; Leuchtplankton in Türkis
+    'atlantis': {
+        'seed': 181,
+        'gradient': [(-5, '#04203a'), (6, '#063050'), (20, '#0a5070'), (45, '#1a8a98'), (90, '#3ac8c0')],
+        'below': [(-90, '#021428'), (0, '#04203a')],
+        'water': {'light': '#7affe8', 'shafts': 10, 'strength': 0.45, 'from': 2, 'to': 22, 'topLight': 0.6},
+        'stars': 900,
+        'starBright': 1.6,
+        'starsFrom': -2,
+    },
 }
 
 if __name__ == '__main__':
