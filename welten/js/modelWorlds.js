@@ -620,7 +620,12 @@ const MOND = {
     scatterModels(ctx, 3, ['cargo_A_stacked', 'cargo_B_stacked', 'spacetruck'], 2.4, 2.8, { gap: 0.9 });
     rocksOf(ctx, 'mond');
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, 'mond'),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, 'mond');
+    // Umgebung: schwebende Mondbrocken, Felsunterseite aus grauem Mondgestein (Sterne malt das Himmelsbild)
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B@mond', 'rocks_A@mond', 'rock_B@mond'], small: ['rock_A@mond', 'rock_B@mond'], rock: 'rock_A@mond' });
+    rockUnderside(ctx, ['rock_A@mond', 'rock_B@mond']);
+  },
 };
 
 const NEPTUN = {

@@ -206,6 +206,21 @@ def rainbow(img, elev, cfg):
     img[:] = img * (1 - a) + out * a
 
 
+# Milchstraße: ein Band aus Sternenstaub rund um den Himmel, mit dunklen Staubwolken darin und dichten Sternen
+def milky(img, elev, u, cfg, seed):
+    lo, hi = cfg['band']
+    mid = (lo + hi) / 2 + (fbm(u, np.zeros_like(elev), 2, 2, seed, 0.5) - 0.5) * cfg.get('wave', 8)
+    d = np.abs(elev - mid) / ((hi - lo) / 2)
+    core = np.clip(1 - d, 0, 1) ** 1.5
+    dust = fbm(u, elev / 40.0 * 3, 8, 5, seed + 1, 0.6)
+    glow = core * np.clip(dust * 1.6 - 0.35, 0, 1) * cfg.get('strength', 0.5)
+    lanes = np.clip((fbm(u, elev / 40.0 * 4, 10, 3, seed + 2, 0.5) - 0.55) * 4, 0, 1) * core  # dunkle Staubbahnen
+    col = rgb(cfg['color'])[None, None, :]
+    img[:] = np.clip(img + col * blur_wrap(glow, 2)[..., None] - lanes[..., None] * 0.08, 0, 1)
+    dense = stars(elev.shape, cfg.get('stars', 4000), seed + 3) * core
+    img[:] = np.clip(img + dense[..., None], 0, 1)
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -218,12 +233,14 @@ def render(name, cfg):
         aurora(img, elev, u, cfg['aurora'], seed + 55)
     if cfg.get('rainbow'):
         rainbow(img, elev, cfg['rainbow'])
+    if cfg.get('milky'):
+        milky(img, elev, u, cfg['milky'], seed + 91)
     if cfg.get('cave'):
         cave(img, elev, u, cfg['cave'], seed + 77)
     for i, layer in enumerate(cfg.get('clouds', [])):
         clouds(img, elev, u, layer, seed + 101 * (i + 1))
     if cfg.get('stars'):
-        st = stars(elev.shape, cfg['stars'] * 0.25, seed + 7) * smooth(5, 25, elev)
+        st = stars(elev.shape, cfg['stars'] * 0.25, seed + 7, cfg.get('starBright', 1.0)) * smooth(cfg.get('starsFrom', 5), cfg.get('starsFrom', 5) + 20, elev)
         img = np.clip(img + st[..., None], 0, 1)
     Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'seite.jpg'), quality=90)
 
@@ -236,7 +253,7 @@ def render(name, cfg):
         rr = np.sqrt(cx * cx + cz * cz)
         top = rgb(cfg['cave']['rock'])[None, None, :] * (0.8 + 0.2 * np.clip(rr, 0, 1)[..., None])
     if cfg.get('stars'):
-        top = np.clip(top + stars(e.shape, cfg['stars'] * 0.4, seed + 9)[..., None], 0, 1)
+        top = np.clip(top + stars(e.shape, cfg['stars'] * 0.4, seed + 9, cfg.get('starBright', 1.0))[..., None], 0, 1)
     Image.fromarray((np.clip(top, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'oben.jpg'), quality=90)
 
     # Unten: Horizontfarbe zur Tiefe hin dunkler (liegt hinter dem Meer, sieht man kaum)
@@ -329,6 +346,17 @@ HIMMEL = {
             {'band': (4, 20), 'scale': 6, 'cover': 0.62, 'soft': 0.1, 'light': '#fff4fb', 'shadow': '#f4a8d8', 'stretch': 2.0, 'blur': 1.8},
             {'band': (12, 30), 'scale': 7, 'cover': 0.45, 'soft': 0.1, 'light': '#f0faff', 'shadow': '#a8c8f4', 'stretch': 2.2, 'blur': 1.8},
         ],
+    },
+    # Mond: schwarzer Weltraum, Milchstraße als Band über dem Horizont, viele Sterne, ein Hauch Blau am Horizont
+    # (die Erde zeigt die Kulisse als Himmelskörper)
+    'mond': {
+        'seed': 83,
+        'gradient': [(-5, '#1a2036'), (6, '#10142a'), (20, '#080a18'), (90, '#04050c')],
+        'below': [(-90, '#0a0c18'), (0, '#1a2036')],
+        'milky': {'band': (6, 34), 'color': '#c8d0ff', 'strength': 0.45, 'wave': 10, 'stars': 5000},
+        'stars': 2400,
+        'starBright': 2.5,
+        'starsFrom': -2,
     },
 }
 

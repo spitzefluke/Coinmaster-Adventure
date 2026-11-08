@@ -18,6 +18,7 @@ export const SKYBOXES = {
     wall: { low: ['#2a2238', '#241e30'], mid: ['#2e2640', '#2a2238'], top: ['#322a44', '#2e2640'] },
   },
   candy: { sun: true, sea: ['#ffd6ec', '#ffe6f4', '#d8ecff'], wall: { low: ['#ffd0ea', '#ffc6e4'], mid: ['#ffe2f2', '#e2f0ff'], top: ['#fff0f8', '#eef6ff'] } },
+  mond: { sun: false, sea: ['#2a2e3e', '#22263a', '#30344a'], wall: { low: ['#1a1e30', '#161a2a'], mid: ['#1e2236', '#1a1e30'], top: ['#22263a', '#1e2236'] } },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 
