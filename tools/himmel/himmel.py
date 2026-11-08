@@ -289,7 +289,7 @@ def render(name, cfg):
         rr = np.sqrt(cx * cx + cz * cz)
         net = blur_wrap(caustics(e.shape, seed + 44), 1.5)
         edge = np.clip((0.9 - rr) / 0.5, 0, 1)  # zum Rand hin aus, damit es an die Seitenbilder passt
-        top = np.clip(top + rgb(cfg['water']['light'])[None, None, :] * ((net * 0.35 + 0.2) * edge)[..., None], 0, 1)
+        top = np.clip(top + rgb(cfg['water']['light'])[None, None, :] * ((net * 0.35 + 0.2) * edge * cfg['water'].get('topLight', 1.0))[..., None], 0, 1)
     if cfg.get('cave'):
         # Decke von oben: Fels mit Adern (rundum gleich, von der Mitte nach außen)
         # nur rundum gleich (keine Naht): Felsfarbe, zur Mitte etwas dunkler
@@ -474,6 +474,15 @@ HIMMEL = {
         'below': [(-90, '#06304e'), (0, '#0a4a7a')],
         'water': {'light': '#e8ffff', 'shafts': 18, 'strength': 0.4, 'from': 2, 'to': 22},
         'stars': 400,
+    },
+    # Muschelland: perlmuttfarbenes Wasser; oben helles Rosa-Weiß mit Lichtnetz, Lichtstrahlen in zartem Rosa,
+    # zum Horizont Türkis bis Blau, Perlenglitzern
+    'muschelland': {
+        'seed': 173,
+        'gradient': [(-5, '#1a5a8a'), (6, '#2a8ab0'), (18, '#5ab8d0'), (34, '#a8b8e0'), (60, '#e0a8d0'), (90, '#f0b8dc')],
+        'below': [(-90, '#124a72'), (0, '#1a5a8a')],
+        'water': {'light': '#ffd8f0', 'shafts': 16, 'strength': 0.35, 'from': 2, 'to': 22, 'topLight': 0.5},
+        'stars': 500,
     },
 }
 
