@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Normal, Wald, Stadt, Eis und Lava.
+**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Normal, Wald, Stadt, Eis, Lava und Höhle.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -376,6 +376,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 | Stadt | Sonnenuntergang (Gelb, Orange, Rosa, oben Violett), angestrahlte Wolken, erste Sterne | schwebende Häuserinseln, Skyline in der Ferne, Felsunterseite mit Rohren und Lampen, pfirsichfarbenes Wolkenmeer |
 | Eis | Winterhimmel zur blauen Stunde mit grünem und violettem Polarlicht, Schneedunst, erste Sterne | schwebende Eisschollen mit verschneiten Tannen, bläuliche Felsunterseite, Eiszapfen am Rand, weißes Schneenebelmeer |
 | Lava | Glutnacht: dunkle Aschewolken, von unten rot angestrahlt, Funken | schwebende Vulkanbrocken, Basaltunterseite mit leuchtenden Lavatropfen, Glutmeer aus dunkler Kruste mit Lavabecken (Neon) |
+| Höhle | Höhlendecke statt Himmel: dunkler Fels mit Tropfsteinen und vereinzelten Kristalladern, violetter Leuchtnebel, Glimmer | schwebende Felsbrocken, violette Felsunterseite, leuchtende Kristallspitzen am Rand, violettes Nebelmeer mit Leuchtbecken |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle

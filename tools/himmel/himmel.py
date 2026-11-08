@@ -173,6 +173,25 @@ def aurora(img, elev, u, cfg, seed):
     img[:] = np.clip(img * (1 - a) + col * a * 1.15, 0, 1)
 
 
+# Höhlendecke: oben dunkler Fels mit Struktur und leuchtenden Kristalladern, dazu Tropfstein-Silhouetten, die
+# von oben bis tief herabhängen; am Horizont leuchtet violetter Nebel
+def cave(img, elev, u, cfg, seed):
+    rock = fbm(u, elev / 40.0, 6, 5, seed, 0.55)
+    base = rgb(cfg['rock'])
+    rock_col = base[None, None, :] * (0.7 + 0.6 * rock[..., None])
+    # Tropfsteine: Unterkante hängt je nach Richtung verschieden tief (spitze Zacken)
+    spikes = fbm(u, np.zeros_like(elev), cfg.get('spikes', 22), 2, seed + 3, 0.7)
+    spikes = np.clip((spikes - 0.45) * 3, 0, 1) ** 2
+    edge = cfg['ceiling'] - spikes * cfg.get('reach', 30)
+    a = smooth(edge - 1.5, edge + 1.5, elev)
+    # Kristalladern: schmale, helle Linien im Fels
+    vein = fbm(u, elev / 40.0 * 2, 6, 3, seed + 9, 0.5)
+    patch = np.clip((fbm(u, elev / 40.0, 3, 2, seed + 11, 0.5) - 0.42) * 4, 0, 1)  # Adern nur stellenweise
+    vein = np.clip(1 - np.abs(vein - 0.5) * 30, 0, 1) * patch * smooth(edge + 2, edge + 10, elev)
+    col = rock_col * (1 - vein[..., None]) + rgb(cfg['vein'])[None, None, :] * vein[..., None]
+    img[:] = img * (1 - a[..., None]) + col * a[..., None]
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -183,6 +202,8 @@ def render(name, cfg):
     img = gradient(elev, cfg['gradient'])
     if cfg.get('aurora'):
         aurora(img, elev, u, cfg['aurora'], seed + 55)
+    if cfg.get('cave'):
+        cave(img, elev, u, cfg['cave'], seed + 77)
     for i, layer in enumerate(cfg.get('clouds', [])):
         clouds(img, elev, u, layer, seed + 101 * (i + 1))
     if cfg.get('stars'):
@@ -191,8 +212,13 @@ def render(name, cfg):
     Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'seite.jpg'), quality=90)
 
     # Oben: nur Verlauf (und Sterne)
-    e, _, _ = cap_dirs(True)
+    e, cx, cz = cap_dirs(True)
     top = gradient(e, cfg['gradient'])
+    if cfg.get('cave'):
+        # Decke von oben: Fels mit Adern (rundum gleich, von der Mitte nach außen)
+        # nur rundum gleich (keine Naht): Felsfarbe, zur Mitte etwas dunkler
+        rr = np.sqrt(cx * cx + cz * cz)
+        top = rgb(cfg['cave']['rock'])[None, None, :] * (0.8 + 0.2 * np.clip(rr, 0, 1)[..., None])
     if cfg.get('stars'):
         top = np.clip(top + stars(e.shape, cfg['stars'] * 0.4, seed + 9)[..., None], 0, 1)
     Image.fromarray((np.clip(top, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'oben.jpg'), quality=90)
@@ -264,6 +290,18 @@ HIMMEL = {
             {'band': (20, 36), 'scale': 8, 'cover': 0.5, 'soft': 0.35, 'light': '#6a2a20', 'shadow': '#2a1010', 'streaks': True, 'alpha': 0.55, 'blur': 4},
         ],
         'stars': 500,
+    },
+    # Höhle: riesige Kristallhöhle; dunkle Felsdecke mit Tropfsteinen und Kristalladern, am Horizont violetter
+    # Leuchtnebel, darunter Glimmer (Sterne in Kristallfarben)
+    'hoehle': {
+        'seed': 61,
+        'gradient': [(-5, '#5a3a8a'), (4, '#4a2e7a'), (12, '#2c1e4a'), (30, '#181228'), (90, '#0e0a18')],
+        'below': [(-90, '#2a1e44'), (0, '#5a3a8a')],
+        'clouds': [
+            {'band': (1, 12), 'scale': 4, 'cover': 0.65, 'soft': 0.45, 'light': '#a070f0', 'shadow': '#4a2e7a', 'streaks': True, 'alpha': 0.35, 'blur': 8},
+        ],
+        'stars': 600,
+        'cave': {'rock': '#2a2238', 'vein': '#7ae8ff', 'ceiling': 34, 'reach': 24, 'spikes': 26},
     },
 }
 

@@ -180,6 +180,20 @@ function icicles(ctx, n, { color = '#cfeeff', glow = false } = {}) {
   }
 }
 
+// ── Kristallspitzen unter der Insel (Höhle): leuchtende Kristallbüschel hängen aus dem Fels ──
+function hangingCrystals(ctx, kit, n, colors) {
+  const { rand, rr, R, root } = ctx;
+  for (let i = 0; i < n; i++) {
+    // am äußersten Rand, vor den Felsen der Unterseite
+    const a = (i / n) * TAU + rr(-0.1, 0.1), r = R + rr(0.5, 1.1);
+    const c = kit.crystal(rr(1.6, 3), colors[i % colors.length], rand, 2);
+    c.rotation.x = Math.PI; // Spitze nach unten
+    c.position.set(Math.cos(a) * r, -0.6, Math.sin(a) * r);
+    c.traverse((o) => o.isMesh && (o.userData.rbx = { sky: true }));
+    root.add(c);
+  }
+}
+
 // ── Schwebende Inseln (Himmel): Grashügel aus dem Paket auf einem umgedrehten, lang gezogenen Felsen ──
 function floatingIsle(ctx, x, y, z, w, topId, rockId = 'rock_single_D') {
   const { rand, root } = ctx;
@@ -502,6 +516,13 @@ const HOEHLE = {
     scatterModels(ctx, 5, ['torch_lit'], 1.6, 1.6, { gap: 1 });
     scatterModels(ctx, 3, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
   },
+  backdrop(ctx, kit) {
+    // keine Felssäulen aus planet1.js: sie standen direkt vor der Insel und verdeckten die Sicht
+    // Umgebung: schwebende Felsbrocken mit Kristallen, violette Felsunterseite mit Kristallspitzen
+    floatingIsles(ctx, { far: 6, near: 6, tops: ['mountain_A@hoehle', 'mountain_C@hoehle', 'rock_single_D@hoehle'], small: ['rock_single_C@hoehle', 'rock_single_E@hoehle'], rock: 'rock_single_B@hoehle' });
+    rockUnderside(ctx, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle']);
+    hangingCrystals(ctx, kit, 22, ['#b07bff', '#6ae8ff', '#ff7ae0']);
+  }
 };
 
 // ── Candy: Lebkuchendorf mit Zuckerguss, Pastellbäume ──
