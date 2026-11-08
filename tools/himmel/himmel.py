@@ -414,6 +414,20 @@ HIMMEL = {
         'starBright': 2.0,
         'starsFrom': -2,
     },
+    # Alien: violetter Fremdhimmel; Nebelschwaden in Giftgrün und Pink, dazu ein Milchstraßen-Band in Türkis, Sterne
+    'alien': {
+        'seed': 139,
+        'gradient': [(-5, '#6a3aa8'), (6, '#4a2478'), (20, '#2a1048'), (90, '#0a0418')],
+        'below': [(-90, '#3a1a60'), (0, '#6a3aa8')],
+        'milky': {'band': (14, 36), 'color': '#5affd8', 'strength': 0.4, 'wave': 14, 'stars': 3000},
+        'clouds': [
+            {'band': (0, 12), 'scale': 4, 'cover': 0.65, 'soft': 0.45, 'light': '#7aff5a', 'shadow': '#3a1a60', 'streaks': True, 'alpha': 0.5, 'blur': 6},
+            {'band': (8, 24), 'scale': 6, 'cover': 0.5, 'soft': 0.45, 'light': '#ff7ae0', 'shadow': '#4a2478', 'streaks': True, 'alpha': 0.4, 'blur': 6},
+        ],
+        'stars': 1800,
+        'starBright': 2.0,
+        'starsFrom': -2,
+    },
 }
 
 if __name__ == '__main__':
