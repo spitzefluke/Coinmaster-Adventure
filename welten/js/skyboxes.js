@@ -4,6 +4,7 @@
 //   wall     Wand am Horizont (verdeckt die Nachbarinseln): Farben unten, Mitte, oben
 //   sea      Farben des Wolkenmeers unter der Insel (sonst aus der Himmelsfarbe)
 //   seaMaterial / seaGlow  Material der Meeresteile; Anteil leuchtender Neon-Becken (Lava)
+//   seaOpaque  Meer im All nicht durchscheinend (Mars: Staubdünen)
 //   sun      Sonne und Mond von Roblox zeigen (CelestialBodiesShown)
 export const SKYBOXES = {
   normal: { sun: true, wall: { low: ['#e8f1fb', '#dce9f7'], mid: ['#ffffff', '#f3f8fe'], top: ['#ffffff', '#fbfdff'] } },
@@ -20,6 +21,7 @@ export const SKYBOXES = {
   candy: { sun: true, sea: ['#ffd6ec', '#ffe6f4', '#d8ecff'], wall: { low: ['#ffd0ea', '#ffc6e4'], mid: ['#ffe2f2', '#e2f0ff'], top: ['#fff0f8', '#eef6ff'] } },
   mond: { sun: false, sea: ['#2a2e3e', '#22263a', '#30344a'], wall: { low: ['#1a1e30', '#161a2a'], mid: ['#1e2236', '#1a1e30'], top: ['#22263a', '#1e2236'] } },
   neptun: { sun: false, sea: ['#3a6ad8', '#2a52b8', '#4a7ae0'], wall: { low: ['#2a52b8', '#2448a8'], mid: ['#3a62c8', '#2e56b8'], top: ['#4a72d8', '#3a62c8'] } },
+  mars: { sun: false, sea: ['#c4582e', '#b04c26', '#d06a3a'], seaMaterial: 'Sand', seaOpaque: true, wall: { low: ['#a84a24', '#9a4220'], mid: ['#c0603a', '#b05430'], top: ['#d07a4a', '#c06a3e'] } },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 

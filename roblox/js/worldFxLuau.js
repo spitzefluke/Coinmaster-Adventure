@@ -1519,7 +1519,7 @@ end
 R.mars = function(k, w)
 	space(k, w, { hex("#ffd8c8"), WHITE })
 	satellite(k)
-	cloudBank(k, 8, hex("#d8784a"), 0.55, -60, 10)
+	-- Staubschleier malt das Himmelsbild (assets/himmel/mars)
 	motes(k, { Name = "Staubwind", Texture = "", Colors = { hex("#d8653a"), hex("#ff9b6a") }, Rate = 24, Size0 = 1, Size1 = 0.8, Speed = 5, Spread = 15, Direction = Enum.NormalId.Left, Light = 0, Alpha = 0.35, Life = 10 })
 	grade(k, hex("#ffb08a"), 0.05, 0.06)
 end

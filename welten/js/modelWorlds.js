@@ -669,7 +669,12 @@ const MARS = {
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
     rocksOf(ctx, null, 9);
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, null),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, null);
+    // Umgebung: schwebende rote Felsbrocken, Unterseite aus rotem Gestein (Staubdünen siehe skyboxes.js)
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B', 'rocks_A', 'rock_B'], small: ['rock_A', 'rock_B'], rock: 'rock_A' });
+    rockUnderside(ctx, ['rock_A', 'rock_B']);
+  },
 };
 
 const SATURN = {

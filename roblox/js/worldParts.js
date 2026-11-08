@@ -478,7 +478,7 @@ function skyShield(sky, built, world) {
         size: [w, h, w * (0.8 + rand() * 0.4)],
         color: colors[Math.floor(rand() * colors.length)],
         material: kind === 'duene' ? 'Sand' : SKYBOXES[world.id]?.seaMaterial || 'SmoothPlastic',
-        transparency: kind === 'nebel' ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
+        transparency: kind === 'nebel' && !SKYBOXES[world.id]?.seaOpaque ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
       });
     }
 }
