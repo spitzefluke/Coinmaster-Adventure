@@ -437,8 +437,8 @@ function skyShield(sky, built, world) {
       }
     });
   }
-  if (water) {
-    // Wasseroberfläche hoch über der Insel
+  if (water && !SKYBOXES[world.id]) {
+    // Wasseroberfläche hoch über der Insel (mit Himmelsbild malt das Bild die Oberfläche)
     sky.push({ shape: 'Block', name: 'Wasseroberflaeche', pos: [0, D * 0.62, 0], rot: id, size: [2 * D * 0.8, 2, 2 * D * 0.8], color: '#9fe8ff', material: 'Glass', transparency: 0.45, canCollide: false, castShadow: false, noShadow: true });
   }
   // Meer unter der Insel: Wolken, Nebel oder Dünen

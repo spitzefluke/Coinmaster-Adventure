@@ -236,6 +236,24 @@ def rings(img, elev, cfg):
     img[:] = img * (1 - a) + col * a
 
 
+# Unter Wasser: Lichtstrahlen fallen schräg von der Oberfläche herab (Streifen in Richtung, nach unten auslaufend)
+def water(img, elev, u, cfg, seed):
+    shafts = fbm(u, np.zeros_like(elev), cfg.get('shafts', 18), 2, seed, 0.6)
+    shafts = np.clip((shafts - 0.5) * 3, 0, 1)
+    # oben vor der Kante zum Bild „oben“ ausblenden, sonst entsteht dort eine Naht
+    fade = smooth(cfg.get('from', 4), cfg.get('to', 40), elev) * (1 - smooth(28, 35, elev))
+    a = blur_wrap(shafts * fade, 3) * cfg.get('strength', 0.35)
+    img[:] = np.clip(img + rgb(cfg['light'])[None, None, :] * a[..., None], 0, 1)
+
+
+def caustics(shape, seed, scale=24):
+    """Netz aus hellen Linien wie Licht auf Wasser (für das Bild oben)"""
+    s = (np.arange(shape[0], dtype=np.float32) + 0.5) / shape[0]
+    x, z = np.meshgrid(s, s)
+    n = value_noise(x % 1.0, z * scale, int(scale), int(scale) + 4, seed) + 0.5 * value_noise((x * 2) % 1.0, z * scale * 2, int(scale * 2), int(scale * 2) + 4, seed + 1)
+    return np.clip(1 - np.abs(n / 1.5 - 0.5) * 9, 0, 1)
+
+
 def render(name, cfg):
     out = os.path.join(ROOT, 'assets', 'himmel', name)
     os.makedirs(out, exist_ok=True)
@@ -254,6 +272,8 @@ def render(name, cfg):
         milky(img, elev, u, cfg['milky'], seed + 91)
     if cfg.get('cave'):
         cave(img, elev, u, cfg['cave'], seed + 77)
+    if cfg.get('water'):
+        water(img, elev, u, cfg['water'], seed + 33)
     for i, layer in enumerate(cfg.get('clouds', [])):
         clouds(img, elev, u, layer, seed + 101 * (i + 1))
     if cfg.get('stars'):
@@ -264,6 +284,12 @@ def render(name, cfg):
     # Oben: nur Verlauf (und Sterne)
     e, cx, cz = cap_dirs(True)
     top = gradient(e, cfg['gradient'])
+    if cfg.get('water'):
+        # Wasseroberfläche von unten: hell, mit Lichtnetz, zur Mitte am hellsten
+        rr = np.sqrt(cx * cx + cz * cz)
+        net = blur_wrap(caustics(e.shape, seed + 44), 1.5)
+        edge = np.clip((0.9 - rr) / 0.5, 0, 1)  # zum Rand hin aus, damit es an die Seitenbilder passt
+        top = np.clip(top + rgb(cfg['water']['light'])[None, None, :] * ((net * 0.35 + 0.2) * edge)[..., None], 0, 1)
     if cfg.get('cave'):
         # Decke von oben: Fels mit Adern (rundum gleich, von der Mitte nach außen)
         # nur rundum gleich (keine Naht): Felsfarbe, zur Mitte etwas dunkler
@@ -439,6 +465,15 @@ HIMMEL = {
             {'band': (0, 12), 'scale': 4, 'cover': 0.7, 'soft': 0.45, 'light': '#fff6c0', 'shadow': '#ffb02e', 'streaks': True, 'alpha': 0.7, 'blur': 5},
             {'band': (8, 26), 'scale': 6, 'cover': 0.55, 'soft': 0.4, 'light': '#ffd84a', 'shadow': '#e05a10', 'streaks': True, 'alpha': 0.5, 'blur': 4},
         ],
+    },
+    # Korallenriff: warmes, klares Wasser; oben hell türkis mit Lichtnetz der Oberfläche, Lichtstrahlen fallen schräg herab,
+    # zum Horizont tiefes Blau; ein paar Planktonpünktchen (Sterne in hellem Türkis)
+    'korallenriff': {
+        'seed': 163,
+        'gradient': [(-5, '#0a4a7a'), (6, '#127aa8'), (20, '#2ab0c8'), (45, '#6ad8e8'), (90, '#bff8ff')],
+        'below': [(-90, '#06304e'), (0, '#0a4a7a')],
+        'water': {'light': '#e8ffff', 'shafts': 18, 'strength': 0.4, 'from': 2, 'to': 22},
+        'stars': 400,
     },
 }
 

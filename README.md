@@ -367,7 +367,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 
 ## Welten
 
-**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne).
+**Umgebung je Welt (eine Welt pro Etappe):** fertig sind Planet 1 (Normal, Wald, Stadt, Eis, Lava, Höhle, Candy) und Planet 2 (Mond, Neptun, Mars, Saturn, Alien, Sonne), von Planet 3 das Korallenriff.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -384,6 +384,7 @@ fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie er
 | Saturn | warm-goldener Weltraum, die Saturnringe als fein gestreiftes Band mit Lücken, goldener Dunst, Sterne | schwebende goldene Felsbrocken, Unterseite aus Sandstein, goldenes Ringstaubmeer |
 | Alien | violetter Fremdhimmel, Nebelschwaden in Giftgrün und Pink, türkises Sternenband | schwebende violette Felsbrocken, Felsunterseite, leuchtende Alien-Ranken am Rand, violettes Nebelmeer mit grünen Leuchtstellen |
 | Sonne | glühender Himmel von Gelb-Weiß bis Tiefrot, Flammenschleier, Sonnenwind-Vorhänge | schwebende glühende Felsbrocken, Felsunterseite mit Glut-Tropfen, Plasmameer aus Glutkruste mit leuchtenden Feldern |
+| Korallenriff | unter Wasser: oben die helle Oberfläche mit Lichtnetz, schräge Lichtstrahlen, zum Horizont Tiefblau | schwebende Riff-Felsen, Felsunterseite in Meeresfarben, Seetang hängt vom Rand; keine Wand (der Wassernebel verdeckt die Nachbarn), die Glas-Wasseroberfläche entfällt |
 
 - **Himmelsbild:** `tools/himmel/himmel.py` malt je Welt drei Bilder (`assets/himmel/<welt>/seite.jpg`,
   `oben.jpg`, `unten.jpg`, je 1024 × 1024). Die Seiten wiederholen sich alle 90 Grad, darum passt ein Bild für alle

@@ -785,6 +785,12 @@ const KORALLENRIFF = {
     seaweedBeds(ctx, 5);
     seaRocks(ctx);
   },
+  backdrop(ctx) {
+    // Umgebung: schwebende Riff-Felsen mit Seetang, Felsunterseite in Meeresfarben, Seetang hängt vom Rand
+    floatingIsles(ctx, { far: 6, near: 7, tops: ['mountain_A@meer', 'mountain_C@meer', 'rock_single_D@meer'], small: ['rock_single_C@meer', 'waterplant_B@meer'], rock: 'rock_single_B@meer' });
+    rockUnderside(ctx, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer', 'rock_single_E@meer']);
+    hangingRoots(ctx, 30, { color: '#2f8a5a', tip: '#5affc8', outer: true });
+  }
 };
 
 const MUSCHELLAND = {
