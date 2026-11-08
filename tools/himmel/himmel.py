@@ -428,6 +428,18 @@ HIMMEL = {
         'starBright': 2.0,
         'starsFrom': -2,
     },
+    # Sonne: glühender Himmel nahe der Sonne; gelb-weißer Horizont, orange, oben tiefrot; Flammenschleier als Bänder,
+    # darüber Polarlicht-artige Vorhänge in Gelb und Rot (Sonnenwind)
+    'sonne': {
+        'seed': 151,
+        'gradient': [(-5, '#fff2a0'), (5, '#ffd04a'), (14, '#ff9a2a'), (30, '#e0501a'), (60, '#8a1e08'), (90, '#3a0a00')],
+        'below': [(-90, '#ff7a1a'), (0, '#fff2a0')],
+        'aurora': {'band': (16, 40), 'colors': ['#ffe25a', '#ff3a1a'], 'strength': 0.55, 'streaks': 22, 'wave': 14},
+        'clouds': [
+            {'band': (0, 12), 'scale': 4, 'cover': 0.7, 'soft': 0.45, 'light': '#fff6c0', 'shadow': '#ffb02e', 'streaks': True, 'alpha': 0.7, 'blur': 5},
+            {'band': (8, 26), 'scale': 6, 'cover': 0.55, 'soft': 0.4, 'light': '#ffd84a', 'shadow': '#e05a10', 'streaks': True, 'alpha': 0.5, 'blur': 4},
+        ],
+    },
 }
 
 if __name__ == '__main__':
