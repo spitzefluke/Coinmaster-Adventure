@@ -104,17 +104,18 @@ function rockUnderside(ctx, ids, { rings = 6, depth = 13, top = -1.1 } = {}) {
 }
 
 // ── Hängende Wurzeln unter dem Inselrand: dünne, leicht schräge Glieder, unten ein Wurzelknoten ──
-function hangingRoots(ctx, n, { color = '#6b4a2e', tip = '#4f3a26' } = {}) {
+function hangingRoots(ctx, n, { color = '#6b4a2e', tip = '#4f3a26', glow = false, outer = false } = {}) {
   const { rand, rr, R, root } = ctx;
   const mat = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.9 });
-  const tipMat = new THREE.MeshStandardMaterial({ color: tip, flatShading: true, roughness: 0.9 });
+  // glow: leuchtende Knospen (Alien-Ranken)
+  const tipMat = glow ? new THREE.MeshStandardMaterial({ color: tip, emissive: tip, emissiveIntensity: 1.8 }) : new THREE.MeshStandardMaterial({ color: tip, flatShading: true, roughness: 0.9 });
   const add = (mesh) => {
     mesh.userData.rbx = { sky: true };
     root.add(mesh);
   };
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU + rr(-0.08, 0.08), r = R - rr(0.4, 1.6);
-    let x = Math.cos(a) * r, z = Math.sin(a) * r, y = -0.9;
+    const a = (i / n) * TAU + rr(-0.08, 0.08), r = outer ? R + rr(0.4, 1) : R - rr(0.4, 1.6);
+    let x = Math.cos(a) * r, z = Math.sin(a) * r, y = outer ? -0.5 : -0.9;
     const segs = 3 + Math.floor(rand() * 3), w = rr(0.1, 0.2);
     for (let j = 0; j < segs; j++) {
       const len = rr(0.8, 1.6), dx = rr(-0.25, 0.25), dz = rr(-0.25, 0.25);
@@ -715,7 +716,13 @@ const ALIEN = {
     if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
     rocksOf(ctx, 'alien');
   },
-  backdrop: (ctx) => spaceBackdrop(ctx, 'alien'),
+  backdrop(ctx) {
+    spaceBackdrop(ctx, 'alien');
+    // Umgebung: schwebende violette Felsbrocken, Felsunterseite, leuchtende Alien-Ranken am Rand
+    floatingIsles(ctx, { far: 7, near: 7, tops: ['rocks_B@alien', 'rocks_A@alien', 'rock_B@alien'], small: ['rock_A@alien', 'rock_B@alien'], rock: 'rock_A@alien' });
+    rockUnderside(ctx, ['rock_A@alien', 'rock_B@alien']);
+    hangingRoots(ctx, 28, { color: '#2a6a4a', tip: '#7aff5a', glow: true, outer: true });
+  },
 };
 
 const SONNE = {
