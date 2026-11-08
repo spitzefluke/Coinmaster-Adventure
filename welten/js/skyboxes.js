@@ -3,11 +3,16 @@
 // Ordner „Licht > Himmelsbild“ der Welt ein; bis dahin bleibt die alte Himmelskuppel.
 //   wall     Wand am Horizont (verdeckt die Nachbarinseln): Farben unten, Mitte, oben
 //   sea      Farben des Wolkenmeers unter der Insel (sonst aus der Himmelsfarbe)
+//   seaMaterial / seaGlow  Material der Meeresteile; Anteil leuchtender Neon-Becken (Lava)
 //   sun      Sonne und Mond von Roblox zeigen (CelestialBodiesShown)
 export const SKYBOXES = {
   normal: { sun: true, wall: { low: ['#e8f1fb', '#dce9f7'], mid: ['#ffffff', '#f3f8fe'], top: ['#ffffff', '#fbfdff'] } },
   stadt: { sun: true, sea: ['#ffe6cc', '#ffd8c0', '#fbeedf'], wall: { low: ['#ffd6b0', '#ffcaa8'], mid: ['#ffe2c0', '#ffd8b8'], top: ['#ffe8cc', '#ffdcc4'] } },
   eis: { sun: true, sea: ['#ffffff', '#f2f8ff', '#e8f2fc'], wall: { low: ['#e6f0fa', '#dce8f6'], mid: ['#f4f8fe', '#eaf2fc'], top: ['#f8fbff', '#eef4fc'] } },
+  lava: {
+    sun: false, sea: ['#2a1c18', '#3a2420', '#221614'], seaMaterial: 'Basalt', seaGlow: { share: 0.35, colors: ['#ff5a14', '#ff7a1a', '#ff3a0a'] },
+    wall: { low: ['#3a1a14', '#4a2018'], mid: ['#5a2418', '#4a1e16'], top: ['#6a2a1c', '#5a2418'] },
+  },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
 };
 

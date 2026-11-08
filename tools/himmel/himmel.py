@@ -252,6 +252,19 @@ HIMMEL = {
             {'band': (24, 36), 'scale': 8, 'cover': 0.4, 'soft': 0.35, 'light': '#ffffff', 'shadow': '#e8f2fc', 'streaks': True, 'alpha': 0.35, 'blur': 4},
         ],
     },
+    # Lava: rauchiger Glutnachthimmel; am Horizont orange Glut, darüber dunkle Aschewolken, von unten
+    # rot angestrahlt, oben fast schwarz mit ein paar Funken (Sterne in Glutfarbe)
+    'lava': {
+        'seed': 53,
+        'gradient': [(-5, '#d8582a'), (4, '#b8401e'), (12, '#6a1e14'), (26, '#3a0e0c'), (55, '#200808'), (90, '#140505')],
+        'below': [(-90, '#7a2414'), (0, '#d8582a')],
+        'clouds': [
+            {'band': (1, 12), 'scale': 4, 'cover': 0.7, 'soft': 0.45, 'light': '#ff9a5a', 'shadow': '#8a3018', 'streaks': True, 'alpha': 0.65, 'blur': 5},
+            {'band': (8, 26), 'scale': 6, 'cover': 0.6, 'soft': 0.1, 'light': '#3a1610', 'shadow': '#e8683a', 'stretch': 2.0, 'blur': 2},  # von unten angestrahlt: unten hell, oben dunkel
+            {'band': (20, 36), 'scale': 8, 'cover': 0.5, 'soft': 0.35, 'light': '#6a2a20', 'shadow': '#2a1010', 'streaks': True, 'alpha': 0.55, 'blur': 4},
+        ],
+        'stars': 500,
+    },
 }
 
 if __name__ == '__main__':
