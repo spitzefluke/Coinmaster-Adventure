@@ -483,7 +483,7 @@ export function buildSpawnTown(ctx, K) {
   // Ei-Schlüpfplatz: alle elf Eier auf Podesten im Halbkreis
   {
     const g = new THREE.Group();
-    const eggs = ['#ffd89a', '#b6ff6a', '#ff8fc8', '#9ff0ff', '#ffe14a', '#fff4cf', '#4ff0e0', '#b49cff', '#ff8a3d', '#ff4058', '#ffe07a'];
+    const eggs = ['#ffd89a', '#b6ff6a', '#9ff0ff', '#fff4cf', '#b49cff', '#ff8fc8', '#ff4058', '#ffe07a', '#4ff0e0', '#ff8a3d', '#ffe14a'];
     eggs.forEach((c, i) => {
       const t = (i - 5) * 0.29, x = Math.sin(t) * 2.6, z = -Math.cos(t) * 2.6 + 1.9;
       g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.5, 8), M('#4a4458')), x, 0.25, z));

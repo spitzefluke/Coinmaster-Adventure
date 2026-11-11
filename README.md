@@ -148,6 +148,8 @@ Vorhängeschloss. In Ruhe atmet das Ei, schwebt, dreht sich langsam und der Kern
 (Block, Kugel/SpecialMesh, Zylinder, Keile für Kegel), Farben und Welt je Ei in `EGG_THEMES`
 (`roblox/js/eggLuau.js`).
 
+Reihenfolge auf der Seite wie im Design „Tier-Eier“.
+
 | Ei | Stufe | Preis (Vorschlag) | Deko und Welt |
 |---|---|---|---|
 | Normal Egg | Normal | 250 Münzen | Staub |
@@ -155,12 +157,12 @@ Vorhängeschloss. In Ruhe atmet das Ei, schwebt, dreht sich langsam und der Kern
 | Eis Egg | Episch | 15.000 Münzen | Eiskristalle, Schneefall |
 | Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Lichtfunken |
 | Galaxie Egg | Galaktisch | 400.000 Münzen | Umlaufbahn mit Mond, Sternenstaub |
-| Admin Egg | Admin | nicht kaufbar | Glitch-Würfel, Code-Regen |
 | Candy Egg | Süß | 5.000 Münzen | Streusel, Streuselregen |
-| Cartoon Egg | Gezeichnet | 30.000 Münzen | Partyhut, Streusel, Konfetti |
+| Admin Egg | Admin | nicht kaufbar | Glitch-Würfel, Code-Regen |
+| Release Egg (Robux Egg) | Limitiert | R$ 199 | Partyhut, Konfetti |
 | Atlantis Egg | Versunken | 150.000 Münzen | Korallen, Perle, Luftblasen |
 | Lava Egg | Glühend | 1.000.000 Münzen | zuckende Flammen, Glut |
-| Release Egg (Robux Egg) | Limitiert | R$ 199 | Partyhut, Konfetti |
+| Cartoon Egg | Gezeichnet | 30.000 Münzen | Partyhut, Streusel, Konfetti |
 
 **Bühne und Umgebung:** `EggBuilder.BuildStage(egg)` baut den neuneckigen Sockel mit Platte, Leuchtkante und
 Felsbrocken, den Boden, Haupt-, Kanten- und Sockellicht und die Partikel der Ei-Welt.

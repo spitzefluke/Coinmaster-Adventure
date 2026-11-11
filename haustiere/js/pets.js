@@ -4,15 +4,15 @@
 export const EGGS = [
   { id: 'normal', name: 'Normal Egg', rankName: 'Normal', glow: '#ffd89a', price: '250 Münzen' },
   { id: 'wald', name: 'Wald Egg', rankName: 'Selten', glow: '#b6ff6a', price: '2.500 Münzen' },
-  { id: 'candy', name: 'Candy Egg', rankName: 'Süß', glow: '#ff8fc8', price: '5.000 Münzen' },
   { id: 'eis', name: 'Eis Egg', rankName: 'Episch', glow: '#9ff0ff', price: '15.000 Münzen' },
-  { id: 'cartoon', name: 'Cartoon Egg', rankName: 'Gezeichnet', glow: '#ffe14a', price: '30.000 Münzen' },
   { id: 'engel', name: 'Engels Egg', rankName: 'Engelsgleich', glow: '#fff4cf', price: '75.000 Münzen' },
-  { id: 'atlantis', name: 'Atlantis Egg', rankName: 'Versunken', glow: '#4ff0e0', price: '150.000 Münzen' },
   { id: 'galaxie', name: 'Galaxie Egg', rankName: 'Galaktisch', glow: '#b49cff', price: '400.000 Münzen' },
-  { id: 'lava', name: 'Lava Egg', rankName: 'Glühend', glow: '#ff8a3d', price: '1.000.000 Münzen' },
+  { id: 'candy', name: 'Candy Egg', rankName: 'Süß', glow: '#ff8fc8', price: '5.000 Münzen' },
   { id: 'admin', name: 'Admin Egg', rankName: 'Admin', glow: '#ff4058', price: 'Nicht kaufbar' },
   { id: 'release', name: 'Release Egg', rankName: 'Limitiert', glow: '#ffe07a', price: 'R$ 199' },
+  { id: 'atlantis', name: 'Atlantis Egg', rankName: 'Versunken', glow: '#4ff0e0', price: '150.000 Münzen' },
+  { id: 'lava', name: 'Lava Egg', rankName: 'Glühend', glow: '#ff8a3d', price: '1.000.000 Münzen' },
+  { id: 'cartoon', name: 'Cartoon Egg', rankName: 'Gezeichnet', glow: '#ffe14a', price: '30.000 Münzen' },
 ];
 
 const CHANCES = [25, 22, 20, 15, 10.5, 5, 2.5];
