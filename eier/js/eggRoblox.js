@@ -58,10 +58,18 @@ function __definePet(id, height)
 end
 
 local previews = {}
-function __buildEgg(key, eggId)
-	local model = EggBuilder.Build(EggData.ById[eggId])
-	model.Parent = workspace
-	previews[key] = model
+function __buildEgg(key, eggId, withStage)
+	local egg = EggData.ById[eggId]
+	local holder = Instance.new("Folder")
+	holder.Name = "Vorschau"
+	holder.Parent = workspace
+	previews[key] = holder
+	EggBuilder.Build(egg).Parent = holder
+	-- Detailansicht: mit Bühne, Licht und Nebel der Ei-Welt
+	if withStage then
+		EggBuilder.BuildStage(egg).Parent = holder
+		EggBuilder.ApplyEnvironment(egg)
+	end
 end
 function __hatch(key, eggId, petId)
 	local holder = Instance.new("Folder")
@@ -69,7 +77,7 @@ function __hatch(key, eggId, petId)
 	holder.Parent = workspace
 	previews[key] = holder
 	task.spawn(function()
-		HatchFx.Play(eggId, petId, { Parent = holder, OnPhase = function(phase) if __hatchPhase then __hatchPhase(key, phase) end end })
+		HatchFx.Play(eggId, petId, { Parent = holder, Lighting = true, OnPhase = function(phase) if __hatchPhase then __hatchPhase(key, phase) end end })
 		if __hatchDone then __hatchDone(key) end
 	end)
 end
@@ -113,17 +121,17 @@ function definePet(lua, id) {
 let nextKey = 1;
 function makeWorld({ shadows, sky }) {
   const world = new RbxWorld({ shadows, sky });
-  world.setShadowArea(new THREE.Vector3(0, 2, 0), 9);
+  world.setShadowArea(new THREE.Vector3(0, 2, 0), 11);
   return world;
 }
 
 // Ei auf seinem Sockel (EggBuilder); parts = Anzahl der Teile
-export async function createRobloxEgg(egg, { shadows = false } = {}) {
+export async function createRobloxEgg(egg, { shadows = false, stage = false } = {}) {
   const lua = await eggLua();
   const world = makeWorld({ shadows, sky: false });
   const key = 'e' + nextKey++;
   lua.setWorld(world);
-  lua.call('__buildEgg', key, egg.id);
+  lua.call('__buildEgg', key, egg.id, stage);
   return {
     world,
     step(dt) {
@@ -136,7 +144,7 @@ export async function createRobloxEgg(egg, { shadows = false } = {}) {
   };
 }
 
-// Schlüpfen: HatchFx.Play wie im Spiel (das Tier ist vorher gezogen); onPhase meldet die fünf Akte
+// Schlüpfen: HatchFx.Play wie im Spiel (das Tier ist vorher gezogen); onPhase meldet die Abschnitte
 const doneHandlers = new Map();
 const phaseHandlers = new Map();
 export async function createRobloxHatch(egg, pet, { shadows = true, onDone, onPhase } = {}) {

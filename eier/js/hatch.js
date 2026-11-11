@@ -1,13 +1,15 @@
-// Schlüpf-Ansicht 1:1 wie in Roblox: Das Modul HatchFx aus dem Installer spielt die Animation in fünf Akten
-// (Wackeln, Aufladen, Platzen, Enthüllung, Name). Die Seite zeigt sie im Vollbild, schreibt den Akt dazu,
-// blitzt beim Platzen auf und lässt die Kamera wackeln. Tippen spult vor, danach schließt ein Tippen die Ansicht.
+// Schlüpf-Ansicht 1:1 wie in Roblox: Das Modul HatchFx aus dem Installer spielt die Animation aus dem Design
+// „Tier-Eier“ (Schloss springt ab, Käfig öffnet sich, das Ei glüht und platzt, das Tier springt heraus und landet)
+// auf der Bühne der Ei-Welt. Die Seite zeigt sie im Vollbild, schreibt den Abschnitt dazu, blitzt beim Platzen
+// auf und lässt die Kamera wackeln. Tippen spult vor, danach schließt ein Tippen die Ansicht.
 
 import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
 import { rollPet, fmtChance } from '../../haustiere/js/pets.js';
 import { createRobloxHatch, eggLua, orbitEgg } from './eggRoblox.js';
+import { EGG_THEMES } from '../../roblox/js/eggLuau.js';
 
-const PHASE_TEXT = { wobble: 'Es wackelt …', charge: 'Es lädt auf …', burst: '!!!' };
+const PHASE_TEXT = { unlock: 'Das Schloss springt auf …', charge: 'Es glüht …', burst: '!!!' };
 
 export class Hatch {
   constructor(el) {
@@ -58,7 +60,7 @@ export class Hatch {
     const w = this.el.clientWidth, h = this.el.clientHeight;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    this.dist = w / h < 0.8 ? 21 : 16;
+    this.dist = w / h < 0.8 ? 22 : 15.5;
     this.camera.updateProjectionMatrix();
   }
 
@@ -73,6 +75,7 @@ export class Hatch {
       this.flash = 1;
       this.shake = 0.5 + this.egg.rank * 0.06;
     }
+    if (phase === 'reveal') this.shake = Math.max(this.shake, 0.25);
     if (phase === 'reveal') this.revealAt = this.time;
   }
 
@@ -83,6 +86,9 @@ export class Hatch {
     this.egg = egg;
     const u = this.ui;
     this.el.style.setProperty('--egg', egg.glow);
+    const theme = EGG_THEMES[egg.id] || EGG_THEMES.normal;
+    this.el.style.setProperty('--world-bg', theme.bg);
+    this.el.style.setProperty('--world-glow', theme.glow);
     this.el.dataset.egg = egg.id;
     this.el.dataset.epic = pet.epic ? '1' : '';
     u.name.textContent = pet.name;
@@ -140,12 +146,13 @@ export class Hatch {
     this.shake = Math.max(0, this.shake - dt * 1.4);
     this.ui.flash.style.opacity = this.flash.toFixed(3);
     // langsam ans Ei heran, nach dem Platzen etwas zurück (Tier und Namensschild im Bild); am Ende leicht kreisen
-    const charging = this.phase === 'wobble' || this.phase === 'charge';
+    const charging = this.phase === 'unlock' || this.phase === 'charge';
     const k = charging || this.revealAt == null ? Math.min(1, this.time / 3) : 1;
     const kr = this.revealAt == null ? 0 : Math.min(1, (this.time - this.revealAt) / 1.2);
-    const angle = this.view.done ? Math.sin(this.time * 0.4) * 0.35 : -0.25 + k * 0.25;
-    const dist = this.dist * (1.12 - 0.14 * k) * (1 + 0.06 * kr);
-    orbitEgg(this.camera, angle, 0.16, dist, 2.7 + 0.5 * kr);
+    // Blickwinkel wie im Design: schräg von vorne rechts, leicht von oben
+    const angle = this.view.done ? -0.6 + Math.sin(this.time * 0.4) * 0.35 : -0.75 + k * 0.15;
+    const dist = this.dist * (1.1 - 0.12 * k) * (1 + 0.08 * kr);
+    orbitEgg(this.camera, angle, 0.2, dist, 2.3 + 0.4 * kr);
     if (this.shake > 0) {
       this.camera.position.x += (Math.random() - 0.5) * this.shake;
       this.camera.position.y += (Math.random() - 0.5) * this.shake;

@@ -1,6 +1,9 @@
-// Eier v2 für Roblox Studio (aus Claude Design „Haustiere und Eier v2“): EggBuilder baut jedes Ei aus Parts
-// (Sockel in drei Stufen mit Leuchtband und Runenring, Schale mit eigener Deko, Risse für das Schlüpfen) und
-// bewegt die Deko (Runen, Flügel, Planeten, Scanner …). HatchFx spielt das Schlüpfen in fünf Akten.
+// Eier für Roblox Studio aus Claude Design „Tier-Eier“: EggBuilder baut jedes Ei als facettierte Schale aus
+// Schalenstücken mit leuchtendem Kern, eingesperrt in einen Käfig (Sockel, zwölf Gitterstäbe, Goldringe,
+// Kuppel mit Spitze, zwei Ketten und ein Vorhängeschloss), dazu eigene Deko je Ei. EggBuilder.BuildStage baut
+// die Bühne: neuneckiger Sockel mit Leuchtkante, Felsbrocken, Boden, Licht und Partikel der Ei-Welt.
+// HatchFx spielt das Schlüpfen wie im Design: Schloss springt ab, Ketten fallen, der Käfig öffnet sich,
+// das Ei glüht und bebt, platzt in alle Stücke, und das Tier springt heraus und landet.
 // Reiner Text wie luau.js, damit es auch in Node prüfbar ist.
 
 const HEADER = (title) => `-- Coinmaster Adventure · ${title}
@@ -10,79 +13,103 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 
 // Zusätze je Ei (für die Karten der Webseite)
 export const EGG_EXTRAS = {
-  normal: ['Strohnest', 'Sprenkel', 'Münzhaufen', 'Leuchtsockel'],
-  wald: ['Ranken & Blätter', 'Moos', 'Wurzeln', 'Fliegenpilze', 'Glühwürmchen'],
-  eis: ['Frostkappe', 'Eiszapfen', 'Kristallkranz', 'Schneefall', 'Runenring'],
-  engel: ['Goldfiligran', 'Perlen', 'Flügel', 'Heiligenschein', 'Lichtfunken'],
-  galaxie: ['Glasschale mit Nebel', 'Sternenring', 'Planeten', 'Runenring'],
-  admin: ['Panzerplatten', 'Neon-Leiterbahnen', 'Scanner', 'Warnstreifen', 'Glitch'],
-  release: ['Geschenkband', 'Schleife', 'Luftballons', 'Konfetti'],
+  normal: ['Käfig mit Ketten', 'Vorhängeschloss', 'Staub'],
+  wald: ['Moos', 'Fliegenpilze', 'Fallende Blätter'],
+  eis: ['Eiskristalle', 'Schneefall'],
+  engel: ['Heiligenschein', 'Lichtfunken'],
+  galaxie: ['Umlaufbahn mit Mond', 'Sternenstaub'],
+  admin: ['Glitch-Würfel', 'Code-Regen'],
+  release: ['Partyhut', 'Konfetti'],
 };
 
+// Farben und Welt je Ei (aus creature-data.js des Designs)
+export const EGG_THEMES = {
+  normal: { shell: ['#d9c3a0', '#a88a62'], bg: '#1b1712', glow: '#4a3a26', ped: '#8a6f4e', ped2: '#c9a774', rim: '#f0b75a', ground: '#201b15', key: '#fff1dc', fx: 'dust', fxc: ['#f3d9a8'], deco: [] },
+  wald: { shell: ['#7fae5a', '#4b3a2a'], bg: '#0f1a14', glow: '#24452f', ped: '#4b3a2a', ped2: '#5f8a45', rim: '#9be36b', ground: '#121d16', key: '#f4ffe6', fx: 'leaves', fxc: ['#9fd36a', '#d9b34a', '#6fa84a'], deco: ['moss', 'mushrooms'] },
+  eis: { shell: ['#cfe6f5', '#6f9cc0'], bg: '#0e1722', glow: '#2a4a66', ped: '#5c7a96', ped2: '#cfe6f5', rim: '#8fe3ff', ground: '#111c28', key: '#eef8ff', fx: 'snow', fxc: ['#e9f6ff'], deco: ['crystals'] },
+  engel: { shell: ['#f3eee2', '#e6c77a'], bg: '#1c1a24', glow: '#5a5068', ped: '#d9d2c4', ped2: '#f3eee2', rim: '#ffd77a', ground: '#221f2a', key: '#fff8ea', fx: 'sparkle', fxc: ['#ffe7a8', '#fff6dc'], deco: ['halo'] },
+  galaxie: { shell: ['#5a3aa8', '#1c1838'], bg: '#0c0a1c', glow: '#2e2160', ped: '#2b2547', ped2: '#3d3466', rim: '#b48cff', ground: '#100d22', key: '#e6dcff', fx: 'stars', fxc: ['#cdb8ff', '#8fd8ff', '#f2eeff'], deco: ['orbit'] },
+  admin: { shell: ['#26393a', '#3dffb0'], bg: '#0a1412', glow: '#123a32', ped: '#1d2a2a', ped2: '#26393a', rim: '#3dffb0', ground: '#0c1816', key: '#e6fff6', fx: 'code', fxc: ['#3dffb0', '#2fd3ff'], deco: ['glitch'] },
+  release: { shell: ['#ff9d3d', '#ffd84a'], bg: '#1a1410', glow: '#5a3418', ped: '#3a2f2a', ped2: '#4a3c34', rim: '#ff9d3d', ground: '#1e1712', key: '#fff2e0', fx: 'confetti', fxc: ['#ff9d3d', '#ffd84a', '#7ad7ff', '#ff6f91', '#9b8cff'], deco: ['hat'] },
+};
+
+const luaStr = (s) => '"' + s + '"';
+const themeLua = () =>
+  Object.entries(EGG_THEMES)
+    .map(([id, t]) => `\t${id} = { Shell = { ${t.shell.map(luaStr).join(', ')} }, Bg = "${t.bg}", Glow = "${t.glow}", Ped = "${t.ped}", Ped2 = "${t.ped2}", Rim = "${t.rim}", Ground = "${t.ground}", Key = "${t.key}", Fx = "${t.fx}", Fxc = { ${t.fxc.map(luaStr).join(', ')} }, Deco = { ${t.deco.map(luaStr).join(', ')} } },`)
+    .join('\n');
+
 export const EGG_BUILDER = `${HEADER('Eier bauen')}
--- EggBuilder.Build(egg) baut ein Ei auf seinem Sockel als Model. PrimaryPart ist die unsichtbare „Root“
--- am Boden unter dem Ei. Die Schale und alles, was an ihr klebt, liegt im Model „Body“ (wackelt beim
--- Schlüpfen), die Risse heißen „Crack“ und sind erst unsichtbar.
--- Bewegte Deko (Runenring, Flügel, Planeten, Scanner, Glitch …) läuft von selbst, solange das Ei im Spiel
--- liegt. Für Kopien aus einem Ordner einmal EggBuilder.Start(model) aufrufen.
+-- EggBuilder.Build(egg) baut das Ei im Käfig als Model. PrimaryPart ist die unsichtbare „Root“ am Boden.
+-- Unterteile (für das Schlüpfen): „Ei“ (Schalenstücke „Schale“, Kern, Licht), „Kaefig“ mit „Stab1“–„Stab12“,
+-- „Mitte“, „Oben“, „Kette1“, „Kette2“, „Schloss“, dazu „Deko“.
+-- EggBuilder.BuildStage(egg) baut die Bühne (Sockel, Boden, Licht, Partikel), die Oberkante liegt auf Höhe 0.
+-- Das Ei atmet, schwebt und dreht sich von selbst; für Kopien aus einem Ordner einmal EggBuilder.Start(model).
+-- EggBuilder.Pose(model, t, state) stellt alles für einen Zeitpunkt (HatchFx nutzt das beim Schlüpfen).
 
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local EggBuilder = {}
 
-local RX, RY, PED_TOP = 1.5, 2.025, 0.74
-local SHELL_Y = PED_TOP + RY
+local S = 2 -- Studs je Einheit des Designs
+local EH, ER = 2.3, 0.74 -- Höhe und Radius der Schale (Einheiten)
 local TAU = math.pi * 2
 local V = Vector3.new
+local FLIP = CFrame.Angles(0, math.pi, 0) -- Vorderseite zeigt nach −Z (zur Kamera)
 local UP = CFrame.Angles(0, 0, math.pi / 2) -- Zylinder stehen (Achse X → Y)
-local FLIP = CFrame.Angles(0, math.pi, 0) -- Vorderseite des Eis zeigt nach −Z (zur Kamera)
 local IDENT = CFrame.new()
 
-EggBuilder.PedestalTop = PED_TOP
-EggBuilder.ShellCenter = V(0, SHELL_Y, 0)
-EggBuilder.ShellSize = V(RX * 2, RY * 2, RX * 2)
-EggBuilder.Height = SHELL_Y + RY + 0.4
-
-local LOOK = {
-	normal = { "#e8c98f", "SmoothPlastic" },
-	wald = { "#6fbf4a", "SmoothPlastic" },
-	eis = { "#7fd6ff", "Ice", 0.2 },
-	engel = { "#fff1c2", "SmoothPlastic", 0, 0.2 },
-	galaxie = { "#2a1a5a", "Glass", 0.25 },
-	admin = { "#1d1d24", "Metal" },
-	release = { "#ffc93c", "Foil" },
+local THEMES = {
+${themeLua()}
 }
+EggBuilder.Themes = THEMES
+EggBuilder.Scale = S
+EggBuilder.EggHeight = EH * S
+EggBuilder.Center = V(0, EH * 0.45 * S, 0)
+EggBuilder.PedestalTop = 0
+EggBuilder.Height = EH * 1.08 * S + 1
 
--- Aussehen: Farbe (Hex oder Color3), Material, Durchsichtigkeit, Spiegelung
-local MATS = { Gold = "Foil", Gem = "Glass", Ink = "SmoothPlastic", Balloon = "SmoothPlastic" }
-local function M(color, material, transparency, reflectance)
-	material = material or "SmoothPlastic"
-	return {
-		Color = type(color) == "string" and Color3.fromHex(color) or color,
-		Material = Enum.Material[MATS[material] or material],
-		Transparency = transparency or 0,
-		Reflectance = reflectance or ((material == "Gold" or material == "Balloon") and 0.2 or 0),
-	}
+local function hex(c) return type(c) == "string" and Color3.fromHex(c) or c end
+local function soften(c, k) return hex(c):Lerp(Color3.fromHex("#ffd49a"), k) end
+EggBuilder.Soften = soften
+
+local function eggR(v)
+	v = math.clamp(v, 0, 1)
+	local y = 2 * v - 1
+	return ER * math.sqrt(math.max(0, 1 - y * y)) * (1 - 0.2 * y) * (1 - 0.12 * math.max(0, y) ^ 3)
 end
+local function cageR(v) return eggR(math.clamp(v, 0.03, 0.97)) * 1.22 + 0.14 end
+EggBuilder.EggRadius = function(v) return eggR(v) * S end
+
+-- Aussehen: Farbe, Material, Durchsichtigkeit
+local function M(color, material, transparency)
+	return { Color = hex(color), Material = Enum.Material[material or "SmoothPlastic"], Transparency = transparency or 0 }
+end
+
+-- Lage im Design (Einheiten, Blick nach +Z) → Lage im Model (Studs, Blick nach −Z)
+local function toWorld(cf) return FLIP * CFrame.new(cf.Position * S) * cf.Rotation end
+EggBuilder.ToWorld = toWorld
 
 local function make(parent, shape, size, cf, m, name)
 	local p = Instance.new(shape == "Wedge" and "WedgePart" or "Part")
 	p.Name = name or "Teil"
 	p.Anchored = true
 	p.CanCollide = false
+	p.CanQuery = false
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Color = m.Color
 	p.Material = m.Material
 	p.Transparency = m.Transparency
-	if m.Reflectance ~= 0 then p.Reflectance = m.Reflectance end
+	local world = toWorld(cf)
 	if shape == "Cyl" then
 		p.Shape = Enum.PartType.Cylinder
-		p.Size = V(size.Y, size.X, size.Z)
-		p.CFrame = FLIP * cf * UP
+		p.Size = V(size.Y, size.X, size.Z) * S
+		p.CFrame = world * UP
 	else
-		p.Size = size
-		p.CFrame = FLIP * cf
+		p.Size = size * S
+		p.CFrame = world
 		if shape == "Ball" then
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.Sphere
@@ -103,22 +130,6 @@ local function blk(p, s, cf, m, name) return make(p, "Block", size3(s), cf, m, n
 local function ball(p, s, cf, m, name) return make(p, "Ball", size3(s), cf, m, name) end
 local function cyl(p, s, cf, m, name) return make(p, "Cyl", size3(s), cf, m, name) end
 
--- Kegel als zwei Keile Rücken an Rücken (Spitze oben)
-local function spike(p, s, cf, m, name)
-	make(p, "Wedge", V(s.X, s.Y, s.Z / 2), cf * CFrame.new(0, 0, -s.Z / 4), m, name)
-	make(p, "Wedge", V(s.X, s.Y, s.Z / 2), cf * CFrame.new(0, 0, s.Z / 4) * CFrame.Angles(0, math.pi, 0), m, name)
-end
-
--- Ring aus Blöcken in der XZ-Ebene von cf (Radius R, Dicke t)
-local function ring(p, cf, R, t, m, n, name)
-	n = n or math.max(12, math.floor(R * 14))
-	local len = TAU * R / n * 1.08
-	for i = 0, n - 1 do
-		local a = i / n * TAU
-		blk(p, V(len, t * 2, t * 2), cf * CFrame.new(math.cos(a) * R, 0, math.sin(a) * R) * CFrame.Angles(0, -a + math.pi / 2, 0), m, name)
-	end
-end
-
 -- CFrame an Position pos, dessen Y-Achse entlang n zeigt
 local function alignY(pos, n)
 	n = n.Unit
@@ -128,598 +139,506 @@ local function alignY(pos, n)
 	return CFrame.fromMatrix(pos, x, n, z)
 end
 
--- Punkt auf der Eischale (th von oben gemessen, ph rundherum): Y-Achse = Normale nach außen,
--- X-Achse entlang des Breitenkreises, Z-Achse entlang des Längenkreises
-local function surfPos(th, ph, out)
-	local s, c = math.sin(th), math.cos(th)
-	local n = V(-math.cos(ph) * s / RX, c / RY, math.sin(ph) * s / RX).Unit
-	return V(-math.cos(ph) * s * RX, c * RY + SHELL_Y, math.sin(ph) * s * RX) + n * (out or 0), n
-end
-local function surf(th, ph, out)
-	local p, n = surfPos(th, ph, out)
-	return alignY(p, n)
-end
-
--- Glied zwischen zwei Punkten
-local function link(p, a, b, m, th)
-	local d = b - a
-	return blk(p, V(th, d.Magnitude, th), alignY((a + b) / 2, d), m)
-end
--- Röhre aus Kugeln und Gliedern (Ranken, Wurzeln)
-local function tube(p, pts, r, m, taper)
-	for i, q in ipairs(pts) do
-		local k = 1 - (taper or 0) * (i - 1) / #pts
-		ball(p, r * 2 * k, CFrame.new(q), m)
-		if i > 1 then link(p, pts[i - 1], q, m, r * 1.8 * k) end
+-- Kegel aus zwei gekreuzten Keilpaaren: Fuß bei pos, Spitze entlang dir
+local function cone(p, r, h, pos, dir, m, name)
+	local base = alignY(pos, dir or Vector3.yAxis) * CFrame.new(0, h / 2, 0)
+	for _, ry in ipairs({ 0, math.pi / 2 }) do
+		local cf = base * CFrame.Angles(0, ry, 0)
+		make(p, "Wedge", V(r * 1.4, h, r), cf * CFrame.new(0, 0, -r / 2), m, name)
+		make(p, "Wedge", V(r * 1.4, h, r), cf * CFrame.new(0, 0, r / 2) * CFrame.Angles(0, math.pi, 0), m, name)
 	end
 end
 
--- Bewegte Gruppe: Model mit Attribut Anim; Pivot ist der Drehpunkt (CFrame im Ei)
-local function group(parent, anim, pivot, attrs)
+-- Ring aus Blöcken in der XZ-Ebene von cf (Radius R, Dicke t)
+local function ring(p, cf, R, t, m, n, name)
+	n = n or math.max(12, math.floor(R * 22))
+	local len = TAU * R / n * 1.08
+	for i = 0, n - 1 do
+		local a = i / n * TAU
+		blk(p, V(len, t * 2, t * 2), cf * CFrame.new(math.cos(a) * R, 0, math.sin(a) * R) * CFrame.Angles(0, -a + math.pi / 2, 0), m, name)
+	end
+end
+
+-- Untermodell mit Drehpunkt (Lage im Design) für das Schlüpfen
+local function group(parent, name, pivot)
 	local g = Instance.new("Model")
-	g.Name = anim
-	g:SetAttribute("Anim", anim)
-	g:SetAttribute("Pivot", FLIP * pivot)
-	for k, v in pairs(attrs or {}) do g:SetAttribute(k, v) end
+	g.Name = name
+	g:SetAttribute("Pivot", toWorld(pivot or IDENT))
 	g.Parent = parent
 	return g
 end
 
-local function emitterAt(parent, cf, size, props, name)
-	local host = make(parent, "Block", size, cf, M("#ffffff", "SmoothPlastic", 1), name or "Partikel")
-	local e = Instance.new("ParticleEmitter")
-	e.LightEmission = 1
-	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	for k, v in pairs(props) do e[k] = v end
-	e.Parent = host
-	return e, host
-end
-local function colors(list)
-	local keys = {}
-	for i, c in ipairs(list) do
-		table.insert(keys, ColorSequenceKeypoint.new(#list == 1 and 0 or (i - 1) / (#list - 1), Color3.fromHex(c)))
-	end
-	if #keys == 1 then return ColorSequence.new(keys[1].Value) end
-	return ColorSequence.new(keys)
-end
-
-local function coin(p, cf, s)
-	cyl(p, V(0.5, 0.08, 0.5) * s, cf, M("#f2c14e", "Gold"), "Muenze")
-	cyl(p, V(0.36, 0.09, 0.36) * s, cf, M("#d9a43a", "Gold"), "Muenze")
-end
-
-local function leafAt(p, rng, th, ph, m, s, out)
-	local cf = surf(th, ph, out or 0.06) * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
-	ball(p, V(0.36, 0.05, 0.2) * s, cf * CFrame.new(0.2 * s, 0.02 * s, 0) * CFrame.Angles(0, 0, 0.25), m, "Blatt")
-end
-
+-- ── Deko je Ei (wie DECO im Design; A.Back = sechs Punkte auf dem Käfigsockel) ──
 local DECO = {}
-
-function DECO.normal(b)
-	local d, rng = b.Body, b.Rng
-	local sp = { M("#a8743a"), M("#c99556"), M("#7d5226") }
-	for i = 0, 15 do
-		local th, ph = 0.35 + rng:NextNumber() * 2.2, rng:NextNumber() * TAU
-		ball(d, V(0.22 + rng:NextNumber() * 0.18, 0.04, 0.18 + rng:NextNumber() * 0.14), surf(th, ph, -0.005), sp[i % 3 + 1], "Sprenkel")
-		for k = 0, 1 do
-			ball(d, V(0.07, 0.03, 0.07), surf(th + (rng:NextNumber() - 0.5) * 0.25, ph + (rng:NextNumber() - 0.5) * 0.3, -0.003), sp[(i + k) % 3 + 1], "Sprenkel")
-		end
+function DECO.moss(A)
+	for _, p in ipairs(A.Back) do
+		local r = 0.16 + A.Rng:NextNumber() * 0.08
+		ball(A.Deko, V(r * 2, r * 0.9, r * 2), CFrame.new(p) * CFrame.Angles(0, A.Rng:NextNumber() * TAU, 0), M("#4f8a3a", "Grass"), "Moos")
 	end
-	-- Nest aus geflochtenem Stroh, abstehende Halme, zwei Federn
-	local straw = { M("#c9a05a"), M("#e0bd72"), M("#a9803e"), M("#8a6630") }
-	for r = 0, 3 do
-		local R, y = 1.0 + r * 0.22, 0.1 + r * 0.21
-		for i = 0, 17 do
-			local a = i / 18 * TAU + r * 0.4
-			blk(b.Model, V(0.2, 0.19, 0.62), at(math.cos(a) * R, PED_TOP + y + math.sin(i * 2.3) * 0.03, math.sin(a) * R, math.sin(i) * 0.4, -a, 0.35 * (i % 2 == 1 and 1 or -1)), straw[(i + r) % 4 + 1], "Stroh")
-		end
-	end
-	ring(b.Model, at(0, PED_TOP + 0.06, 0), 1.08, 0.12, straw[4], 18, "Stroh")
-	for i = 0, 17 do
-		local a, r = rng:NextNumber() * TAU, 1.35 + rng:NextNumber() * 0.5
-		cyl(b.Model, V(0.04, 0.7 + rng:NextNumber() * 0.6, 0.04), at(math.cos(a) * r, PED_TOP + 0.3 + rng:NextNumber() * 0.25, math.sin(a) * r, math.pi / 2 + (rng:NextNumber() - 0.5) * 0.9, a + math.pi / 2 + (rng:NextNumber() - 0.5) * 1.2, 0), straw[i % 4 + 1], "Halm")
-	end
-	for _, f in ipairs({ { 0.6, "#fff6e8" }, { 3.4, "#e8c98f" } }) do
-		local a = f[1]
-		local cf = at(math.cos(a) * 1.55, PED_TOP + 0.55, math.sin(a) * 1.55, 0.3, -a, 0.9)
-		blk(b.Model, V(0.02, 0.7, 0.02), cf * CFrame.new(0, 0.35, 0), M("#c9a05a"), "Feder")
-		for k = 0, 5 do
-			ball(b.Model, V(0.22 - k * 0.025, 0.14, 0.03), cf * CFrame.new(0, 0.18 + k * 0.09, 0) * CFrame.Angles(0, 0, 0.35), M(f[2]), "Feder")
-		end
-	end
-	-- kleiner Münzhaufen auf dem Sockel
-	local pile = at(1.55, PED_TOP + 0.04, 0.95)
-	for i = 0, 4 do coin(b.Model, pile * at(0, i * 0.085, 0, 0, i * 0.7, i % 2 == 1 and 0.05 or -0.05), 1) end
-	coin(b.Model, pile * at(0.42, 0.06, -0.12, 0.5, 0, 0.6), 1)
-	coin(b.Model, pile * at(-0.3, 0.04, 0.25, 0, 1, 0.1), 1)
-	emitterAt(b.Model, at(0, SHELL_Y, 0), V(2.4, 2.4, 2.4), { Rate = 3, Lifetime = NumberRange.new(2, 3), Speed = NumberRange.new(0.1, 0.3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.35, 0), Color = colors({ "#fff3c4", "#ffd89a" }) })
 end
-
-function DECO.wald(b)
-	local d, rng = b.Body, b.Rng
-	local moss = { M("#3f7f26", "Grass"), M("#5ea73a", "Grass"), M("#7cc44f", "Grass") }
-	for i = 0, 21 do
-		ball(d, V(0.45 + rng:NextNumber() * 0.35, 0.16 + rng:NextNumber() * 0.1, 0.45 + rng:NextNumber() * 0.35), surf(2.05 + rng:NextNumber() * 0.9, rng:NextNumber() * TAU, -0.04), moss[i % 3 + 1], "Moos")
-	end
-	for i = 0, 7 do
-		ball(d, V(0.36, 0.07, 0.3), surf(0.6 + rng:NextNumber() * 1.4, rng:NextNumber() * TAU, -0.02), moss[i % 3 + 1], "Moos")
-	end
-	-- drei dicke Ranken mit Blättern
-	local vine = M("#2f6b22")
-	local leaf = { M("#8fdc5a"), M("#6fbf4a"), M("#b6ff6a") }
-	for k = 0, 2 do
-		local pts = {}
-		for i = 0, 13 do
-			local u = i / 13
-			table.insert(pts, (surfPos(0.2 + u * 2.55, u * TAU * 1.1 + k * TAU / 3, 0.05)))
-		end
-		tube(d, pts, 0.09, vine, 0.4)
-		for i = 1, 13, 2 do
-			local u = i / 13
-			leafAt(d, rng, 0.2 + u * 2.55 + 0.05, u * TAU * 1.1 + k * TAU / 3 + 0.15, leaf[i % 3 + 1], i % 4 == 1 and 1.4 or 1)
-		end
-	end
-	-- leuchtende Blüten
-	local bloom = { M("#ff9ec2", "Neon"), M("#fff3a0", "Neon") }
-	for i = 0, 5 do
-		local cf = surf(0.6 + rng:NextNumber() * 1.6, rng:NextNumber() * TAU, 0.07)
-		for p = 0, 3 do
-			local a = p / 4 * TAU
-			ball(d, V(0.13, 0.04, 0.09), cf * at(math.cos(a) * 0.08, 0, math.sin(a) * 0.08, 0, -a, 0), bloom[i % 2 + 1], "Bluete")
-		end
-		ball(d, 0.07, cf * CFrame.new(0, 0.02, 0), M("#ffcc33", "Neon"), "Bluete")
-	end
-	-- Wurzeln greifen über den Sockel
-	local root = M("#5a3a22")
-	for i = 0, 4 do
-		local a, pts = i / 5 * TAU + 0.3, {}
-		for k = 0, 4 do
-			local u = k / 4
-			local r = 1.1 + u * 1.15
-			table.insert(pts, V(math.cos(a + u * 0.25) * r, PED_TOP + 0.12 + math.sin(u * math.pi) * 0.18 - u * 0.12, math.sin(a + u * 0.25) * r))
-		end
-		tube(b.Model, pts, 0.12, root, 0.6)
-	end
-	-- Farnwedel
-	local fern = M("#4f9a2e")
-	for i = 0, 2 do
-		local a = i / 3 * TAU + 1
-		local base = at(math.cos(a) * 1.95, PED_TOP, math.sin(a) * 1.95, 0, -a + math.pi / 2, 0)
-		for f = 0, 2 do
-			local st = base * CFrame.Angles(0, (f - 1) * 0.6, 0) * CFrame.Angles(0.4 + f * 0.1, 0, 0)
-			blk(b.Model, V(0.04, 0.68, 0.04), st * CFrame.new(0, 0.34, 0), fern, "Farn")
-			for s = 0, 3 do
-				for _, sx in ipairs({ 1, -1 }) do
-					ball(b.Model, V(0.26 - s * 0.04, 0.05, 0.08), st * at(sx * (0.12 - s * 0.015), 0.12 + s * 0.16, 0, 0, 0, sx * 0.4), fern, "Farn")
-				end
+function DECO.mushrooms(A)
+	for i, p in ipairs(A.Back) do
+		if i == 1 or i == 3 or i == 4 then
+			local sc = 0.7 + A.Rng:NextNumber() * 0.6
+			local cf = CFrame.new(p) * CFrame.Angles(0, 0, (A.Rng:NextNumber() - 0.5) * 0.5)
+			cyl(A.Deko, V(0.09 * sc, 0.2 * sc, 0.09 * sc), cf * CFrame.new(0, 0.1 * sc, 0), M("#efe6d2"), "Pilz")
+			ball(A.Deko, V(0.32 * sc, 0.2 * sc, 0.32 * sc), cf * CFrame.new(0, 0.2 * sc, 0), M("#d8453a"), "Pilz")
+			for k = 0, 2 do
+				local a = k * 2.1
+				blk(A.Deko, V(0.05, 0.025, 0.05) * sc, cf * CFrame.new(math.cos(a) * 0.08 * sc, 0.29 * sc, math.sin(a) * 0.08 * sc), M("#f4f1ea"), "Pilz")
 			end
 		end
 	end
-	-- Fliegenpilze in Gruppen
-	for i = 0, 2 do
-		local a = i / 3 * TAU + 0.2
-		local gg = at(math.cos(a) * 1.75, PED_TOP, math.sin(a) * 1.75)
-		for m = 0, 2 do
-			local s = ({ 1.6, 1, 0.7 })[m + 1] * (i % 2 == 1 and 1.1 or 0.9)
-			local g = gg * at(m == 0 and 0 or (m == 1 and 0.3 or -0.25), 0, m == 0 and 0 or 0.15, 0, 0, (m - 1) * 0.2)
-			cyl(b.Model, V(0.14, 0.3, 0.14) * s, g * CFrame.new(0, 0.15 * s, 0), M("#f3ead8"), "Pilz")
-			ball(b.Model, V(0.44, 0.26, 0.44) * s, g * CFrame.new(0, 0.32 * s, 0), M(i == 2 and "#c88a3a" or "#d8322e"), "Pilz")
-			ball(b.Model, V(0.38, 0.08, 0.38) * s, g * CFrame.new(0, 0.24 * s, 0), M("#f6ecd6"), "Pilz")
-			for _, xz in ipairs({ { 0.1, 0.05 }, { -0.08, -0.1 } }) do
-				ball(b.Model, 0.06 * s, g * CFrame.new(xz[1] * s, 0.42 * s, xz[2] * s), M("#ffffff"), "Pilz")
-			end
-		end
-	end
-	-- Glühwürmchen und fallende Blätter
-	emitterAt(b.Model, at(0, SHELL_Y, 0), V(2.8, 2.8, 2.8), { Rate = 8, Lifetime = NumberRange.new(2, 3.5), Speed = NumberRange.new(0.2, 0.5), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.35, 0.3), Transparency = NumberSequence.new(0, 1), Color = colors({ "#d8ff6a", "#b6ff6a", "#fff3a0" }) })
-	emitterAt(b.Model, at(0, 6.6, 0), V(2.4, 0.2, 2.4), { Rate = 2, Lifetime = NumberRange.new(3, 4), Speed = NumberRange.new(0.3, 0.5), EmissionDirection = Enum.NormalId.Bottom, SpreadAngle = Vector2.new(20, 20), Acceleration = V(0.3, 0, 0.2), Size = NumberSequence.new(0.3, 0.25), Transparency = NumberSequence.new(0.1, 1), LightEmission = 0.3, Texture = "", Color = colors({ "#8fdc5a", "#c9a05a" }) })
 end
-
-function DECO.eis(b)
-	local d, rng = b.Body, b.Rng
-	-- leuchtender Kern hinter der Eisschale
-	ball(d, V(1.6, 2.2, 1.6), at(0, SHELL_Y - 0.1, 0), M("#9ff0ff", "Neon", 0.65), "Kern")
-	-- Kristallsplitter wachsen aus der Schale
-	local shard = { M("#dff6ff", "Ice", 0.1), M("#bfeaff", "Ice", 0.15) }
-	local shardS = M("#e8f9ff")
-	for i = 0, 8 do
-		local cf = surf(1.0 + rng:NextNumber() * 1.6, i / 9 * TAU + rng:NextNumber() * 0.3, -0.08)
-		for k = 0, 1 do
-			spike(d, V(0.42 - k * 0.12, 0.55 + rng:NextNumber() * 0.35 - k * 0.2, 0.3 - k * 0.1), cf * at(k * 0.14, 0.25, k * 0.08, k * 0.5, rng:NextNumber(), (rng:NextNumber() - 0.5) * 0.3), k == 1 and shardS or shard[i % 2 + 1], "Splitter")
+function DECO.crystals(A)
+	local m = M(A.Glow, "Glass", 0.25)
+	for _, p in ipairs(A.Back) do
+		for _ = 1, 3 do
+			local r = A.Rng
+			local pos = p + V((r:NextNumber() - 0.5) * 0.2, -0.05, (r:NextNumber() - 0.5) * 0.2)
+			cone(A.Deko, 0.05 + r:NextNumber() * 0.05, 0.22 + r:NextNumber() * 0.35, pos, V(r:NextNumber() - 0.5, 1.3, r:NextNumber() - 0.8), m, "Kristall")
 		end
 	end
-	-- Frostlinien
-	local fl = M("#ffffff", "Neon", 0.3)
-	for k = 0, 5 do
-		local th, ph = 0.8 + rng:NextNumber() * 1.2, rng:NextNumber() * TAU
-		for i = 0, 3 do
-			local t2, p2 = th + (rng:NextNumber() - 0.5) * 0.25, ph + (rng:NextNumber() - 0.5) * 0.3
-			link(d, (surfPos(th, ph, 0.01)), (surfPos(t2, p2, 0.01)), fl, 0.025)
-			th, ph = t2, p2
-		end
-	end
-	-- Schneehaube mit Wehen und Eiszapfen
-	local snow, snow2 = M("#ffffff", "Snow"), M("#eef8ff", "Snow")
-	local cap = at(0, SHELL_Y + RY * 0.8, 0)
-	ball(d, V(2.25, 1.0, 2.25), cap, snow, "Schnee")
-	ball(d, V(1.2, 0.6, 1.1), cap * CFrame.new(0.2, 0.35, 0.1), snow2, "Schnee")
-	for i = 0, 7 do
-		local a = i / 8 * TAU
-		ball(d, V(0.8, 0.5, 0.7), cap * CFrame.new(math.cos(a) * 0.78, -0.12 - (i % 2) * 0.1, math.sin(a) * 0.78), i % 2 == 1 and snow or snow2, "Schnee")
-	end
-	for i = 0, 11 do
-		local a = i / 12 * TAU + 0.1
-		spike(d, V(0.18, 0.45 + rng:NextNumber() * 0.6, 0.18), cap * at(math.cos(a) * 1.02, -0.6, math.sin(a) * 1.02, math.pi, a, 0), M("#eaf9ff", "Ice"), "Eiszapfen")
-	end
-	-- Gletscherblöcke als Fuß
-	local ice = M("#bfeaff", "Ice", 0.25)
-	for i = 0, 6 do
-		local a = i / 7 * TAU
-		blk(b.Model, V(1.3, 0.5 + rng:NextNumber() * 0.25, 0.9), at(math.cos(a) * 1.35, PED_TOP + 0.2, math.sin(a) * 1.35, rng:NextNumber() * 0.2, -a, rng:NextNumber() * 0.2), ice, "Gletscher")
-	end
-	-- Kristallgruppen rundherum
-	local cr = { M("#c8f2ff", "Glass", 0.35), M("#9ff0ff", "Glass", 0.45) }
-	for c = 0, 5 do
-		local a = c / 6 * TAU + 0.5
-		local g = at(math.cos(a) * 1.95, PED_TOP, math.sin(a) * 1.95)
-		for k = 0, 3 do
-			local h = (k > 0 and 0.6 or 1.3) + rng:NextNumber() * 0.7
-			local ang = k * 2.1
-			local off = k > 0 and 0.18 or 0
-			local lean = k > 0 and 0.35 or 0.14
-			spike(b.Model, V(0.32, h, 0.32), g * at(math.cos(ang) * off, h / 2, math.sin(ang) * off, math.sin(ang + a) * lean, ang, -math.cos(ang + a) * lean), cr[k % 2 + 1], "Kristall")
-		end
-	end
-	for i = 0, 11 do
-		local a = i / 12 * TAU
-		spike(b.Model, V(0.14, 0.32 + (i % 3) * 0.14, 0.14), at(math.cos(a) * 2.18, 0.34, math.sin(a) * 2.18, math.pi, a, 0), M("#dff6ff", "Ice"), "Eiszapfen")
-	end
-	-- schwebende Eissplitter
-	local orb = group(b.Model, "Kreisen", at(0, SHELL_Y, 0), { Speed = 0.3 })
-	for i = 0, 7 do
-		local a = i / 8 * TAU
-		spike(orb, V(0.3, 0.7, 0.3), at(math.cos(a) * 2.6, SHELL_Y + math.sin(i * 1.7) * 0.6, math.sin(a) * 2.6, i, i * 2, 0), shard[i % 2 + 1], "Splitter")
-	end
-	-- Schneefall und Bodennebel
-	emitterAt(b.Model, at(0, 7.5, 0), V(3.6, 0.2, 3.6), { Rate = 18, Lifetime = NumberRange.new(2.5, 3.5), Speed = NumberRange.new(0.8, 1.4), EmissionDirection = Enum.NormalId.Bottom, SpreadAngle = Vector2.new(15, 15), Size = NumberSequence.new(0.24, 0.16), Transparency = NumberSequence.new(0, 1), Color = colors({ "#ffffff", "#dff6ff" }) })
-	emitterAt(b.Model, at(0, PED_TOP + 0.3, 0), V(2.2, 0.1, 2.2), { Rate = 8, Lifetime = NumberRange.new(1.5, 2.5), Speed = NumberRange.new(0.2, 0.4), SpreadAngle = Vector2.new(15, 15), Size = NumberSequence.new(0.8, 1.4), Transparency = NumberSequence.new(0.82, 1), LightEmission = 0.4, Texture = "rbxasset://textures/particles/smoke_main.dds", Color = colors({ "#dff6ff" }) })
 end
-
--- Engelsflügel: Bogen, Handschwingen mit Goldspitzen, Armschwingen, Deckfedern
-local function wings(b)
-	local white, cream, pearl, gold = M("#ffffff"), M("#fff6dd"), M("#f4ecff"), M("#f2c14e", "Gold")
-	local glowM = M("#fff4cf", "Neon", 0.15)
-	local shellC = at(0, SHELL_Y, 0)
-	for _, sx in ipairs({ 1, -1 }) do
-		local piv = shellC * at(sx * 1.15, -0.15, -0.55, 0, sx * 0.35, 0)
-		local w = group(b.Body, "Fluegel", piv, { Side = sx })
-		local arm = {}
-		for i = 0, 5 do
-			local u = i / 5
-			arm[i + 1] = { sx * (0.15 + u * 2.3), 0.35 + math.sin(u * math.pi * 0.85) * 0.9 }
-		end
-		for i = 1, #arm - 1 do
-			local x1, y1, x2, y2 = arm[i][1], arm[i][2], arm[i + 1][1], arm[i + 1][2]
-			blk(w, V(math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2) + 0.12, 0.2, 0.18), piv * at((x1 + x2) / 2, (y1 + y2) / 2, 0.04, 0, 0, math.atan2(y2 - y1, x2 - x1)), cream, "Fluegel")
-			blk(w, V(math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2), 0.05, 0.05), piv * at((x1 + x2) / 2, (y1 + y2) / 2 + 0.1, 0.14, 0, 0, math.atan2(y2 - y1, x2 - x1)), glowM, "Fluegel")
-		end
-		-- Handschwingen: lang, außen, Goldspitzen
-		for i = 0, 8 do
-			local u = i / 8
-			local a = arm[4 + math.min(2, math.floor(u * 3))]
-			local f = piv * at(a[1], a[2] - 0.05, -0.04 - i * 0.012, 0, 0, sx * (0.1 + u * 0.75) - math.pi)
-			local L = 1.6 + math.sin(u * math.pi) * 0.6 - u * 0.4
-			blk(w, V(0.46 - u * 0.08, L, 0.06), f * CFrame.new(0, L / 2, 0), i % 2 == 1 and white or pearl, "Feder")
-			ball(w, V(0.44 - u * 0.08, 0.42, 0.07), f * CFrame.new(0, L, 0), gold, "Feder")
-		end
-		-- Armschwingen: mittel, innen
-		for i = 0, 7 do
-			local u = i / 7
-			local a = arm[1 + math.min(3, math.floor(u * 3.5))]
-			local f = piv * at(a[1], a[2] - 0.05, 0.02, 0, 0, -math.pi + sx * (-0.05 + u * 0.12))
-			local L = 1.0 + u * 0.4
-			blk(w, V(0.46, L, 0.06), f * CFrame.new(0, L / 2, 0), i % 2 == 1 and pearl or white, "Feder")
-			ball(w, V(0.46, 0.32, 0.07), f * CFrame.new(0, L, 0), i % 2 == 1 and white or pearl, "Feder")
-		end
-		-- Deckfedern am Bogen
-		for i = 0, 7 do
-			local u = i / 7
-			ball(w, V(0.55, 0.6, 0.08), piv * at(sx * (0.25 + u * 2.1), math.sin(u * math.pi * 0.85) * 0.85, 0.09, 0, 0, sx * 0.2), i % 2 == 1 and cream or white, "Feder")
-		end
+function DECO.halo(A)
+	local g = group(A.Deko, "Heiligenschein", at(0, A.Top + 0.27, 0))
+	g:SetAttribute("Anim", "Schweben")
+	ring(g, at(0, A.Top + 0.27, 0), 0.24, 0.03, M("#ffe08a", "Neon"), 20, "Heiligenschein")
+end
+function DECO.hat(A)
+	local r = 0.15
+	local cf = at(r * 0.3, A.Top + r * 0.9, 0) * CFrame.Angles(0, 0, -0.25)
+	cone(A.Deko, r, r * 2, cf.Position, cf.UpVector, M(A.Glow, "Neon"), "Partyhut")
+	cyl(A.Deko, V(r * 1.4, r * 0.25, r * 1.4), cf * CFrame.new(0, -r * 0.3 + r * 0.1, 0), M("#f4f1ea"), "Partyhut")
+	ball(A.Deko, r * 0.56, cf * CFrame.new(0, r * 2.05, 0), M("#f4f1ea"), "Partyhut")
+end
+function DECO.orbit(A)
+	local y = 1.44
+	local tilt = at(0, y, 0) * CFrame.Angles(0.35, 0, 0)
+	ring(A.Deko, tilt, 1.25, 0.015, M(A.Glow, "Neon"), 64, "Umlaufbahn")
+	local g = group(A.Deko, "Mond", tilt)
+	g:SetAttribute("Anim", "Mond")
+	ball(g, 0.24, tilt * CFrame.new(1.25, 0, 0), M(A.Rim, "SmoothPlastic"), "Mond")
+end
+function DECO.glitch(A)
+	for i = 1, 9 do
+		local r = A.Rng
+		local g = group(A.Deko, "Glitch" .. i, IDENT)
+		g:SetAttribute("Anim", "Glitch")
+		g:SetAttribute("R", 1.1 + r:NextNumber() * 0.6)
+		g:SetAttribute("H", 0.3 + r:NextNumber() * 1.8)
+		g:SetAttribute("Sp", 0.4 + r:NextNumber() * 0.6)
+		g:SetAttribute("Ph", r:NextNumber() * 6)
+		blk(g, 0.1, IDENT, M(A.Glow, "Neon"), "Glitch")
 	end
 end
 
-function DECO.engel(b)
-	local d = b.Body
-	local gold = M("#f2c14e", "Gold")
-	for _, th in ipairs({ 0.9, 1.7, 2.3 }) do
-		for i = 0, 19 do
-			blk(d, V(0.46, 0.05, 0.08), surf(th + math.sin(i * 0.8) * 0.06, i / 20 * TAU, 0.01), gold, "Filigran")
-		end
-	end
-	for i = 0, 7 do ball(d, V(0.2, 0.08, 0.2), surf(1.3, i / 8 * TAU, 0.02), M("#ffffff", "Gem", 0.1, 0.3), "Perle") end
-	-- Heiligenschein dreht sich und schwebt
-	local haloAt = at(0, SHELL_Y + RY + 0.55, 0)
-	local halo = group(d, "Kreisen", haloAt, { Speed = 0.6, Bob = 0.11, BobSpeed = 1.8 })
-	ring(halo, haloAt, 0.9, 0.08, M("#ffe08a", "Neon"), 24, "Heiligenschein")
-	wings(b)
-	emitterAt(b.Model, at(0, PED_TOP + 0.2, 0), V(2, 0.1, 2), { Rate = 10, Lifetime = NumberRange.new(1.8, 2.8), Speed = NumberRange.new(0.6, 1.2), SpreadAngle = Vector2.new(12, 12), Size = NumberSequence.new(0.35, 0), Color = colors({ "#fff4cf", "#ffe08a" }) })
-end
-
-function DECO.galaxie(b)
-	local d, rng = b.Body, b.Rng
-	-- Nebel in der Glasschale
-	local neb = group(d, "Kreisen", at(0, SHELL_Y, 0), { Speed = 0.35 })
-	for _, n in ipairs({ { 0.3, 0.3, 0.1, "#ff7ad9", 0.9 }, { -0.35, -0.2, -0.1, "#7a8cff", 1 }, { 0.1, -0.6, 0.3, "#b49cff", 0.8 }, { -0.1, 0.7, -0.2, "#5ad1ff", 0.7 } }) do
-		ball(neb, n[5], at(n[1], SHELL_Y + n[2], n[3]), M(n[4], "Neon", 0.5), "Nebel")
-	end
-	for i = 0, 19 do
-		ball(neb, 0.07, at((rng:NextNumber() - 0.5) * 2, SHELL_Y + (rng:NextNumber() - 0.5) * 3, (rng:NextNumber() - 0.5) * 2), M("#ffffff", "Neon"), "Stern")
-	end
-	-- Sternenring, darauf zwei Planeten
-	local tilt = at(0, SHELL_Y, 0, 0.35, 0, 0.12)
-	for i = 0, 31 do
-		local a = i / 32 * TAU
-		local k = (i % 8) / 8
-		ball(d, 0.17, tilt * CFrame.new(math.cos(a) * 2.5, 0, math.sin(a) * 2.5), M(Color3.fromHex("#b49cff"):Lerp(Color3.fromHex("#5ad1ff"), k), "Neon"), "Sternenring")
-	end
-	local pl = group(d, "Kreisen", tilt, { Speed = 0.4 })
-	local sat = tilt * CFrame.new(2.5, 0, 0)
-	ball(pl, 0.55, sat, M("#ff9d5c"), "Planet")
-	ring(pl, sat * CFrame.Angles(0.35, 0, 0.2), 0.48, 0.05, M("#ffd8b0"), 14, "Planetenring")
-	ball(pl, 0.35, tilt * CFrame.new(-2.5, 0, 0), M("#5cd6ff"), "Planet")
-	emitterAt(d, at(0, SHELL_Y, 0), V(3, 3, 3), { Rate = 8, Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(0, 0.3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.5, 0), Color = colors({ "#ffffff", "#b49cff" }) })
-end
-
-function DECO.admin(b)
-	local d = b.Body
-	local plate, red = M("#2e2e38", "DiamondPlate"), M("#ff4058", "Neon")
-	for i = 0, 5 do blk(d, V(0.9, 0.12, 1.2), surf(1.55, i / 6 * TAU + 0.26, 0.02), plate, "Panzer") end
-	for i = 0, 27 do blk(d, V(0.36, 0.08, 0.16), surf(math.pi / 2, i / 28 * TAU, 0.08), red, "Leiterbahn") end
-	for k = 0, 3 do
-		for i = 0, 11 do blk(d, V(0.05, 0.05, 0.3), surf(0.2 + i / 12 * 2.7, k / 4 * TAU, 0.06), red, "Leiterbahn") end
-	end
-	-- Scanner fährt auf und ab
-	local scan = cyl(d, V(RX * 2, 0.06, RX * 2), at(0, SHELL_Y, 0), M("#ff4058", "Neon", 0.2), "Scanner")
-	scan:SetAttribute("Anim", "Scanner")
-	-- Warnstreifen am Sockel
-	local y, k = M("#ffcc33"), M("#141018", "Ink")
-	for i = 0, 23 do
-		local a = i / 24 * TAU
-		blk(b.Model, V(0.5, 0.25, 0.1), at(math.cos(a) * 2.47, 0.46, math.sin(a) * 2.47, 0, -a + math.pi / 2, 0.5), i % 2 == 1 and y or k, "Warnstreifen")
-	end
-	-- Glitch-Würfel springen um das Ei
-	for i = 0, 9 do
-		local c = blk(b.Model, V(0.2, 0.2, 0.2), at(0, SHELL_Y, 0), M(({ "#ff4058", "#ff3df2", "#3de8ff" })[i % 3 + 1], "Neon"), "Glitch")
-		c:SetAttribute("Anim", "Glitch")
-		c:SetAttribute("Seed", i)
-	end
-end
-
-function DECO.release(b)
-	local d, rng = b.Body, b.Rng
-	local rib = M("#e0243a")
-	for _, ph0 in ipairs({ 0, math.pi / 2 }) do
-		for _, ph in ipairs({ ph0, ph0 + math.pi }) do
-			for i = 0, 19 do
-				blk(d, V(0.44, 0.07, 0.34), surf(0.06 + i / 19 * (math.pi - 0.12), ph, 0.02), rib, "Band")
-			end
-		end
-	end
-	-- Schleife oben
-	local bow = at(0, SHELL_Y + RY + 0.25, 0)
-	for _, sx in ipairs({ 1, -1 }) do
-		ring(d, bow * at(sx * 0.42, 0.1, 0, 0, 0, sx * 0.4) * CFrame.Angles(math.pi / 2, 0, 0), 0.38, 0.12, rib, 12, "Schleife")
-		blk(d, V(0.22, 0.6, 0.06), bow * at(sx * 0.25, -0.35, 0.3, 0.2, 0, sx * 0.5), rib, "Schleife")
-	end
-	ball(d, 0.32, bow, rib, "Schleife")
-	-- zwei Luftballons
-	for i, bl in ipairs({ { -1.9, 0.7, "#5ad1ff" }, { 1.8, -0.9, "#ff5aa5" } }) do
-		local x, z = bl[1], bl[2]
-		local cf = at(x, 3.9, z)
-		local g = group(b.Model, "Schweben", cf, { Phase = rng:NextNumber() * 6 })
-		ball(g, V(0.9, 1.05, 0.9), cf, M(bl[3], "Balloon"), "Ballon")
-		spike(g, V(0.14, 0.12, 0.14), cf * at(0, -0.56, 0, math.pi, 0, 0), M(bl[3]), "Ballon")
-		cyl(b.Model, V(0.02, 3.1, 0.02), at(x * 0.95, 2.25, z * 0.95), M("#fbf7ef"), "Schnur")
-	end
-	emitterAt(b.Model, at(0, 7.2, 0), V(3.4, 0.2, 3.4), { Rate = 16, Lifetime = NumberRange.new(2.4, 3.4), Speed = NumberRange.new(0.4, 0.8), EmissionDirection = Enum.NormalId.Bottom, SpreadAngle = Vector2.new(25, 25), Size = NumberSequence.new(0.22, 0.2), Transparency = NumberSequence.new(0, 0.7), RotSpeed = NumberRange.new(-180, 180), LightEmission = 0.3, Texture = "", Color = colors({ "#ff5aa5", "#ffe07a", "#5ad1ff", "#7dff8a", "#b49cff" }) })
-	emitterAt(d, at(0, SHELL_Y, 0), V(2.2, 2.2, 2.2), { Rate = 6, Lifetime = NumberRange.new(0.8, 1.2), Speed = NumberRange.new(0, 0.2), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.5, 0), Color = colors({ "#ffffff", "#ffe07a" }) })
-end
-
--- ── Bewegung ──
-local ANIMS = {}
-function ANIMS.Kreisen(t, g)
-	local bob = g.Bob and math.sin(t * (g.BobSpeed or 1) + (g.Phase or 0)) * g.Bob or 0
-	return CFrame.new(0, bob, 0) * CFrame.Angles(0, t * (g.Speed or 0.3), 0)
-end
-function ANIMS.Runen(t)
-	return CFrame.new(0, math.sin(t * 1.2) * 0.08, 0) * CFrame.Angles(0, t * 0.25, 0)
-end
-function ANIMS.Schweben(t, g)
-	local ph = g.Phase or 0
-	return CFrame.new(0, math.sin(t * 1.3 + ph) * 0.12, 0) * CFrame.Angles(0, 0, math.sin(t + ph) * 0.08)
-end
-function ANIMS.Fluegel(t, g)
-	local k, sx = math.sin(t * 1.4), g.Side or 1
-	return CFrame.Angles(0, sx * k * 0.22, sx * k * 0.06)
-end
-
-local records = setmetatable({}, { __mode = "k" })
-
-local function track(model)
-	local root = model.PrimaryPart
-	local body = model:FindFirstChild("Body")
-	local rec = { Model = model, Root = root, Body = body, Groups = {}, Static = {}, Specials = {}, Wobble = IDENT, Dirty = false }
-	local inv = root.CFrame:Inverse()
-	local grouped = {}
-	for _, g in ipairs(model:GetDescendants()) do
-		if g:IsA("Model") and g:GetAttribute("Anim") then
-			local pivot = g:GetAttribute("Pivot") or IDENT
-			local entry = { Kind = g:GetAttribute("Anim"), Pivot = pivot, Parts = {}, InBody = body ~= nil and g:IsDescendantOf(body), Attrs = g:GetAttributes() }
-			local pinv = pivot:Inverse()
-			for _, p in ipairs(g:GetDescendants()) do
-				if p:IsA("BasePart") then
-					grouped[p] = true
-					table.insert(entry.Parts, { Part = p, Offset = pinv * inv * p.CFrame })
-				end
-			end
-			if ANIMS[entry.Kind] then table.insert(rec.Groups, entry) end
-		end
-	end
-	for _, p in ipairs(model:GetDescendants()) do
-		if p:IsA("BasePart") and not grouped[p] then
-			local kind = p:GetAttribute("Anim")
-			local inBody = body ~= nil and p:IsDescendantOf(body)
-			if kind then
-				table.insert(rec.Specials, { Kind = kind, Part = p, InBody = inBody, Seed = p:GetAttribute("Seed") or 0, Size = p.Size, Offset = inv * p.CFrame })
-			elseif inBody then
-				table.insert(rec.Static, { Part = p, Offset = inv * p.CFrame })
-			elseif p.Name == "Leuchtband" then
-				table.insert(rec.Specials, { Kind = "Leuchten", Part = p })
-			end
-		end
-	end
-	records[model] = rec
-	return rec
-end
-
-local function glitchRand(seed, step, k)
-	local x = math.sin(seed * 12.9898 + step * 78.233 + k * 37.719) * 43758.5453
-	return x - math.floor(x)
-end
-
--- Ein Bild weiterrechnen (läuft von selbst; t = Zeit in Sekunden)
-function EggBuilder.Animate(model, t)
-	local rec = records[model] or track(model)
-	local root = rec.Root.CFrame
-	local wob = rec.Wobble
-	for _, g in ipairs(rec.Groups) do
-		local base = root * (g.InBody and wob or IDENT) * g.Pivot * ANIMS[g.Kind](t, g.Attrs)
-		for _, e in ipairs(g.Parts) do e.Part.CFrame = base * e.Offset end
-	end
-	for _, s in ipairs(rec.Specials) do
-		if s.Kind == "Scanner" then
-			local k = (math.sin(t * 1.3) + 1) / 2
-			local y = PED_TOP + 0.4 + k * 3.4
-			local r = math.sqrt(math.max(0.05, 1 - ((y - SHELL_Y) / RY) ^ 2)) * 1.05
-			s.Part.Size = V(s.Size.X, s.Size.Y * r, s.Size.Z * r)
-			s.Part.CFrame = root * wob * CFrame.new(0, y, 0) * UP
-		elseif s.Kind == "Glitch" then
-			local step = math.floor(t / 0.14)
-			if rec.Model:GetAttribute("Geplatzt") then
-				s.Part.Transparency = 1
-			elseif s.Step ~= step then
-				s.Step = step
-				local r1, r2, r3 = glitchRand(s.Seed, step, 1), glitchRand(s.Seed, step, 2), glitchRand(s.Seed, step, 3)
-				s.Part.Transparency = glitchRand(s.Seed, step, 4) < 0.6 and 0 or 1
-				s.Part.Size = s.Size * (0.5 + glitchRand(s.Seed, step, 5))
-				s.Part.CFrame = root * CFrame.new((r1 - 0.5) * 4, SHELL_Y + (r2 - 0.5) * 4, (r3 - 0.5) * 4)
-			end
-		elseif s.Kind == "Leuchten" then
-			s.Part.Transparency = 0.15 - math.sin(t * 2) * 0.15
-		end
-	end
-	if rec.Dirty then
-		local base = root * wob
-		for _, e in ipairs(rec.Static) do e.Part.CFrame = base * e.Offset end
-		for _, s in ipairs(rec.Specials) do
-			if s.InBody and s.Kind ~= "Scanner" and s.Offset then s.Part.CFrame = base * s.Offset end
-		end
-		rec.Dirty = wob ~= IDENT
-	end
-end
-
--- Wackeln beim Schlüpfen: cf dreht die ganze Schale um ihren Fußpunkt (CFrame.new() = Ruhe)
-function EggBuilder.SetWobble(model, cf)
-	local rec = records[model] or track(model)
-	rec.Wobble = cf
-	rec.Dirty = true
-end
-function EggBuilder.WobbleAround(rx, rz)
-	local foot = CFrame.new(0, PED_TOP, 0)
-	return foot * CFrame.Angles(rx, 0, rz) * foot:Inverse()
-end
-
--- Bewegung starten (beim Bauen automatisch; für Kopien aus einem Ordner selbst aufrufen)
-function EggBuilder.Start(model)
-	if model:GetAttribute("Animated") then return end
-	model:SetAttribute("Animated", true)
-	track(model)
-	local start = os.clock()
-	local connection
-	connection = RunService.Heartbeat:Connect(function()
-		if model.Parent then EggBuilder.Animate(model, os.clock() - start) end
-	end)
-	model.Destroying:Connect(function() connection:Disconnect() end)
-end
-
+-- ── Ei mit Käfig ──
 function EggBuilder.Build(egg)
-	local look = LOOK[egg.Id] or { "#e8c98f", "SmoothPlastic" }
-	local glow = egg.Glow
-	local rank = egg.Rank
+	local th = THEMES[egg.Id] or THEMES.normal
+	local glow = soften(th.Rim, 0.4)
+	local rng = Random.new(#egg.Id * 977 + string.byte(egg.Id, 1))
 	local model = Instance.new("Model")
 	model.Name = egg.Name
-	local root = blk(model, V(1, 0.2, 1), CFrame.new(), M("#ffffff", "SmoothPlastic", 1), "Root")
+	local root = blk(model, V(0.5, 0.1, 0.5), IDENT, M("#ffffff", "SmoothPlastic", 1), "Root")
 	model.PrimaryPart = root
 
-	-- Sockel: drei Stufen, Leuchtband, Nieten, Einlage
-	cyl(model, V(4.9, 0.28, 4.9), at(0, 0.14, 0), M("#221e2a", "Slate"), "Sockel")
-	cyl(model, V(4.4, 0.36, 4.4), at(0, 0.46, 0), M("#2a2532", "Slate"), "Sockel")
-	cyl(model, V(4.0, 0.1, 4.0), at(0, 0.69, 0), M("#36303f"), "Sockel")
-	cyl(model, V(4.5, 0.1, 4.5), at(0, 0.56, 0), M(glow, "Neon"), "Leuchtband")
-	ring(model, at(0, 0.745, 0), 1.6, 0.025, M(glow, "Neon", 0.4), 28, "Einlage")
-	for i = 0, 11 do
-		local a = i / 12 * TAU
-		ball(model, 0.13, at(math.cos(a) * 2.38, 0.2, math.sin(a) * 2.38), M(glow, "Neon"), "Niete")
+	-- Schale: zehn verdrehte Streifen in sieben Bändern, dunkel facettiert; der Kern leuchtet durch die Fugen
+	local ei = group(model, "Ei", at(0, 0.05, 0))
+	local core = ball(ei, V(eggR(0.5) * 1.8, EH * 0.9, eggR(0.5) * 1.8), at(0, 0.05 + EH * 0.5, 0), M(glow:Lerp(Color3.new(), 0.35), "Neon"), "Kern")
+	local lamp = blk(ei, 0.1, at(0, 0.05 + EH * 0.45, 0), M("#ffffff", "SmoothPlastic", 1), "Licht")
+	local light = Instance.new("PointLight")
+	light.Color = glow
+	light.Brightness = 0.6
+	light.Range = 5 * S
+	light.Parent = lamp
+	local stone = Color3.fromHex("#1d1b20")
+	local sectors, cuts = 10, {}
+	for k = 1, sectors do
+		cuts[k] = {}
+		for b, c in ipairs({ 0.14, 0.29, 0.44, 0.59, 0.74, 0.88 }) do cuts[k][b] = c + (rng:NextNumber() - 0.5) * 0.07 end
 	end
-	if rank >= 2 then
-		local rune = group(model, "Runen", at(0, 1.0, 0))
-		for i = 0, 15 do
-			local a = i / 16 * TAU
-			blk(rune, V(0.16, 0.05 + (i % 3) * 0.04, 0.05), at(math.cos(a) * 2.7, 1.0, math.sin(a) * 2.7, 0, -a, 0), M(glow, "Neon"), "Rune")
+	for k = 1, sectors do
+		for b = 0, 6 do
+			local v0 = b == 0 and 0.02 or cuts[k][b]
+			local v1 = b == 6 and 0.985 or cuts[k][b + 1]
+			local v = (v0 + v1) / 2
+			local a = (k - 0.5) / sectors * TAU - v * 0.9
+			local r = eggR(v)
+			local y = 0.05 + v * EH
+			local dr = (eggR(v + 0.01) - eggR(v - 0.01)) / 0.02
+			local slope = math.atan2(dr, EH) -- Neigung der Schale gegen die Senkrechte
+			local len = math.sqrt(dr * dr + EH * EH) * (v1 - v0)
+			local width = TAU * r / sectors
+			local twist = math.atan(r * 0.9 / math.sqrt(dr * dr + EH * EH))
+			local cf = CFrame.new(math.cos(a) * r, y, math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0) * CFrame.Angles(slope, 0, 0) * CFrame.Angles(0, 0, -twist)
+			local col = hex(th.Shell[2]):Lerp(hex(th.Shell[1]), b / 6):Lerp(stone, 0.42 + rng:NextNumber() * 0.14)
+			local p = blk(ei, V(math.max(0.08, width * 0.92), math.max(0.08, len * 0.9), 0.07), cf, M(col, "SmoothPlastic"), "Schale")
+			p.CastShadow = true
 		end
 	end
 
-	-- Schale mit Licht; Risse leuchten erst beim Schlüpfen auf
-	local body = Instance.new("Model")
-	body.Name = "Body"
-	body.Parent = model
-	local shell = ball(body, V(RX * 2, RY * 2, RX * 2), at(0, SHELL_Y, 0), M(look[1], look[2], look[3], look[4]), "Shell")
-	local lamp = blk(model, V(0.2, 0.2, 0.2), at(0, SHELL_Y, 2.4), M("#ffffff", "SmoothPlastic", 1), "EggLight")
-	local l = Instance.new("PointLight")
-	l.Color = glow
-	l.Brightness = 1 + rank * 0.4
-	l.Range = 10 + rank * 2
-	l.Parent = lamp
-	local rng = Random.new(rank * 97 + 13)
-	local crackM = M(glow, "Neon", 1)
-	for i = 0, 13 do
-		local th, ph = 0.5 + rng:NextNumber() * 1.8, rng:NextNumber() * TAU
-		blk(body, V(0.05, 0.02, 0.5 + rng:NextNumber() * 0.5), surf(th, ph, 0.005) * CFrame.Angles(0, rng:NextNumber() * math.pi, 0), crackM, "Crack")
+	-- Käfig: Sockel, Goldring mit Zacken, zwölf Stäbe, Ringe, Kuppel mit Spitze
+	local iron = M(hex(th.Ped):Lerp(Color3.fromHex("#17161a"), 0.6), "Metal")
+	local gold = M("#c9a25a", "Metal")
+	local cage = group(model, "Kaefig", IDENT)
+	local r0, CH = cageR(0.03), EH * 1.08
+	local function cy(v) return 0.12 + v * CH - 0.03 * CH end
+	cyl(cage, V((r0 + 0.17) * 2, 0.16, (r0 + 0.17) * 2), at(0, 0.08, 0), iron, "Sockel")
+	ring(cage, at(0, 0.17, 0), r0 + 0.12, 0.045, gold, 28, "Goldring")
+	for i = 0, 11 do
+		local a = i / 12 * TAU
+		cone(cage, 0.05, 0.12, V(math.cos(a) * (r0 + 0.17), 0.14, math.sin(a) * (r0 + 0.17)), Vector3.yAxis, gold, "Zacke")
+	end
+	for i = 0, 11 do
+		local a = i / 12 * TAU
+		local pivot = at(math.cos(a) * r0, 0.12, math.sin(a) * r0) * CFrame.Angles(0, -a, 0)
+		local bar = group(cage, "Stab" .. (i + 1), pivot)
+		local prev = V(0, 0, 0)
+		local N = 8
+		for j = 1, N do
+			local v = 0.03 + j / N * 0.92
+			local q = V(cageR(v) - r0, v * CH - 0.03 * CH, 0)
+			local d = q - prev
+			blk(bar, V(0.055, d.Magnitude + 0.03, 0.055), pivot * alignY((q + prev) / 2, d), iron, "Stab")
+			prev = q
+		end
+		ball(bar, 0.09, pivot * CFrame.new(prev), gold, "Knauf")
+	end
+	local midY, topY = cy(0.45), cy(0.95)
+	local mid = group(cage, "Mitte", at(0, midY, 0))
+	ring(mid, at(0, midY, 0), cageR(0.45) + 0.02, 0.04, gold, 36, "Ring")
+	local top = group(cage, "Oben", at(0, topY, 0))
+	local tr = cageR(0.95)
+	ring(top, at(0, topY, 0), tr + 0.02, 0.035, gold, 22, "Ring")
+	ball(top, V((tr + 0.06) * 2, (tr + 0.06) * 1.2, (tr + 0.06) * 2), at(0, topY + 0.02, 0), iron, "Kuppel")
+	cone(top, 0.07, 0.3, V(0, topY + tr * 0.7 + 0.03, 0), Vector3.yAxis, gold, "Spitze")
+	ball(top, 0.14, at(0, topY + tr * 0.7 + 0.03, 0), gold, "Spitze")
+
+	-- zwei Ketten, schräg ums Ei gewickelt, und das Schloss vorne
+	local FA = 0.92
+	local chainM = M("#6b6a70", "Metal")
+	for c = 0, 1 do
+		local g = group(cage, "Kette" .. (c + 1), IDENT)
+		local function pt(u)
+			local v = 0.18 + u * 0.6
+			local ang = FA + (c == 1 and -1 or 1) * (u - 0.5) * TAU
+			local r = cageR(v) + 0.07
+			return V(math.cos(ang) * r, cy(v), math.sin(ang) * r)
+		end
+		local N = 30
+		for k = 0, N - 1 do
+			local p, q = pt(k / N), pt(k / N + 0.01)
+			local cf = CFrame.lookAt(p, q) * CFrame.Angles(0, 0, k % 2 == 1 and math.pi / 2 or 0)
+			blk(g, V(0.035, 0.11, 0.17), cf, chainM, "Glied")
+		end
+	end
+	local lv = 0.48
+	local lr = cageR(lv) + 0.17
+	local lp = V(math.cos(FA) * lr, cy(lv), math.sin(FA) * lr)
+	local lockCf = CFrame.lookAt(lp, lp * V(2, 1, 2))
+	local lock = group(cage, "Schloss", lockCf)
+	blk(lock, V(0.3, 0.26, 0.1), lockCf * CFrame.new(0, -0.04, 0), gold, "Schloss")
+	blk(lock, V(0.05, 0.09, 0.03), lockCf * CFrame.new(0, -0.06, -0.055), M("#1a1410"), "Schlüsselloch")
+	for i = 0, 6 do
+		local a = i / 6 * math.pi
+		blk(lock, V(0.03, 0.05, 0.04), lockCf * CFrame.new(math.cos(a) * 0.09, 0.09 + math.sin(a) * 0.09, 0) * CFrame.Angles(0, 0, a), M("#8a8a90", "Metal"), "Bügel")
 	end
 
-	local deco = DECO[egg.Id]
-	if deco then deco({ Model = model, Body = body, Rng = rng, Egg = egg }) end
+	-- Deko
+	local deko = Instance.new("Model")
+	deko.Name = "Deko"
+	deko.Parent = cage
+	local back = {}
+	for i = 0, 5 do
+		local a = i / 6 * TAU + 0.5
+		table.insert(back, V(math.cos(a) * (r0 + 0.08), 0.17, math.sin(a) * (r0 + 0.08)))
+	end
+	local A = { Deko = deko, Back = back, Top = topY + 0.3, Glow = glow, Rim = th.Rim, Rng = rng }
+	for _, d in ipairs(th.Deco) do
+		if DECO[d] then DECO[d](A) end
+	end
 
 	model:SetAttribute("EggId", egg.Id)
 	EggBuilder.Start(model)
 	return model
 end
 
+-- ── Bühne: Sockel, Boden, Licht und Partikel der Ei-Welt ──
+local FX = {
+	dust = { V = 0.12, Size = 0.05, Glow = true },
+	leaves = { V = -0.35, Size = 0.1, Square = true },
+	snow = { V = -0.3, Size = 0.07 },
+	sparkle = { V = 0.25, Size = 0.07, Glow = true, Twinkle = true },
+	stars = { V = 0.03, Size = 0.06, Glow = true, Twinkle = true },
+	code = { V = 0.4, Size = 0.08, Square = true, Glow = true },
+	confetti = { V = -0.45, Size = 0.12, Square = true },
+	bubbles = { V = 0.45, Size = 0.13 },
+}
+
+-- Neuneck aus Blöcken (Apothem R, Höhe h)
+local function ngon(p, y, R, h, m, n, name)
+	n = n or 9
+	local chord = 2 * R * math.tan(math.pi / n) + 0.02
+	for i = 0, n - 1 do
+		local a = i / n * TAU
+		blk(p, V(chord, h, R), at(math.cos(a) * R * 0.5, y, math.sin(a) * R * 0.5) * CFrame.Angles(0, math.pi / 2 - a, 0), m, name)
+	end
+end
+
+local function colors(list)
+	local keys = {}
+	for i, c in ipairs(list) do
+		table.insert(keys, ColorSequenceKeypoint.new(#list == 1 and 0 or (i - 1) / (#list - 1), hex(c)))
+	end
+	if #keys == 1 then return ColorSequence.new(keys[1].Value) end
+	return ColorSequence.new(keys)
+end
+
+function EggBuilder.BuildStage(egg)
+	local th = THEMES[egg.Id] or THEMES.normal
+	local rng = Random.new(#egg.Id * 131 + 7)
+	local model = Instance.new("Model")
+	model.Name = "Buehne"
+	local root = blk(model, V(0.5, 0.1, 0.5), IDENT, M("#ffffff", "SmoothPlastic", 1), "Root")
+	model.PrimaryPart = root
+
+	ngon(model, -0.29, 2.05, 0.42, M(th.Ped, "Slate"), 9, "Sockel")
+	local h, s, l = hex(th.Ped2):ToHSV()
+	local topColor = Color3.fromHSV(h, math.min(s, 0.5), math.min(l, 0.42))
+	ngon(model, -0.05, 1.86, 0.1, M(topColor, "SmoothPlastic"), 9, "Platte")
+	-- Leuchtkante rundherum
+	local R = 1.95
+	local chord = 2 * R * math.tan(math.pi / 9)
+	for i = 0, 8 do
+		local a = i / 9 * TAU
+		blk(model, V(chord, 0.04, 0.04), at(math.cos(a) * R, -0.08, math.sin(a) * R) * CFrame.Angles(0, math.pi / 2 - a, 0), M(th.Rim, "Neon"), "Leuchtkante")
+	end
+	for i = 0, 7 do
+		local a = i / 8 * TAU + rng:NextNumber() * 0.4
+		local r = 2.25 + rng:NextNumber() * 0.3
+		local sz = 0.28 + rng:NextNumber() * 0.36
+		blk(model, V(sz, sz * 0.85, sz * 1.1), at(math.cos(a) * r, -0.42, math.sin(a) * r, rng:NextNumber(), rng:NextNumber() * 3, 0), M(th.Ped, "Slate"), "Fels")
+	end
+	cyl(model, V(28, 0.04, 28), at(0, -0.52, 0), M(th.Ground, "SmoothPlastic"), "Boden")
+
+	-- Licht: warmes Hauptlicht schräg vorne, Kantenlicht hinten, Leuchten am Sockel
+	local function lamp(pos, color, brightness, range, name)
+		local p = blk(model, 0.1, CFrame.new(pos), M("#ffffff", "SmoothPlastic", 1), name)
+		local l = Instance.new("PointLight")
+		l.Color = hex(color)
+		l.Brightness = brightness
+		l.Range = range
+		l.Shadows = name == "Hauptlicht"
+		l.Parent = p
+		return l
+	end
+	lamp(V(3, 6, 4) * 0.55, th.Key, 1.6, 22, "Hauptlicht")
+	lamp(V(-4, 3, -5) * 0.5, th.Rim, 1.4, 16, "Kantenlicht")
+	lamp(V(0, 0.4, 2.6), th.Rim, 2, 14, "Sockellicht")
+
+	-- Partikel der Welt (Staub, Blätter, Schnee, Funken, Sterne, Code, Konfetti, Blasen)
+	local fx = FX[th.Fx] or FX.dust
+	local host = blk(model, V(8, 5, 8), at(0, 2.2, 0), M("#ffffff", "SmoothPlastic", 1), "Partikel")
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Welt"
+	e.Texture = fx.Square and "" or "rbxasset://textures/particles/sparkles_main.dds"
+	e.Color = colors(th.Fxc)
+	e.LightEmission = fx.Glow and 1 or 0.2
+	e.Size = NumberSequence.new(fx.Size * S * (fx.Square and 1 or 1.6))
+	e.Transparency = fx.Twinkle and NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.1), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(0.8, 0.1), NumberSequenceKeypoint.new(1, 1) }) or NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0.1), NumberSequenceKeypoint.new(0.85, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	e.EmissionDirection = fx.V >= 0 and Enum.NormalId.Top or Enum.NormalId.Bottom
+	e.Speed = NumberRange.new(math.abs(fx.V) * S * 0.6, math.abs(fx.V) * S * 1.4)
+	e.SpreadAngle = Vector2.new(12, 12)
+	e.Lifetime = NumberRange.new(3, 6)
+	e.Rate = 26
+	e.RotSpeed = fx.Square and NumberRange.new(-120, 120) or NumberRange.new(0, 0)
+	e.Rotation = NumberRange.new(0, 360)
+	e.Parent = host
+
+	model:SetAttribute("EggId", egg.Id)
+	return model
+end
+
+-- Licht und Nebel der Ei-Welt setzen (für eine eigene Schlupf-Bühne); gibt eine Funktion zum Zurücksetzen zurück
+function EggBuilder.ApplyEnvironment(egg)
+	local th = THEMES[egg.Id] or THEMES.normal
+	local old = { FogColor = Lighting.FogColor, FogStart = Lighting.FogStart, FogEnd = Lighting.FogEnd, Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient }
+	Lighting.FogColor = hex(th.Bg)
+	Lighting.FogStart = 10 * S
+	Lighting.FogEnd = 22 * S
+	Lighting.Ambient = hex(th.Glow)
+	Lighting.OutdoorAmbient = hex(th.Glow):Lerp(hex(th.Key), 0.3)
+	return function()
+		for k, v in pairs(old) do Lighting[k] = v end
+	end
+end
+
+-- ── Bewegung ──
+local records = setmetatable({}, { __mode = "k" })
+
+local function rig(model)
+	local rec = records[model]
+	if rec then return rec end
+	rec = { Root = model.PrimaryPart, Groups = {}, Anims = {} }
+	local inv = rec.Root.CFrame:Inverse()
+	local function collect(g)
+		local pivot = g:GetAttribute("Pivot") or IDENT
+		local e = { Model = g, Pivot = pivot, Parts = {} }
+		local pinv = pivot:Inverse()
+		for _, p in ipairs(g:GetDescendants()) do
+			if p:IsA("BasePart") then table.insert(e.Parts, { Part = p, Offset = pinv * inv * p.CFrame, Size = p.Size }) end
+		end
+		return e
+	end
+	local ei = model:FindFirstChild("Ei")
+	local cage = model:FindFirstChild("Kaefig")
+	if ei then rec.Groups.Ei = collect(ei) end
+	if cage then
+		for _, name in ipairs({ "Mitte", "Oben", "Kette1", "Kette2", "Schloss" }) do
+			local g = cage:FindFirstChild(name)
+			if g then rec.Groups[name] = collect(g) end
+		end
+		rec.Bars = {}
+		for i = 1, 12 do
+			local g = cage:FindFirstChild("Stab" .. i)
+			if g then table.insert(rec.Bars, collect(g)) end
+		end
+		local deko = cage:FindFirstChild("Deko")
+		if deko then
+			for _, g in ipairs(deko:GetChildren()) do
+				if g:IsA("Model") and g:GetAttribute("Anim") then
+					local e = collect(g)
+					e.Kind = g:GetAttribute("Anim")
+					e.Attrs = g:GetAttributes()
+					table.insert(rec.Anims, e)
+				end
+			end
+		end
+		rec.Cage = collect(cage)
+	end
+	for _, p in ipairs(ei and ei:GetDescendants() or {}) do
+		if p.Name == "Kern" then rec.Core = p end
+		if p:IsA("PointLight") then rec.Light = p end
+	end
+	rec.CoreColor = rec.Core and rec.Core.Color
+	records[model] = rec
+	return rec
+end
+EggBuilder.Rig = rig
+
+-- Gruppe stellen: a = Bewegung um den Drehpunkt (Studs), k = Größe, spread = Abstände der Teile (Zahl oder Vector3)
+local function place(rec, e, a, k, spread)
+	if not e then return end
+	local base = rec.Root.CFrame * e.Pivot * a
+	k = k or 1
+	spread = spread or k
+	for _, it in ipairs(e.Parts) do
+		local o = it.Offset
+		it.Part.CFrame = base * CFrame.new(o.Position * spread) * o.Rotation
+		if it.K ~= k then
+			it.K = k
+			it.Part.Size = it.Size * math.max(k, 0.01)
+		end
+	end
+end
+EggBuilder.Place = place
+
+local function easeOutBack(x)
+	local c1 = 1.70158
+	return 1 + (c1 + 1) * (x - 1) ^ 3 + c1 * (x - 1) ^ 2
+end
+EggBuilder.EaseOutBack = easeOutBack
+
+local ANIMS = {}
+function ANIMS.Schweben(t) return CFrame.new(0, math.sin(t * 2) * 0.03 * S, 0) end
+function ANIMS.Mond(t) return CFrame.Angles(0, -t * 0.8, 0) end
+function ANIMS.Glitch(t, g, rec)
+	local a = t * g.Sp + g.Ph
+	local pos = V(math.cos(a) * g.R, g.H + math.sin(t * 2 + g.Ph) * 0.1, math.sin(a) * g.R) * S
+	return CFrame.new(pos) * CFrame.Angles(t, t * 0.7, 0), math.sin(t * 7 + g.Ph) > -0.8
+end
+
+-- Alles für Zeit t stellen. state (optional): Shake, Push, Squash, Hop, Glow (0–1), Lock (Zeit seit Start),
+-- Bars (0–1 offen). Ohne state: Ruhe (atmen, schweben, drehen, Herzschlag im Kern).
+function EggBuilder.Pose(model, t, state)
+	local rec = rig(model)
+	state = state or {}
+	local sh, push, sq, hop = state.Shake or 0, state.Push or 0, state.Squash or 0, state.Hop or 0
+	local hatching = state.Lock ~= nil
+	local hb = hatching and 0 or math.max(0, math.sin(t * 2.1)) ^ 24
+	local br = math.sin(t * 2) * 0.018 * (1 - sh) + hb * 0.035
+	local y = math.sin(t * 1.6) * 0.03 * (1 - sh) + hop * (1 - sq)
+	local rz = math.sin(t * (3 + sh * 30)) * (0.012 + sh * 0.12) + hb * math.sin(t * 30) * 0.04
+	local rx = math.cos(t * (2.5 + sh * 26)) * sh * 0.07
+	local a = CFrame.new(0, y * S, 0) * CFrame.Angles(rx, t * 0.25, rz)
+	local spread = V(1 + br + sq * 0.1, 1 - br - sq * 0.15, 1 + br + sq * 0.1) * (1 + push * 0.05)
+	place(rec, rec.Groups.Ei, a, 1, spread)
+	if rec.Core then
+		local ci = hatching and 0.38 + (state.Glow or 0) * 1.6 or 0.38 + math.sin(t * 2) * 0.1 + hb * 0.35
+		rec.Core.Color = rec.CoreColor:Lerp(Color3.new(1, 0.97, 0.9), math.clamp((ci - 0.3) / 1.8, 0, 1))
+	end
+	if rec.Light then rec.Light.Brightness = hatching and 0.6 + (state.Glow or 0) * 3.4 or 0.6 + math.sin(t * 2) * 0.2 end
+
+	-- Schloss, Ketten, Stäbe, Ringe
+	local T = state.Lock
+	if T then
+		local lock = rec.Groups.Schloss
+		if T < 0.8 then
+			place(rec, lock, CFrame.Angles(0, 0, math.sin(T * 40) * 0.18 * (T / 0.8)))
+		elseif lock then
+			local d = T - 0.8
+			local out = lock.Pivot.Position * V(0.6, 0, 0.6) / S
+			local p = V(out.X * d, 1.4 * d - 4.9 * d * d, out.Z * d) * S
+			local gone = lock.Pivot.Position.Y / S + p.Y / S < -0.4
+			place(rec, lock, CFrame.new(lock.Pivot.Rotation:Inverse() * p) * CFrame.Angles(d * 7, 0, 0), gone and 0.01 or 1)
+		end
+		local cd = math.max(0, T - 0.8)
+		for _, n in ipairs({ "Kette1", "Kette2" }) do
+			place(rec, rec.Groups[n], CFrame.new(0, -cd * cd * 3 * S, 0), math.max(0.01, 1 - cd * 1.4))
+		end
+		local op = easeOutBack(math.clamp((T - 1) / 0.8, 0, 1))
+		for _, bar in ipairs(rec.Bars) do place(rec, bar, CFrame.Angles(0, 0, -op * 1.0)) end
+		place(rec, rec.Groups.Oben, CFrame.new(0, op * 0.7 * S, 0), math.max(0.01, 1 - op))
+		place(rec, rec.Groups.Mitte, IDENT, math.max(0.01, 1 - op))
+	end
+
+	for _, e in ipairs(rec.Anims) do
+		local cf, visible = ANIMS[e.Kind](t, e.Attrs, rec)
+		place(rec, e, cf)
+		if visible ~= nil then
+			for _, it in ipairs(e.Parts) do it.Part.Transparency = visible and 0 or 1 end
+		end
+	end
+end
+
+-- Bewegung starten (beim Bauen automatisch; für Kopien aus einem Ordner selbst aufrufen)
+function EggBuilder.Start(model)
+	if model:GetAttribute("Animated") then return end
+	model:SetAttribute("Animated", true)
+	local start = os.clock()
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		if model.Parent and not model:GetAttribute("Hatching") then EggBuilder.Pose(model, os.clock() - start) end
+	end)
+	model.Destroying:Connect(function() connection:Disconnect() end)
+end
+
 return EggBuilder
 `;
 
 export const HATCH_FX = `${HEADER('Schlüpfen')}
--- HatchFx.Play(eggId, petId, options) spielt das Schlüpfen in fünf Akten an einem Ort
--- (options.CFrame = Boden unter dem Ei, options.Parent = Elternteil, Standard workspace):
---   1 Wackeln: das Ei schaukelt immer stärker, Risse leuchten auf
---   2 Aufladen: Licht wird eingesogen, Strahlen drehen sich, die Schale glüht
---   3 Platzen: die Schale fliegt in zehn Stücken weg, Druckwelle, Funkenregen
---   4 Enthüllung: das Tier wächst mit Drehung heraus, Leuchtring am Boden (episch: Konfetti)
---   5 Name und Chance als BillboardGui
--- options.OnPhase(name) meldet die Akte ("wobble", "charge", "burst", "reveal", "done").
--- Seltene Eier wackeln und laden länger und platzen größer. Läuft am besten auf dem Client (LocalScript).
--- Gibt { Folder, Pet } zurück, sobald das Tier steht.
+-- HatchFx.Play(eggId, petId, options) spielt das Schlüpfen wie im Design „Tier-Eier“
+-- (options.CFrame = Oberkante der Bühne, options.Parent = Elternteil, Standard workspace,
+--  options.Stage = false: ohne Bühne, options.Lighting = true: Licht und Nebel der Ei-Welt setzen):
+--   unlock  Schloss zittert und springt ab, Ketten fallen, die Gitterstäbe klappen auf, die Kuppel hebt sich
+--   charge  das Ei glüht von innen, bebt immer stärker, Funken sprühen aus den Fugen, zuletzt staucht es sich
+--   burst   die Schale platzt in alle Stücke, Blitz, Druckwelle, Funkenregen (selten: Lichtstrahlen),
+--           der Käfig versinkt im Sockel, das Tier springt heraus
+--   reveal  das Tier landet mit Staubring und federt nach; seltene Tiere bekommen ihren Auftritt
+--           (Leuchten, Ring am Boden, Lichtsäule mit Splittern, Bahnen)
+--   done    Name und Chance stehen über dem Tier
+-- options.OnPhase(name) meldet die Abschnitte. Gibt { Folder, Pet } zurück, sobald das Tier steht.
 
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -731,6 +650,9 @@ local PetBuilder = require(script.Parent.PetBuilder)
 local HatchFx = {}
 
 local TAU = math.pi * 2
+local S = EggBuilder.Scale
+local HATCH_T = 3.4
+local V = Vector3.new
 local UP = CFrame.Angles(0, 0, math.pi / 2)
 
 local function tween(inst, time, goal, style, dir)
@@ -739,28 +661,15 @@ local function tween(inst, time, goal, style, dir)
 	return t
 end
 
--- Modell um seinen Drehpunkt auf Faktor k skalieren (Größen und Abstände der Teile)
-local function scaler(model, pivot)
-	local parts = {}
-	for _, p in ipairs(model:GetDescendants()) do
-		if p:IsA("BasePart") then
-			table.insert(parts, { Part = p, Offset = pivot:ToObjectSpace(p.CFrame), Size = p.Size })
-		end
-	end
-	return function(k, turn)
-		local base = pivot * CFrame.Angles(0, turn or 0, 0)
-		for _, e in ipairs(parts) do
-			local o = e.Offset
-			e.Part.Size = e.Size * math.max(k, 0.01)
-			e.Part.CFrame = base * CFrame.new(o.Position * k) * o.Rotation
-		end
-	end
+local function frame()
+	return RunService.Heartbeat:Wait()
 end
 
 local function newPart(parent, props)
 	local p = Instance.new("Part")
 	p.Anchored = true
 	p.CanCollide = false
+	p.CanQuery = false
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	for k, v in pairs(props) do p[k] = v end
@@ -773,16 +682,50 @@ local function emitter(parent, props)
 	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	e.LightEmission = 1
 	e.Rate = 0
-	for key, value in pairs(props) do
-		e[key] = value
-	end
+	for key, value in pairs(props) do e[key] = value end
 	e.Parent = parent
 	return e
 end
 
--- Wartet ein Bild und gibt die vergangene Zeit zurück
-local function frame()
-	return RunService.Heartbeat:Wait()
+-- Modell um seinen Fußpunkt skalieren und drehen (k = Größe, sx/sy = Stauchen, lift = Sprunghöhe)
+local function scaler(model, pivot)
+	local parts = {}
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then table.insert(parts, { Part = p, Offset = pivot:ToObjectSpace(p.CFrame), Size = p.Size }) end
+	end
+	return function(k, turn, lift, sx, sy)
+		sx, sy = sx or 1, sy or 1
+		local base = pivot * CFrame.new(0, lift or 0, 0) * CFrame.Angles(0, turn or 0, 0)
+		local f = V(k * sx, k * sy, k * sx)
+		for _, e in ipairs(parts) do
+			local o = e.Offset
+			e.Part.Size = e.Size * math.max(k, 0.01)
+			e.Part.CFrame = base * CFrame.new(o.Position * f) * o.Rotation
+		end
+	end
+end
+
+-- Ring aus Leuchtblöcken (für Druckwelle und Staubring)
+local function glowRing(parent, cf, color, n)
+	local parts = {}
+	for i = 1, n do
+		parts[i] = newPart(parent, { Name = "Welle", Material = Enum.Material.Neon, Color = color, Size = V(0.4, 0.06, 0.12) })
+	end
+	return function(r, transparency)
+		for i, p in ipairs(parts) do
+			local a = (i - 1) / n * TAU
+			p.Size = V(TAU * r / n * 1.05, 0.06, 0.12 + r * 0.02)
+			p.CFrame = cf * CFrame.new(math.cos(a) * r, 0, math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0)
+			p.Transparency = transparency
+		end
+	end, parts
+end
+
+local function tierOf(pet)
+	for i, p in ipairs(PetData.ByEgg[pet.Egg] or {}) do
+		if p.Id == pet.Id then return i - 1 end
+	end
+	return pet.Epic and 5 or 0
 end
 
 function HatchFx.Play(eggId, petId, options)
@@ -791,176 +734,253 @@ function HatchFx.Play(eggId, petId, options)
 	local pet = PetData.ById[petId]
 	local origin = options.CFrame or CFrame.new()
 	local onPhase = options.OnPhase or function() end
-	local rank = egg.Rank
-	local glow = egg.Glow
+	local theme = EggBuilder.Themes[eggId] or EggBuilder.Themes.normal
+	local glow = EggBuilder.Soften(theme.Rim, 0.4)
+	local tier = tierOf(pet)
+	local big = 1 + tier * 0.1
 	local folder = Instance.new("Folder")
 	folder.Name = "Schluepfen"
 	folder.Parent = options.Parent or workspace
+	local restore
+	if options.Lighting then restore = EggBuilder.ApplyEnvironment(egg) end
+	folder.Destroying:Connect(function() if restore then restore() end end)
 
-	-- Ei auf seinem Sockel
+	-- Bühne und Ei im Käfig
+	if options.Stage ~= false then
+		local stage = EggBuilder.BuildStage(egg)
+		stage:PivotTo(origin)
+		stage.Parent = folder
+	end
 	local eggModel = EggBuilder.Build(egg)
+	eggModel:SetAttribute("Hatching", true)
 	eggModel:PivotTo(origin)
 	eggModel.Parent = folder
-	local body = eggModel:FindFirstChild("Body")
-	local shell = body:FindFirstChild("Shell")
-	local lamp = eggModel:FindFirstChild("EggLight")
-	local light = lamp and lamp:FindFirstChildOfClass("PointLight")
-	local baseLight = light and light.Brightness or 1
-	local cracks, deco = {}, {}
-	for _, p in ipairs(body:GetDescendants()) do
-		if p:IsA("BasePart") then
-			if p.Name == "Crack" then table.insert(cracks, p) elseif p ~= shell then table.insert(deco, p) end
+	local rec = EggBuilder.Rig(eggModel)
+	local center = origin * EggBuilder.Center
+
+	-- Funken aus den Fugen (Rate wächst mit dem Glühen)
+	local core = newPart(folder, { Name = "Mitte", Transparency = 1, Size = V(1.2, 1.2, 1.2) * S, CFrame = CFrame.new(center) })
+	local seep = emitter(core, { Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface, Color = ColorSequence.new(Color3.fromHex("#ffc27a"):Lerp(glow, 0.3)), Lifetime = NumberRange.new(0.5, 1.4), Speed = NumberRange.new(2, 5), Drag = 0.8, Acceleration = V(0, -10, 0), Size = NumberSequence.new(0.18, 0) })
+
+	-- 1. Aufschließen und 2. Aufladen (zusammen 3,4 s wie im Design)
+	onPhase("unlock")
+	local T, charging = 0, false
+	while T < HATCH_T do
+		T = T + frame()
+		local p = math.clamp((T - 1.4) / (HATCH_T - 1.4), 0, 1)
+		if p > 0 and not charging then
+			charging = true
+			onPhase("charge")
+		end
+		local sh = p * p
+		local tl = HATCH_T - T
+		EggBuilder.Pose(eggModel, T, {
+			Lock = T,
+			Shake = sh,
+			Push = p,
+			Glow = sh,
+			Hop = math.max(0, math.sin(T * 7)) * 0.1 * sh,
+			Squash = tl < 0.35 and 1 - math.max(0, tl) / 0.35 or 0,
+		})
+		seep.Rate = p * 120
+	end
+
+	-- 3. Platzen
+	onPhase("burst")
+	seep.Rate = 0
+	if rec.Core then rec.Core.Transparency = 1 end
+	local chunks = {}
+	for _, it in ipairs(rec.Groups.Ei.Parts) do
+		local part = it.Part
+		if part.Name == "Schale" then
+			local d = (part.Position - center)
+			d = (d.Magnitude > 0.01 and d.Unit or V(0, 1, 0)) * (2.2 + math.random() * 2.6) + V(0, 1.8 + math.random() * 2.2, 0)
+			table.insert(chunks, { Part = part, Vel = d * S, Spin = V((math.random() - 0.5) * 10, 0, (math.random() - 0.5) * 10), Size = part.Size })
 		end
 	end
-	local center = origin * EggBuilder.ShellCenter
-	local shellColor = shell.Color
-
-	local D1 = 1.6 + rank * 0.32 -- Wackeln
-	local D2 = 0.8 + rank * 0.14 -- Aufladen
-
-	-- Hilfsteile: Mitte (Funken), Strahlen
-	local core = newPart(folder, { Name = "Mitte", Transparency = 1, Size = Vector3.new(4, 4, 4), CFrame = CFrame.new(center) })
-	local inward = emitter(core, { Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface, ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Speed = NumberRange.new(5.5, 7), Lifetime = NumberRange.new(0.3, 0.35), Size = NumberSequence.new(0.16, 0.4), Transparency = NumberSequence.new(0.8, 0), Color = ColorSequence.new(glow, Color3.new(1, 1, 1)) })
-	local beams = {}
-	local count = 6 + rank
-	for i = 1, count do
-		beams[i] = newPart(folder, { Name = "Strahl", Material = Enum.Material.Neon, Color = glow, Transparency = 1, Size = Vector3.new(0.3, 10, 0.3) })
+	local floorY = origin.Position.Y + 0.06
+	local cageScale = rec.Cage and scaler(rec.Cage.Model, origin)
+	local deko = rec.Cage and rec.Cage.Model:FindFirstChild("Deko")
+	if deko then
+		for _, p in ipairs(deko:GetDescendants()) do
+			if p:IsA("BasePart") then p.Transparency = 1 end
+		end
 	end
-	local function placeBeams(spin, transparency)
-		for i, p in ipairs(beams) do
-			local a = (i - 1) / count * TAU + spin
-			p.CFrame = origin * CFrame.new(0, EggBuilder.PedestalTop, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0.9, 5, 0) * CFrame.Angles(0, 0, 0.3)
+
+	local flash = newPart(folder, { Name = "Blitz", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromHex("#fff4e0"):Lerp(glow, 0.5), Transparency = 0.55, Size = V(0.6, 0.6, 0.6) * S, CFrame = origin * CFrame.new(0, 1 * S, 0) })
+	local wave = glowRing(folder, origin * CFrame.new(0, 0.06 * S, 0), glow, 32)
+	wave(0.8 * S, 0.3)
+	local sparks = emitter(core, { Shape = Enum.ParticleEmitterShape.Sphere, Color = ColorSequence.new(Color3.fromHex("#ffc27a"):Lerp(glow, 0.35)), Lifetime = NumberRange.new(0.5, 1.4), Speed = NumberRange.new(2.5 * S, (2.5 + 4.5 * big) * S), Drag = 1.6, Acceleration = V(0, -5 * S, 0), Size = NumberSequence.new(0.3, 0), SpreadAngle = Vector2.new(180, 180) })
+	sparks:Emit(110 + tier * 20)
+	local boom = Instance.new("PointLight")
+	boom.Color = glow
+	boom.Brightness = 8
+	boom.Range = 9 * S
+	boom.Parent = core
+	tween(boom, 1.4, { Brightness = 0 })
+
+	-- seltene Tiere (ab Stufe 3): Lichtstrahlen hinter dem Ei
+	local rays = {}
+	if tier >= 3 then
+		for i = 1, 8 + tier do
+			rays[i] = newPart(folder, { Name = "Strahl", Material = Enum.Material.Neon, Color = glow, Transparency = 1, Size = V(0.25, 6 * S * 0.5, 0.25) })
+		end
+	end
+	local function placeRays(spin, transparency)
+		for i, p in ipairs(rays) do
+			local a = (i - 1) / #rays * TAU + spin
+			p.CFrame = origin * CFrame.new(0, 1.3 * S, 1.6 * S) * CFrame.Angles(0, 0, a) * CFrame.new(0, 1.5 * S, 0)
 			p.Transparency = transparency
 		end
 	end
 
-	-- 1. Wackeln: immer kräftiger und schneller, Risse leuchten nacheinander auf
-	onPhase("wobble")
-	local t = 0
-	while t < D1 do
-		t = t + frame()
-		local k = math.min(1, t / D1)
-		local amp = 0.04 + k * k * 0.3
-		local f = 9 + k * 16
-		local rz = math.sin(t * f) * amp * (0.55 + 0.45 * math.sin(t * 2.7))
-		local rx = math.cos(t * f * 0.7) * amp * 0.3
-		EggBuilder.SetWobble(eggModel, EggBuilder.WobbleAround(rx, rz))
-		for i, c in ipairs(cracks) do c.Transparency = (i - 1) < k * 1.15 * #cracks and 0 or 1 end
-		shell.Color = shellColor:Lerp(glow, k * 0.25)
-		if light then light.Brightness = baseLight * (1 + k * 2) end
-	end
-
-	-- 2. Aufladen: Licht wird eingesogen, Strahlen drehen sich, die Schale glüht
-	onPhase("charge")
-	for _, c in ipairs(cracks) do c.Transparency = 0 end
-	inward.Rate = 170
-	local spin, t2 = 0, 0
-	while t2 < D2 do
-		local dt = frame()
-		t2 = t2 + dt
-		t = t + dt
-		local k = math.min(1, t2 / D2)
-		EggBuilder.SetWobble(eggModel, EggBuilder.WobbleAround(0, math.sin(t * 40) * 0.05 * k))
-		shell.Color = shellColor:Lerp(glow, 0.25 + k * 0.75)
-		spin = spin + dt * (1 + k * 3)
-		placeBeams(spin, 1 - k * 0.6)
-		if light then light.Brightness = baseLight * (3 + k * 6) end
-	end
-
-	-- 3. Platzen: Blitz, zehn Schalenstücke, Funken, Druckwelle
-	onPhase("burst")
-	inward.Rate = 0
-	EggBuilder.SetWobble(eggModel, CFrame.new())
-	local sparks = emitter(core, { Shape = Enum.ParticleEmitterShape.Sphere, Color = ColorSequence.new(glow, Color3.new(1, 1, 1)), Lifetime = NumberRange.new(0.6, 1.3), Speed = NumberRange.new(6, 12 + rank * 1.5), Drag = 2.2, Size = NumberSequence.new(0.55, 0), Acceleration = Vector3.new(0, -6, 0) })
-	sparks:Emit(100 + rank * 30)
-	local flash = Instance.new("PointLight")
-	flash.Color = glow
-	flash.Brightness = 10
-	flash.Range = 18 + rank * 2
-	flash.Parent = core
-	tween(flash, 1.2, { Brightness = 0 })
-	for _, p in ipairs(deco) do p.Transparency = 1 end
-	for _, p in ipairs(cracks) do p.Transparency = 1 end
-	for _, e in ipairs(body:GetDescendants()) do
-		if e:IsA("ParticleEmitter") then e.Enabled = false end
-	end
-	shell.Transparency = 1
-	eggModel:SetAttribute("Geplatzt", true)
-	-- Schalenstücke: zwei Ringe zu je fünf, gewölbt wie die Schale
-	local pieces = {}
-	local half = EggBuilder.ShellSize / 2
-	for band = 0, 1 do
-		for j = 0, 4 do
-			local th = band == 0 and math.pi * 0.21 or math.pi * 0.5
-			local ph = j * TAU / 5 + TAU / 10 + (band == 1 and 0.6 or 0)
-			local dir = Vector3.new(-math.cos(ph) * math.sin(th), math.cos(th), math.sin(ph) * math.sin(th)).Unit
-			local pos = center + Vector3.new(dir.X * half.X, dir.Y * half.Y, dir.Z * half.Z) * 0.92
-			local piece = newPart(folder, { Name = "Schale", Color = shell.Color, Material = shell.Material, Size = Vector3.new(1.7, 0.22, 1.5), CFrame = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(-math.pi / 2, 0, 0) })
-			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.Sphere
-			mesh.Parent = piece
-			table.insert(pieces, { Part = piece, Vel = dir * (4 + math.random() * 3) + Vector3.new(0, 2.5, 0), Spin = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8 })
-		end
-	end
-	local wave = newPart(folder, { Name = "Druckwelle", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = glow, Transparency = 0.1, Size = Vector3.new(0.1, 2, 2), CFrame = origin * CFrame.new(0, EggBuilder.PedestalTop + 0.15, 0) * UP })
-	tween(wave, 0.9, { Size = Vector3.new(0.1, 16 + rank * 2, 16 + rank * 2), Transparency = 1 })
 	local flying = true
 	task.spawn(function()
 		local age = 0
-		while flying and age < 1.6 do
+		while flying or age < 3.2 do
 			local dt = frame()
 			age = age + dt
-			for _, s in ipairs(pieces) do
-				s.Vel = s.Vel + Vector3.new(0, -14 * dt, 0)
-				s.Part.CFrame = (s.Part.CFrame + s.Vel * dt) * CFrame.Angles(s.Spin.X * dt, s.Spin.Y * dt, s.Spin.Z * dt)
-				s.Part.Transparency = math.min(1, age * 0.9)
+			for _, c in ipairs(chunks) do
+				c.Vel = c.Vel + V(0, -9.8 * S * dt, 0)
+				local pos = c.Part.Position + c.Vel * dt
+				if pos.Y < floorY and c.Vel.Y < 0 then
+					pos = V(pos.X, floorY, pos.Z)
+					c.Vel = V(c.Vel.X * 0.6, -c.Vel.Y * 0.35, c.Vel.Z * 0.6)
+				end
+				local k = math.clamp(1 - (age - 1.3) / 0.8, 0, 1)
+				c.Part.Size = c.Size * math.max(0.01, k)
+				c.Part.CFrame = CFrame.new(pos) * (c.Part.CFrame - c.Part.Position) * CFrame.Angles(c.Spin.X * dt, 0, c.Spin.Z * dt)
+				if k <= 0 then c.Part.Transparency = 1 end
 			end
-			placeBeams(spin + age * 3, math.min(1, 0.4 + age * 1.2))
+			if rec.Light then rec.Light.Brightness = math.max(0, 4 * (1 - age * 2)) end
+			local ck = math.min(1, age / 0.7)
+			if cageScale then cageScale(math.max(0.01, 1 - ck), 0, -ck * ck * 1.2 * S) end
+			local kf = math.min(1, age / 0.5)
+			flash.Size = V(1, 1, 1) * math.min(1.8, (0.3 + kf * 1.6) * big) * S * 1.2
+			flash.Transparency = 0.55 + 0.45 * kf
+			local kw = math.min(1, age / 1)
+			wave((0.8 + kw * 3.2 * big) * S, 0.3 + 0.7 * kw)
+			if #rays > 0 then
+				local kr = math.min(1, age / 3.2)
+				local op = (kr < 0.12 and kr / 0.12 or 1 - (kr - 0.12) / 0.88) * (0.14 + tier * 0.04) * 2.4
+				placeRays(kr * 1.1, 1 - math.clamp(op, 0, 0.85))
+			end
+			if age > 2.2 and eggModel.Parent then eggModel:Destroy() end
 		end
-		for _, s in ipairs(pieces) do s.Part:Destroy() end
-		for _, p in ipairs(beams) do p:Destroy() end
+		flash:Destroy()
+		for _, p in ipairs(rays) do p:Destroy() end
 	end)
-	if light then tween(light, 1, { Brightness = baseLight }) end
-	task.wait(0.35)
 
-	-- 4. Enthüllung: Tier wächst mit eineinhalb Drehungen heraus (Überschwingen wie Back-Out)
-	onPhase("reveal")
+	-- Das Tier springt heraus (0,8 s, Überschwingen, Drehung, Sprungbogen)
 	local petModel = PetBuilder.Build(petId)
-	local stand = origin * CFrame.new(0, EggBuilder.PedestalTop, 0)
 	for _, p in ipairs(petModel:GetDescendants()) do
 		if p:IsA("BasePart") then
 			p.Anchored = true
-			p.CFrame = stand * p.CFrame
+			p.CFrame = origin * p.CFrame
 		end
 	end
 	petModel.Parent = folder
-	local scale = scaler(petModel, stand)
+	local scale = scaler(petModel, origin)
 	scale(0.01, 0)
-	local under = newPart(folder, { Name = "Lichtkranz", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = pet.Epic and Color3.fromRGB(255, 210, 90) or glow, Transparency = 0.4, Size = Vector3.new(0.06, 2.2, 2.2), CFrame = stand * CFrame.new(0, 0.03, 0) * UP })
-	tween(under, 0.9, { Size = Vector3.new(0.06, 3.6, 3.6) })
-	local glowRing = emitter(core, { Color = ColorSequence.new(pet.Glow), Lifetime = NumberRange.new(1, 1.6), Speed = NumberRange.new(1, 3), SpreadAngle = Vector2.new(180, 180), Size = NumberSequence.new(0.35, 0), Rate = pet.Epic and 30 or 12 })
-	core.CFrame = stand * CFrame.new(0, 1.5, 0)
-	if pet.Epic then
-		local confetti = emitter(core, { Texture = "", LightEmission = 0.3, EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(45, 45), Lifetime = NumberRange.new(1.6, 2.6), Speed = NumberRange.new(4, 9), Drag = 0.8, Acceleration = Vector3.new(0, -7, 0), Size = NumberSequence.new(0.3, 0.25), RotSpeed = NumberRange.new(-200, 200), Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromHex("#ff5aa5")), ColorSequenceKeypoint.new(0.25, Color3.fromHex("#ffe07a")), ColorSequenceKeypoint.new(0.5, Color3.fromHex("#5ad1ff")), ColorSequenceKeypoint.new(0.75, Color3.fromHex("#7dff8a")), ColorSequenceKeypoint.new(1, Color3.fromHex("#b49cff")) }) })
-		confetti:Emit(180)
-	end
-	local grow, tr = 0.9, 0
-	while tr < grow do
-		tr = tr + frame()
-		local k = math.min(1, tr / grow)
-		local back = 1 + 2.70158 * (k - 1) ^ 3 + 1.70158 * (k - 1) ^ 2
-		scale(math.max(0.01, back), (1 - k) * TAU * 1.5)
+	local t2 = 0
+	while t2 < 0.8 do
+		t2 = t2 + frame()
+		local p = math.min(1, t2 / 0.8)
+		scale(math.max(0.01, EggBuilder.EaseOutBack(p)), (1 - p) * -2.4, math.sin(math.pi * p) * 1.1 * S)
 	end
 	scale(1, 0)
+
+	-- 4. Landung: Staubring, Staub, Nachfedern
+	onPhase("reveal")
+	local dust, dustParts = glowRing(folder, origin * CFrame.new(0, 0.04 * S, 0), Color3.fromHex("#d8cfc0"), 28)
+	for _, p in ipairs(dustParts) do p.Material = Enum.Material.SmoothPlastic end
+	local puff = emitter(core, { Texture = "rbxasset://textures/particles/smoke_main.dds", LightEmission = 0, Color = ColorSequence.new(Color3.fromHex("#e8dccb")), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(2 * S, 4 * S), SpreadAngle = Vector2.new(80, 10), EmissionDirection = Enum.NormalId.Top, Drag = 3, Size = NumberSequence.new(0.5, 1.2), Transparency = NumberSequence.new(0.4, 1) })
+	core.CFrame = origin * CFrame.new(0, 0.1 * S, 0)
+	puff:Emit(30)
+	local tl = 0
+	while tl < 0.6 do
+		tl = tl + frame()
+		local k = math.min(1, tl / 0.4)
+		local a = math.sin(k * math.pi * 2.5) * (1 - k) * 0.2
+		scale(1, 0, 0, 1 + a, 1 - a * 1.4)
+		local kd = math.min(1, tl / 0.6)
+		dust((0.6 + kd * 2.2) * S, 0.65 + 0.35 * kd)
+	end
+	scale(1, 0)
+	for _, p in ipairs(dustParts) do p:Destroy() end
 	flying = false
+
+	-- Auftritt seltener Tiere (wie „epic“ im Design)
+	local col = pet.Glow or glow
+	if tier >= 3 then
+		local pl = Instance.new("PointLight")
+		pl.Color = col
+		pl.Brightness = 0.8 + tier * 0.3
+		pl.Range = 6 * S
+		pl.Parent = core
+		core.CFrame = origin * CFrame.new(0, 1.3 * S, -0.7 * S)
+	end
+	local spinners = {}
+	if tier >= 4 then
+		local parts = {}
+		for i = 0, 17 do
+			parts[i + 1] = newPart(folder, { Name = "Auftritt", Material = Enum.Material.Neon, Color = col, Size = V(i % 2 == 1 and 0.1 or 0.24, 0.03, 0.06) * S })
+		end
+		table.insert(spinners, function(t)
+			for i, p in ipairs(parts) do
+				local a = (i - 1) / 18 * TAU + t * 0.4
+				p.CFrame = origin * CFrame.new(math.cos(a) * 1.68 * S, 0.06 * S, math.sin(a) * 1.68 * S) * CFrame.Angles(0, -a + math.pi / 2, 0)
+			end
+		end)
+	end
+	if tier >= 5 then
+		local beam = newPart(folder, { Name = "Lichtsaeule", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = col, Transparency = 0.93, Size = V(5.5 * S, 2.3 * S, 2.3 * S), CFrame = origin * CFrame.new(0, 2.75 * S, 0) * UP })
+		local shards = {}
+		for i = 1, tier >= 6 and 16 or 10 do
+			shards[i] = { Part = newPart(folder, { Name = "Splitter", Material = Enum.Material.Neon, Color = col, Size = V(0.06, 0.14, 0.06) * S }), R = 1.75 + math.random() * 0.5, H = 0.3 + math.random() * 2.4, Sp = 0.3 + math.random() * 0.6, Ph = math.random() * 6 }
+		end
+		table.insert(spinners, function(t)
+			beam.Transparency = 0.92 + 0.03 * math.sin(t * 1.7)
+			for _, s in ipairs(shards) do
+				local a = t * s.Sp + s.Ph
+				s.Part.CFrame = origin * CFrame.new(math.cos(a) * s.R * S, (s.H + math.sin(t * 1.3 + s.Ph) * 0.15) * S, math.sin(a) * s.R * S) * CFrame.Angles(0, t * 2, 0)
+			end
+		end)
+	end
+	if tier >= 6 then
+		local r2, r3 = {}, {}
+		for i = 1, 40 do
+			r2[i] = newPart(folder, { Name = "Bahn", Material = Enum.Material.Neon, Color = col, Transparency = 0.6, Size = V(0.32, 0.03, 0.03) * S })
+			r3[i] = newPart(folder, { Name = "Bahn", Material = Enum.Material.Neon, Color = col, Transparency = 0.75, Size = V(0.35, 0.025, 0.025) * S })
+		end
+		table.insert(spinners, function(t)
+			local c2 = origin * CFrame.new(0, 0.55 * S, 0) * CFrame.Angles(math.sin(t * 0.7) * 0.12, t * 0.5, 0)
+			local c3 = origin * CFrame.new(0, 0.3 * S, 0) * CFrame.Angles(math.cos(t * 0.6) * 0.14, -t * 0.4, 0)
+			for i = 1, 40 do
+				local a = (i - 1) / 40 * TAU
+				r2[i].CFrame = c2 * CFrame.new(math.cos(a) * 2.0 * S, 0, math.sin(a) * 2.0 * S) * CFrame.Angles(0, -a + math.pi / 2, 0)
+				r3[i].CFrame = c3 * CFrame.new(math.cos(a) * 2.2 * S, 0, math.sin(a) * 2.2 * S) * CFrame.Angles(0, -a + math.pi / 2, 0)
+			end
+		end)
+	end
+	if #spinners > 0 then
+		task.spawn(function()
+			local t = 0
+			while folder.Parent do
+				t = t + frame()
+				for _, f in ipairs(spinners) do f(t) end
+			end
+		end)
+	end
 
 	-- 5. Name und Chance
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromOffset(240, 70)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 5.4 + (pet.Epic and 0.6 or 0), 0)
+	gui.StudsOffsetWorldSpace = V(0, 6.4, 0)
 	gui.AlwaysOnTop = true
+	gui.Adornee = core
 	gui.Parent = core
-	core.CFrame = stand
+	core.CFrame = origin
 	local title = Instance.new("TextLabel")
 	title.BackgroundTransparency = 1
 	title.Size = UDim2.new(1, 0, 0.6, 0)
@@ -981,16 +1001,6 @@ function HatchFx.Play(eggId, petId, options)
 	sub.TextStrokeTransparency = 0.3
 	sub.Text = (pet.Epic and "Episch · " or "") .. tostring(pet.Chance) .. " %"
 	sub.Parent = gui
-	task.delay(0.8, function()
-		glowRing.Rate = pet.Epic and 8 or 0
-	end)
-	task.spawn(function()
-		local t3 = 0
-		while under.Parent do
-			t3 = t3 + frame()
-			under.Transparency = 0.4 + math.sin(t3 * 3) * 0.25
-		end
-	end)
 	onPhase("done")
 	return { Folder = folder, Pet = petModel }
 end

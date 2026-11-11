@@ -120,7 +120,7 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
   background: radial-gradient(80% 70% at 28% 45%, color-mix(in srgb, var(--egg) 18%, transparent), transparent 70%), var(--velvet);
   box-shadow: 0 40px 120px -30px #000;
 }
-.detail-view { aspect-ratio: 4 / 5; max-width: 100%; min-width: 0; touch-action: none; }
+.detail-view { aspect-ratio: 4 / 5; max-width: 100%; min-width: 0; touch-action: none; background: radial-gradient(70% 65% at 50% 42%, var(--world-glow, #2a2232), var(--world-bg, #0a0910) 90%); }
 .detail-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .detail-info { display: grid; align-content: center; gap: 12px; padding: 32px 32px 32px 8px; min-width: 0; }
 .detail-info h2 { margin: 0; font: 700 clamp(2rem, 4vw, 3rem)/1 var(--font-display); text-wrap: balance; }
@@ -157,7 +157,8 @@ h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: bal
   inset: 0;
   z-index: 30;
   overflow: hidden;
-  background: radial-gradient(60% 55% at 50% 45%, color-mix(in srgb, var(--egg) 14%, #0a0910), #040306 80%);
+  /* Umgebung der Ei-Welt wie im Design: Leuchten in der Mitte, dunkler Rand */
+  background: radial-gradient(65% 60% at 50% 42%, var(--world-glow, #2a2232), var(--world-bg, #0a0910) 85%);
   cursor: pointer;
   user-select: none;
 }
