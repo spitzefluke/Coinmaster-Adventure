@@ -181,28 +181,6 @@ document.getElementById('download-icons').addEventListener('click', async (e) =>
   btn.disabled = false;
 });
 
-// Haustiere als Roblox-Modelle (.rbxmx)
-document.getElementById('download-pets').addEventListener('click', async (e) => {
-  const btn = e.currentTarget;
-  const status = document.getElementById('pet-status');
-  btn.disabled = true;
-  try {
-    const [{ petToParts }, { petsFolder, rbxmxFile }] = await Promise.all([import('./petParts.js'), import('./rbxmx.js')]);
-    const list = [];
-    for (const [i, pet] of PETS.entries()) {
-      status.textContent = `Baue ${pet.name} (${i + 1} von ${PETS.length}) …`;
-      await new Promise((r) => setTimeout(r, 0));
-      list.push(petToParts(pet));
-    }
-    download(new Blob([rbxmxFile([petsFolder(list)])], { type: 'application/xml' }), 'Haustiere.rbxmx');
-    status.textContent = `${PETS.length} Haustiere, ${list.reduce((n, l) => n + l.parts.length, 0).toLocaleString('de-DE')} Teile`;
-  } catch (err) {
-    console.error(err);
-    status.textContent = 'Export fehlgeschlagen';
-  }
-  btn.disabled = false;
-});
-
 // Welten als Roblox-Modelle (.rbxmx) in einem ZIP
 document.getElementById('download-worlds').addEventListener('click', async (e) => {
   const btn = e.currentTarget;
