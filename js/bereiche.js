@@ -23,7 +23,7 @@ export const BEREICHE = [
     text: 'Sieben Eier für die Haustiere, vom Normal Egg bis zum Release Egg. Jedes mit eigenem Look und einer Schlüpf-Animation, die mit der Seltenheit wächst.',
     href: 'eier/',
     status: 'vorschau',
-    eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
+    eckdaten: ['11 Eier', '3D', 'Schlüpf-Animation'],
   },
   {
     titel: 'Münzrollen',
@@ -41,10 +41,10 @@ export const BEREICHE = [
   },
   {
     titel: 'Haustiere',
-    text: '49 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
+    text: '77 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
     href: 'haustiere/',
     status: 'vorschau',
-    eckdaten: ['49 Tiere', '14 episch', 'Export für Blender'],
+    eckdaten: ['77 Tiere', '22 episch', 'Export für Blender'],
   },
   {
     titel: 'Auras',

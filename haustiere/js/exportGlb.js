@@ -83,7 +83,7 @@ export async function exportPet(pet) {
   await exportScene(scene, slug(pet.name) + '.glb');
 }
 
-// Alle 49 Tiere in einer Datei: eine Reihe pro Ei, jedes Tier als eigenes Objekt
+// Alle 77 Tiere in einer Datei: eine Reihe pro Ei, jedes Tier als eigenes Objekt
 export async function exportAll() {
   const scene = new THREE.Scene();
   const eggs = [...new Set(PETS.map((p) => p.egg))];
@@ -98,5 +98,5 @@ export async function exportAll() {
     grp.position.z = -row * 4;
     scene.add(grp);
   });
-  await exportScene(scene, 'haustiere-alle-49.glb');
+  await exportScene(scene, 'haustiere-alle-77.glb');
 }

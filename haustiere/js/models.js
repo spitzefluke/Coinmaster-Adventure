@@ -1,4 +1,4 @@
-// Alle 49 Haustiere (Claude Design „Haustiere Viewer“). Normale: feines Block-Detail.
+// Alle 77 Haustiere (Claude Design „Haustiere Viewer“; Candy, Cartoon, Atlantis und Lava nach „Tier-Eier“). Normale: feines Block-Detail.
 // Epische: dunkle Facetten, Neonadern, Kristalldornen.
 import { TAU, shade, mix } from './engine.js';
 import { INK, GOLD, veins, dk, paints, specks, eyes, chainTail, quad, bird, lizard, collar, crown, halo, wingsAngel, partyHat, topHat, cape } from './kit.js';
@@ -17,6 +17,187 @@ const mane = (b, q, c, glow, n = 18) => {
 const ridge = (b, q, c, glow, n = 6) => {
   for (let i = 0; i < n; i++) b.spike([0, q.top - 0.04, q.body[2] * 0.55 - (i / (n - 1)) * q.body[2] * 1.2], [0, 1, -0.45], 0.26 + (i % 2) * 0.12, 0.17, i % 2 ? glow : c, { mat: i % 2 ? 'Neon' : 'Smooth' });
 };
+
+// ── Archetypen für Candy, Cartoon, Atlantis und Lava (Ideen aus Claude Design „Tier-Eier“) ──
+const R2 = (b) => b.rnd() - 0.5;
+
+// Fisch: liegt waagrecht und schwebt über ein paar Luftblasen
+function fish(b, o) {
+  const P = { body: [0.42, 0.48, 0.78], y: 0.95, c: '#3fb6c8', belly: null, fin: null, iris: '#1a1a24', glow: null, neon: null, paint: null, tail: 0.5, dorsal: 0.3, mat: null, blush: null, bubbles: true, ...o };
+  const s = b.step, [bx, by, bz] = P.body, fin = P.fin ?? shade(P.c, 0.8);
+  const bc = [0, P.y, 0];
+  b.vox(bc, P.body, P.c, { mat: P.mat, paint: paints(P.paint, P.neon ? veins(P.neon) : null, P.belly ? (u) => (u[1] < -0.35 ? P.belly : null) : null) });
+  for (const sy of [1, -1]) b.at([0, P.y, -bz * 0.9], [sy * 0.7, 0, 0], () => b.voxBox([0, 0, -P.tail / 2], [s * 0.7, P.tail * 0.55, P.tail], fin));
+  if (P.dorsal) b.at([0, P.y + by * 0.85, -0.05], [-0.5, 0, 0], () => b.voxBox([0, P.dorsal / 2, 0], [s * 0.6, P.dorsal, P.dorsal * 0.9], fin));
+  for (const sx of [1, -1]) b.at([sx * bx * 0.9, P.y - by * 0.25, bz * 0.25], [0.4, 0, sx * 0.7], () => b.voxBox([sx * 0.13, 0, 0], [0.26, s * 0.6, 0.3], fin));
+  eyes(b, bc, P.body, { gap: bx * 0.6, dy: by * 0.2, size: Math.max(0.12, by * 0.24), iris: P.iris, glow: P.glow, blush: P.blush });
+  b.blk([0, P.y - by * 0.25, bz * 0.97], [bx * 0.5, 0.05, 0.06], '#3a1a22', { j: 0 });
+  if (P.bubbles) for (let i = 0; i < 4; i++) b.ball([R2(b) * 0.3, 0.1 + i * 0.17, bz * 0.3 + R2(b) * 0.2], 0.08 + (i % 2) * 0.04, '#bff4ff', { mat: 'Glass', j: 0 });
+  return { ...P, bc, s };
+}
+
+// Schlange: aufgerollt, Kopf vorne oben
+function serpent(b, o) {
+  const P = { c: '#5fbf3a', band: null, belly: null, N: 54, w: 0.32, r: 0.72, rise: 0.62, iris: '#e0b020', glow: null, neon: null, hood: null, fangs: false, maw: false, fins: null, spikes: null, spikeMat: null, head: [0.28, 0.2, 0.3], mat: null, ...o };
+  const s = b.step;
+  for (let i = 0; i < P.N; i++) {
+    const k = i / P.N, a = k * TAU * 2.1, r = P.r * (1 - k * 0.58), y = 0.16 + k * P.rise, w = P.w * (1 - k * 0.25);
+    const band = P.band && i % 7 < 1;
+    const pos = [Math.cos(a) * r, y, Math.sin(a) * r];
+    b.blk(pos, [w, w * 0.9, 0.2], band ? P.band : P.c, { rot: [0, -a, 0], mat: P.mat });
+    if (P.neon && i % 3 === 1) b.neon([pos[0], y + w * 0.46, pos[2]], [w * 0.4, s * 0.25, 0.12], P.neon, { rot: [0, -a, 0] });
+    else if (!band && i % 2) b.blk([pos[0], y + w * 0.47, pos[2]], [w * 0.5, s * 0.25, 0.12], shade(P.c, 0.75), { rot: [0, -a, 0] });
+    if (P.spikes && i % 5 === 2) b.spike([pos[0], y + w * 0.4, pos[2]], [0, 1, 0], 0.16 + w * 0.3, 0.1, P.spikes, { mat: P.spikeMat });
+    if (P.fins && i % 6 === 3) b.at([pos[0], y + w * 0.45, pos[2]], [0, -a, 0], () => b.wedge([0, 0.1, 0], [0.03, 0.22, 0.26], P.fins, { mat: P.spikeMat }));
+  }
+  const top = 0.16 + P.rise;
+  const hr = P.head, hc = [0.05, top + 0.3, 0.28];
+  b.at([0.05, top + 0.1, 0.2], [-0.2, 0, 0], () => b.voxBox([0, 0.05, 0], [hr[0] * 0.85, 0.3, hr[0] * 0.85], P.c));
+  if (P.hood) b.vox([0.05, hc[1] - 0.02, hc[2] - 0.14], [hr[0] * 1.7, hr[1] * 1.9, 0.07], P.hood, { cut: (u) => u[1] < -0.6 });
+  b.vox(hc, hr, P.c, { paint: (u) => (P.belly && u[1] < -0.5 ? P.belly : null) });
+  eyes(b, hc, hr, { gap: hr[0] * 0.46, size: Math.max(0.1, hr[1] * 0.55), iris: P.iris, glow: P.glow });
+  if (P.maw) {
+    b.blk([hc[0], hc[1] - hr[1] * 0.75, hc[2] + hr[2] * 0.6], [hr[0] * 1.3, 0.08, hr[2] * 1.0], shade(P.c, 0.7));
+    b.blk([hc[0], hc[1] - hr[1] * 0.5, hc[2] + hr[2] * 0.75], [hr[0] * 1.1, 0.1, 0.06], '#2a0e12', { j: 0 });
+    for (let i = 0; i < 5; i++) b.spike([hc[0] + (i - 2) * hr[0] * 0.22, hc[1] - hr[1] * 0.35, hc[2] + hr[2] * 0.85], [0, -1, 0.1], 0.1, 0.05, '#f2ede2', { mat: 'Smooth' });
+  } else {
+    b.blk([hc[0], hc[1] - 0.08, hc[2] + hr[2] + 0.1], [0.04, 0.02, 0.2], '#e0304a', { j: 0 });
+    for (const sx of [1, -1]) b.blk([hc[0] + sx * 0.03, hc[1] - 0.08, hc[2] + hr[2] + 0.22], [0.02, 0.02, 0.08], '#e0304a', { rot: [0, sx * 0.5, 0], j: 0 });
+  }
+  if (P.fangs) for (const sx of [1, -1]) b.spike([hc[0] + sx * hr[0] * 0.3, hc[1] - hr[1] * 0.45, hc[2] + hr[2] * 0.85], [0, -1, 0.1], 0.12, 0.05, '#f2ede2', { mat: 'Smooth' });
+  return { ...P, hc, hr, top };
+}
+
+// Krake/Qualle: Kopf über acht Armen (Qualle schwebt, Glas, hängende Fäden)
+function octo(b, o) {
+  const P = { c: '#a83a4a', b: null, n: 8, R: 0.5, y: 0.7, tl: 1.2, iris: '#1a1a24', glow: null, neon: null, jelly: false, mat: null, paint: null, blush: null, ...o };
+  const s = b.step, hy = P.y + P.R * 0.75, hc = [0, hy, -0.02], hr = [P.R, P.R * 1.12, P.R];
+  b.vox(hc, hr, P.c, { mat: P.mat, cut: P.jelly ? (u) => u[1] < -0.15 : null, paint: paints(P.paint, P.neon ? veins(P.neon, 3.6, 0.12) : null) });
+  if (P.jelly) b.vox([0, hy + 0.05, -0.02], [P.R * 0.45, P.R * 0.4, P.R * 0.45], P.glow ?? P.b ?? P.c, { mat: 'Neon' });
+  eyes(b, hc, hr, { gap: P.R * 0.38, dy: P.jelly ? P.R * 0.2 : -P.R * 0.12, size: 0.14, iris: P.iris, glow: P.jelly ? null : P.glow, blush: P.blush });
+  for (let i = 0; i < P.n; i++) {
+    const a = (i / P.n) * TAU + 0.2;
+    const N = P.jelly ? 9 : 13;
+    for (let j = 0; j < N; j++) {
+      const t = j / (N - 1);
+      let rad, y;
+      if (P.jelly) { rad = P.R * 0.55 + Math.sin(t * 3 + i) * 0.06; y = hy - P.R * 0.2 - t * P.tl; }
+      else { rad = P.R * 0.55 + t * P.tl * 0.7; y = Math.max(0.06, P.y * (1 - t * 1.6)) + (t > 0.75 ? (t - 0.75) * 0.9 : 0); }
+      const w = (P.jelly ? 0.06 : 0.17) * (1 - t * 0.6);
+      b.blk([Math.cos(a) * rad, y, Math.sin(a) * rad], [w, w, w * 1.2], j % 2 && P.b && !P.jelly ? P.b : P.c, { rot: [0, -a, 0], mat: P.jelly ? 'Glass' : P.mat });
+      if (P.neon && !P.jelly && j % 3 === 1) b.neon([Math.cos(a) * rad, y + w * 0.5, Math.sin(a) * rad], [w * 0.5, 0.02, w * 0.5], P.neon);
+    }
+  }
+  return { ...P, hc, hr, top: hy + hr[1] };
+}
+
+// Blob: weicher Tropfen mit Gesicht
+function blob(b, o) {
+  const P = { c: '#fff4ea', r: [0.6, 0.45, 0.55], iris: '#2a1a24', mat: null, paint: null, blush: '#ff9fb2', glow: null, ...o };
+  const bc = [0, P.r[1], 0];
+  b.vox(bc, P.r, P.c, { mat: P.mat, paint: P.paint });
+  eyes(b, bc, P.r, { gap: P.r[0] * 0.36, dy: P.r[1] * 0.18, size: 0.13, iris: P.iris, glow: P.glow, blush: P.blush });
+  b.blk([0, P.r[1] * 0.85, P.r[2] * 0.96], [0.14, 0.04, 0.05], '#3a1a22', { j: 0 });
+  return { ...P, bc, top: P.r[1] * 2 };
+}
+
+// Zweibeiner: rundlicher Körper, Kopf, Ärmchen, Beinchen
+function biped(b, o) {
+  const P = { c: '#ff5a7a', belly: null, body: [0.42, 0.42, 0.36], head: [0.4, 0.36, 0.36], legH: 0.24, mat: null, ear: 'round', snout: [0.22, 0.14, 0.1], iris: '#2a1a24', nose: INK, blush: '#ff9fb2', ...o };
+  const s = b.step, [bx, by, bz] = P.body;
+  for (const sx of [1, -1]) {
+    b.voxBox([sx * bx * 0.45, P.legH / 2 + s * 0.3, 0], [0.2, P.legH, 0.22], P.c, { mat: P.mat });
+    b.blk([sx * bx * 0.45, s * 0.3, 0.05], [0.24, s * 0.6, 0.3], shade(P.c, 0.85), { mat: P.mat });
+  }
+  const bc = [0, P.legH + by * 0.9, 0];
+  b.vox(bc, P.body, P.c, { mat: P.mat, paint: P.belly ? (u) => (u[2] > 0.5 && u[1] < 0.4 ? P.belly : null) : null });
+  for (const sx of [1, -1]) b.at([sx * bx * 0.95, bc[1] + by * 0.2, 0.05], [0, 0, sx * 0.35], () => b.voxBox([0, -0.15, 0], [0.16, 0.34, 0.16], P.c, { mat: P.mat }));
+  const hr = P.head, hc = [0, bc[1] + by * 0.85 + hr[1] * 0.6, 0.04];
+  b.vox(hc, hr, P.c, { mat: P.mat });
+  if (P.ear === 'round') for (const sx of [1, -1]) b.vox([sx * hr[0] * 0.65, hc[1] + hr[1] * 0.75, hc[2] - 0.05], [0.12, 0.12, 0.08], P.c, { mat: P.mat });
+  if (P.ear === 'long') for (const sx of [1, -1]) b.at([sx * hr[0] * 0.35, hc[1] + hr[1] * 0.7, hc[2] - 0.05], [-0.1, 0, -sx * 0.12], () => { b.voxBox([0, 0.3, 0], [0.16, 0.62, 0.12], P.c, { mat: P.mat }); b.blk([0, 0.3, 0.07], [0.08, 0.48, 0.03], P.inner ?? '#ffc2cc', { j: 0 }); });
+  const [sw, sh, sd] = P.snout;
+  const front = hc[2] + hr[2] * 0.9;
+  if (sd) b.voxBox([0, hc[1] - hr[1] * 0.3, front], [sw, sh, sd], P.belly ?? P.c, { mat: P.mat });
+  b.blk([0, hc[1] - hr[1] * 0.18, front + sd / 2 + 0.02], [sw * 0.4, sh * 0.35, 0.05], P.nose, { mat: 'Smooth', j: 0 });
+  eyes(b, hc, hr, { gap: hr[0] * 0.42, dy: hr[1] * 0.15, iris: P.iris, glow: P.glow, blush: P.blush });
+  return { ...P, bc, hc, hr, headTop: hc[1] + hr[1], top: bc[1] + by };
+}
+
+// Drache: Vierbeiner mit Hörnern, Rückenkamm, Fledermausflügeln und Stachelschwanz
+function dragon(b, o) {
+  const P = { c: '#9fe6c8', belly: '#ffb3d1', wing: null, horn: '#fff0f6', hornMat: null, glow: null, neon: null, iris: '#2a3a34', tipMat: null, ...o };
+  const q = quad(b, { body: [0.62, 0.5, 0.95], head: [0.46, 0.4, 0.46], snout: [0.36, 0.24, 0.36], legW: 0.3, legH: 0.55, ear: 'none', tail: 'thin', tailL: 1.5, tailUp: 0.35, tailCurl: 0.05, tip: P.horn, brow: 0.25, blush: null, ...P, wing: undefined });
+  for (const sx of [1, -1]) b.spike([sx * q.hr[0] * 0.45, q.headTop - 0.05, q.hc[2] - 0.15], [sx * 0.35, 1, -0.9], 0.36, 0.12, P.horn, { mat: P.hornMat });
+  for (let i = 0; i < 6; i++) b.spike([0, q.top - 0.04, q.body[2] * 0.55 - (i / 5) * q.body[2] * 1.3], [0, 1, -0.45], 0.2 + (i % 2) * 0.08, 0.14, i % 2 && P.neon ? P.neon : P.horn, { mat: i % 2 && P.neon ? 'Neon' : P.hornMat });
+  if (q.tailEnd) b.spike(q.tailEnd, [0, 0.3, -1], 0.3, 0.2, P.horn, { mat: P.hornMat });
+  const W = P.wing ?? shade(P.c, 0.75);
+  for (const sx of [1, -1]) {
+    b.push([sx * q.body[0] * 0.7, q.top - 0.08, 0.1], [0, sx * 0.25, sx * 0.55]);
+    b.blk([sx * 0.45, 0, 0], [0.9, 0.08, 0.08], shade(P.c, 0.6));
+    for (let f = 0; f < 3; f++) {
+      const a = 0.5 + f * 0.45;
+      b.at([sx * 0.88, 0, 0], [0, -sx * a, 0], () => {
+        b.blk([sx * 0.38, 0, 0], [0.76 - f * 0.12, 0.05, 0.05], shade(P.c, 0.6));
+        b.blk([sx * 0.3, -0.02, -0.17], [0.62 - f * 0.1, 0.02, 0.34], W, { mat: f === 1 && P.neon ? 'Neon' : null });
+      });
+    }
+    b.blk([sx * 0.45, -0.02, -0.22], [0.8, 0.02, 0.44], W);
+    b.pop();
+  }
+  return q;
+}
+
+// Schaf: Vierbeiner mit Wollbällchen
+function sheep(b, o) {
+  const P = { wool: '#f3efe6', face: '#3a3540', woolMat: null, ...o };
+  const q = quad(b, { c: P.face, body: [0.6, 0.5, 0.7], legH: 0.42, legW: 0.22, head: [0.36, 0.36, 0.36], snout: [0.24, 0.16, 0.1], ear: 'side', earS: 0.8, inner: '#ffb0c4', tail: 'stub', tip: P.wool, iris: '#2a2530', paint: () => P.wool, blush: '#ff9fb2', ...P });
+  for (let i = 0; i < 22; i++) {
+    const a = b.rnd() * TAU, e = 0.2 + b.rnd() * 1.1;
+    const p = [Math.cos(a) * Math.sin(e) * 0.62, q.bodyY + Math.cos(e) * 0.5, Math.sin(a) * Math.sin(e) * 0.72];
+    b.vox(p, [0.17, 0.15, 0.17], P.wool, { mat: P.woolMat, step: 0.09 });
+  }
+  b.vox([0, q.headTop, q.hc[2] - 0.05], [0.22, 0.13, 0.2], P.wool, { mat: P.woolMat, step: 0.09 });
+  return q;
+}
+
+// Schildkröte: kurze Beine, Panzerkuppel mit Platten
+function turtle(b, o) {
+  const P = { c: '#7d8f55', shell: '#6b4e2e', rim: null, ...o };
+  const q = quad(b, { body: [0.5, 0.28, 0.62], legH: 0.22, legW: 0.26, head: [0.3, 0.28, 0.3], headFwd: 0.12, headUp: -0.1, snout: [0.2, 0.12, 0.06], ear: 'none', tail: 'stub', iris: '#2c2418', blush: null, ...P });
+  const sc = [0, q.bodyY + 0.12, -0.02];
+  b.vox(sc, [0.66, 0.4, 0.78], P.shell, { cut: (u) => u[1] < -0.15, paint: (u, p) => (Math.abs(Math.sin(p[0] * 7)) < 0.18 || Math.abs(Math.sin(p[2] * 7)) < 0.18 ? (P.rim ?? shade(P.shell, 0.7)) : null) });
+  return { ...q, shellTop: sc[1] + 0.4, sc };
+}
+
+// Käfer: flacher Panzer, sechs Beine, Horn
+function beetle(b, o) {
+  const P = { c: '#2a1e1c', shell: '#4a2a22', glow: '#ff8a3d', mat: 'Metal', ...o };
+  const s = b.step;
+  for (const sz of [-0.3, 0, 0.3]) for (const sx of [1, -1]) b.at([sx * 0.45, 0.22, sz], [0, 0, -sx * 0.6], () => { b.blk([sx * 0.15, 0, 0], [0.32, 0.06, 0.06], P.c); b.blk([sx * 0.32, -0.12, 0], [0.06, 0.26, 0.06], P.c, { rot: [0, 0, sx * 0.5] }); });
+  b.vox([0, 0.4, -0.05], [0.55, 0.32, 0.68], P.shell, { mat: P.mat, paint: (u, p) => (Math.abs(p[0]) < s * 0.5 && u[1] > 0 ? P.glow ? { c: P.glow, mat: 'Neon' } : INK : null) });
+  const hc = [0, 0.38, 0.68], hr = [0.3, 0.22, 0.2];
+  b.vox(hc, hr, P.c);
+  eyes(b, hc, hr, { gap: 0.13, size: 0.1, glow: P.glow });
+  b.spike([0, hc[1] + 0.1, hc[2] + 0.1], [0, 1, 0.8], 0.42, 0.14, P.shell, { mat: P.mat });
+  return { hc, hr };
+}
+
+// Fähnchen am Stab (zum Halten)
+const flag = (b, pos, c = '#ff6a8a') => b.at(pos, [0, 0, 0.15], () => { b.cyl([0, 0.4, 0], [0.04, 0.8, 0.04], '#f4f1ea'); b.blk([0.16, 0.68, 0], [0.3, 0.2, 0.02], c); });
+// Lolli am Stab
+const lolly = (b, pos) => b.at(pos, [0, 0, -0.15], () => { b.cyl([0, 0.3, 0], [0.04, 0.6, 0.04], '#fbf8f2'); b.cyl([0, 0.72, 0], [0.42, 0.06, 0.42], '#ff5aa5', { rot: [Math.PI / 2, 0, 0], mat: 'Smooth' }); b.ring([0, 0.72, 0.04], 0.13, 10, [0.06, 0.04, 0.03], '#fff4ea', { mat: 'Smooth' }); });
+// Schleife
+const bow = (b, pos, c) => { for (const sx of [1, -1]) b.wedge([pos[0] + sx * 0.09, pos[1], pos[2]], [0.06, 0.14, 0.14], c, { rot: [0, sx * Math.PI / 2, 0] }); b.ball(pos, 0.07, c); };
+// Krone
+const smallCrown = (b, pos, k = 0.8) => crown(b, pos, k);
+// Flammen aus Neon-Dornen
+const flames = (b, pts) => pts.forEach((p, i) => { b.spike(p, [0, 1, -0.2], 0.22 + (i % 2) * 0.1, 0.12, '#ffb347', { mat: 'Neon' }); b.spike(p, [0, 1, -0.2], 0.12, 0.07, '#fff0a0', { mat: 'Neon' }); });
+// Streusel
+const sprinkle = (b, pts, cols = ['#ff7eb6', '#8be0ff', '#ffe46b', '#a6f08a', '#f4f1ea']) => pts.forEach((p, i) => b.blk(p, [0.1, 0.03, 0.03], cols[i % cols.length], { rot: [b.rnd(), b.rnd() * 3, 0], mat: 'Smooth', j: 0 }));
+const onBack = (b, q, n, h = 0) => Array.from({ length: n }, () => { const a = b.rnd() * TAU, e = b.rnd() * 0.9; return [Math.cos(a) * Math.sin(e) * q.body[0] * 0.9, q.bodyY + Math.cos(e) * q.body[1] * 0.98 + h, Math.sin(a) * Math.sin(e) * q.body[2] * 0.9]; });
+// Korallen auf dem Panzer
+const corals = (b, pts) => pts.forEach((p, i) => { const c = ['#ff7a8a', '#ffb15a', '#c77dff'][i % 3]; b.at(p, [0, b.rnd() * 3, R2(b) * 0.4], () => { b.cyl([0, 0.1, 0], [0.06, 0.2, 0.06], c); for (const a of [-0.6, 0.5]) b.at([0, 0.16, 0], [0, 0, a], () => { b.cyl([0, 0.09, 0], [0.045, 0.18, 0.045], c); b.ball([0, 0.19, 0], 0.07, c); }); }); });
 
 export const MODELS = {
   // ── Normal Egg ──
@@ -519,6 +700,152 @@ export const MODELS = {
     bird(b, { c: dk('#ff5a1f', G, 0.45), headC: dk('#ff8a1f', G, 0.4), belly: dk('#ffcf3a', G, 0.45), wingC: dk('#ff5a1f', G, 0.35), beak: '#ffe07a', legs: '#ffb020', tip: '#ffe07a', tipMat: 'Neon', crest: '#ffcf3a', crestMat: 'Neon', glow: '#fff3a0', spread: 0.9, wingL: 1.6, tail: 7, tailL: 1.5, neon: G, brow: 0.25 });
     for (let i = 0; i < 16; i++) { const a = b.rnd() * TAU, r = 0.4 + b.rnd() * 0.9; b.neon([Math.cos(a) * r, 0.6 + b.rnd() * 2, -0.3 + Math.sin(a) * r * 0.6], [0.06, 0.06, 0.06], ['#ff5a3a', '#ffe07a', '#5ad1ff'][i % 3], { rot: [i, i, 0] }); }
   },
+  // ── Candy Egg ──
+  gummibaer(b) {
+    const q = biped(b, { c: '#ff5a7a', mat: 'Glass', body: [0.44, 0.44, 0.38], head: [0.42, 0.38, 0.36], snout: [0.24, 0.14, 0.1], nose: '#a8203a', iris: '#5a1424' });
+    b.vox(q.bc, [0.3, 0.3, 0.26], '#ff8fa6', { mat: 'Neon', step: 0.1 });
+  },
+  zuckerwatteschaf(b) {
+    const q = sheep(b, { wool: '#ffc2de', face: '#8a5a7a', iris: '#3a2030' });
+    sprinkle(b, onBack(b, q, 14, 0.1));
+  },
+  lollihase(b) {
+    const q = quad(b, { c: '#fff0f6', body: [0.5, 0.48, 0.58], legH: 0.3, head: [0.5, 0.44, 0.42], snout: [0.24, 0.16, 0.1], ear: 'long', earS: 1.05, earTip: '#ffb3d1', inner: '#ffb3d1', tail: 'stub', tip: '#ffffff', nose: '#ff8fb0', iris: '#5ad1ff', headUp: 0.05 });
+    lolly(b, [q.body[0] + 0.12, 0.25, q.body[2] * 0.6]);
+    bow(b, [q.hr[0] * 0.5, q.headTop - 0.02, q.hc[2] + 0.1], '#8be0ff');
+  },
+  marshmallow(b) {
+    const q = blob(b, { c: '#fff4ea', r: [0.6, 0.48, 0.56], iris: '#5a3446', paint: (u) => (u[1] < -0.6 ? '#ffd9e8' : null) });
+    for (let i = 0; i < 4; i++) b.vox([Math.sin(i * 1.7) * 0.06, q.top - 0.02 + i * 0.13, Math.cos(i * 1.7) * 0.06], [0.34 - i * 0.07, 0.08, 0.34 - i * 0.07], i % 2 ? '#fff4ea' : '#ffc2de', { step: 0.09 });
+    sprinkle(b, Array.from({ length: 16 }, () => { const a = b.rnd() * TAU, e = b.rnd() * 1.1; return [Math.cos(a) * Math.sin(e) * 0.58, 0.48 + Math.cos(e) * 0.47, Math.sin(a) * Math.sin(e) * 0.54]; }));
+  },
+  bonbonfisch(b) {
+    const q = fish(b, { c: '#ffd84a', belly: '#fff4c0', fin: '#ff7eb6', body: [0.5, 0.5, 0.52], y: 0.85, tail: 0.38, dorsal: 0.22, iris: '#5a3a10', blush: '#ff9fb2' });
+    for (let i = 0; i < 22; i++) {
+      const a = b.rnd() * TAU, e = 0.3 + b.rnd() * 2.4, d = [Math.cos(a) * Math.sin(e), Math.cos(e), Math.sin(a) * Math.sin(e)];
+      if (d[2] > 0.6) continue;
+      b.spike([d[0] * 0.48, 0.85 + d[1] * 0.48, d[2] * 0.5], d, 0.12, 0.06, '#fff4c0', { mat: 'Smooth' });
+    }
+    for (let i = 0; i < 3; i++) b.blk([0, 0.85, 0.5 - i * 0.02], [0.9, 0.06, 0.02], i % 2 ? '#ff7eb6' : '#8be0ff', { rot: [0, 0, 0.5 - i * 0.5], mat: 'Smooth', j: 0 });
+  },
+  lakritzschlange(b) {
+    const G = '#ff4f8a', C = dk('#2a1a22', G, 0.5);
+    serpent(b, { c: C, band: G, belly: '#f7eff2', neon: G, glow: '#ff8fc8', hood: dk('#ff4f8a', G, 0.45), fangs: true, w: 0.36, r: 0.78, rise: 0.75, head: [0.32, 0.22, 0.32] });
+  },
+  zuckerdrache(b) {
+    const G = '#ff8fc8';
+    const q = dragon(b, { c: dk('#9fe6c8', G, 0.35), belly: dk('#ffb3d1', G, 0.3), muzzle: dk('#ffb3d1', G, 0.3), horn: '#fff0f6', hornMat: 'Smooth', wing: dk('#ffb3d1', G, 0.2), glow: G, neon: G, paint: (u, p) => (b.rnd() < 0.06 ? { c: ['#ff7eb6', '#8be0ff', '#ffe46b'][Math.floor(b.rnd() * 3)], mat: 'Neon' } : null) });
+    sprinkle(b, onBack(b, q, 10, 0.08));
+  },
+
+  // ── Cartoon Egg ──
+  kritzelkatze(b) {
+    const q = quad(b, { c: '#ff9d3d', belly: '#fff4e0', body: [0.55, 0.46, 0.84], head: [0.6, 0.52, 0.46], legW: 0.26, snout: [0.32, 0.18, 0.12], ear: 'pointy', earS: 1.2, tail: 'thin', tailL: 1.4, tailUp: 1.2, tailCurl: 0.08, iris: '#4ab0ff', nose: '#2a1a10', paint: (u, p) => (Math.sin(p[2] * 12) > 0.55 && u[1] > -0.2 ? '#2a1a10' : null), headPaint: (u, p) => (u[1] > 0.5 && Math.abs(Math.sin(p[0] * 18)) > 0.75 ? '#2a1a10' : null) });
+    for (const sx of [1, -1]) for (let i = 0; i < 2; i++) b.blk([sx * (q.snout[0] * 0.5 + 0.14), q.sc[1] - i * 0.05, q.front - 0.04], [0.3, 0.025, 0.025], '#2a1a10', { rot: [0, 0, sx * (0.12 - i * 0.24)], j: 0 });
+  },
+  quietschente(b) {
+    const q = bird(b, { c: '#ffe14a', headC: '#ffe14a', wingC: '#fff2a0', beak: '#ff8a2a', legs: '#ff8a2a', legH: 0.22, body: [0.55, 0.5, 0.62], head: [0.44, 0.42, 0.42], wingL: 0.7, tail: 3, iris: '#4ab0ff' });
+    b.blk([0, q.hc[1] - q.hr[1] * 0.75, q.hc[2] + 0.1], [0.06, 0.06, 0.02], '#ff6a8a', { mat: 'Smooth', j: 0 });
+  },
+  wackelpudding(b) {
+    const q = blob(b, { c: '#7ae07a', r: [0.62, 0.5, 0.58], mat: 'Glass', iris: '#1a3a1a', blush: '#ff6a8a' });
+    b.vox([0, 0.45, 0], [0.4, 0.3, 0.38], '#c8ffb0', { mat: 'Neon', step: 0.1 });
+    b.vox([0, q.top + 0.02, 0], [0.32, 0.08, 0.3], '#fff4ea', { step: 0.09 });
+    b.ball([0, q.top + 0.18, 0], 0.18, '#ff3a5a', { mat: 'Smooth' });
+    b.blk([0.03, q.top + 0.33, 0], [0.02, 0.14, 0.02], '#3a6a2a', { rot: [0, 0, -0.4] });
+  },
+  comichase(b) {
+    const q = biped(b, { c: '#f4f0ff', belly: '#ffffff', ear: 'long', inner: '#ff9db8', body: [0.4, 0.42, 0.34], head: [0.42, 0.38, 0.36], snout: [0.2, 0.12, 0.08], nose: '#ff9db8', iris: '#4ab0ff' });
+    flag(b, [q.body[0] + 0.1, q.bc[1] - 0.1, 0.12], '#ff6a8a');
+    bow(b, [0, q.hc[1] - q.hr[1] - 0.04, q.hc[2] + q.hr[2] * 0.8], '#4ab0ff');
+  },
+  toonhai(b) {
+    const q = fish(b, { c: '#4ab0ff', belly: '#f4f8ff', fin: '#3a8ad8', body: [0.42, 0.42, 0.95], y: 0.8, tail: 0.55, dorsal: 0.45, iris: '#0e1a2a' });
+    for (let i = 0; i < 7; i++) b.spike([(i - 3) * 0.06, 0.8 - 0.1, 0.88], [0, -1, 0.3], 0.08, 0.05, '#ffffff', { mat: 'Smooth' });
+    b.blk([0, 0.68, 0.86], [0.42, 0.04, 0.1], '#2a0e16', { rot: [0.3, 0, 0], j: 0 });
+  },
+  zappelkrake(b) {
+    const G = '#ffe14a';
+    const q = octo(b, { c: dk('#ff6a8a', G, 0.4), b: dk('#ffb3c4', G, 0.35), R: 0.52, y: 0.62, tl: 1.4, glow: G, neon: G });
+    for (let i = 0; i < 5; i++) b.neon([(b.rnd() - 0.5) * 1.6, 0.3 + b.rnd() * 1.4, (b.rnd() - 0.5) * 1.6], [0.08, 0.08, 0.08], i % 2 ? '#4ab0ff' : G, { rot: [i, i, 0] });
+    partyHat(b, [0.05, q.top - 0.05, -0.02], 1.0, ['#ff6a8a', '#ffe14a', '#4ab0ff']);
+  },
+  superdrache(b) {
+    const G = '#ffe14a';
+    const q = dragon(b, { c: dk('#7a5aff', G, 0.4), belly: dk('#ffe14a', G, 0.3), muzzle: dk('#ffe14a', G, 0.3), horn: '#ffe14a', hornMat: 'Neon', wing: dk('#ff6a8a', G, 0.35), glow: G, neon: G, iris: '#1a1040' });
+    smallCrown(b, [0, q.headTop - 0.02, q.hc[2]], 0.9);
+    cape(b, [0, q.top + 0.06, q.body[2] * 0.55], 0.9, 0.8, '#ff3a5a', '#ffe14a');
+  },
+
+  // ── Atlantis Egg ──
+  perlenfisch(b) {
+    const q = fish(b, { c: '#3fb6c8', belly: '#e8f4f0', fin: '#2f8a9a', iris: '#0a2228' });
+    b.ball([0, q.y + q.body[1] + 0.12, 0.05], 0.22, '#f4efe6', { mat: 'Smooth' });
+    b.ring([0, q.y + q.body[1] - 0.02, 0.05], 0.12, 10, [0.06, 0.04, 0.04], '#ffd36b', { mat: 'Metal' });
+  },
+  korallenkroete(b) {
+    const q = turtle(b, { c: '#4f8a7a', shell: '#2f6a72', rim: '#1f4a52' });
+    corals(b, [[0.15, q.shellTop - 0.05, 0.1], [-0.22, q.shellTop - 0.1, -0.15], [0.05, q.shellTop - 0.08, -0.35]]);
+  },
+  tiefseequalle(b) {
+    octo(b, { c: '#3ad0e0', b: '#a6f4ff', jelly: true, mat: 'Glass', glow: '#7affea', R: 0.55, y: 1.25, tl: 1.0, n: 8, iris: '#06161c', blush: '#ff9fb2' });
+  },
+  riffhai(b) {
+    const q = fish(b, { c: '#5a7a8a', belly: '#dfe8ea', fin: '#4a6a7a', body: [0.4, 0.42, 1.0], y: 0.8, tail: 0.6, dorsal: 0.5, iris: '#0e1a20' });
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 6; i++) b.spike([(i - 2.5) * 0.06, 0.7 + r * 0.02, 0.9 - r * 0.05], [0, r % 2 ? 1 : -1, 0.2], 0.06, 0.04, '#f2f0ea', { mat: 'Smooth' });
+  },
+  seeschlange(b) {
+    serpent(b, { c: '#1f6a72', band: '#3fb6a8', belly: '#e6f6f0', fins: '#4ff0e0', fangs: true, iris: '#4ff0e0' });
+  },
+  kraken(b) {
+    const G = '#4ff0e0';
+    const q = octo(b, { c: dk('#a83a4a', G, 0.5), b: dk('#e07a6a', G, 0.45), R: 0.58, y: 0.7, tl: 1.6, glow: G, neon: G });
+    crown(b, [0, q.top - 0.06, -0.02], 1.1, ['#4ff0e0', '#ffd36b']);
+  },
+  leviathan(b) {
+    const G = '#4ff0e0';
+    const q = serpent(b, { c: dk('#1c4a5a', G, 0.45), band: '#d9b45a', belly: '#f2e6c0', neon: G, glow: G, fins: dk('#4ff0e0', G, 0.3), spikes: '#d9b45a', spikeMat: 'Metal', maw: true, w: 0.42, r: 0.85, rise: 0.85, N: 60, head: [0.36, 0.26, 0.38] });
+    crown(b, [q.hc[0], q.hc[1] + q.hr[1] - 0.02, q.hc[2] - 0.05], 0.9, ['#4ff0e0', '#ff7a8a']);
+    corals(b, [[0.6, 0.3, -0.3], [-0.55, 0.3, 0.2]]);
+  },
+
+  // ── Lava Egg ──
+  glutmolch(b) {
+    const q = lizard(b, { c: '#3a2420', belly: '#ff8a3d', body: [0.42, 0.24, 0.72], head: [0.34, 0.24, 0.34], snout: [0.36, 0.16, 0.26], legH: 0.24, iris: '#ffb347', spikes: false, tailN: 10, tailW: 0.28, paint: (u, p) => (Math.sin(p[0] * 9 + 1) * Math.sin(p[2] * 8) > 0.55 ? { c: '#ff8a3d', mat: 'Neon' } : null) });
+    flames(b, [[0, q.bodyY + 0.2, 0.25], [0, q.bodyY + 0.22, -0.1], [0, q.bodyY + 0.2, -0.45]]);
+  },
+  aschekaefer(b) {
+    beetle(b, { c: '#2a1e1c', shell: '#4a2a22', glow: '#ff8a3d' });
+  },
+  magmahund(b) {
+    const q = quad(b, { c: '#3a2a26', belly: '#ff7a2a', muzzle: '#4a342e', ear: 'floppy', earC: '#2a1e1a', tail: 'thin', iris: '#ffb347', brow: 0.25, blush: null, paint: (u, p) => (Math.abs(Math.sin(p[0] * 6 + p[2] * 5) + Math.sin(p[1] * 7 - p[2] * 4)) < 0.15 ? { c: '#ff8a3d', mat: 'Neon' } : null) });
+    for (let i = 0; i < 5; i++) b.spike([0, q.top - 0.04, q.body[2] * 0.5 - i * 0.28], [0, 1, -0.4], 0.18, 0.12, '#ff7a2a', { mat: 'Neon' });
+    for (const sx of [1, -1]) b.spike([sx * 0.1, q.sc[1] - 0.1, q.front - 0.03], [0, -1, 0.1], 0.12, 0.05, '#f2ede2', { mat: 'Smooth' });
+  },
+  feuerfalke(b) {
+    bird(b, { c: '#c8452a', headC: '#c8452a', belly: '#ff9d4a', wingC: '#a8351a', beak: '#ffcf6a', legs: '#ffcf6a', iris: '#ffcf6a', brow: 0.35, tip: '#ffcf6a', crest: '#ff9d4a', spread: 0.8, wingL: 1.3, tail: 7 });
+  },
+  vulkanschnecke(b) {
+    const s = b.step;
+    b.vox([0, 0.2, 0.05], [0.4, 0.2, 0.85], '#5a3a30', { paint: (u) => (u[1] < -0.4 ? '#3a2420' : null) });
+    const hc = [0, 0.45, 0.72], hr = [0.26, 0.24, 0.24];
+    b.vox(hc, hr, '#5a3a30');
+    eyes(b, hc, hr, { gap: 0.1, size: 0.1, iris: '#ffb347', blush: '#ff8a6a' });
+    for (const sx of [1, -1]) { b.at([sx * 0.1, 0.62, 0.72], [-0.3, 0, -sx * 0.25], () => b.blk([0, 0.14, 0], [0.04, 0.28, 0.04], '#5a3a30')); b.ball([sx * 0.17, 0.88, 0.8], 0.08, '#ff7a2a', { mat: 'Neon' }); }
+    b.vox([0, 0.68, -0.15], [0.48, 0.48, 0.46], '#3a2a26', { paint: (u, p) => (Math.abs(Math.sin(Math.atan2(p[1] - 0.68, p[2] + 0.15) * 2 + Math.hypot(p[1] - 0.68, p[2] + 0.15) * 9)) < 0.2 ? { c: '#ff7a2a', mat: 'Neon' } : null) });
+    for (let i = 0; i < 4; i++) { const w = 0.34 - i * 0.07; b.voxBox([0, 1.15 + i * 0.09, -0.15], [w, 0.09, w], i === 3 ? '#ff7a2a' : '#4a3430', { mat: i === 3 ? 'Neon' : null, step: s * 0.7 }); }
+    for (let i = 0; i < 6; i++) b.neon([R2(b) * 0.2, 1.55 + i * 0.12, -0.15 + R2(b) * 0.2], [0.06, 0.06, 0.06], i % 2 ? '#ffcf6a' : '#ff6a3a', { rot: [i, i, 0] });
+  },
+  lavawurm(b) {
+    const G = '#ff9d3d';
+    serpent(b, { c: dk('#2a1a16', G, 0.4), band: '#ff6a2a', belly: '#ffcf6a', neon: G, glow: '#ffcf6a', spikes: dk('#ff6a2a', G, 0.2), spikeMat: 'Metal', maw: true, w: 0.38, rise: 0.75, head: [0.34, 0.24, 0.34] });
+  },
+  infernodrache(b) {
+    const G = '#ff9d3d';
+    const q = dragon(b, { c: dk('#2a1a18', G, 0.4), belly: dk('#ff6a2a', G, 0.35), muzzle: dk('#4a2a22', G, 0.3), horn: dk('#ffcf6a', G, 0.2), hornMat: 'Metal', wing: dk('#ff6a2a', G, 0.45), glow: '#ffcf6a', neon: G, iris: '#ffcf6a' });
+    smallCrown(b, [0, q.headTop - 0.02, q.hc[2]], 0.9);
+    flames(b, [[0.35, q.top - 0.1, -0.3], [-0.35, q.top - 0.1, -0.3], [0, q.top, 0.4]]);
+  },
 };
 
 // ── Sockel: achteckige Insel, je Ei eigenes Material ──
@@ -530,6 +857,10 @@ const THEME = {
   galaxie: { top: '#2a2440', top2: '#3a2f5a', side: '#1e1a30', under: '#161326' },
   admin: { top: '#2a2e3a', top2: '#1e212a', side: '#3a3f4c', under: '#22252e' },
   release: { top: '#5a2a7a', top2: '#7a3a9a', side: '#3a1f50', under: '#2a1638' },
+  candy: { top: '#ffc2de', top2: '#fff1d6', side: '#f4b6cf', under: '#c87a9a' },
+  cartoon: { top: '#7ae07a', top2: '#ffe14a', side: '#e8e2d4', under: '#4ab0ff' },
+  atlantis: { top: '#c9b98a', top2: '#b0a070', side: '#2b5a5e', under: '#1c3a3e' },
+  lava: { top: '#3a2a26', top2: '#ff6a2a', side: '#2a1e1a', under: '#1c110e' },
 };
 export function pedestal(b, egg, epic, glow) {
   const T = THEME[egg] ?? THEME.normal, R = 2.3;

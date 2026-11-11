@@ -156,6 +156,10 @@ Vorhängeschloss. In Ruhe atmet das Ei, schwebt, dreht sich langsam und der Kern
 | Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Lichtfunken |
 | Galaxie Egg | Galaktisch | 400.000 Münzen | Umlaufbahn mit Mond, Sternenstaub |
 | Admin Egg | Admin | nicht kaufbar | Glitch-Würfel, Code-Regen |
+| Candy Egg | Süß | 5.000 Münzen | Streusel, Streuselregen |
+| Cartoon Egg | Gezeichnet | 30.000 Münzen | Partyhut, Streusel, Konfetti |
+| Atlantis Egg | Versunken | 150.000 Münzen | Korallen, Perle, Luftblasen |
+| Lava Egg | Glühend | 1.000.000 Münzen | zuckende Flammen, Glut |
 | Release Egg (Robux Egg) | Limitiert | R$ 199 | Partyhut, Konfetti |
 
 **Bühne und Umgebung:** `EggBuilder.BuildStage(egg)` baut den neuneckigen Sockel mit Platte, Leuchtkante und
@@ -176,8 +180,13 @@ In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = …, Lighting = 
 (Abschnitte `unlock`, `charge`, `burst`, `reveal`, `done`), am besten auf dem Client; das Tier zieht
 `PetData.Roll(eggId)`.
 
-Nicht übernommen aus „Tier-Eier“: die vier weiteren Eier (Candy, Atlantis, Lava, Cartoon) und die 77 Tiere
-des Designs, denn zu diesen Eiern gibt es im Spiel keine Haustiere.
+Die Tiere der vier neuen Eier (Candy: Gummibär, Zuckerwatte-Schaf, Lolli-Hase, Marshmallow-Blob, Bonbon-Fisch,
+Lakritz-Schlange, Zuckerdrache; Cartoon: Kritzelkatze, Quietschente, Wackelpudding, Comic-Hase, Toon-Hai,
+Zappelkrake, Superdrache; Atlantis: Perlenfisch, Korallenkröte, Tiefseequalle, Riffhai, Seeschlange, Kraken,
+Leviathan; Lava: Glutmolch, Aschekäfer, Magmahund, Feuerfalke, Vulkanschnecke, Lavawurm, Infernodrache)
+stammen mit Namen und Texten aus „Tier-Eier“, sind aber wie alle anderen aus Roblox-Teilen im Voxel-Stil gebaut
+(`haustiere/js/models.js`, neue Grundformen Fisch, Schlange, Krake, Blob, Zweibeiner, Drache, Schaf,
+Schildkröte, Käfer). Schlupfchancen wie bei allen Eiern: 25 / 22 / 20 / 15 / 10,5 / 5 / 2,5 %.
 Noch nicht übernommen aus v2: Varianten (Shiny, Gold, Regenbogen), Level und Mutationen der Haustiere
 und damit der fünfte Schlupf-Akt „Variante“. Die gehören zu den Haustieren v2.
 
@@ -355,14 +364,15 @@ In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und F
 
 ## Haustiere
 
-`haustiere/` zeigt alle 49 Haustiere aus dem Claude-Design-Projekt „Haustiere Viewer“, sieben pro Ei:
+`haustiere/` zeigt alle 77 Haustiere, sieben pro Ei (49 aus dem Claude-Design-Projekt „Haustiere Viewer“, dazu 28 für
+Candy, Cartoon, Atlantis und Lava nach den Tieren aus „Tier-Eier“, im selben Voxel-Stil gebaut):
 fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie ersetzen die frühere Fassung
 („Haustiere“ und „Haustiere Roblox“).
 
 - **Voxel-Stil aus Roblox-Teilen:** Jedes Tier ist aus kleinen Würfeln gebaut, dazu Keile (WedgePart),
   Kugeln und Zylinder, mit den Roblox-Materialien Plastic, SmoothPlastic, Metal, Wood, Neon und Glass.
   Normale Tiere haben feines Block-Detail, epische dunkle Facetten, Neonadern und Kristalldornen.
-  Rund 200 bis 750 Teile pro Tier, zusammen etwa 19.000.
+  Rund 120 bis 750 Teile pro Tier, zusammen etwa 27.500.
 - **1:1 wie in Roblox:** `roblox/js/petParts.js` rechnet die Teile in Studs um (Blick nach −Z, Zylinder
   entlang X, Keile mit der hohen Seite hinten). Genau diese Teile stehen in der Datei `Haustiere.rbxmx`
   (Seite „Nach Roblox Studio“, Schritt 5). Normale Tiere sind 3 Studs hoch, epische 3,6; sehr lange Tiere
@@ -541,7 +551,7 @@ Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumen
 - **Stadtmauer** mit acht Türmen, Fahnen und vier Torbögen; vier Hauptstraßen mit Laternen und Lichterketten, dazu eine Ringstraße
 - **Läden mit Innenraum:** Eier-Laden, Boost-Labor, Robux-Palast (goldene Kuppel), Haustier-Hof, Verkaufs-Kontor; jeweils mit Schaufenstern, Leuchtschrift, Theke, Regalen und Verkäufer
 - **Portal-Hallen:** Heimat-Tor (Planet 1), Raketenstartplatz mit Rakete (Planet 2), Tiefsee-Strudel (Planet 3 und 4)
-- **Spielbereiche:** Ei-Schlüpfplatz mit allen 7 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
+- **Spielbereiche:** Ei-Schlüpfplatz mit allen 11 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
 - **Leben:** Spaziergänger mit Haustieren, Münzregen, Feuerwerk, ein Tag-Nacht-Wechsel (90 Sekunden), bei dem nachts die Laternen heller leuchten
 
 In der Weltkarte lassen sich alle Bereiche anklicken. In der Spiel-Oberfläche kann man sie im 3D-Hintergrund

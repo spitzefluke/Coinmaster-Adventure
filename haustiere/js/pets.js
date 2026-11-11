@@ -1,12 +1,16 @@
-// Alle 49 Haustiere, sieben pro Ei. Pro Ei sind die letzten zwei episch.
+// Alle 77 Haustiere, sieben pro Ei. Pro Ei sind die letzten zwei episch.
 // chance = Schlupfchance innerhalb des Eis in Prozent (Vorschlag, Summe je Ei = 100).
 
 export const EGGS = [
   { id: 'normal', name: 'Normal Egg', rankName: 'Normal', glow: '#ffd89a', price: '250 Münzen' },
   { id: 'wald', name: 'Wald Egg', rankName: 'Selten', glow: '#b6ff6a', price: '2.500 Münzen' },
+  { id: 'candy', name: 'Candy Egg', rankName: 'Süß', glow: '#ff8fc8', price: '5.000 Münzen' },
   { id: 'eis', name: 'Eis Egg', rankName: 'Episch', glow: '#9ff0ff', price: '15.000 Münzen' },
+  { id: 'cartoon', name: 'Cartoon Egg', rankName: 'Gezeichnet', glow: '#ffe14a', price: '30.000 Münzen' },
   { id: 'engel', name: 'Engels Egg', rankName: 'Engelsgleich', glow: '#fff4cf', price: '75.000 Münzen' },
+  { id: 'atlantis', name: 'Atlantis Egg', rankName: 'Versunken', glow: '#4ff0e0', price: '150.000 Münzen' },
   { id: 'galaxie', name: 'Galaxie Egg', rankName: 'Galaktisch', glow: '#b49cff', price: '400.000 Münzen' },
+  { id: 'lava', name: 'Lava Egg', rankName: 'Glühend', glow: '#ff8a3d', price: '1.000.000 Münzen' },
   { id: 'admin', name: 'Admin Egg', rankName: 'Admin', glow: '#ff4058', price: 'Nicht kaufbar' },
   { id: 'release', name: 'Release Egg', rankName: 'Limitiert', glow: '#ffe07a', price: 'R$ 199' },
 ];
@@ -58,6 +62,42 @@ const LIST = {
     ['komet', 'Kometen-Echse', 'Schneller als das Licht ihres eigenen Schweifs.'],
     ['ringgleiter', 'Ring-Gleiter', 'Gleitet zwischen den Planeten und trägt einen eigenen Ring wie ein Gasriese.'],
     ['nebelwelpe', 'Nebel-Welpe', 'In einem Sternennebel geboren. Wo er schnüffelt, entstehen neue Sterne.'],
+  ],
+  candy: [
+    ['gummibaer', 'Gummibär', 'Wackelt bei jedem Schritt und duftet nach Himbeere.'],
+    ['zuckerwatteschaf', 'Zuckerwatte-Schaf', 'Schmilzt bei Regen leicht an.'],
+    ['lollihase', 'Lolli-Hase', 'Teilt seinen Lolli mit niemandem.'],
+    ['marshmallow', 'Marshmallow-Blob', 'Weich, klebrig, unwiderstehlich.'],
+    ['bonbonfisch', 'Bonbon-Fisch', 'Bläst sich bei Gefahr zur Kugel auf.'],
+    ['lakritzschlange', 'Lakritz-Schlange', 'Man liebt sie oder hasst sie.'],
+    ['zuckerdrache', 'Zuckerdrache', 'Speit Zuckerguss statt Feuer.'],
+  ],
+  cartoon: [
+    ['kritzelkatze', 'Kritzelkatze', 'Wurde mit Filzstift gezeichnet.'],
+    ['quietschente', 'Quietschente', 'Quietscht bei jedem Schritt.'],
+    ['wackelpudding', 'Wackelpudding', 'Wackelt auch ohne Grund.'],
+    ['comichase', 'Comic-Hase', 'Spricht nur in Sprechblasen.'],
+    ['toonhai', 'Toon-Hai', 'Grinst immer – auch wenn er Hunger hat.'],
+    ['zappelkrake', 'Zappelkrake', 'Hat acht Arme und keine Geduld.'],
+    ['superdrache', 'Superdrache', 'Trägt einen Umhang, den niemand sieht.'],
+  ],
+  atlantis: [
+    ['perlenfisch', 'Perlenfisch', 'Hütet eine einzige, perfekte Perle.'],
+    ['korallenkroete', 'Korallenkröte', 'Auf ihrem Panzer wächst ein Riff.'],
+    ['tiefseequalle', 'Tiefseequalle', 'Leuchtet dort, wo nie Licht hinkommt.'],
+    ['riffhai', 'Riffhai', 'Lächelt mit drei Zahnreihen.'],
+    ['seeschlange', 'Seeschlange', 'Windet sich durch versunkene Säulen.'],
+    ['kraken', 'Kraken', 'König der versunkenen Stadt.'],
+    ['leviathan', 'Leviathan', 'Älter als Atlantis selbst.'],
+  ],
+  lava: [
+    ['glutmolch', 'Glutmolch', 'Badet am liebsten in warmer Asche.'],
+    ['aschekaefer', 'Aschekäfer', 'Panzer aus erkalteter Lava.'],
+    ['magmahund', 'Magmahund', 'Bellt kleine Funken.'],
+    ['feuerfalke', 'Feuerfalke', 'Jagt auf heißen Aufwinden.'],
+    ['vulkanschnecke', 'Vulkanschnecke', 'Trägt einen kleinen Vulkan auf dem Rücken.'],
+    ['lavawurm', 'Lavawurm', 'Schwimmt durch flüssiges Gestein.'],
+    ['infernodrache', 'Infernodrache', 'Sein Herz ist ein schlafender Vulkan.'],
   ],
   admin: [
     ['glitchhund', 'Glitch-Hund', 'Bellt in Fehlercodes und flackert, wenn man ihn zu lange ansieht.'],
