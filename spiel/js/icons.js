@@ -50,6 +50,7 @@ export const ICON_PATHS = {
   wind: '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
   home: '<path d="M4 10.5 12 4l8 6.5V20H4v-9.5Z"/><path d="M9.5 20v-5.5h5V20"/>',
   portal: '<ellipse cx="12" cy="12" rx="5.5" ry="8.5"/><path d="M12 7.5c2 1.5 2 7.5 0 9"/><path d="M3 12h3M18 12h3"/>',
+  shield: '<path d="M12 3 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6L12 3Z"/><path d="m8.8 12 2.3 2.3 4.3-4.6"/>',
 };
 
 export const icon = (name, size = 20) =>

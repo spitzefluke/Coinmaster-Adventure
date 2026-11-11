@@ -151,7 +151,9 @@ export const ROBUX = [
   { id: 'vip', name: 'VIP-Pass', text: 'Doppelte Taler aus Verkäufen, für immer', robux: 499 },
 ];
 
-export const boostActive = (s, id) => (s.boosts[id] || 0) > Date.now();
+// Server-Boosts für alle (Admin Panel, in Roblox ServerBoost_<id> an ReplicatedStorage): Ende in ms
+export const serverBoosts = {};
+export const boostActive = (s, id) => (s.boosts[id] || 0) > Date.now() || (serverBoosts[id] || 0) > Date.now();
 
 // ── Auras ────────────────────────────────────────────────────────────────────
 // Die angelegte Aura gibt einen kleinen Bonus (Prozent) auf genau eine Sache.

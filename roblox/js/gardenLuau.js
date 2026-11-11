@@ -2307,6 +2307,16 @@ local function onJoin(player)
 end
 
 Players.PlayerAdded:Connect(onJoin)
+-- Admin Panel: Spielstand zurückgesetzt → neuer, leerer Garten
+if PlayerData.Resetted then
+	PlayerData.Resetted.Event:Connect(function(player)
+		local entry = gardens[player]
+		if entry then
+			entry.Data = GardenData.New()
+			publish(player)
+		end
+	end)
+end
 Players.PlayerRemoving:Connect(function(player)
 	gardens[player] = nil
 	lastCall[player] = nil
