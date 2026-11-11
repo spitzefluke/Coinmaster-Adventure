@@ -141,30 +141,43 @@ häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesam
 
 Sieben Eier (`eier/js/eggs.js`), 1:1 wie in Roblox: Jedes Ei baut das Modul `EggBuilder` aus dem
 Installer, die Seite führt es aus (`eier/js/eggRoblox.js`). Der Luau-Code steht in `roblox/js/eggLuau.js`.
-Die Eier sind die v2-Eier aus Claude Design („Haustiere und Eier v2“): Sockel in drei Stufen mit Leuchtband,
-Nieten und Einlage, ab Episch ein schwebender Runenring, dazu viel Deko je Ei, alles aus Parts (Block,
-Kugel/SpecialMesh, Zylinder, Keile für Kegel). Bewegte Deko (Runen, Flügel, Heiligenschein, Planeten,
-Scanner, Glitch, Ballons) läuft von selbst; für Kopien aus einem Ordner `EggBuilder.Start(model)` aufrufen.
+Die Eier stammen aus Claude Design („Tier-Eier“): eine facettierte Schale aus 70 Stücken in zehn verdrehten
+Streifen, darin ein leuchtender Kern, der durch die Fugen scheint. Das Ei steckt in einem Käfig mit Sockel,
+Goldring, zwölf Gitterstäben, Mittel- und Kopfring, Kuppel mit Spitze, zwei umwickelten Ketten und einem
+Vorhängeschloss. In Ruhe atmet das Ei, schwebt, dreht sich langsam und der Kern pocht. Alles aus Parts
+(Block, Kugel/SpecialMesh, Zylinder, Keile für Kegel), Farben und Welt je Ei in `EGG_THEMES`
+(`roblox/js/eggLuau.js`).
 
-| Ei | Stufe | Preis (Vorschlag) | Neu in v2 |
+| Ei | Stufe | Preis (Vorschlag) | Deko und Welt |
 |---|---|---|---|
-| Normal Egg | Normal | 250 Münzen | Strohnest mit Halmen und Federn, Sprenkel, Münzhaufen |
-| Wald Egg | Selten | 2.500 Münzen | Ranken mit Blättern, Moos, Blüten, Wurzeln, Farn, Fliegenpilze, Glühwürmchen |
-| Eis Egg | Episch | 15.000 Münzen | Leuchtkern, Frostkappe, Eiszapfen, Kristallgruppen, schwebende Splitter, Schneefall |
-| Engels Egg | Engelsgleich | 75.000 Münzen | Goldfiligran, Perlen, gefiederte Flügel (schlagen), Heiligenschein, Lichtfunken |
-| Galaxie Egg | Galaktisch | 400.000 Münzen | Nebel in der Glasschale, Sternenring, kreisende Planeten |
-| Admin Egg | Admin | nicht kaufbar | Panzerplatten, Neon-Leiterbahnen, Scanner, Warnstreifen, Glitch |
-| Release Egg (Robux Egg) | Limitiert | R$ 199 | Geschenkband, Schleife, Luftballons, Konfetti |
+| Normal Egg | Normal | 250 Münzen | Staub |
+| Wald Egg | Selten | 2.500 Münzen | Moos, Fliegenpilze, fallende Blätter |
+| Eis Egg | Episch | 15.000 Münzen | Eiskristalle, Schneefall |
+| Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Lichtfunken |
+| Galaxie Egg | Galaktisch | 400.000 Münzen | Umlaufbahn mit Mond, Sternenstaub |
+| Admin Egg | Admin | nicht kaufbar | Glitch-Würfel, Code-Regen |
+| Release Egg (Robux Egg) | Limitiert | R$ 199 | Partyhut, Konfetti |
 
-**Schlüpfen** zeigt das Roblox-Modul `HatchFx` in fünf Akten: 1. Wackeln (immer stärker, Risse leuchten
-auf), 2. Aufladen (Licht wird eingesogen, Strahlen drehen sich, die Schale glüht), 3. Platzen (zehn
-Schalenstücke fliegen weg, Druckwelle, Funken, Blitz), 4. Enthüllung (das Tier wächst mit Drehung heraus,
-Leuchtring am Boden, bei epischen Tieren Konfetti), 5. Name und Chance (BillboardGui). Seltene Eier wackeln
-und laden länger und platzen größer. Die Seite zeigt den Akt als Text, blitzt beim Platzen und lässt die
-Kamera wackeln; Tippen spult vor, „Nochmal“ lässt dasselbe Ei noch einmal schlüpfen.
-In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = …, OnPhase = function(akt) … end })`, am besten
-auf dem Client; das Tier zieht `PetData.Roll(eggId)`.
+**Bühne und Umgebung:** `EggBuilder.BuildStage(egg)` baut den neuneckigen Sockel mit Platte, Leuchtkante und
+Felsbrocken, den Boden, Haupt-, Kanten- und Sockellicht und die Partikel der Ei-Welt.
+`EggBuilder.ApplyEnvironment(egg)` setzt Nebel und Umgebungslicht (gibt eine Funktion zum Zurücksetzen
+zurück). Die Detailansicht und das Schlüpfen auf der Seite zeigen das Ei auf dieser Bühne, der Hintergrund
+leuchtet in den Farben der Ei-Welt.
 
+**Schlüpfen** zeigt das Roblox-Modul `HatchFx` wie im Design (3,4 s bis zum Platzen): das Schloss zittert und
+springt ab, die Ketten fallen, die Gitterstäbe klappen auf und die Kuppel hebt sich; dann glüht der Kern,
+das Ei bebt immer stärker, Funken sprühen aus den Fugen und es staucht sich. Beim Platzen fliegen alle
+Schalenstücke davon und hüpfen über den Sockel, Blitz, Druckwelle und Funkenregen (ab Stufe 3 Lichtstrahlen),
+der Käfig versinkt. Das Tier springt heraus, landet mit Staubring und federt nach. Seltene Tiere bekommen ihren
+Auftritt: Leuchten, ab Stufe 4 ein Ring am Boden, ab Stufe 5 Lichtsäule mit Splittern, Stufe 6 zwei Bahnen
+(Stufe = Platz im Ei, 0 = häufigstes). Die Seite zeigt den Abschnitt als Text, blitzt beim Platzen und lässt
+die Kamera wackeln; Tippen spult vor, „Nochmal“ lässt dasselbe Ei noch einmal schlüpfen.
+In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = …, Lighting = true, OnPhase = function(abschnitt) … end })`
+(Abschnitte `unlock`, `charge`, `burst`, `reveal`, `done`), am besten auf dem Client; das Tier zieht
+`PetData.Roll(eggId)`.
+
+Nicht übernommen aus „Tier-Eier“: die vier weiteren Eier (Candy, Atlantis, Lava, Cartoon) und die 77 Tiere
+des Designs, denn zu diesen Eiern gibt es im Spiel keine Haustiere.
 Noch nicht übernommen aus v2: Varianten (Shiny, Gold, Regenbogen), Level und Mutationen der Haustiere
 und damit der fünfte Schlupf-Akt „Variante“. Die gehören zu den Haustieren v2.
 

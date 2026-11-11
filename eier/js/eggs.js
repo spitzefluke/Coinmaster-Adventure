@@ -14,7 +14,7 @@ export const EGGS = [
     glow: '#ffd89a',
     price: { amount: 250, currency: 'muenzen' },
     availability: 'Immer im Shop',
-    text: 'Warm, rund und im Strohnest. Was darin schläft, weiß noch niemand.',
+    text: 'Hinter Gitterstäben, Ketten und einem goldenen Schloss. Was darin schläft, weiß noch niemand.',
   },
   {
     id: 'wald',
@@ -25,7 +25,7 @@ export const EGGS = [
     glow: '#b6ff6a',
     price: { amount: 2500, currency: 'muenzen' },
     availability: 'Immer im Shop',
-    text: 'Von Ranken umschlungen und mit Moos bewachsen. Nachts tanzen Glühwürmchen darum.',
+    text: 'Moos und Fliegenpilze wachsen am Käfig, und um die Bühne fallen die Blätter.',
   },
   {
     id: 'eis',
@@ -36,7 +36,7 @@ export const EGGS = [
     glow: '#9ff0ff',
     price: { amount: 15000, currency: 'muenzen' },
     availability: 'Immer im Shop',
-    text: 'Aus dem ewigen Gletscher geborgen. Die Schale ist so kalt, dass Schnee um sie herum fällt.',
+    text: 'Aus dem ewigen Gletscher geborgen. Eiskristalle sprießen am Käfig, und es schneit.',
   },
   {
     id: 'engel',
@@ -47,7 +47,7 @@ export const EGGS = [
     glow: '#fff4cf',
     price: { amount: 75000, currency: 'muenzen' },
     availability: 'Immer im Shop',
-    text: 'Perlmutt mit goldenen Ranken, getragen von zwei Flügeln. Es summt ganz leise.',
+    text: 'Perlmuttweiß unter einem schwebenden Heiligenschein. Um die Bühne tanzen Lichtfunken.',
   },
   {
     id: 'galaxie',
@@ -58,7 +58,7 @@ export const EGGS = [
     glow: '#b49cff',
     price: { amount: 400000, currency: 'muenzen' },
     availability: 'Immer im Shop',
-    text: 'In seiner Schale dreht sich ein Nebel voller Sterne, umkreist von eigenen Planeten.',
+    text: 'Ein eigener Mond zieht seine Bahn um den Käfig, ringsum glitzert Sternenstaub.',
   },
   {
     id: 'admin',
@@ -69,7 +69,7 @@ export const EGGS = [
     glow: '#ff4058',
     price: null,
     availability: 'Nicht kaufbar · nur für Admins',
-    text: 'Existiert offiziell nicht. Gepanzert, verschlüsselt und leicht instabil.',
+    text: 'Existiert offiziell nicht. Grüne Glitch-Würfel umkreisen es, und Code regnet nach oben.',
   },
   {
     id: 'release',

@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { EGGS, fmtPrice } from './eggs.js';
-import { EGG_EXTRAS } from '../../roblox/js/eggLuau.js';
+import { EGG_EXTRAS, EGG_THEMES } from '../../roblox/js/eggLuau.js';
 import { createRobloxEgg, eggLua, orbitEgg } from './eggRoblox.js';
 import { rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { Hatch } from './hatch.js';
@@ -114,7 +114,7 @@ function renderGallery(t, dt) {
     entry.obj.step(dt);
     camera.aspect = r.width / r.height;
     camera.updateProjectionMatrix();
-    orbitEgg(camera, entry.spin, 0.12, 15, 2.4);
+    orbitEgg(camera, entry.spin, 0.14, 15, 2.6);
     renderer.setViewport(r.left, H - r.bottom, r.width, r.height);
     renderer.setScissor(r.left, H - r.bottom, r.width, r.bottom - top);
     entry.obj.world.render(renderer, camera);
@@ -145,20 +145,24 @@ function openDetail(egg) {
     detailCanvas.addEventListener('pointerup', () => (view.drag = null));
     detailCanvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      view.dist = Math.max(7, Math.min(30, view.dist + e.deltaY * 0.02));
+      view.dist = Math.max(8, Math.min(26, view.dist + e.deltaY * 0.02));
     }, { passive: false });
   }
   dEgg?.dispose();
   dEgg = null;
   dData = egg;
   const token = ++dToken;
-  createRobloxEgg(egg).then((o) => {
+  createRobloxEgg(egg, { stage: true, shadows: true }).then((o) => {
     if (token !== dToken || detail.hidden) return o.dispose();
     dEgg = o;
   });
-  Object.assign(view, { angle: 0, tilt: 0.12, dist: 15 });
+  Object.assign(view, { angle: -0.6, tilt: 0.24, dist: 21 });
 
-  detail.querySelector('.detail-panel').style.setProperty('--egg', egg.glow);
+  const panel = detail.querySelector('.detail-panel');
+  const theme = EGG_THEMES[egg.id] || EGG_THEMES.normal;
+  panel.style.setProperty('--egg', egg.glow);
+  panel.style.setProperty('--world-bg', theme.bg);
+  panel.style.setProperty('--world-glow', theme.glow);
   document.getElementById('detail-rank').textContent = egg.rankName;
   document.getElementById('detail-name').textContent = egg.alias ? `${egg.name} (${egg.alias})` : egg.name;
   document.getElementById('detail-text').textContent = egg.text;
@@ -220,7 +224,7 @@ renderer.setAnimationLoop(() => {
   if (!detail.hidden && dEgg) {
     if (!view.drag && !reducedMotion) view.angle += dt * 0.35;
     dEgg.step(dt);
-    orbitEgg(dCamera, view.angle, view.tilt, view.dist, 2.4);
+    orbitEgg(dCamera, view.angle, view.tilt, view.dist, 2.3);
     dEgg.world.render(dRenderer, dCamera);
   }
 });
