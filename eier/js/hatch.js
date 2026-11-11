@@ -93,8 +93,8 @@ export class Hatch {
     this.el.dataset.epic = pet.epic ? '1' : '';
     u.name.textContent = pet.name;
     u.from.textContent = `aus dem ${egg.name}`;
-    u.eyebrow.textContent = pet.epic ? 'Episch geschlüpft!' : 'Geschlüpft!';
-    u.note.textContent = `${pet.epic ? 'Episch' : 'Normal'} · ${fmtChance(pet.chance)} Schlupfchance`;
+    u.eyebrow.textContent = `${pet.rarityName} geschlüpft!`;
+    u.note.textContent = `${pet.rarityName} · ${fmtChance(pet.chance)} Drop-Chance`;
     u.text.classList.remove('is-shown');
     u.actions.hidden = true;
     u.hint.hidden = false;

@@ -999,7 +999,7 @@ function HatchFx.Play(eggId, petId, options)
 	sub.TextScaled = true
 	sub.TextColor3 = pet.Epic and Color3.fromRGB(255, 210, 90) or glow
 	sub.TextStrokeTransparency = 0.3
-	sub.Text = (pet.Epic and "Episch · " or "") .. tostring(pet.Chance) .. " %"
+	sub.Text = (pet.Rarity and (pet.Rarity .. " · ") or (pet.Epic and "Episch · " or "")) .. tostring(pet.Chance) .. " %"
 	sub.Parent = gui
 	onPhase("done")
 	return { Folder = folder, Pet = petModel }

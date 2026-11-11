@@ -1589,8 +1589,8 @@ export function installerSource(data) {
 --     Admins: Besitzer des Spiels, ADMIN_IDS oben im Skript, IntValues in ServerStorage > CoinmasterAdmins
 --   ServerScriptService > CoinmasterData      lädt und speichert den Spielstand (Modul CoinmasterServer > PlayerData)
 --     Zum Speichern in Studio: Game Settings > Security > „Enable Studio Access to API Services“${data.AURAS ? `
---   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
---   dann bauen PetBuilder und HatchFx (Schlüpf-Animation) die echten Tiere.
+--   Haustiere: PetData mit allen Pets; bis Modelle im Ordner „Haustiere“ liegen, zeigen PetBuilder und
+--   HatchFx (Schlüpf-Animation) eine leuchtende Kugel in der Farbe der Seltenheit.
 --   Workspace > CoinmasterAuraShowcase        alle ${data.AURAS.length} Auras an Figuren
 --   ServerScriptService > CoinmasterAuras     Auras kaufen und anlegen (RemoteFunction AuraRemote)
 --   StarterPlayerScripts > CoinmasterAuraClient   zeichnet die Aura jedes Spielers

@@ -22,8 +22,8 @@ Roblox-Engine (`js/rbx/`):
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
-(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen, alle
-Haustiere und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster.
+(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen
+und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Taschen sind vorerst reine Listen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -32,7 +32,8 @@ Haustiere und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster.
 | Eierhalle | `eier/` | Vorschau |
 | Münzrollen | `rollen/` | Vorschau |
 | Münzbaumgarten | `garten/` | Vorschau |
-| Haustiere | `haustiere/` | Vorschau |
+| Haustiere | `haustiere/` | Liste |
+| Taschen | `taschen/` | Liste |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
 | Wetter | `wetter/` | Vorschau |
@@ -355,28 +356,54 @@ In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und F
 
 ## Haustiere
 
-`haustiere/` zeigt alle 49 Haustiere aus dem Claude-Design-Projekt „Haustiere Viewer“, sieben pro Ei:
-fünf häufige (25 / 22 / 20 / 15 / 10,5 %) und zwei epische (5 / 2,5 %). Sie ersetzen die frühere Fassung
-(„Haustiere“ und „Haustiere Roblox“).
+`haustiere/` zeigt alle 99 Pets: 11 Eier mit je 9 Pets, eins pro Seltenheit. Als Karten je Ei mit Seltenheit,
+Drop-Chance und kurzer Beschreibung, oben eine Übersicht der Seltenheiten und Filter nach Ei. Die früheren
+49 Voxel-Tiere mit 3D-Modellen, Blender-Export und `Haustiere.rbxmx` sind entfernt.
 
-- **Voxel-Stil aus Roblox-Teilen:** Jedes Tier ist aus kleinen Würfeln gebaut, dazu Keile (WedgePart),
-  Kugeln und Zylinder, mit den Roblox-Materialien Plastic, SmoothPlastic, Metal, Wood, Neon und Glass.
-  Normale Tiere haben feines Block-Detail, epische dunkle Facetten, Neonadern und Kristalldornen.
-  Rund 200 bis 750 Teile pro Tier, zusammen etwa 19.000.
-- **1:1 wie in Roblox:** `roblox/js/petParts.js` rechnet die Teile in Studs um (Blick nach −Z, Zylinder
-  entlang X, Keile mit der hohen Seite hinten). Genau diese Teile stehen in der Datei `Haustiere.rbxmx`
-  (Seite „Nach Roblox Studio“, Schritt 5). Normale Tiere sind 3 Studs hoch, epische 3,6; sehr lange Tiere
-  werden nach der Länge begrenzt.
-- **Detailansicht:** Das Tier steht auf der achteckigen Sockelinsel aus dem Design, je Ei mit eigenem
-  Material, bei epischen mit Leuchtkante und Kristallen. Im Spiel gibt es den Sockel nicht.
-- **Roblox:** `PetData` (Tiere, Chancen, `Roll`), `PetBuilder.Build(petId)` klont das Tier aus dem Ordner
-  `Haustiere` (fehlt er, gibt es eine Ersatzkugel). Ein neuer Import des Installers behält den Ordner.
-- `haustiere/js/engine.js` – Builder: Würfelhüllen (`vox`, `voxBox`), Dornen, Achtecke, Ringe
-- `haustiere/js/kit.js` – Archetypen Vierbeiner, Vogel, Echse und Zubehör (Krone, Heiligenschein, Flügel …)
-- `haustiere/js/models.js` – die 49 Tiere und der Sockel
-- `haustiere/js/pets.js` – Daten, Schlupfchancen, `rollPet(eggId)`
-- `haustiere/js/exportGlb.js` – Export als .glb für Blender (einzeln oder alle 49)
+| Seltenheit | Drop-Chance |
+|---|---|
+| Common | 40 % |
+| Uncommon | 25 % |
+| Rare | 15 % |
+| Epic | 10 % |
+| Legendary | 5 % |
+| Mythic | 3 % |
+| Divine | 1,5 % |
+| Celestial | 0,49 % |
+| Secret | 0,01 % (1 zu 10.000) |
 
+Die Chancen gelten in jedem Ei gleich. Eier: Normal, Wald, Eis, Engel, Galaxie, Candy, Admin, Atlantis, Release,
+Lava und Cartoon. Candy, Atlantis, Lava und Cartoon gibt es in der Eierhalle noch nicht („Ei kommt noch“).
+
+- **Daten:** `haustiere/js/pets.js` (`PET_RARITIES`, `EGGS`, `PETS`, `rollPet(eggId)`). Die Beschreibungen sind
+  Vorschläge.
+- **Schlüpfen:** Die Eierhalle zieht das Pet nach den Chancen. Weil es noch keine Modelle gibt, wächst eine leuchtende
+  Kugel in der Farbe der Seltenheit heraus; die Ansage zeigt Name, Seltenheit und Chance. Seltenere Pets
+  schlüpfen größer.
+- **Roblox:** `PetData` (Pets mit `Rarity`, `Chance`, `Roll`), `PetBuilder.Build(petId)` klont ein Modell aus dem
+  Ordner `Haustiere`, wenn dort eins mit der Id liegt, sonst die Kugel.
+
+## Taschen
+
+`taschen/` zeigt alle 99 Rücken-Items aus `muenz-ruecken-items.xlsx` in 9 Stufen, als Karten mit Nummer, Name,
+Beschreibung, Preis und Kapazität (wie viele Münzen man gleichzeitig tragen kann). Filter nach Stufe.
+
+| Stufe | Nr. | Preis (Münzen) | Kapazität (Münzen) |
+|---|---|---|---|
+| Einfach | 1–11 | gratis bis 13.000 | 100 bis 4.500 |
+| Bronze | 12–22 | 20.000 bis 210.000 | 6.000 bis 33.000 |
+| Silber | 23–33 | 280.000 bis 2,2 Mio. | 40.000 bis 260.000 |
+| Gold | 34–44 | 3 Mio. bis 26 Mio. | 320.000 bis 2,2 Mio. |
+| Edel | 45–55 | 33 Mio. bis 280 Mio. | 2,7 Mio. bis 14 Mio. |
+| Magisch | 56–66 | 350 Mio. bis 3,1 Mrd. | 17 Mio. bis 115 Mio. |
+| Legendär | 67–77 | 4 Mrd. bis 38 Mrd. | 140 Mio. bis 880 Mio. |
+| Kosmisch | 78–88 | 50 Mrd. bis 650 Mrd. | 1,1 Mrd. bis 11 Mrd. |
+| Göttlich | 89–99 | 850 Mrd. bis 100 Bio. | 14 Mrd. bis unbegrenzt |
+
+Die Preise verdoppeln sich etwa alle 4 bis 6 Taschen, die Kapazität wächst etwas langsamer. Ab Gold sind es nicht
+mehr nur Taschen, sondern auch Rüstungen, Flügel, Türme und Kreaturen. Daten: `taschen/js/bags.js`
+(`BAG_TIERS`, `BAGS`, `fmtCoins`). Noch nicht im Spiel: Die Taschen haben noch keine 3D-Modelle und sind
+noch nicht mit dem Inventar verbunden.
 
 ## Welten
 
@@ -769,7 +796,7 @@ halbiert Funken, Konfetti und Münzregen.
   weitet es, ein Teleport blitzt auf und lässt Funken sprühen.
 
 **Icons:** Alle Icons der Oberfläche liegen auf einem Bild (`roblox/js/iconSheet.js`, 47 Icons in Gold,
-1024 × 768). Auf der Roblox-Seite gibt es `Icons.png` zum Herunterladen (Schritt 6); nach dem Hochladen die
+1024 × 768). Auf der Roblox-Seite gibt es `Icons.png` zum Herunterladen (Schritt 5); nach dem Hochladen die
 Asset-ID in `UITheme.IconSheet` eintragen. `GameUI.Icon(name)` schneidet das Icon mit `ImageRectOffset`
 aus; ohne Bild-ID zeigt es das passende Emoji. Die Vorschau zeigt die Icons schon.
 
@@ -898,7 +925,9 @@ Dann <http://localhost:8000> öffnen.
 
 - `index.html`, `css/start.css`, `js/start.js` – Startseite
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
-- `haustiere/` – Haustiere: Daten, Voxel-Baupläne, Galerie, Export für Blender
+- `haustiere/` – Haustiere: `js/pets.js` (Seltenheiten, Eier, 99 Pets, `rollPet`), `js/main.js` (Liste)
+- `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste)
+- `css/liste.css` – gemeinsame Gestaltung der Listen-Seiten (Haustiere, Taschen)
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)

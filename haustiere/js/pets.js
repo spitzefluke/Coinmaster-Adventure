@@ -1,91 +1,175 @@
-// Alle 49 Haustiere, sieben pro Ei. Pro Ei sind die letzten zwei episch.
-// chance = Schlupfchance innerhalb des Eis in Prozent (Vorschlag, Summe je Ei = 100).
+// Alle Haustiere: 11 Eier mit je 9 Pets, eins pro Seltenheit. Nur Daten, keine 3D-Modelle.
+// Die Drop-Chancen gelten für alle Eier gleich und ergeben zusammen 100 %.
 
+export const PET_RARITIES = [
+  { id: 'common', name: 'Common', chance: 40, color: '#b8b3a7' },
+  { id: 'uncommon', name: 'Uncommon', chance: 25, color: '#6fd36a' },
+  { id: 'rare', name: 'Rare', chance: 15, color: '#4aa8ff' },
+  { id: 'epic', name: 'Epic', chance: 10, color: '#b77bff' },
+  { id: 'legendary', name: 'Legendary', chance: 5, color: '#ffb02e' },
+  { id: 'mythic', name: 'Mythic', chance: 3, color: '#ff4f7b' },
+  { id: 'divine', name: 'Divine', chance: 1.5, color: '#fff1a8' },
+  { id: 'celestial', name: 'Celestial', chance: 0.49, color: '#5ff3ff' },
+  { id: 'secret', name: 'Secret', chance: 0.01, color: '#ff5af0' },
+];
+export const rarityById = Object.fromEntries(PET_RARITIES.map((r, i) => [r.id, { ...r, index: i }]));
+
+// built: das Ei gibt es schon in der Eierhalle (eier/js/eggs.js)
 export const EGGS = [
-  { id: 'normal', name: 'Normal Egg', rankName: 'Normal', glow: '#ffd89a', price: '250 Münzen' },
-  { id: 'wald', name: 'Wald Egg', rankName: 'Selten', glow: '#b6ff6a', price: '2.500 Münzen' },
-  { id: 'eis', name: 'Eis Egg', rankName: 'Episch', glow: '#9ff0ff', price: '15.000 Münzen' },
-  { id: 'engel', name: 'Engels Egg', rankName: 'Engelsgleich', glow: '#fff4cf', price: '75.000 Münzen' },
-  { id: 'galaxie', name: 'Galaxie Egg', rankName: 'Galaktisch', glow: '#b49cff', price: '400.000 Münzen' },
-  { id: 'admin', name: 'Admin Egg', rankName: 'Admin', glow: '#ff4058', price: 'Nicht kaufbar' },
-  { id: 'release', name: 'Release Egg', rankName: 'Limitiert', glow: '#ffe07a', price: 'R$ 199' },
+  { id: 'normal', name: 'Normal Egg', glow: '#ffd89a', built: true },
+  { id: 'wald', name: 'Wald Egg', glow: '#b6ff6a', built: true },
+  { id: 'eis', name: 'Eis Egg', glow: '#9ff0ff', built: true },
+  { id: 'engel', name: 'Engel Egg', glow: '#fff4cf', built: true },
+  { id: 'galaxie', name: 'Galaxie Egg', glow: '#b49cff', built: true },
+  { id: 'candy', name: 'Candy Egg', glow: '#ff9ad5', built: false },
+  { id: 'admin', name: 'Admin Egg', glow: '#ff4058', built: true },
+  { id: 'atlantis', name: 'Atlantis Egg', glow: '#3fd6c8', built: false },
+  { id: 'release', name: 'Release Egg', glow: '#ffe07a', built: true },
+  { id: 'lava', name: 'Lava Egg', glow: '#ff6a2a', built: false },
+  { id: 'cartoon', name: 'Cartoon Egg', glow: '#ffffff', built: false },
 ];
 
-const CHANCES = [25, 22, 20, 15, 10.5, 5, 2.5];
-
+// Pro Ei neun Pets in der Reihenfolge der Seltenheiten: [Name, kurze Beschreibung]
 const LIST = {
   normal: [
-    ['hund', 'Hund', 'Bester Freund seit dem ersten Münzwurf. Wedelt bei jedem Taler.'],
-    ['katze', 'Katze', 'Getigert, neugierig und überzeugt, dass ihr die Schatzkammer gehört.'],
-    ['kueken', 'Küken', 'Gerade erst geschlüpft. Die Schale sitzt noch wie eine Hose.'],
-    ['pferd', 'Pferd', 'Kräftig, treu und mit wehender Mähne immer als Erstes am Ziel.'],
-    ['kuh', 'Kuh', 'Gemütlich, gefleckt und mit einer Glocke, die man über die ganze Weide hört.'],
-    ['frettchen', 'Frettchen', 'Der Frettchenkönig. Trägt Krone und Hermelinmantel und duldet keinen Widerspruch.'],
-    ['otter', 'Otter', 'Herrscher der Gezeiten. Mit Dreizack und Perle lenkt er jede Strömung.'],
+    ['Hund', 'Treuer Begleiter, wedelt bei jeder Münze.'],
+    ['Hase', 'Hoppelt flink zum nächsten Fund.'],
+    ['Fuchs', 'Schlau und immer auf der Spur des Goldes.'],
+    ['Panda', 'Gemütlich, aber mit großem Appetit auf Taler.'],
+    ['Einhorn', 'Ein Horn, das Glück in alle Richtungen strahlt.'],
+    ['Goldener Drache', 'Schuppen aus purem Gold, Atem aus Funken.'],
+    ['Regenbogen-Phönix', 'Steigt in allen Farben aus der Asche auf.'],
+    ['Ewiger Weltendrache', 'So alt wie die Welt und genauso groß.'],
+    ['Der Urhund', 'Der allererste Hund. Niemand weiß, woher er kam.'],
   ],
   wald: [
-    ['fuchs', 'Fuchs', 'Schlau, flink und mit dem buschigsten Schwanz im ganzen Wald.'],
-    ['reh', 'Reh', 'Leise auf den Hufen. Die weißen Tupfen verraten es trotzdem.'],
-    ['frosch', 'Frosch', 'Sitzt am liebsten auf seinem Seerosenblatt und bläst die Kehle auf.'],
-    ['dachs', 'Dachs', 'Gräbt Gänge unter dem ganzen Wald. Erkennbar an der gestreiften Maske.'],
-    ['schlange', 'Schlange', 'Liegt zusammengerollt im Moos und züngelt nach Neuigkeiten.'],
-    ['baer', 'Bär', 'Der Waldkönig. Moos wächst auf seinem Rücken, ein Geweih aus Ästen krönt ihn.'],
-    ['wolf', 'Wolf', 'Wächter des Waldes. Wenn er heult, leuchten die Ranken auf seinem Fell.'],
+    ['Igel', 'Rollt sich bei Gefahr zur stacheligen Kugel.'],
+    ['Reh', 'Leise auf den Hufen, mit weißen Tupfen.'],
+    ['Wolf', 'Heult nachts den Mond über dem Wald an.'],
+    ['Eule', 'Sieht im Dunkeln jede versteckte Münze.'],
+    ['Bär', 'Stark wie ein Baumstamm, sanft wie Moos.'],
+    ['Waldgeist', 'Schwebt als grünes Licht zwischen den Bäumen.'],
+    ['Uralter Baumwächter', 'Ein wandelnder Baum, der den Wald beschützt.'],
+    ['Naturgott Sylvanus', 'Wo er geht, blüht alles auf.'],
+    ['Das Herz des Waldes', 'Schlägt tief unter den Wurzeln aller Bäume.'],
   ],
   eis: [
-    ['schneemann', 'Schneemann', 'Karottennase, Zylinder und ein Schal, der nie ganz trocken wird.'],
-    ['polarhase', 'Polarhase', 'Schneeweiß bis auf die Ohrspitzen. Im Schnee praktisch unsichtbar.'],
-    ['eisbaer', 'Eisbär', 'Dickes Fell, große Tatzen und die Ruhe des ewigen Eises.'],
-    ['robbe', 'Robbe', 'Rollt lieber, als zu laufen, und hat immer Hunger auf Fisch.'],
-    ['pinguin', 'Pinguin', 'Watschelt im Frack und mit gelbem Kragen durch jede Kälte.'],
-    ['schneegolem', 'Schneegolem', 'Aus Gletschereis und Lawinen geformt. In seiner Brust schlägt ein Eiskristall.'],
-    ['polarfuchs', 'Polarfuchs', 'Drei Schweife aus Frost, eine Krone aus Kristall und Polarlicht im Gefolge.'],
+    ['Pinguin', 'Watschelt im Frack über das Eis.'],
+    ['Robbe', 'Rollt lieber, als zu laufen.'],
+    ['Eisbär', 'Dickes Fell, große Tatzen, eisige Ruhe.'],
+    ['Frostwolf', 'Sein Atem lässt alles gefrieren.'],
+    ['Eisdrache', 'Flügel aus Eis, Brüllen wie ein Schneesturm.'],
+    ['Kristall-Yeti', 'Fell aus funkelnden Eiskristallen.'],
+    ['Blizzard-Titan', 'Trägt den ganzen Winter auf den Schultern.'],
+    ['Polarlicht-Phönix', 'Malt Polarlichter in den Nachthimmel.'],
+    ['Der Ewige Winter', 'Wo er erscheint, taut es nie wieder.'],
   ],
   engel: [
-    ['engelshund', 'Engelshund', 'Ein Hund mit Heiligenschein. Bewacht dich auch von oben.'],
-    ['engelskatze', 'Engelskatze', 'Landet immer auf den Pfoten – oder schwebt einfach weiter.'],
-    ['adler', 'Adler', 'Kreist über den Wolken. Die Federspitzen sind in Gold getaucht.'],
-    ['engelsfuchs', 'Engelsfuchs', 'Sanfter als jeder Waldfuchs. Die Schwanzspitze glüht wie Morgenlicht.'],
-    ['engel', 'Engel', 'Kleiner Bote mit goldenen Locken, der leise Melodien summt.'],
-    ['gott', 'Gott', 'Thront auf einer Wolke, mit Zepter und Sonnenscheibe. Sein Wort ist Gesetz.'],
-    ['loewe', 'Löwe', 'Geflügelter Löwe in goldener Rüstung. Sein Brüllen lässt die Wolken zittern.'],
+    ['Engelchen', 'Kleiner Bote mit Flügeln und goldenen Locken.'],
+    ['Himmelstaube', 'Bringt Frieden und ab und zu eine Münze.'],
+    ['Lichtkatze', 'Schnurrt so warm wie ein Sonnenstrahl.'],
+    ['Seraph', 'Sechs Flügel aus reinem Licht.'],
+    ['Erzengel', 'Anführer der Himmelsscharen, mit Flammenschwert.'],
+    ['Göttlicher Phönix', 'Brennt in heiligem, goldenem Feuer.'],
+    ['Thron-Wächter', 'Bewacht den Thron hinter den Wolken.'],
+    ['Himmelsrichter', 'Wiegt jede Tat auf goldener Waage.'],
+    ['Der Erste Engel', 'War da, bevor es Licht gab.'],
   ],
   galaxie: [
-    ['galaxiewolf', 'Galaktischer Wolf', 'Sein Fell ist ein Stück Nachthimmel, in dem langsam die Sterne ziehen.'],
-    ['singularity', 'Singularity Beetle', 'Trägt ein winziges Schwarzes Loch auf dem Rücken. Bitte nicht füttern.'],
-    ['sternbild', 'Sternbild-Kätzchen', 'Aus Sternen und Linien gezeichnet. Nachts sieht man es am Himmel.'],
-    ['hamster', 'Gravitations-Hamster', 'Hat so viel Masse in den Backen, dass Kerne und Monde um ihn kreisen.'],
-    ['komet', 'Kometen-Echse', 'Schneller als das Licht ihres eigenen Schweifs.'],
-    ['ringgleiter', 'Ring-Gleiter', 'Gleitet zwischen den Planeten und trägt einen eigenen Ring wie ein Gasriese.'],
-    ['nebelwelpe', 'Nebel-Welpe', 'In einem Sternennebel geboren. Wo er schnüffelt, entstehen neue Sterne.'],
+    ['Mond-Hase', 'Springt von Krater zu Krater.'],
+    ['Alien-Blob', 'Wabbelt, glibbert und ist sehr freundlich.'],
+    ['Astro-Hund', 'Trägt Raumhelm und bellt in die Leere.'],
+    ['Nebel-Fuchs', 'Sein Schweif ist ein Sternennebel.'],
+    ['Schwarzes-Loch-Drache', 'Verschluckt alles, sogar das Licht.'],
+    ['Kosmischer Wal', 'Schwimmt gemächlich zwischen den Planeten.'],
+    ['Supernova-Titan', 'Explodiert vor Kraft und strahlt wie tausend Sonnen.'],
+    ['Sternenschmied', 'Hämmert neue Sterne aus Sternenstaub.'],
+    ['Urknall-Entität', 'Der Anfang von allem, in einem Pet.'],
+  ],
+  candy: [
+    ['Gummibär', 'Weich, bunt und ein bisschen klebrig.'],
+    ['Keks-Hund', 'Riecht nach frisch gebackenen Keksen.'],
+    ['Donut-Hamster', 'Mit Streuseln obendrauf.'],
+    ['Cupcake-Einhorn', 'Sahnehäubchen als Mähne.'],
+    ['Karamell-Drache', 'Spuckt warmes, goldenes Karamell.'],
+    ['Eiscreme-Phönix', 'Schmilzt nie, egal wie heiß es ist.'],
+    ['Zuckerkönig', 'Herrscht über das ganze Süßigkeitenreich.'],
+    ['Regenbogen-Zuckerengel', 'Streut Zuckerstreusel vom Himmel.'],
+    ['Der Goldene Lollipop', 'Der süßeste Schatz von allen.'],
   ],
   admin: [
-    ['glitchhund', 'Glitch-Hund', 'Bellt in Fehlercodes und flackert, wenn man ihn zu lange ansieht.'],
-    ['banhammer', 'Ban-Hammer-Krokodil', 'Trägt den Ban-Hammer im Maul. Ein Biss, und du bist raus.'],
-    ['lagschwein', 'Lag-Schwein', 'Läuft mit vier Bildern pro Sekunde. Das Ladesymbol dreht sich ewig.'],
-    ['uivogel', 'UI-Vogel', 'Aus Fenstern, Reglern und Häkchen zusammengeklickt.'],
-    ['dateikatze', 'Schwebendes Datei-Kätzchen', 'Eine Katze im Dateiformat. Schwebt durch Ordner und schnurrt in Bytes.'],
-    ['codedrache', 'Fliegender Quellcode-Drache', 'Aus reinem Quellcode kompiliert. Jeder Flügelschlag schreibt neue Zeilen.'],
-    ['serverchamaeleon', 'Server-Raum-Chamäleon', 'Lebt im Serverraum und nimmt die Farbe jeder Status-LED an.'],
+    ['Mod-Katze', 'Hält Ordnung im Chat.'],
+    ['Debug-Käfer', 'Findet jeden Fehler im Code.'],
+    ['Script-Fuchs', 'Schreibt Skripte schneller als sein Schatten.'],
+    ['Glitch-Wolf', 'Flackert zwischen zwei Orten hin und her.'],
+    ['Admin-Dominus', 'Trägt die Maske der Admins.'],
+    ['Owner-Krone', 'Nur der Besitzer darf sie tragen.'],
+    ['Server-Zerstörer', 'Ein Biss, und der Server stürzt ab.'],
+    ['Der Code-Gott', 'Hat das ganze Spiel geschrieben.'],
+    ['Error 404: Pet nicht gefunden', 'Ist da. Oder auch nicht.'],
+  ],
+  atlantis: [
+    ['Seepferdchen', 'Tänzelt durch die Strömung.'],
+    ['Qualle', 'Leuchtet sanft in der Tiefe.'],
+    ['Delfin', 'Verspielt und schneller als jedes Boot.'],
+    ['Meerjungfrau-Katze', 'Halb Katze, halb Fisch, ganz neugierig.'],
+    ['Poseidon-Hai', 'Trägt einen kleinen Dreizack.'],
+    ['Atlantis-Kraken', 'Acht Arme für acht Schätze.'],
+    ['Leviathan', 'Das größte Wesen der Meere.'],
+    ['Tiefsee-Gott Nereus', 'Herrscher über alle Wellen.'],
+    ['Das Herz von Atlantis', 'Pulsiert im Zentrum der versunkenen Stadt.'],
   ],
   release: [
-    ['dackel', 'Partyhut-Dackel', 'Hat sich zum Release extra den Partyhut aufgesetzt.'],
-    ['konfetti', 'Konfetti-Chamäleon', 'Wechselt die Farbe mit jedem Konfettiregen.'],
-    ['ballonschwein', 'Luftballon-Schweinchen', 'Aus einem einzigen Luftballon geknotet. Bloß nicht drücken.'],
-    ['wunderkerze', 'Wunderkerzen-Fuchs', 'Trägt eine Wunderkerze im Maul und sprüht vor Vorfreude.'],
-    ['qualle', 'Champagner-Qualle', 'Schwebt wie ein Sektglas, aus dem die Bläschen nie ausgehen.'],
-    ['roboter', 'Launch-Day-Roboter', 'Gebaut für den Launch-Day. Der Countdown läuft, die Triebwerke glühen.'],
-    ['phoenix', 'Feuerwerk-Phönix', 'Steigt aus jedem Feuerwerk neu empor und malt Funken in den Himmel.'],
+    ['Partyhut-Hund', 'Feiert den Release mit spitzem Hut.'],
+    ['Geschenkbox-Pet', 'Was drin ist, weiß niemand.'],
+    ['Feuerwerk-Hase', 'Hüpft mit bunten Raketen.'],
+    ['Neon-Drache', 'Leuchtet wie eine Partyröhre.'],
+    ['Goldenes Ticket', 'Eintritt zu allem, für immer.'],
+    ['Founder-Phönix', 'Für alle, die vom ersten Tag an dabei sind.'],
+    ['Release-Titan', 'So groß wie der Hype zum Start.'],
+    ['Der Erste Tag', 'Erinnert sich an jeden Spieler vom Start.'],
+    ['Das Allererste Pet', 'Das Pet, mit dem alles begann.'],
+  ],
+  lava: [
+    ['Feuerkäfer', 'Glüht wie ein kleines Stück Kohle.'],
+    ['Glut-Hund', 'Sein Fell knistert bei jeder Bewegung.'],
+    ['Lava-Fuchs', 'Hinterlässt brennende Pfotenabdrücke.'],
+    ['Inferno-Wolf', 'Heult so laut, dass Vulkane ausbrechen.'],
+    ['Magma-Drache', 'Badet am liebsten in flüssigem Gestein.'],
+    ['Vulkan-Phönix', 'Steigt aus jedem Ausbruch neu empor.'],
+    ['Ifrit der Verbrenner', 'Ein Geist aus reinem Feuer.'],
+    ['Weltenbrand-Titan', 'Lässt den Himmel rot glühen.'],
+    ['Der Erdkern', 'Das heiße Herz der ganzen Welt.'],
+  ],
+  cartoon: [
+    ['Kritzel-Hund', 'Mit Bleistift schnell hingekritzelt.'],
+    ['Pixel-Hase', 'Aus groben Pixeln, hüpft in 8 Bit.'],
+    ['Toon-Fuchs', 'Zieht bei jedem Schreck lustige Grimassen.'],
+    ['Skizzen-Einhorn', 'Noch nicht ganz fertig gezeichnet.'],
+    ['Neon-Toon-Drache', 'Grell, bunt und mit dicken Umrissen.'],
+    ['Cartoon-Dimensionswächter', 'Bewacht den Übergang zwischen den Zeichnungen.'],
+    ['Radiergummi-Gott', 'Kann alles wegradieren.'],
+    ['Der Zeichner', 'Hat alle anderen Pets gezeichnet.'],
+    ['Das Leere Blatt', 'Hier kann noch alles entstehen.'],
   ],
 };
 
+const slug = (s) =>
+  s.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 export const PETS = EGGS.flatMap((egg) =>
-  LIST[egg.id].map(([id, name, text], i) => ({ id, name, text, egg: egg.id, eggName: egg.name, glow: egg.glow, epic: i >= 5, chance: CHANCES[i] })),
+  LIST[egg.id].map(([name, text], i) => {
+    const r = PET_RARITIES[i];
+    return {
+      id: `${egg.id}-${slug(name)}`, name, text, egg: egg.id, eggName: egg.name,
+      rarity: r.id, rarityName: r.name, chance: r.chance, glow: r.color, epic: i >= 4,
+    };
+  }),
 );
 export const petById = Object.fromEntries(PETS.map((p) => [p.id, p]));
-export const fmtChance = (c) => `${c.toLocaleString('de-DE')} %`;
+export const fmtChance = (c) => `${c.toLocaleString('de-DE')} %${c < 0.1 ? ` (1 zu ${Math.round(100 / c).toLocaleString('de-DE')})` : ''}`;
 
-// Würfelt beim Schlüpfen ein Haustier aus dem Ei, gewichtet nach Schlupfchance
+// Würfelt beim Schlüpfen ein Pet aus dem Ei, gewichtet nach Drop-Chance
 export function rollPet(eggId, random = Math.random) {
   const pool = PETS.filter((p) => p.egg === eggId);
   let r = random() * pool.reduce((sum, p) => sum + p.chance, 0);
