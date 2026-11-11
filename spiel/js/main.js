@@ -5,13 +5,14 @@
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { weatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
+import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
 import { createRobloxUi } from './robloxUi.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
-import { planetById, worldById } from '../../welten/js/worlds.js';
+import { planetById, worldById, PLANETS, WORLDS } from '../../welten/js/worlds.js';
+import { ADMIN } from './admin.js';
 import { createWorldBg } from './worldBg.js';
 import { newGarden, gardenAct, lootById, lootName } from '../../garten/js/garden.js';
 import { rollById, openRoll } from '../../rollen/js/rolls.js';
@@ -25,7 +26,7 @@ state.garden ||= newGarden();
 let settings = loadSettings();
 const $ = (id) => document.getElementById(id);
 // Fenster der Roblox-Oberfläche (GameUI)
-const WINDOWS = new Set(['shop', 'inventar', 'welten', 'skills', 'einstellungen', 'wetter', 'belohnung', 'codes', 'ranglisten', 'garten']);
+const WINDOWS = new Set(['shop', 'inventar', 'welten', 'skills', 'einstellungen', 'wetter', 'belohnung', 'codes', 'ranglisten', 'garten', 'admin']);
 
 // ── Klang ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,10 @@ function renderHud() {
   set('Group', !!state.group);
   set('Codes', (state.codes ?? []).join(','));
   for (const [k, v] of Object.entries(settings)) set('Set_' + k, v);
+  // Admin Panel: in der Vorschau bist du Admin (in Roblox setzt das der Server, Skript CoinmasterAdmin)
+  set('Admin', true);
+  const now = Date.now();
+  for (const b of BOOSTS) rui.setRSAttr('ServerBoost_' + b.id, serverBoosts[b.id] > now ? Math.round(serverBoosts[b.id] / 1000) : null);
 }
 
 // Münzen als Stapel wie im Roblox-Spielstand (PlayerData): gleiche Münze + gleiche Mutation = ein Stapel.
@@ -129,6 +134,10 @@ function upcoming() {
 let warned = 0;
 function renderWeather() {
   const { w, ends } = currentWeather();
+  // vom Admin erzwungenes Wetter (in Roblox: AdminWeather, AdminWeatherEnds an ReplicatedStorage)
+  const forced = testWeather?.admin && Date.now() < testWeather.until;
+  rui?.setRSAttr('AdminWeather', forced ? testWeather.id : null);
+  rui?.setRSAttr('AdminWeatherEnds', forced ? Math.round(testWeather.until / 1000) : null);
   const m = mutationForWeather(w.id);
   const next = upcoming();
   rui?.setWeather(w.id, ends, next ? next.w.id : '', next ? next.starts : 0);
@@ -172,6 +181,10 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'escape') return rui?.close();
+  if (e.key === ADMIN.key) {
+    e.preventDefault();
+    return openPanel('admin');
+  }
   const map = { w: 'welten', k: 'skills', i: 'inventar', b: 'shop', o: 'einstellungen', v: 'wetter' };
   if (map[key]) {
     e.preventDefault();
@@ -313,9 +326,9 @@ function flash(color = '#ffffff') {
   el.classList.add('is-on');
 }
 
-function teleport(id, quiet = false) {
+function teleport(id, quiet = false, force = false) {
   const w = worldById[id];
-  if (!w || !ownsWorld(state, id)) return false;
+  if (!w || (!force && !ownsWorld(state, id))) return false;
   state.world = id;
   save();
   renderHud();
@@ -378,6 +391,7 @@ function invoke(action, a, b) {
     return done(`${au.name} gekauft und angelegt`);
   }
   if (action === 'robux') return [false, 'Robux-Käufe gibt es erst im Spiel'];
+  if (action === 'admin') return adminAct(a, b);
   // Münzbaumgarten und Münzrollen (in Roblox: GardenRemote, Regeln aus GardenData.Act)
   if (action === 'openRoll') {
     const roll = rollById[a];
@@ -539,12 +553,189 @@ function query(kind, arg) {
     const rest = forecast(10, now.ends).filter((f) => f.ends > now.ends);
     return [now, ...rest].slice(0, 9).map((f) => ({ Id: f.w.id, Starts: Math.round(f.starts / 1000), Ends: Math.round(f.ends / 1000) }));
   }
+  if (kind === 'admin') return adminQuery(arg);
   if (kind === 'board') {
     const { top, me, place } = board(state, arg);
     return { Rows: top.map((r) => ({ Name: r.name, Value: r.value, Me: !!r.me })), Place: place, Mine: me.value };
   }
   return null;
 }
+// ── Admin Panel ──────────────────────────────────────────────────────────────
+// Die Seite spielt den Server (in Roblox: Skript CoinmasterAdmin). Andere Spieler sind Beispiele,
+// Banns bleiben in diesem Browser.
+const BAN_KEY = 'coinmaster.spiel.banns';
+const SAMPLE_PLAYERS = [
+  ['MuenzMax', 'MünzMax', 41, 8.4e6, 'mars', 11, 3, 214, 2310, 6, 4, 52],
+  ['GlitzerGrete', 'GlitzerGrete', 28, 640000, 'candy', 7, 1, 96, 1204, 3, 2, 31],
+  ['TalerTom', 'TalerTom', 12, 48200, 'stadt', 3, 0, 41, 288, 2, 0, 9],
+  ['KometenKai', 'KometenKai', 63, 2.1e8, 'saturn', 13, 7, 330, 6120, 11, 9, 77],
+  ['PerlenPia', 'PerlenPia', 5, 1900, 'normal', 1, 0, 12, 40, 1, 0, 3],
+].map(([name, display, level, taler, world, worlds, rebirths, coins, found, eggs, auras, minutes], i) => ({
+  UserId: 1000001 + i * 7919, Name: name, DisplayName: display, Level: level, Taler: taler, World: worldById[world]?.name ?? world,
+  Worlds: worlds, Rebirths: rebirths, Coins: coins, Found: found, Eggs: eggs, Auras: auras, Minutes: minutes, Ready: true,
+}));
+const ME_ID = 1;
+let adminPlayers = SAMPLE_PLAYERS.map((p) => ({ ...p }));
+const adminLog = [];
+let adminClock = null;
+const loadBans = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem(BAN_KEY) || '[]');
+    return list.filter((b) => !b.Until || b.Until > Date.now() / 1000);
+  } catch {
+    return [];
+  }
+};
+const saveBans = (list) => {
+  try {
+    localStorage.setItem(BAN_KEY, JSON.stringify(list));
+  } catch {}
+};
+adminPlayers = adminPlayers.filter((p) => !loadBans().some((b) => b.UserId === p.UserId));
+function adminNote(text) {
+  adminLog.unshift({ Time: Math.round(Date.now() / 1000), By: 'Du', Text: text });
+  adminLog.length = Math.min(adminLog.length, 40);
+}
+function mePlayer() {
+  const w = currentWorld(state);
+  const eggs = Object.values(state.eggs).reduce((a, n) => a + n, 0);
+  return {
+    UserId: ME_ID, Name: 'Vorschau', DisplayName: 'Du', Me: true, Admin: true, Ready: true, Level: state.level, Taler: Math.floor(state.taler),
+    World: w.name, Worlds: state.worlds.length, Rebirths: state.rebirths, Coins: state.inventory.length, Found: state.inventory.length + (state.sold ?? 0),
+    Eggs: eggs, Auras: (state.auras || []).length, Minutes: Math.floor((Date.now() - PAGE_START) / 60000),
+  };
+}
+const PAGE_START = Date.now();
+function adminQuery(kind) {
+  if (kind === 'players') return [mePlayer(), ...adminPlayers];
+  if (kind === 'bans') return loadBans().sort((a, b) => b.At - a.At);
+  if (kind === 'log') return adminLog;
+  return null;
+}
+function adminAct(sub, json) {
+  let a = {};
+  try {
+    a = JSON.parse(json || '{}') || {};
+  } catch {
+    return [false, 'Ungültig'];
+  }
+  const ok = (text, note = text) => {
+    if (note) adminNote(note);
+    save();
+    renderHud();
+    return [true, text];
+  };
+  const other = (id) => adminPlayers.find((p) => p.UserId === id);
+  const banLen = ADMIN.bans.find((b) => b.id === a.Ban);
+  switch (sub) {
+    case 'weather': {
+      const w = weatherById[a.Id];
+      if (!w || !ADMIN.weatherMinutes.includes(a.Minutes)) return [false, 'Ungültig'];
+      const ms = a.Minutes * 60000;
+      testWeather = { id: w.id, until: Date.now() + ms, ms, admin: true };
+      renderWeather();
+      return ok(`${w.name} für ${a.Minutes} Minuten`, `${w.name} für ${a.Minutes} min`);
+    }
+    case 'weatherReset':
+      testWeather = null;
+      renderWeather();
+      return ok('Wetter wieder nach Zeitplan', 'Wetter zurück zum Zeitplan');
+    case 'clock': {
+      const c = ADMIN.clocks.find((x) => x.hour === a.Hour);
+      if (a.Hour !== -1 && !c) return [false, 'Ungültig'];
+      adminClock = c ? c.hour : null;
+      rui.setRSAttr('AdminClock', adminClock);
+      worldBg.setClock(adminClock);
+      return ok(c ? `Uhrzeit: ${c.name}` : 'Uhrzeit wieder wie in der Welt', c ? `Uhrzeit: ${c.name}` : 'Uhrzeit: Licht der Welt');
+    }
+    case 'teleport': {
+      const w = worldById[a.World];
+      if (!w || w.soon) return [false, 'Diese Welt gibt es nicht'];
+      teleport(w.id, true, true);
+      return [true, `Teleportiert nach ${w.name}`];
+    }
+    case 'unlockWorlds': {
+      state.worlds = WORLDS.filter((w) => !w.hub && !w.soon).map((w) => w.id);
+      state.portals = PLANETS.filter((p) => !p.soon).map((p) => p.id);
+      return ok(`Alle ${state.worlds.length} Welten freigeschaltet`, 'alle Welten freigeschaltet (für sich)');
+    }
+    case 'visit': {
+      const p = other(a.UserId);
+      if (!p) return [false, 'Spieler ist nicht da'];
+      const w = WORLDS.find((x) => x.name === p.World);
+      if (w) teleport(w.id, true, true);
+      return [true, `Zu ${p.DisplayName} gereist`];
+    }
+    case 'kick': {
+      if (a.UserId === ME_ID) return [false, 'Das bist du'];
+      const p = other(a.UserId);
+      if (!p) return [false, 'Spieler ist nicht (mehr) auf dem Server'];
+      adminPlayers = adminPlayers.filter((x) => x !== p);
+      return ok(`${p.DisplayName} gekickt`, `${p.Name} gekickt${a.Reason ? ` (${a.Reason})` : ''}`);
+    }
+    case 'ban': {
+      const id = Math.floor(Number(a.UserId) || 0);
+      if (!id || !banLen) return [false, 'Ungültig'];
+      if (id === ME_ID) return [false, 'Das bist du'];
+      if (id < 0) return [false, 'Diese UserId kann man nicht bannen'];
+      const p = other(id);
+      const name = p ? p.Name : `Spieler${id}`;
+      const reason = String(a.Reason || '').trim().slice(0, 120);
+      const entry = { UserId: id, Name: name, Until: banLen.minutes ? Math.round(Date.now() / 1000) + banLen.minutes * 60 : 0, Reason: reason, By: 'Vorschau', At: Math.round(Date.now() / 1000) };
+      saveBans([...loadBans().filter((b) => b.UserId !== id), entry]);
+      adminPlayers = adminPlayers.filter((x) => x !== p);
+      return ok(`${name} gebannt (${banLen.name})`, `${name} gebannt (${banLen.name})${reason ? ': ' + reason : ''}`);
+    }
+    case 'unban': {
+      const list = loadBans();
+      const b = list.find((x) => x.UserId === a.UserId);
+      if (!b) return [false, 'Nicht gebannt'];
+      saveBans(list.filter((x) => x !== b));
+      const back = SAMPLE_PLAYERS.find((p) => p.UserId === b.UserId);
+      if (back && !other(back.UserId)) adminPlayers.push({ ...back });
+      return ok(`${b.Name} ist nicht mehr gebannt`, `${b.Name} entbannt`);
+    }
+    case 'reset': {
+      if (a.UserId === ME_ID) {
+        invoke('resetSave');
+        return ok('Dein Spielstand ist zurückgesetzt', 'Spielstand von Vorschau zurückgesetzt');
+      }
+      const p = other(a.UserId);
+      if (!p) return [false, 'Spieler ist nicht (mehr) auf dem Server'];
+      Object.assign(p, { Level: 1, Taler: 0, World: 'Spawn', Worlds: 1, Rebirths: 0, Coins: 0, Found: 0, Eggs: 0, Auras: 0 });
+      return ok(`Spielstand von ${p.DisplayName} zurückgesetzt`, `Spielstand von ${p.Name} zurückgesetzt`);
+    }
+    case 'announce': {
+      const text = String(a.Text || '').trim().slice(0, ADMIN.announceMax);
+      if (!text) return [false, 'Bitte einen Text eingeben'];
+      rui.adminAnnounce(text, 'Vorschau-Admin', 'announce');
+      return ok('Ansage gesendet', `Ansage: ${text}`);
+    }
+    case 'event': {
+      const bo = BOOSTS.find((x) => x.id === a.Boost);
+      if (!bo || !ADMIN.eventMinutes.includes(a.Minutes)) return [false, 'Ungültig'];
+      serverBoosts[bo.id] = Math.max(Date.now(), serverBoosts[bo.id] || 0) + a.Minutes * 60000;
+      rui.adminAnnounce(`${bo.name} für alle! ${bo.text} (+${a.Minutes} Minuten)`, 'Vorschau-Admin', 'event');
+      return ok(`${bo.name} für alle gestartet`, `${bo.name} für alle +${a.Minutes} min`);
+    }
+    case 'eventStop': {
+      const bo = BOOSTS.find((x) => x.id === a.Boost);
+      if (!bo) return [false, 'Ungültig'];
+      delete serverBoosts[bo.id];
+      return ok(`${bo.name} beendet`, `${bo.name} für alle beendet`);
+    }
+    case 'adminEgg': {
+      const egg = EGGS.find((e) => e.id === 'admin');
+      if (!egg) return [false, 'Das Admin Egg gibt es nicht'];
+      state.eggs.admin = (state.eggs.admin || 0) + 1;
+      const n = 1 + adminPlayers.length;
+      rui.adminAnnounce(`Jeder bekommt ein ${egg.name}! Schau ins Inventar.`, 'Vorschau-Admin', 'event');
+      return ok(`${egg.name} an ${n} Spieler verteilt`);
+    }
+  }
+  return [false, 'Ungültig'];
+}
+
 // Geöffnete Münzrolle: dieselbe Öffnen-Ansicht wie auf der Rollen-Seite (RollFx)
 let opener = null;
 function playRoll(arg) {

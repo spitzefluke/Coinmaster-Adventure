@@ -301,6 +301,31 @@ function PlayerData.SendInventory(player)
 	end
 end
 
+-- Spielstand auf Anfang (Admin Panel): Taler, Fortschritt und Münzen wie bei einem neuen Spieler.
+-- Einstellungen (Set_) bleiben. Andere Skripte mit eigenem Stand hören auf PlayerData.Resetted (z. B. der Garten).
+PlayerData.Resetted = Instance.new("BindableEvent")
+function PlayerData.Reset(player)
+	local profile = profiles[player]
+	if not profile then return false end
+	local fresh = PlayerData.NewProfile()
+	for name in pairs(player:GetAttributes()) do
+		if keep(name) and string.sub(name, 1, 4) ~= "Set_" then player:SetAttribute(name, nil) end
+	end
+	profile.Coins = fresh.Coins
+	profile.Taler = fresh.Taler
+	local stats = player:FindFirstChild("leaderstats")
+	local taler = stats and stats:FindFirstChild("Taler")
+	if taler then taler.Value = fresh.Taler end
+	for name, value in pairs(fresh.Attributes) do
+		player:SetAttribute(name, value)
+	end
+	collect(player, profile)
+	derived(player)
+	PlayerData.SendInventory(player)
+	PlayerData.Resetted:Fire(player)
+	return true
+end
+
 function PlayerData.Save(player, release)
 	local profile = profiles[player]
 	if not profile or noSave then return true end

@@ -1,8 +1,9 @@
 // Spiel-Oberfläche für Roblox: HUD, Menüleiste, Hinweise und alle Fenster (Shop, Inventar, Welten, Skilltree,
-// Einstellungen, Wetter, Belohnungen, Codes, Ranglisten) als ScreenGui.
+// Einstellungen, Wetter, Belohnungen, Codes, Ranglisten, Admin Panel) als ScreenGui.
 // GameUI baut alles aus Frames, Buttons und Layouts; die Webseite führt dasselbe Modul aus und zeigt es 1:1.
 // Reiner Text wie luau.js, damit es auch in Node prüfbar ist.
 import { GAME_UI_MORE } from './uiMoreLuau.js';
+import { GAME_UI_ADMIN } from './adminLuau.js';
 import { iconLua, ICON_CELL } from './iconSheet.js';
 
 const ICONS = iconLua();
@@ -147,6 +148,9 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- Skills (Attribut Skills), Belohnungen (DailyDay, DailyStreak, WheelDay, Group, Codes) und
 -- Einstellungen (Set_sfx, Set_music, Set_quality, Set_fewerParticles, Set_skipAnimations, Set_shortNumbers)
 -- gehen über die RemoteFunction PlayerRemote (Server-Skript CoinmasterPlayer).
+-- Admin Panel (nur mit Attribut Admin): Menüknopf „Admin“ und Taste F2, Aktionen ("admin", Aktion, JSON) und
+-- Daten (Query "admin") über die RemoteFunction AdminRemote (Server-Skript CoinmasterAdmin).
+-- Server-Boosts für alle stehen an ReplicatedStorage (ServerBoost_<id>) und erscheinen bei den Boosts im HUD.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -161,6 +165,7 @@ local CoinData = require(root:WaitForChild("CoinData"))
 local WorldData = require(root:WaitForChild("WorldData"))
 local GardenData = require(root:WaitForChild("GardenData"))
 local RollData = require(root:WaitForChild("RollData"))
+local AdminData = require(root:WaitForChild("AdminData"))
 local HttpService = game:GetService("HttpService")
 
 local GameUI = {}
@@ -365,7 +370,7 @@ local function buildHud(playerGui)
 	icon("cloud", { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.weather })
 	ui.weatherText = label({ Size = UDim2.new(1, -48, 1, 0), Position = UDim2.new(0, 38, 0, 0), Text = "", TextSize = T.Small, Parent = ui.weather })
 	pressable(ui.weather, function() GameUI.Toggle("wetter") end)
-	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 100), BackgroundTransparency = 1, LayoutOrder = 3, Parent = right }, {
+	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 200), BackgroundTransparency = 1, LayoutOrder = 3, Parent = right }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 
@@ -375,10 +380,12 @@ local function buildHud(playerGui)
 	ui.menuLayout = new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = menu })
 	ui.menuScale = new("UIScale", { Scale = 1, Parent = menu })
 	ui.badges = {}
-	-- 7 Knöpfe à 62 + 6 × 8 Abstand = 482: passt in dieselbe Höhe wie früher 6 Knöpfe
+	-- 7 Knöpfe à 62 + 6 × 8 Abstand = 482: passt in dieselbe Höhe wie früher 6 Knöpfe.
+	-- Der 8. Knopf „Admin“ ist nur für Admins sichtbar (Attribut Admin); dann wird das Menü kleiner skaliert.
 	local entries = {
 		{ "welten", "globe", "Welten" }, { "skills", "tree", "Skills" }, { "inventar", "bag", "Inventar" },
 		{ "shop", "shop", "Shop" }, { "garten", "sprout", "Garten" }, { "index", "book", "Index" }, { "einstellungen", "gear", "Optionen" },
+		{ "admin", "shield", "Admin" },
 	}
 	for i, e in ipairs(entries) do
 		local b = new("TextButton", { Name = e[1], Size = UDim2.new(0, 72, 0, 62), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, Text = "", LayoutOrder = i, Parent = menu }, {
@@ -396,6 +403,11 @@ local function buildHud(playerGui)
 				options.OnAction(e[1])
 			end
 		end)
+		if e[1] == "admin" then
+			b.Visible = false
+			b:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(255, 96, 104)
+			ui.menuAdmin = b
+		end
 	end
 
 	-- Suchen unten in der Mitte
@@ -431,6 +443,16 @@ local function refreshHud()
 	ui.badges.skills.Text = tostring(pts)
 	ui.badges.inventar.Visible = attr("InventoryFull", false)
 	ui.badges.inventar.Text = "!"
+	-- Admin-Knopf nur für Admins; das Menü ordnet sich dann neu an
+	local admin = attr("Admin", false) == true
+	if ui.menuAdmin.Visible ~= admin then
+		ui.menuAdmin.Visible = admin
+		if GameUI.ApplyLayout then
+			ui.layoutKey = nil
+			GameUI.ApplyLayout()
+		end
+		if not admin then GameUI.Close("admin") end
+	end
 	local planet = attr("WorldPlanet", "")
 	ui.worldText.Text = (planet ~= "" and (planet .. " · ") or "") .. attr("WorldName", "Spawn")
 	ui.world.Size = UDim2.new(0, math.max(160, #ui.worldText.Text * 11 + 30), 0, 38)
@@ -453,28 +475,31 @@ local function refreshHud()
 			ui.weatherStroke.Color = r and r.Color or w.Color
 		end
 	end
-	-- aktive Boosts: Zeilen bleiben stehen, nur die Zeit ändert sich
+	-- aktive Boosts: Zeilen bleiben stehen, nur die Zeit ändert sich. Eigene grün, Server-Boosts für alle (★) gold
 	ui.boostRows = ui.boostRows or {}
-	for i, b in ipairs(ShopData.Boosts) do
-		local left = attr("Boost_" .. b.Id, 0) - os.time()
-		local row = ui.boostRows[b.Id]
+	local function boostRow(key, b, left, order, server)
+		local row = ui.boostRows[key]
 		if left > 0 then
 			if not row then
-				local frame = new("Frame", { Name = b.Id, Size = UDim2.new(0, 200, 0, 28), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, LayoutOrder = i, Parent = ui.boosts }, {
+				local frame = new("Frame", { Name = key, Size = UDim2.new(0, 200, 0, 28), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, LayoutOrder = order, Parent = ui.boosts }, {
 					corner(R.Round),
-					stroke(C.green, 2),
+					stroke(server and C.goldHi or C.green, 2),
 				})
 				icon(b.Icon, { Size = UDim2.new(0, 20, 0, 20), Position = UDim2.new(0, 8, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = frame })
 				row = { frame = frame, text = label({ Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 32, 0, 0), Text = "", TextSize = T.Small, Parent = frame }) }
-				ui.boostRows[b.Id] = row
+				ui.boostRows[key] = row
 				local scale = new("UIScale", { Scale = 0.6, Parent = frame })
 				TweenService:Create(scale, M.Pop, { Scale = 1 }):Play()
 			end
-			row.text.Text = b.Name .. "  " .. mmss(left)
+			row.text.Text = (server and "★ " or "") .. b.Name .. "  " .. mmss(left)
 		elseif row then
 			row.frame:Destroy()
-			ui.boostRows[b.Id] = nil
+			ui.boostRows[key] = nil
 		end
+	end
+	for i, b in ipairs(ShopData.Boosts) do
+		boostRow(b.Id, b, attr("Boost_" .. b.Id, 0) - os.time(), i, false)
+		boostRow("alle_" .. b.Id, b, AdminData.ServerBoostEnds(b.Id) - os.time(), 10 + i, true)
 	end
 end
 
@@ -1348,6 +1373,7 @@ local function buildWorlds(playerGui)
 end
 function GameUI.OpenWorlds(tab) GameUI.Open("welten", tab) end
 ${GAME_UI_MORE}
+${GAME_UI_ADMIN}
 
 -- ══ Anordnung je nach Bildschirm: am Handy Menü unten links, „Münze suchen“ groß unten rechts,
 -- Fenster fast vollflächig und etwas kleiner skaliert. Gilt bei weniger als 900 × 560 Punkten. ══
@@ -1357,7 +1383,12 @@ local function applyLayout()
 	local compact = vp.X < 900 or vp.Y < 560
 	local tiny = vp.Y < 430
 	local narrow = vp.X < 600 -- hochkant (z. B. Vorschau am Handy)
-	local key = tostring(compact) .. tostring(tiny) .. tostring(narrow) .. (narrow and tostring(math.floor(vp.X)) or "")
+	-- Anzahl sichtbarer Menüknöpfe (7, mit Admin-Knopf 8)
+	local n = 0
+	for _, c in ipairs(ui.menu:GetChildren()) do
+		if c:IsA("TextButton") and c.Visible then n = n + 1 end
+	end
+	local key = tostring(compact) .. tostring(tiny) .. tostring(narrow) .. (narrow and tostring(math.floor(vp.X)) or "") .. n .. (compact and "" or tostring(math.floor(vp.Y / 20)))
 	if ui.layoutKey == key then return end
 	ui.layoutKey = key
 	ui.compact, ui.tiny = compact, tiny
@@ -1365,20 +1396,25 @@ local function applyLayout()
 	-- Menü
 	if compact then
 		ui.menuLayout.FillDirection = Enum.FillDirection.Horizontal
-		ui.menu.Size = UDim2.new(0, 7 * 72 + 6 * 8, 0, 62)
+		ui.menu.Size = UDim2.new(0, n * 72 + (n - 1) * 8, 0, 62)
 		ui.menu.Position = UDim2.new(0, 12, 1, -10)
 		ui.menu.AnchorPoint = Vector2.new(0, 1)
 		ui.menuScale.Scale = tiny and 0.78 or 0.88
 		if narrow then
 			-- ganze Breite nutzen
-			ui.menuScale.Scale = math.min(0.88, (vp.X - 24) / (7 * 72 + 6 * 8))
+			ui.menuScale.Scale = math.min(0.88, (vp.X - 24) / (n * 72 + (n - 1) * 8))
+		elseif n > 7 then
+			-- neben „Münze suchen“ (unten rechts) muss Platz bleiben
+			ui.menuScale.Scale = math.min(ui.menuScale.Scale, (vp.X - 250) / (n * 72 + (n - 1) * 8))
 		end
 	else
 		ui.menuLayout.FillDirection = Enum.FillDirection.Vertical
-		ui.menu.Size = UDim2.new(0, 84, 0, 486)
+		local height = n * 62 + (n - 1) * 8 + 4
+		ui.menu.Size = UDim2.new(0, 84, 0, height)
 		ui.menu.Position = UDim2.new(0, 16, 0.5, 20)
 		ui.menu.AnchorPoint = Vector2.new(0, 0.5)
-		ui.menuScale.Scale = 1
+		-- unter dem Level-Abzeichen oben links bleiben (oben fehlen dazu noch etwa 58 Punkte für die Roblox-Leiste)
+		ui.menuScale.Scale = math.min(1, (vp.Y - 198) / height)
 	end
 	-- Münze suchen: groß unten rechts, gut mit dem Daumen erreichbar
 	if narrow then
@@ -2303,6 +2339,11 @@ end
 
 local PLAYER_ACTIONS = { learn = true, resetSkills = true, daily = true, spin = true, group = true, code = true, setting = true, resetSettings = true }
 local function defaultInvoke(action, a, b)
+	if action == "admin" then
+		local remote = root:FindFirstChild("AdminRemote")
+		if remote then return remote:InvokeServer("do", a, b) end
+		return false, "AdminRemote fehlt"
+	end
 	if action == "aura" then
 		local remote = root:FindFirstChild("AuraRemote")
 		if remote then return remote:InvokeServer(a, b) end
@@ -2329,6 +2370,11 @@ local function defaultQuery(kind, arg)
 	if kind == "forecast" then
 		local Gacha = require(root:WaitForChild("Gacha"))
 		return Gacha.Forecast(9, os.time())
+	end
+	if kind == "admin" then
+		local remote = root:FindFirstChild("AdminRemote")
+		if remote then return remote:InvokeServer("query", arg) end
+		return nil
 	end
 	local remote = root:FindFirstChild("PlayerRemote")
 	if remote then return remote:InvokeServer(kind, arg) end
@@ -2361,6 +2407,7 @@ function GameUI.Start(opts)
 	buildWorlds(playerGui)
 	buildMore(playerGui)
 	buildGarden(playerGui)
+	buildAdmin(playerGui)
 	local DEPS = {
 		shop = { "@taler", "EggDiscount", "Egg_", "Boost_", "OwnedAuras", "Aura" },
 		inventar = { "Slots", "Egg_", "@inventory" },

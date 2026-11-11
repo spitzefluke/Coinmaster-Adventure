@@ -779,7 +779,53 @@ Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Tes
 Spielstand neu beginnen“.
 
 Tastenkürzel: W Welten, K Skills, I Inventar, B Shop, V Wetter, O Einstellungen, F Münze suchen,
-Esc schließt.
+F2 Admin Panel (nur Admins), Esc schließt.
+
+## Admin Panel
+
+Ein Fenster nur für Admins: Menüknopf **Admin** (Schild, roter Rand) und Taste **F2**. Normale Spieler sehen
+weder Knopf noch Fenster. Jede Aktion prüft der Server; das Panel schickt nur Wünsche.
+
+**Wer ist Admin?** Das entscheidet allein das Server-Skript `CoinmasterAdmin` und setzt dann das Attribut
+`Admin` am Spieler (wird nicht gespeichert):
+
+- der Besitzer des Spiels (bei Gruppenspielen der Gruppen-Besitzer, Rang 255),
+- die UserIds in `ADMIN_IDS` in `spiel/js/admin.js` (danach neu übertragen),
+- ohne neuen Import: in Studio unter `ServerStorage` einen Ordner `CoinmasterAdmins` mit IntValues anlegen
+  (Value = UserId). Den Ordner lässt der Installer stehen,
+- in Studio beim Testen alle (`STUDIO_ADMINS` oben im Skript).
+
+| Reiter | Was geht |
+|---|---|
+| Wetter & Welt | jedes Wetter für 5, 10, 15 oder 30 Minuten erzwingen (danach geht der Zeitplan weiter), „Zurück zum Zeitplan“; Uhrzeit für alle (Morgen, Mittag, Abend, Nacht oder Licht der Welt); Teleport in jede Welt; alle Welten und Portale für sich freischalten |
+| Spieler | alle Spieler auf dem Server mit Spielstand (Level, Taler, Welt, Welten, Wiedergeburten, Münzen, Funde, Eier, Auras, Online-Zeit); Hinreisen, Kicken und Bannen (1 Stunde, 1 Tag, 7 Tage, für immer) mit Grund; Spielstand zurücksetzen (zweimal tippen) |
+| Server-Events | Ansage an alle (höchstens 160 Zeichen, von Roblox gefiltert); Boosts für alle (Glückstrank, Weisheitsrolle, Wetterglocke) für 10, 30 oder 60 Minuten, verlängern oder beenden; Admin Egg an alle verteilen; Protokoll aller Admin-Aktionen auf dem Server |
+| Banns | per UserId bannen, auch wer gerade nicht da ist; Liste aller Banns mit Dauer, Grund und Admin; Aufheben |
+
+- **Schutz:** Admins kann man nicht kicken oder bannen, sich selbst auch nicht. Bannen und Zurücksetzen
+  brauchen einen zweiten Klick. Mindestens 0,2 s zwischen zwei Aufrufen, alle Werte werden geprüft (nur die
+  angebotenen Zeiten, Wetter, Welten und Boosts).
+- **Wetter:** `ReplicatedStorage` bekommt `AdminWeather` und `AdminWeatherEnds`. `CoinmasterWeather` prüft jetzt
+  jede Sekunde und nimmt das erzwungene Wetter, danach wieder den Zeitplan; die Vorwarnung zeigt, was danach
+  kommt. `Gacha.Forecast` setzt es in der Vorhersage an die erste Stelle.
+- **Uhrzeit:** `AdminClock` an `ReplicatedStorage`; jeder Client hält `Lighting.ClockTime` darauf, auch gegen
+  Weltlicht und Wetter.
+- **Boosts für alle:** `ServerBoost_<id>` an `ReplicatedStorage` (Ende als `os.time()`). Im HUD stehen sie mit ★
+  und goldenem Rand unter den eigenen Boosts. Wer würfelt, fragt `AdminData.BoostActive(player, "glueck")`:
+  das ist wahr bei eigenem Boost oder Server-Boost. In der Vorschau wirken sie schon beim Suchen.
+- **Banns:** im DataStore `CoinmasterBans` (ein Schlüssel `Liste`), gelten auf allen Servern: beim Beitreten
+  geprüft, jeder Server liest die Liste alle 60 Sekunden neu und wirft Gebannte hinaus. Ohne DataStore (Studio
+  ohne API-Zugriff) gelten sie nur auf diesem Server.
+- **Zurücksetzen:** `PlayerData.Reset(player)` setzt Taler, Fortschritt, Münzen und Garten auf Anfang
+  (Einstellungen bleiben) und meldet das über `PlayerData.Resetted`.
+- **Ansagen:** RemoteEvent `AdminEvent` an alle (`"announce"` oder `"event"`), groß unter der Wetter-Ansage
+  (`GameUI.AdminAnnounce`), am Handy oben.
+- **Roblox:** Modul `AdminData` (Zeiten, Uhrzeiten, Bann-Dauern, `BoostActive`), das Fenster in GameUI
+  (`roblox/js/adminLuau.js`, `GAME_UI_ADMIN`) und das Skript `ServerScriptService > CoinmasterAdmin` mit der
+  RemoteFunction `AdminRemote`. Zeiten und Taste stehen in `spiel/js/admin.js`.
+- **Vorschau:** In `spiel/` bist du Admin. Die anderen Spieler sind Beispiele, Banns bleiben im Browser.
+- **Icon:** neues Icon `shield`. Wer das Icon-Bild schon hochgeladen hat, lädt es neu hoch (sonst bleibt der
+  Admin-Knopf ohne Bild).
 
 ## Speichern in Roblox
 
@@ -843,7 +889,7 @@ Dann <http://localhost:8000> öffnen.
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
 - `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
-- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/rewards.js` (Belohnungen, Codes, Ranglisten), `js/robloxUi.js` (Roblox-Oberfläche GameUI)
+- `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/rewards.js` (Belohnungen, Codes, Ranglisten), `js/admin.js` (Admins und Zeiten fürs Admin Panel), `js/robloxUi.js` (Roblox-Oberfläche GameUI); Luau des Admin Panels in `roblox/js/adminLuau.js`
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
 - `js/bereiche.js` – Liste der Bereiche auf der Startseite

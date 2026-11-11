@@ -14,6 +14,8 @@ import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreL
 import { PLAYER_DATA, PLAYER_DATA_START } from './dataLuau.js';
 import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
 import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_CLIENT } from './gardenLuau.js';
+import { adminDataSource, adminServerSource } from './adminLuau.js';
+import { ADMIN, ADMIN_IDS } from '../../spiel/js/admin.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -291,14 +293,29 @@ function Gacha.CurrentWeather(now)
 	return w, e - now
 end
 
--- Die nächsten n Phasen: { { Id, Starts, Ends }, … }
+-- Wetter, das ein Admin erzwungen hat (ReplicatedStorage: AdminWeather, AdminWeatherEnds): w, Ende oder nil.
+-- Danach geht der Zeitplan weiter.
+function Gacha.Forced(now)
+	local rs = game:GetService("ReplicatedStorage")
+	local w = MutationData.WeatherById[rs:GetAttribute("AdminWeather") or ""]
+	local ends = rs:GetAttribute("AdminWeatherEnds") or 0
+	if w and ends > (now or os.time()) then return w, ends end
+	return nil
+end
+
+-- Die nächsten n Phasen: { { Id, Starts, Ends }, … } (mit erzwungenem Wetter vorne)
 function Gacha.Forecast(n, now)
 	now = now or os.time()
 	local out = {}
 	local t = now
-	for _ = 1, n do
+	local fw, fe = Gacha.Forced(now)
+	if fw then
+		table.insert(out, { Id = fw.Id, Starts = now, Ends = fe })
+		t = fe
+	end
+	while #out < n do
 		local w, s, e = Gacha.WeatherAt(t)
-		table.insert(out, { Id = w.Id, Starts = s, Ends = e })
+		table.insert(out, { Id = w.Id, Starts = math.max(s, t), Ends = e })
 		t = e
 	end
 	return out
@@ -1206,19 +1223,33 @@ return WeatherFx
 const WEATHER_SERVER = `-- Coinmaster Adventure · Wetter (Server)
 -- Setzt das Wetter nach dem Zeitplan aus Gacha.WeatherAt. Clients lesen an ReplicatedStorage:
 -- Weather, WeatherEnds (Ende), WeatherNext und WeatherNextAt (nächstes Wetter und sein Beginn, für die Vorwarnung).
+-- Ein Admin kann ein Wetter erzwingen (AdminWeather, AdminWeatherEnds; Admin Panel), danach geht der Zeitplan weiter.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
 local Gacha = require(root:WaitForChild("Gacha"))
 
-while true do
-	local now = os.time()
+local function state(now)
+	local fw, fe = Gacha.Forced(now)
+	if fw then
+		-- nach dem erzwungenen Wetter: was der Zeitplan dann hat
+		local w = Gacha.WeatherAt(fe)
+		local nw, ns = w, fe
+		if w.Id == "klar" then nw, ns = Gacha.NextWeather(fe) end
+		return fw.Id, fe, nw, ns
+	end
 	local w, _, ends = Gacha.WeatherAt(now)
 	local nw, ns = Gacha.NextWeather(now)
+	return w.Id, ends, nw, ns
+end
+
+-- jede Sekunde prüfen (Attribute ändern sich nur, wenn der Wert neu ist)
+while true do
+	local id, ends, nw, ns = state(os.time())
 	ReplicatedStorage:SetAttribute("WeatherNext", nw and nw.Id or "")
 	ReplicatedStorage:SetAttribute("WeatherNextAt", ns or 0)
 	ReplicatedStorage:SetAttribute("WeatherEnds", ends)
-	ReplicatedStorage:SetAttribute("Weather", w.Id)
-	task.wait(math.max(1, ends - now))
+	ReplicatedStorage:SetAttribute("Weather", id)
+	task.wait(1)
 end
 `;
 
@@ -1517,7 +1548,7 @@ export function moduleSources(data) {
     ...(data.TREES ? [{ name: 'GardenData', source: gardenDataSource(data) }, { name: 'LootBuilder', source: LOOT_BUILDER }, { name: 'GardenBuilder', source: GARDEN_BUILDER }] : []),
     ...(data.ROLLS && data.TREES ? [{ name: 'RollData', source: rollDataSource(data) }, { name: 'RollBuilder', source: ROLL_BUILDER }, { name: 'RollFx', source: ROLL_FX }] : []),
     ...(data.BOOSTS && data.AURAS && data.SKILLS
-      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'UITheme', source: UI_THEME }, { name: 'GameUI', source: GAME_UI }]
+      ? [{ name: 'ShopData', source: shopDataSource(data) }, { name: 'SkillData', source: skillDataSource(data) }, { name: 'RewardData', source: rewardDataSource(data) }, { name: 'AdminData', source: adminDataSource({ ADMIN: data.ADMIN ?? ADMIN }) }, { name: 'UITheme', source: UI_THEME }, { name: 'GameUI', source: GAME_UI }]
       : []),
   ];
 }
@@ -1554,6 +1585,8 @@ export function installerSource(data) {
 --   StarterPlayerScripts > CoinmasterUI       Spiel-Oberfläche (HUD, Menü und alle Fenster) aus GameUI
 --   ServerScriptService > CoinmasterShop      Käufe, Verkauf, Welten, Portale, Wiedergeburt (ShopRemote)
 --   ServerScriptService > CoinmasterPlayer    Skills, Belohnungen, Codes, Einstellungen, Ranglisten (PlayerRemote)
+--   ServerScriptService > CoinmasterAdmin     Admin Panel (AdminRemote): Wetter, Uhrzeit, Spieler, Banns, Events
+--     Admins: Besitzer des Spiels, ADMIN_IDS oben im Skript, IntValues in ServerStorage > CoinmasterAdmins
 --   ServerScriptService > CoinmasterData      lädt und speichert den Spielstand (Modul CoinmasterServer > PlayerData)
 --     Zum Speichern in Studio: Game Settings > Security > „Enable Studio Access to API Services“${data.AURAS ? `
 --   Haustiere: Datei Haustiere.rbxmx von der Webseite in ReplicatedStorage > CoinmasterAdventure einfügen,
@@ -1736,6 +1769,7 @@ playerData.Parent = serverFolder
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterData", ${longString(PLAYER_DATA_START)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterShop", ${longString(SHOP_SERVER)})
 addScript("Script", game:GetService("ServerScriptService"), "CoinmasterPlayer", ${longString(playerServerSource(data))})
+addScript("Script", game:GetService("ServerScriptService"), "CoinmasterAdmin", ${longString(adminServerSource({ ADMIN_IDS: data.ADMIN_IDS ?? ADMIN_IDS }))})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterUI", ${longString(UI_CLIENT)})
 ${data.ROLLS && data.TREES ? `addScript("Script", game:GetService("ServerScriptService"), "CoinmasterGarden", ${longString(GARDEN_SERVER)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterGardenClient", ${longString(GARDEN_CLIENT)})

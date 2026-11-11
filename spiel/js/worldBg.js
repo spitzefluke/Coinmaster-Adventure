@@ -15,7 +15,7 @@ export function createWorldBg(host) {
     renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
   } catch (e) {
     console.warn('3D-Hintergrund nicht verfügbar', e);
-    return { set() {}, refresh() {}, setWeather() {}, pick: () => null };
+    return { set() {}, refresh() {}, setWeather() {}, setClock() {}, pick: () => null };
   }
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
@@ -36,6 +36,7 @@ export function createWorldBg(host) {
   }
 
   let weatherId = 'klar';
+  let clock24 = null;
   function build(world) {
     if (built) {
       lua?.call('__weatherReset');
@@ -43,6 +44,7 @@ export function createWorldBg(host) {
       built.rw.dispose();
     }
     built = buildRobloxWorld(world, { shadows: renderer.shadowMap.enabled });
+    built.world = world;
     worldId = world.id;
     showWorldFx(built.rw, world.id);
     showWeather(built.rw, weatherId);
@@ -71,6 +73,8 @@ export function createWorldBg(host) {
       lua.setCamera(camera);
       lua.frame(dt);
     }
+    // Uhrzeit vom Admin Panel (AdminClock) gegen Weltlicht und Wetter halten
+    if (clock24 !== null) built.rw.lighting.props.ClockTime = clock24;
     built.rw.update(dt);
     built.rw.render(renderer, camera);
   });
@@ -101,6 +105,11 @@ export function createWorldBg(host) {
     },
     set(world) {
       if (world.id !== worldId) build(world);
+    },
+    // Uhrzeit 0–24 für alle (Admin Panel) oder null = Licht der Welt
+    setClock(hour) {
+      clock24 = hour ?? null;
+      if (clock24 === null && built) build(built.world);
     },
     // nach geänderten Einstellungen (Qualität) neu aufbauen
     refresh(world) {

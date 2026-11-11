@@ -22,6 +22,8 @@ import { gardenDataSource } from '../../roblox/js/gardenLuau.js';
 import { rollDataSource } from '../../roblox/js/rollLuau.js';
 import { RARITIES as GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN } from '../../garten/js/garden.js';
 import { ROLLS } from '../../rollen/js/rolls.js';
+import { adminDataSource } from '../../roblox/js/adminLuau.js';
+import { ADMIN } from './admin.js';
 
 
 const q = (s) => JSON.stringify(String(s));
@@ -48,6 +50,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
   lua.call('__addModule', 'UITheme', UI_THEME);
   lua.call('__addModule', 'GardenData', gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES, GARDEN }));
   lua.call('__addModule', 'RollData', rollDataSource({ ROLLS }));
+  lua.call('__addModule', 'AdminData', adminDataSource({ ADMIN }));
   lua.call('__addModule', 'GameUI', GAME_UI);
   lua.registerFn('__uiInvoke', (action, a, b) => onInvoke(action, a, b) ?? [false, 'Unbekannt']);
   lua.register('__uiAction', (name, arg) => onAction(name, arg));
@@ -66,6 +69,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
     __GameUI = require(root.GameUI)
     __WeatherFx = require(root.WeatherFx)
     function __applyInventory(kind, a, b) __GameUI.ApplyInventory(kind, a, b) end
+    function __clearRSAttr(name) game:GetService("ReplicatedStorage"):SetAttribute(name, nil) end
     __GameUI.Start({
       Invoke = function(action, a, b) return __uiInvoke(action, a, b) end,
       PlayRoll = function(rollId, itemId) __uiAction("playRoll", rollId .. "|" .. itemId) end,
@@ -117,6 +121,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
   for (const [type, fn] of Object.entries(handlers)) host.addEventListener(type, fn, { capture: true, passive: type !== 'wheel' });
 
   let checks = 0;
+  const rsAttrs = new Map();
   return {
     lua,
     screen,
@@ -135,6 +140,18 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
     },
     setAttr(name, value) {
       lua.call('__setAttr', name, value);
+    },
+    // Attribut an ReplicatedStorage (Admin: erzwungenes Wetter, Uhrzeit, Server-Boosts); null löscht es
+    setRSAttr(name, value) {
+      value ??= null;
+      if (rsAttrs.get(name) === value) return;
+      rsAttrs.set(name, value);
+      if (value === null) lua.call('__clearRSAttr', name);
+      else lua.call('__setRSAttr', name, value);
+    },
+    // Ansage oder Event für alle (GameUI.AdminAnnounce, in Roblox vom Server über AdminEvent)
+    adminAnnounce(text, by, kind = 'announce') {
+      lua.run(`__GameUI.AdminAnnounce(${q(text)}, ${q(by)}, ${q(kind)})`, 'Admin-Ansage');
     },
     setWeather(id, endsMs, nextId = '', nextAtMs = 0) {
       lua.call('__setRSAttr', 'WeatherNext', nextId);
