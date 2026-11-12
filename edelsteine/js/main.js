@@ -1,6 +1,6 @@
 // Edelsteine: alle Steine des Juwelnebels als Karten, nach Seltenheit gruppiert, mit Wert und Drop-Chance.
 
-import { GEMS, TIERS, tierById, gemBaseValue, gemsOfTier } from './gems.js';
+import { GEMS, TIERS, tierById, gemBaseValue, gemsOfTier, GEM_BAGS, GEM_BAG_TIERS } from './gems.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -27,7 +27,7 @@ function card(g) {
     <h3>${esc(g.name)}</h3>
     <p>${esc(g.text)}</p>
     <dl class="facts">
-      <div><dt>Grundwert</dt><dd>${fmt(gemBaseValue(g))} Taler</dd></div>
+      <div><dt>Grundwert</dt><dd>${fmt(gemBaseValue(g))} Diamantstaub</dd></div>
       <div><dt>Schliff</dt><dd>${CUTS[g.cut] || g.cut}</dd></div>
     </dl>
   </li>`;
@@ -59,3 +59,20 @@ $('filters').addEventListener('click', (e) => {
 
 renderFilters();
 render();
+
+// Edelstein-Taschen nach Stufe
+$('bags').innerHTML = GEM_BAG_TIERS.map((t) => {
+  const list = GEM_BAGS.filter((b) => b.tier === t.id);
+  return `<section class="section" style="--c:${t.color}" aria-labelledby="bt-${t.id}">
+    <div class="section-head"><h2 id="bt-${t.id}">${esc(t.name)}</h2><p class="section-meta">Nr. ${list[0].nr}–${list.at(-1).nr} · ${fmt(list[0].capacity)} bis ${fmt(list.at(-1).capacity)} Plätze</p></div>
+    <ul class="cards">${list
+      .map((b) => `<li class="card${t.id === 'supernova' ? ' is-top' : ''}" style="--c:${t.color}">
+        <span class="nr">Nr. ${b.nr}</span>
+        <p class="pill">${t.name}</p>
+        <h3>${esc(b.name)}</h3>
+        <p>${esc(b.text)}</p>
+        <dl class="facts"><div><dt>Preis</dt><dd>${b.price ? fmt(b.price) + ' Diamantstaub' : 'Gratis'}</dd></div><div><dt>Kapazität</dt><dd>${fmt(b.capacity)} Edelsteine</dd></div></dl>
+      </li>`)
+      .join('')}</ul>
+  </section>`;
+}).join('');

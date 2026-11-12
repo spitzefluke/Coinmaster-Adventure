@@ -9,8 +9,8 @@ export const PLAYER_DATA = `-- Coinmaster Adventure · Spielstand (Server)
 -- und neu übertragen, sonst gehen sie beim nächsten Import verloren.
 --
 -- Ein Profil pro Spieler im DataStore "CoinmasterAdventure" (Schlüssel "Spieler_<UserId>"):
---   { Version, Taler, Attributes = { ... }, Coins = { [Schlüssel] = Stapel }, Lock, Saved }
--- Während des Spiels steht der Stand an den Spielern: Taler in leaderstats.Taler, alles andere als
+--   { Version, Moneten, Attributes = { ... }, Coins = { [Schlüssel] = Stapel }, Lock, Saved }
+-- Während des Spiels steht der Stand an den Spielern: Moneten in leaderstats.Moneten, alles andere als
 -- Attribute (Liste KEEP unten), Münzen als Stapel hier im Modul.
 --
 -- Session-Lock: Ein Server „besitzt“ das Profil, solange er es geladen hat. Ein zweiter Server wartet,
@@ -30,14 +30,14 @@ PlayerData.LOCK_TIMEOUT = 900 -- Sekunden
 
 -- Attribute, die gespeichert werden (dazu alle mit Egg_, Boost_ und Set_ am Anfang). Garden: Münzbaumgarten als JSON
 local KEEP = {
-	"Level", "XP", "World", "Worlds", "Portals", "Rebirths", "Supernovas", "Aura", "OwnedAuras", "Skills",
+	"Level", "XP", "World", "Worlds", "Portals", "Rebirths", "Supernovas", "Diamantstaub", "GemBag", "Pets", "Aura", "OwnedAuras", "Skills",
 	"DailyDay", "DailyStreak", "WheelDay", "Group", "Codes", "CoinsFound", "Garden",
 }
 local KEEP_PREFIX = { "Egg_", "Boost_", "Set_", "Gem_", "GemValue_" } -- Gem_: Edelsteine (Anzahl, Gesamtwert)
 
 -- Startwerte für neue Spieler
 local DEFAULTS = {
-	Level = 1, XP = 0, World = "spawn", Worlds = "normal", Portals = "p1", Rebirths = 0, Supernovas = 0, Skills = "kern:1",
+	Level = 1, XP = 0, World = "spawn", Worlds = "normal", Portals = "p1", Rebirths = 0, Supernovas = 0, GemBag = 1, Skills = "kern:1",
 	CoinsFound = 0,
 }
 
@@ -45,7 +45,7 @@ local DEFAULTS = {
 function PlayerData.NewProfile()
 	local attributes = {}
 	for k, v in pairs(DEFAULTS) do attributes[k] = v end
-	return { Version = PlayerData.VERSION, Taler = 0, Attributes = attributes, Coins = {}, Saved = 0 }
+	return { Version = PlayerData.VERSION, Moneten = 0, Attributes = attributes, Coins = {}, Saved = 0 }
 end
 
 -- Ältere Profile auf den neuesten Stand bringen (hier kommen später Umbauten hin)
@@ -53,7 +53,9 @@ function PlayerData.Migrate(data)
 	if type(data) ~= "table" then return PlayerData.NewProfile() end
 	data.Attributes = data.Attributes or {}
 	data.Coins = data.Coins or {}
-	data.Taler = tonumber(data.Taler) or 0
+	-- früher hieß die Währung „Taler“: alte Profile übernehmen
+	data.Moneten = tonumber(data.Moneten) or tonumber(data.Taler) or 0
+	data.Taler = nil
 	data.Version = data.Version or 1
 	-- Beispiel für später: if data.Version < 2 then ... data.Version = 2 end
 	for k, v in pairs(DEFAULTS) do
@@ -165,7 +167,7 @@ local function keyOf(player) return "Spieler_" .. player.UserId end
 
 local function talerValue(player)
 	local stats = player:FindFirstChild("leaderstats")
-	local t = stats and stats:FindFirstChild("Taler")
+	local t = stats and stats:FindFirstChild("Moneten")
 	return t and t.Value or 0
 end
 
@@ -181,7 +183,7 @@ end
 
 -- Stand vom Spieler ins Profil übernehmen (vor dem Speichern)
 local function collect(player, profile)
-	profile.Taler = talerValue(player)
+	profile.Moneten = talerValue(player)
 	local attributes = {}
 	for name, value in pairs(player:GetAttributes()) do
 		if keep(name) then attributes[name] = value end
@@ -231,9 +233,9 @@ end
 local function apply(player, profile)
 	local stats = player:FindFirstChild("leaderstats") or Instance.new("Folder")
 	stats.Name = "leaderstats"
-	local taler = stats:FindFirstChild("Taler") or Instance.new("NumberValue")
-	taler.Name = "Taler"
-	taler.Value = profile.Taler
+	local taler = stats:FindFirstChild("Moneten") or Instance.new("NumberValue")
+	taler.Name = "Moneten"
+	taler.Value = profile.Moneten
 	taler.Parent = stats
 	stats.Parent = player
 	for name, value in pairs(profile.Attributes) do
@@ -301,7 +303,7 @@ function PlayerData.SendInventory(player)
 	end
 end
 
--- Spielstand auf Anfang (Admin Panel): Taler, Fortschritt und Münzen wie bei einem neuen Spieler.
+-- Spielstand auf Anfang (Admin Panel): Moneten, Fortschritt und Münzen wie bei einem neuen Spieler.
 -- Einstellungen (Set_) bleiben. Andere Skripte mit eigenem Stand hören auf PlayerData.Resetted (z. B. der Garten).
 PlayerData.Resetted = Instance.new("BindableEvent")
 function PlayerData.Reset(player)
@@ -312,10 +314,10 @@ function PlayerData.Reset(player)
 		if keep(name) and string.sub(name, 1, 4) ~= "Set_" then player:SetAttribute(name, nil) end
 	end
 	profile.Coins = fresh.Coins
-	profile.Taler = fresh.Taler
+	profile.Moneten = fresh.Moneten
 	local stats = player:FindFirstChild("leaderstats")
-	local taler = stats and stats:FindFirstChild("Taler")
-	if taler then taler.Value = fresh.Taler end
+	local taler = stats and stats:FindFirstChild("Moneten")
+	if taler then taler.Value = fresh.Moneten end
 	for name, value in pairs(fresh.Attributes) do
 		player:SetAttribute(name, value)
 	end

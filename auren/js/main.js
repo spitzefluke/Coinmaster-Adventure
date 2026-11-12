@@ -43,7 +43,7 @@ function renderGrid() {
           <div class="card-info">
             <p class="pill">${r.name}</p>
             <h2>${a.name}</h2>
-            <p class="meta"><span class="price">${fmtPrice(a.price)} Taler</span><span class="bonus">${bonusText(a)}</span></p>
+            <p class="meta"><span class="price">${fmtPrice(a.price)} Moneten</span><span class="bonus">${bonusText(a)}</span></p>
           </div>
           <button type="button" data-open="${a.id}" aria-label="${a.name} ansehen"></button>
         </article>`;
@@ -180,7 +180,7 @@ function openDetail(a) {
   $('detail-rarity').textContent = r.name;
   $('detail-name').textContent = a.name;
   $('detail-text').textContent = a.text;
-  $('detail-price').textContent = `${fmtPrice(a.price)} Taler`;
+  $('detail-price').textContent = `${fmtPrice(a.price)} Moneten`;
   $('detail-bonus').textContent = bonusText(a);
   $('detail-theme').textContent = themeById[a.theme].name;
   $('detail-parts').textContent = partsOf(a);

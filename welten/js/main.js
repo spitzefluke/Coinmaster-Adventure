@@ -250,7 +250,7 @@ function unlockText(w) {
   const parts = [];
   if (i === 0 && p.portal) parts.push(`${p.portal.name}: ${portalNeeds(p)}`);
   if (i > 0) parts.push(`nach „${list[i - 1].name}“`);
-  if (w.price) parts.push(`${fmtPrice(w.price)} Taler`);
+  if (w.price) parts.push(`${fmtPrice(w.price)} Moneten`);
   return parts.length ? parts.join(' · ') : 'Startwelt, von Anfang an offen';
 }
 
@@ -326,7 +326,7 @@ function renderInfo() {
     <h2>${w.name}</h2>
     <p class="info-text">${w.text}</p>
     <dl class="facts">
-      <div><dt>Preis</dt><dd>${w.price ? `${fmtPrice(w.price)} Taler` : 'Gratis'}</dd></div>
+      <div><dt>Preis</dt><dd>${w.price ? `${fmtPrice(w.price)} Moneten` : 'Gratis'}</dd></div>
       <div><dt>Glück</dt><dd>${fmtLuck(w)}</dd></div>
       <div><dt>Münzwert</dt><dd>${fmtValue(w)}</dd></div>
       <div><dt>Münzen</dt><dd>alle 50</dd></div>
@@ -366,7 +366,7 @@ function renderStrip() {
           <span class="card-img">${w.soon ? '<span class="card-q">?</span>' : `<img alt="" data-thumb="${w.id}">`}</span>
           <span class="card-num">${w.soon ? '···' : `Welt ${i + 1}`}${w.neu ? '<span class="new-badge">Neu</span>' : ''}</span>
           <span class="card-name">${w.name}</span>
-          <span class="card-price">${w.soon ? 'Bald' : w.price ? `${fmtPrice(w.price)} Taler` : 'Startwelt'}</span>
+          <span class="card-price">${w.soon ? 'Bald' : w.price ? `${fmtPrice(w.price)} Moneten` : 'Startwelt'}</span>
         </button>
       </li>`)
     .join('');
@@ -393,7 +393,7 @@ function portalNeeds(p) {
   return [sn ? (sn > 1 ? `${sn} Supernovas` : 'Supernova') : '', n ? `${n} Wiedergeburt${n > 1 ? 'en' : ''}` : ''].filter(Boolean).join(' und ');
 }
 
-$('rebirth-text').textContent = `Für ${fmtPrice(REBIRTH.cost(0))} Taler (danach jeweils viermal so viel) wirst du wiedergeboren: Deine Taler sind weg, aber jede Münze ist für immer ${Math.round(REBIRTH.bonus * 100)} % mehr wert. Welten, Münzen, Level und Skills bleiben.`;
+$('rebirth-text').textContent = `Für ${fmtPrice(REBIRTH.cost(0))} Moneten (danach jeweils viermal so viel) wirst du wiedergeboren: Deine Moneten sind weg, aber jede Münze ist für immer ${Math.round(REBIRTH.bonus * 100)} % mehr wert. Welten, Münzen, Level und Skills bleiben.`;
 $('portal-text').textContent = PLANETS.filter((p) => p.portal && !p.soon)
   .map((p) => {
     const prev = PLANETS[PLANETS.indexOf(p) - 1];
@@ -403,7 +403,7 @@ $('portal-text').textContent = PLANETS.filter((p) => p.portal && !p.soon)
   .join(' ');
 {
   const g = GALAXIES.find((x) => x.supernovas === 1);
-  $('supernova-text').textContent = `Ab ${SUPERNOVA.rebirths} Wiedergeburten wirst du zur Supernova: Taler und Wiedergeburten gehen auf 0, dafür ist alles für immer ${SUPERNOVA.bonus}-mal so viel wert und ${g.name} öffnet sich, eine neue Galaxie mit ${PLANETS.filter((p) => p.galaxy === g.id).length} Planeten. Dort findest du Edelsteine statt Münzen. Welten, Münzen, Level und Skills bleiben.`;
+  $('supernova-text').textContent = `Ab ${SUPERNOVA.rebirths} Wiedergeburten wirst du zur Supernova: Moneten und Wiedergeburten gehen auf 0, dafür ist alles für immer ${SUPERNOVA.bonus}-mal so viel wert und ${g.name} öffnet sich, eine neue Galaxie mit ${PLANETS.filter((p) => p.galaxy === g.id).length} Planeten. Dort findest du Edelsteine statt Münzen. Welten, Münzen, Level und Skills bleiben.`;
 }
 $('rebirth-table').innerHTML = `
   <caption>Wiedergeburten</caption>
@@ -411,7 +411,7 @@ $('rebirth-table').innerHTML = `
   <tbody>${[0, 1, 2, 3, 4, 5]
     .map((n) => {
       const opens = PLANETS.filter((p) => p.portal?.rebirths === n + 1).map((p) => `${p.portal.name} → ${p.name}`).join(', ');
-      return `<tr><td>${n + 1}</td><td>${fmtPrice(REBIRTH.cost(n))} Taler</td><td>×${rebirthMultiplier(n + 1).toLocaleString('de-DE')}</td><td>${opens || '–'}</td></tr>`;
+      return `<tr><td>${n + 1}</td><td>${fmtPrice(REBIRTH.cost(n))} Moneten</td><td>×${rebirthMultiplier(n + 1).toLocaleString('de-DE')}</td><td>${opens || '–'}</td></tr>`;
     })
     .join('')}</tbody>`;
 

@@ -5,14 +5,15 @@
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { weatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel, canSupernova, supernova, supernovaMultiplier, nextGalaxy, findsGems, findGem, addGems, takeGems, gemCount } from './state.js';
-import { GEMS, gemById } from '../../edelsteine/js/gems.js';
+import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel, canSupernova, supernova, supernovaMultiplier, nextGalaxy, wallet, spend, findsGems, findGem, addGems, takeGems, gemCount, gemCapacity, canBuyGemBag } from './state.js';
+import { GEMS, gemById, GEM_BAGS } from '../../edelsteine/js/gems.js';
+import { rollPet, petById, FRUIT_XP, feedPetXp, PET_MAX_LEVEL } from '../../haustiere/js/pets.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
 import { createRobloxUi } from './robloxUi.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
-import { planetById, worldById, PLANETS, WORLDS, SUPERNOVA } from '../../welten/js/worlds.js';
+import { planetById, worldById, PLANETS, WORLDS, SUPERNOVA, currencyOfWorld } from '../../welten/js/worlds.js';
 import { ADMIN } from './admin.js';
 import { createWorldBg } from './worldBg.js';
 import { newGarden, gardenAct, lootById, lootName } from '../../garten/js/garden.js';
@@ -60,7 +61,11 @@ function renderHud() {
   if (!rui) return;
   const w = currentWorld(state), p = planetById[w.planet];
   const set = (k, v) => rui.setAttr(k, v);
-  set('Taler', Math.floor(state.taler));
+  set('Moneten', Math.floor(state.taler));
+  set('Diamantstaub', Math.floor(state.staub || 0));
+  set('GemBag', state.gemBag || 1);
+  // Haustiere (in Roblox als JSON im Attribut Pets): U = Nummer, Id, L = Level, X = EP
+  set('Pets', JSON.stringify((state.pets || []).map((p) => ({ U: p.u, Id: p.id, L: p.lvl, X: p.xp }))));
   set('Level', state.level);
   set('XP', Math.floor(state.xp));
   set('XPMax', xpForLevel(state.level));
@@ -239,8 +244,14 @@ function find() {
 
 // Im Juwelnebel: Edelsteine statt Münzen (eigener Beutel, belegt keine Inventarplätze)
 function findGemHere() {
+  const space = gemCapacity(state) - gemCount(state);
+  if (space <= 0) {
+    toast('Edelstein-Tasche voll. Verkaufe Edelsteine oder kaufe im Shop eine größere Tasche.', '#ff8a96');
+    return;
+  }
   const r = findGem(state);
   const gem = gemById[r.gem];
+  r.count = Math.min(r.count, space);
   addGems(state, gem.id, r.count, r.value);
   const before = state.level;
   const ups = addXp(state, r.xp);
@@ -382,15 +393,15 @@ function invoke(action, a, b) {
   };
   if (action === 'buyEgg') {
     const e = EGGS.find((x) => x.id === a);
-    if (!e?.price || e.price.currency !== 'muenzen') return [false, 'Dieses Ei gibt es nicht für Taler'];
-    if (!pay(eggPrice(state, e.price.amount))) return [false, 'Zu wenig Taler'];
+    if (!e?.price || e.price.currency !== 'muenzen') return [false, 'Dieses Ei gibt es nicht für Moneten'];
+    if (!pay(eggPrice(state, e.price.amount))) return [false, 'Zu wenig Moneten'];
     state.eggs[e.id] = (state.eggs[e.id] || 0) + 1;
     return done(`${e.name} gekauft`);
   }
   if (action === 'buyBoost') {
     const bo = BOOSTS.find((x) => x.id === a);
     if (!bo) return [false, 'Diesen Boost gibt es nicht'];
-    if (!pay(bo.price)) return [false, 'Zu wenig Taler'];
+    if (!pay(bo.price)) return [false, 'Zu wenig Moneten'];
     state.boosts[bo.id] = Math.max(Date.now(), state.boosts[bo.id] || 0) + bo.minutes * 60000;
     return done(`${bo.name} aktiv`);
   }
@@ -408,7 +419,7 @@ function invoke(action, a, b) {
       return done(`${au.name} angelegt: ${bonusText(au)}`);
     }
     if (state.auras.includes(au.id)) return [false, 'Schon gekauft'];
-    if (!pay(au.price)) return [false, 'Zu wenig Taler'];
+    if (!pay(au.price)) return [false, 'Zu wenig Moneten'];
     state.auras.push(au.id);
     state.aura = au.id;
     return done(`${au.name} gekauft und angelegt`);
@@ -420,7 +431,7 @@ function invoke(action, a, b) {
     const roll = rollById[a];
     if (!roll) return [false, 'Diese Rolle gibt es nicht'];
     if (roll.price.currency !== 'taler') return [false, 'Robux-Käufe gibt es erst im Spiel'];
-    if (!pay(roll.price.amount)) return [false, 'Zu wenig Taler'];
+    if (!pay(roll.price.amount)) return [false, 'Zu wenig Moneten'];
     const item = openRoll(roll);
     state.garden.Inv[item.id] = (state.garden.Inv[item.id] || 0) + 1;
     save();
@@ -451,14 +462,14 @@ function invoke(action, a, b) {
     });
     if (!count) return [false, 'Keine Münze gewählt'];
     state.taler = Math.round((state.taler + total) * 100) / 100;
-    return done(`${count} Münze${count > 1 ? 'n' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Taler verkauft`);
+    return done(`${count} Münze${count > 1 ? 'n' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Moneten verkauft`);
   }
   // Welten, Portale, Wiedergeburt
   if (action === 'buyWorld') {
     const w = worldById[a];
     const why = w ? canBuyWorld(state, a) : 'Diese Welt gibt es nicht';
     if (why) return [false, why];
-    state.taler -= w.price;
+    spend(state, currencyOfWorld(w).id, w.price);
     state.worlds.push(w.id);
     save();
     teleport(w.id, true);
@@ -489,8 +500,50 @@ function invoke(action, a, b) {
       total += v;
     }
     if (!count) return [false, 'Kein Edelstein gewählt'];
-    state.taler = Math.round((state.taler + total) * 100) / 100;
-    return done(`${count} Edelstein${count > 1 ? 'e' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Taler verkauft`);
+    state.staub = Math.round(((state.staub || 0) + total) * 100) / 100;
+    return done(`${count} Edelstein${count > 1 ? 'e' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Diamantstaub verkauft`);
+  }
+  // Haustiere: Ei aus dem Inventar schlüpfen lassen, mit Früchten aus dem Garten füttern
+  if (action === 'hatch') {
+    if (!(state.eggs[a] > 0)) return [false, 'Dieses Ei hast du nicht'];
+    const pet = rollPet(a);
+    if (!pet) return [false, 'Aus diesem Ei schlüpft noch nichts'];
+    state.eggs[a]--;
+    state.pets ||= [];
+    const u = (state.pets.reduce((m, p) => Math.max(m, p.u), 0) || 0) + 1;
+    state.pets.push({ u, id: pet.id, lvl: 1, xp: 0 });
+    flash(pet.glow);
+    sound(1.6);
+    save();
+    renderHud();
+    return [true, `${pet.name} geschlüpft! (${pet.rarityName})`, pet.id];
+  }
+  if (action === 'feedPet') {
+    const pet = (state.pets || []).find((p) => p.u === Number(a));
+    const [treeId, n0] = String(b || '').split('|');
+    const tree = lootById[treeId];
+    const have = state.garden.Fruits?.[treeId] || 0;
+    if (!pet) return [false, 'Dieses Haustier gibt es nicht'];
+    if (!tree || have <= 0) return [false, 'Keine solche Frucht im Inventar'];
+    if (pet.lvl >= PET_MAX_LEVEL) return [false, 'Schon auf dem höchsten Level'];
+    const n = Math.min(have, Math.max(1, Math.floor(Number(n0) || 1)));
+    state.garden.Fruits[treeId] = have - n;
+    if (state.garden.Fruits[treeId] <= 0) delete state.garden.Fruits[treeId];
+    const xp = (FRUIT_XP[tree.rarity] || 1) * n;
+    const ups = feedPetXp(pet, xp);
+    const name = petById[pet.id]?.name || 'Haustier';
+    if (ups) flash('#9be8b5');
+    return done(ups ? `${name} ist jetzt Level ${pet.lvl}! (+${xp} EP)` : `${name} frisst ${n === 1 ? tree.fruitName : n + ' ' + tree.fruitPlural}: +${xp} EP`);
+  }
+  if (action === 'buyGemBag') {
+    const nr = Number(a);
+    const why = canBuyGemBag(state, nr);
+    if (why) return [false, why];
+    const bag = GEM_BAGS[nr - 1];
+    state.staub -= bag.price;
+    state.gemBag = nr;
+    flash('#8af0ff');
+    return done(`${bag.name} gekauft: Platz für ${fmtNumber(bag.capacity)} Edelsteine`);
   }
   if (action === 'supernova') {
     const why = canSupernova(state);
@@ -507,16 +560,17 @@ function invoke(action, a, b) {
     return done(`Test: ${state.rebirths} Wiedergeburten`);
   }
   if (action === 'rebirth') {
-    if (canRebirth(state)) return [false, 'Zu wenig Taler'];
+    if (canRebirth(state)) return [false, 'Zu wenig Moneten'];
     rebirth(state);
     flash('#ffd76a');
     sound(1.5);
     return done(`Wiedergeburt ${state.rebirths}! Münzwert jetzt ×${rebirthMultiplier(state.rebirths).toLocaleString('de-DE')}`);
   }
-  // nur Vorschau: Taler verzehnfachen, um spätere Welten auszuprobieren
+  // nur Vorschau: Moneten verzehnfachen, um spätere Welten auszuprobieren
   if (action === 'testTaler') {
     state.taler = Math.max(1e6, Math.round(state.taler * 10));
-    return done(`Test: ${fmtNumber(state.taler, true)} Taler`);
+    if (state.supernovas) state.staub = Math.max(1e4, Math.round((state.staub || 0) * 10));
+    return done(`Test: ${fmtNumber(state.taler, true)} Moneten${state.supernovas ? ` · ${fmtNumber(state.staub, true)} Diamantstaub` : ''}`);
   }
   // Skills
   if (action === 'learn') {
@@ -621,7 +675,7 @@ const SAMPLE_PLAYERS = [
   ['KometenKai', 'KometenKai', 63, 2.1e8, 'saturn', 13, 7, 330, 6120, 11, 9, 77],
   ['PerlenPia', 'PerlenPia', 5, 1900, 'normal', 1, 0, 12, 40, 1, 0, 3],
 ].map(([name, display, level, taler, world, worlds, rebirths, coins, found, eggs, auras, minutes], i) => ({
-  UserId: 1000001 + i * 7919, Name: name, DisplayName: display, Level: level, Taler: taler, World: worldById[world]?.name ?? world,
+  UserId: 1000001 + i * 7919, Name: name, DisplayName: display, Level: level, Moneten: taler, World: worldById[world]?.name ?? world,
   Worlds: worlds, Rebirths: rebirths, Coins: coins, Found: found, Eggs: eggs, Auras: auras, Minutes: minutes, Ready: true,
 }));
 const ME_ID = 1;
@@ -650,7 +704,7 @@ function mePlayer() {
   const w = currentWorld(state);
   const eggs = Object.values(state.eggs).reduce((a, n) => a + n, 0);
   return {
-    UserId: ME_ID, Name: 'Vorschau', DisplayName: 'Du', Me: true, Admin: true, Ready: true, Level: state.level, Taler: Math.floor(state.taler),
+    UserId: ME_ID, Name: 'Vorschau', DisplayName: 'Du', Me: true, Admin: true, Ready: true, Level: state.level, Moneten: Math.floor(state.taler),
     World: w.name, Worlds: state.worlds.length, Rebirths: state.rebirths, Supernovas: state.supernovas | 0, Coins: state.inventory.length, Found: state.inventory.length + (state.sold ?? 0),
     Eggs: eggs, Auras: (state.auras || []).length, Minutes: Math.floor((Date.now() - PAGE_START) / 60000),
   };
@@ -752,7 +806,7 @@ function adminAct(sub, json) {
       }
       const p = other(a.UserId);
       if (!p) return [false, 'Spieler ist nicht (mehr) auf dem Server'];
-      Object.assign(p, { Level: 1, Taler: 0, World: 'Spawn', Worlds: 1, Rebirths: 0, Coins: 0, Found: 0, Eggs: 0, Auras: 0 });
+      Object.assign(p, { Level: 1, Moneten: 0, World: 'Spawn', Worlds: 1, Rebirths: 0, Coins: 0, Found: 0, Eggs: 0, Auras: 0 });
       return ok(`Spielstand von ${p.DisplayName} zurückgesetzt`, `Spielstand von ${p.Name} zurückgesetzt`);
     }
     case 'announce': {

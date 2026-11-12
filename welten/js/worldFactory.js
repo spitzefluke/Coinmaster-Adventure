@@ -1760,7 +1760,7 @@ function portalArch(world, planetColor, anims, rand) {
   swirl.scale.y = 1.45;
   swirl.userData.rbx = { skip: true };
   g.add(swirl);
-  const price = soon ? 'Bald' : world.price ? `${fmtShort(world.price)} Taler` : 'Gratis';
+  const price = soon ? 'Bald' : world.price ? `${fmtShort(world.price)} Moneten` : 'Gratis';
   const sign = signBoard(soon ? 'Coming soon' : world.name, { w: 2.2, h: 0.62, bg: '#1e1a26', fg: col, sub: price });
   sign.position.set(0, 4.25, 0);
   g.add(sign);

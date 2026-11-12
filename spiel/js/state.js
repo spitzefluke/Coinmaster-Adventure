@@ -1,4 +1,4 @@
-// Spielstand der UI-Vorschau: Taler, Level, Skills, Inventar, Eier, Boosts, Einstellungen.
+// Spielstand der UI-Vorschau: Moneten, Level, Skills, Inventar, Eier, Boosts, Einstellungen.
 // Liegt im localStorage dieses Browsers. Ein neuer Spielstand startet mit einem Beispiel,
 // damit alle Oberflächen gleich etwas zeigen.
 
@@ -6,8 +6,8 @@ import { COINS, TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, rollMutation, weatherAt } from '../../muenzen/js/mutations.js';
 import { SKILLS, skillById } from './skills.js';
 import { auraById } from '../../auren/js/auras.js';
-import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier, SUPERNOVA, supernovaMultiplier, galaxyById, galaxyOfWorld } from '../../welten/js/worlds.js';
-import { GEMS, gemById, gemBaseValue } from '../../edelsteine/js/gems.js';
+import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier, SUPERNOVA, supernovaMultiplier, galaxyById, galaxyOfWorld, currencyOfWorld } from '../../welten/js/worlds.js';
+import { GEMS, gemById, gemBaseValue, GEM_BAGS, gemBagByNr } from '../../edelsteine/js/gems.js';
 
 export { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../../js/settings.js';
 
@@ -52,7 +52,10 @@ function sampleState() {
     portals: ['p1'],
     rebirths: 0,
     supernovas: 0, // Supernova (Prestige): öffnet die nächste Galaxie
-    gems: {}, // Edelsteine: { id: { n: Anzahl, v: Gesamtwert in Talern } }
+    staub: 0, // Diamantstaub: Währung aus Edelsteinen (Juwelnebel)
+    pets: [], // geschlüpfte Haustiere: { u: Nummer, id: petId, lvl, xp }
+    gemBag: 1, // Nr. der Edelstein-Tasche (Kapazität)
+    gems: {}, // Edelsteine: { id: { n: Anzahl, v: Gesamtwert in Diamantstaub } }
     auras: [],
     aura: null, // angelegte Aura
     sample: true,
@@ -107,8 +110,14 @@ export function canBuyWorld(s, id) {
   if (!portalOpen(s, w.planet)) return `Erst das Portal öffnen`;
   const list = playable(w.planet), i = list.indexOf(w);
   if (i > 0 && !ownsWorld(s, list[i - 1].id)) return `Erst „${list[i - 1].name}“ kaufen`;
-  if (s.taler < w.price) return 'Zu wenig Taler';
+  if (wallet(s, currencyOfWorld(w).id) < w.price) return `Zu wenig ${currencyOfWorld(w).name}`;
   return null;
+}
+// Kontostand einer Währung ('moneten' oder 'staub')
+export const wallet = (s, cur) => (cur === 'staub' ? s.staub || 0 : s.taler);
+export function spend(s, cur, n) {
+  if (cur === 'staub') s.staub = Math.round(((s.staub || 0) - n) * 100) / 100;
+  else s.taler = Math.round((s.taler - n) * 100) / 100;
 }
 
 // Bedingungen für ein Portal: [Text, erfüllt?]
@@ -137,14 +146,14 @@ export function canOpenPortal(s, planetId) {
 }
 
 export const rebirthCost = (s) => REBIRTH.cost(s.rebirths);
-export const canRebirth = (s) => (s.taler >= rebirthCost(s) ? null : 'Zu wenig Taler');
+export const canRebirth = (s) => (s.taler >= rebirthCost(s) ? null : 'Zu wenig Moneten');
 export function rebirth(s) {
   s.taler = 0;
   s.rebirths++;
 }
 export { rebirthMultiplier, supernovaMultiplier };
 
-// Supernova: ab 100 Wiedergeburten, einmal pro weiterer Galaxie. Taler und Wiedergeburten gehen auf 0.
+// Supernova: ab 100 Wiedergeburten, einmal pro weiterer Galaxie. Moneten und Wiedergeburten gehen auf 0.
 export function canSupernova(s) {
   if ((s.supernovas | 0) >= SUPERNOVA.max) return 'Alle Galaxien sind schon offen';
   if (s.rebirths < SUPERNOVA.rebirths) return `Erst ${SUPERNOVA.rebirths} Wiedergeburten (du hast ${s.rebirths})`;
@@ -169,10 +178,10 @@ export const BOOSTS = [
 ];
 // Robux-Angebote im Shop (im Spiel über Developer Products)
 export const ROBUX = [
-  { id: 'taler-s', name: 'Beutel Taler', text: '5.000 Taler', robux: 49 },
-  { id: 'taler-m', name: 'Truhe Taler', text: '30.000 Taler', robux: 249, badge: 'Beliebt' },
+  { id: 'taler-s', name: 'Beutel Moneten', text: '5.000 Moneten', robux: 49 },
+  { id: 'taler-m', name: 'Truhe Moneten', text: '30.000 Moneten', robux: 249, badge: 'Beliebt' },
   { id: 'release', name: 'Release Egg', text: 'Nur zum Release des Spiels', robux: 199, badge: 'Limitiert' },
-  { id: 'vip', name: 'VIP-Pass', text: 'Doppelte Taler aus Verkäufen, für immer', robux: 499 },
+  { id: 'vip', name: 'VIP-Pass', text: 'Doppelte Moneten aus Verkäufen, für immer', robux: 499 },
 ];
 
 // Server-Boosts für alle (Admin Panel, in Roblox ServerBoost_<id> an ReplicatedStorage): Ende in ms
@@ -254,7 +263,7 @@ export function addGems(s, id, count, value) {
   g.n += count;
   g.v = Math.round((g.v + value * count) * 100) / 100;
 }
-// Edelsteine verkaufen: count Stück (Durchschnittswert) oder alle; gibt [Anzahl, Taler] zurück
+// Edelsteine verkaufen: count Stück (Durchschnittswert) oder alle; gibt [Anzahl, Diamantstaub] zurück
 export function takeGems(s, id, count) {
   const g = s.gems?.[id];
   if (!g || !gemById[id] || g.n <= 0) return [0, 0];
@@ -266,6 +275,14 @@ export function takeGems(s, id, count) {
   return [n, value];
 }
 export const gemCount = (s) => Object.values(s.gems || {}).reduce((a, g) => a + g.n, 0);
+export const gemCapacity = (s) => gemBagByNr(s.gemBag || 1).capacity;
+// Nächste Edelstein-Tasche kaufen (der Reihe nach, mit Diamantstaub)
+export function canBuyGemBag(s, nr) {
+  const bag = GEM_BAGS[nr - 1];
+  if (!bag || nr !== (s.gemBag || 1) + 1) return 'Der Reihe nach kaufen';
+  if ((s.staub || 0) < bag.price) return 'Zu wenig Diamantstaub';
+  return null;
+}
 
 // Erfahrung gutschreiben; gibt die Zahl der neuen Level zurück
 export function addXp(s, xp) {

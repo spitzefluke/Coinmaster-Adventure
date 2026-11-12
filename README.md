@@ -202,7 +202,7 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
   der Seltenheit, Baum-Bild, Glanzstreifen, eingerissener Ecke und Samen davor. Gesät wachsen sie im Garten mit
   sichtbarem Timer (Keimling, Schössling, Jungbaum, Knospen, ausgewachsen) zum Münzbaum.
 - **Werkzeug-Design:** Gießkannen mit Schulter, Zierband, Nieten, Bügel, Brause mit Löchern und Tropfen; Dünger als
-  gebundener Sack mit Etikett und Körnern; Talerbeutel mit Rüschen, Schleife und Talern; Spaten mit T-Griff,
+  gebundener Sack mit Etikett und Körnern; Monetenbeutel mit Rüschen, Schleife und Moneten; Spaten mit T-Griff,
   Edelstein-Manschette und runder Spitze; Truhe mit gewölbtem Deckel und Schatzberg. Akzente in der Farbe der
   Seltenheit, ab Episch Licht, ab Legendär Funkeln.
 - **Animiertes Wachsen:** `GardenBuilder.Animate(model, zeit, dt)` jedes Bild: Bäume wachsen stufenlos mit dem
@@ -212,10 +212,10 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
 
 | Rolle | Stufe | Inhalt | Glück | Mindestens | Preis (Vorschlag) |
 |---|---|---|---|---|---|
-| Kupferrolle | Normal | 1 | ×1 | Gewöhnlich | 300 Taler |
-| Silberrolle | Selten | 1 | ×1,6 | Selten | 3.000 Taler |
-| Goldrolle | Episch | 1 | ×2,5 | Episch | 20.000 Taler |
-| Juwelenrolle | Mystisch | 1 | ×4 | Legendär | 120.000 Taler |
+| Kupferrolle | Normal | 1 | ×1 | Gewöhnlich | 300 Moneten |
+| Silberrolle | Selten | 1 | ×1,6 | Selten | 3.000 Moneten |
+| Goldrolle | Episch | 1 | ×2,5 | Episch | 20.000 Moneten |
+| Juwelenrolle | Mystisch | 1 | ×4 | Legendär | 120.000 Moneten |
 | Sternenrolle (Robux-Rolle) | Limitiert | 1 | ×6 | Legendär | R$ 99 |
 
 - **Was in den Rollen steckt:** Unter den Rollen zeigt die Seite alle 18 Schätze (9 Münzbäume, 9 Werkzeuge) als
@@ -235,16 +235,15 @@ Das Glücks-Item zum Aufreißen (`rollen/`): Papierrollen mit einem Schatz für 
 
 ## Münzbaumgarten
 
-`garten/`: Ein kleiner Garten, den man für **25.000 Taler** kauft (4 Beete, erweiterbar bis 12; jedes weitere Beet
-kostet 15.000 Taler, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in fünf Phasen
+`garten/`: Ein kleiner Garten, den man für **25.000 Moneten** kauft (4 Beete, erweiterbar bis 12; jedes weitere Beet
+kostet 15.000 Moneten, danach jeweils das Doppelte). Bäume pflanzt man in Beete. Sie wachsen in fünf Phasen
 (Keimling, Schössling, Jungbaum, Knospen mit Blüten, ausgewachsen) und tragen dann Früchte. Jede Ernte bringt
-**Früchte statt Taler**, höchstens 3 warten am Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert
+**Früchte statt Moneten**, höchstens 3 warten am Baum. Die Vorschau hat einen Zeitraffer (×1, ×10, ×60) und speichert
 im Browser.
 
-- **Fruchtkorb und Marktstand:** Früchte landen im Korb (`Garden.Fruits`). Am Marktstand verkauft man sie zum
-  Marktpreis: Grundpreis × Faktor 0,6–1,8, je Baum verschieden und alle 10 Minuten neu (aus der Uhrzeit, für alle
-  gleich, `GardenData.MarketMult`). Oder man zieht aus so vielen Früchten, wie der Baum Ernten hat, einen neuen
-  Samen desselben Baums (`seed`-Aktion).
+- **Früchte:** Geerntete Früchte landen im Inventar (Reiter „Früchte“, gespeichert in `Garden.Fruits`). Verkaufen
+  kann man sie nicht mehr: Sie sind Futter für die Haustiere (siehe Haustiere). Oder man zieht aus so vielen
+  Früchten, wie der Baum Ernten hat, einen neuen Samen desselben Baums (`seed`-Aktion).
 - **Goldene Bäume:** Mit 5 % Chance wächst ein gesäter Baum golden (`Plot.Golden`): goldenes Laub, Funkeln, etwas
   größer und doppelte Früchte. Bei ??? heißt er „schillernd“ und sein Laub läuft durch alle Farben.
 - **Jeder Baum hat seine eigene Form** (Spalte „Form“), seltene Bäume sind größer (bis ×1,48 bei ???).
@@ -280,7 +279,7 @@ im Browser.
 
 | Werkzeug & mehr | Seltenheit | Wirkung |
 |---|---|---|
-| Talerbeutel | Gewöhnlich | +750 Taler |
+| Monetenbeutel | Gewöhnlich | +750 Moneten |
 | Blechkanne | Gewöhnlich | Baum wächst 1 min schneller |
 | Kupferkanne | Selten | 5 min schneller |
 | Dünger | Selten | ×2 Ernte für 10 min |
@@ -288,7 +287,7 @@ im Browser.
 | Goldener Spaten | Legendär | +1 Beet |
 | Regenbogenkanne | Legendär | Baum sofort ausgewachsen |
 | Zauberdünger | Mythisch | ×3 Ernte für 30 min |
-| Talertruhe | Göttlich | +250.000 Taler |
+| Monetentruhe | Göttlich | +250.000 Moneten |
 
 **Begrenztes Ernten:** Jeder Baum lässt sich nur so oft abernten, wie die Spalte „Ernten“ sagt (geerntet werden
 höchstens die Ernten, die er noch hergibt). Dann ist er abgeerntet und verschwindet, das Beet ist frei für neue
@@ -322,7 +321,7 @@ Aura und Licht, ab Göttlich ein Leuchtring im Beet; bei ??? schillert alles in 
 den Garten aus dem Boden (mit Überschwingen und Funken); Feuer und Funkeln gehen erst an, wenn ihr Teil steht
 (`garden.FenceFrom` in `GardenBuilder.Build`, abgespielt in `GardenBuilder.Animate`).
 
-**Neu im Werkzeug:** Kometendünger (Kosmisch, ×5 Ernte für 1 Stunde), Himmelstruhe (Himmlisch, +3.000.000 Taler).
+**Neu im Werkzeug:** Kometendünger (Kosmisch, ×5 Ernte für 1 Stunde), Himmelstruhe (Himmlisch, +3.000.000 Moneten).
 
 In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und Füllung je Stil),
 `LootBuilder.Fence` das Zaunstück, das aus der Rolle kommt.
@@ -337,13 +336,13 @@ In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und F
 ### Im Spiel (Roblox)
 
 - **Spiel-Oberfläche:** Menüknopf **🌱 Garten** öffnet das Fenster mit vier Reitern: *Beete* (Phase, Countdown,
-  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Korb* (Früchte mit Marktpreis und Trend, verkaufen, „Alles
-  verkaufen“, Samen ziehen, Countdown bis zu neuen Preisen), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
-  und dann ein Beet antippen, Talerbeutel und Spaten direkt benutzen) und *Rollen* (kaufen und öffnen). Nach dem
+  Ernten, Ausgraben, „Alles ernten“, Beet kaufen), *Früchte* (wie viel Pet-EP jede Frucht gibt, Samen ziehen,
+  „Haustiere füttern“), *Sachen* (Inventar aus den Rollen: Bäume und Kannen auswählen
+  und dann ein Beet antippen, Monetenbeutel und Spaten direkt benutzen) und *Rollen* (kaufen und öffnen). Nach dem
   Öffnen spielt `GameUI.PlayRoll` die Animation `RollFx` vor dem Spieler. „🚪 Zum Garten“ teleportiert zum Garten.
 - **Server** (`ServerScriptService > CoinmasterGarden`): RemoteFunction `GardenRemote` mit `openRoll` und den
   Garten-Aktionen aus `GardenData.Act` (buyGarden, buyBed, plant, use, harvest, dig, fence, sell, seed). Der Server würfelt, prüft
-  Taler, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
+  Moneten, Beete und Inventar und schreibt den Stand als JSON ins Attribut `Garden`. Mindestens 0,2 s zwischen
   zwei Aufrufen.
 - **Speichern:** mit dem ganzen Spielstand über `PlayerData` (Attribut `Garden`, siehe „Speichern in Roblox“).
   Garten-Aufträge gibt es erst, wenn der Spielstand geladen ist. Robux-Rollen werden erst bestätigt, wenn der
@@ -358,6 +357,13 @@ In Roblox baut `LootBuilder.FenceRun` den Zaun im gewählten Stil (Pfosten und F
   `garten/js/garden.js`, die JS-Fassung von `GardenData.Act`.
 
 ## Haustiere
+
+**Schlüpfen und Füttern (Spiel):** Im Inventar hat jedes Ei den Knopf „🐣 Schlüpfen“: Das Haustier wird nach den
+Chancen gezogen, mit großer Ansage je nach Seltenheit (`GameUI.PetReveal`), und steht dann unter „Haustiere“.
+Dort füttert man es mit Früchten aus dem Münzbaumgarten (einzeln oder ×10, Futter oben auswählen). Jede Frucht
+gibt ein paar EP, je seltener der Baum, desto mehr (`FRUIT_XP`: Gewöhnlich 1 bis ??? 40); ein Haustier steigt so
+langsam bis Level 50 (`petXpFor(n) = 10 · n^1,5`). In Roblox steht die Liste im Attribut `Pets` (JSON, wird
+gespeichert); `ShopRemote` kennt `hatch` und `feedPet`, die Regeln stehen in `PetData` (`FruitXp`, `XpFor`, `AddXp`).
 
 `haustiere/` zeigt alle 99 Pets: 11 Eier mit je 9 Pets, eins pro Seltenheit. Als Karten je Ei mit Seltenheit,
 Drop-Chance und kurzer Beschreibung, oben eine Übersicht der Seltenheiten und Filter nach Ei. Die früheren
@@ -412,9 +418,11 @@ noch nicht mit dem Inventar verbunden.
 
 `edelsteine/` zeigt die 20 Edelsteine aus dem Juwelnebel (Galaxie 2, nach der Supernova). Dort findet man
 Edelsteine statt Münzen. Sie haben dieselben 10 Seltenheitsstufen und Drop-Chancen wie die Münzen, je zwei
-Steine pro Stufe, und sind zehnmal so viel wert (`GEM_FACTOR`).
+Steine pro Stufe. Edelsteine bringen eine eigene Währung, **Diamantstaub** (zehnmal so viel, wie eine Münze derselben
+Stufe an Moneten bringt, `GEM_FACTOR`). Mit Diamantstaub kauft man die Welten des Juwelnebels und die Edelstein-Taschen.
+Im HUD steht er unter den Moneten, sobald man eine Supernova hatte (Attribut `Diamantstaub`, wird gespeichert).
 
-| Stufe | Steine | Grundwert (Taler) |
+| Stufe | Steine | Grundwert (Diamantstaub) |
 |---|---|---|
 | Normal | Quarz, Rosenquarz | 10 |
 | Selten | Achat, Jaspis | 50 |
@@ -434,6 +442,10 @@ Steine pro Stufe, und sind zehnmal so viel wert (`GEM_FACTOR`).
   verkaufen geht einzeln, je Stein alle oder alles auf einmal. In der Vorschau zeigt „Münze suchen“ im
   Juwelnebel „Edelstein suchen“ (lila Knopf), der Fund kommt mit Edelstein-Karte und Effekten je nach Stufe
   (`GameUI.FoundGem`).
+- **Edelstein-Taschen:** 50 eigene Taschen in 5 Stufen (Splitter, Kristall, Juwel, Prisma, Supernova), vom
+  Quarzsäckchen (25 Plätze, gratis) bis zum Herz des Juwelnebels (100.000 Plätze, 5 Mrd. Diamantstaub). Man kauft sie
+  der Reihe nach im Shop (Reiter „Taschen“); ist die Tasche voll, findet man keine Edelsteine mehr. Daten:
+  `GEM_BAGS` in `edelsteine/js/gems.js`, in Roblox `GemData.Bags` und das Attribut `GemBag`, Kauf über `buyGemBag`.
 - **Roblox:** Modul `GemData`. Am Spieler `Gem_<id>` (Anzahl) und `GemValue_<id>` (Gesamtwert), beide werden
   gespeichert. Ein Fund-Skript auf dem Server schreibt sie über das BindableEvent `GemFound`
   (`GemFound:Fire(player, gemId, anzahl, wertProStein)`), verkauft wird über `ShopRemote` (`sellGem`, `sellGems`).
@@ -443,17 +455,17 @@ Steine pro Stufe, und sind zehnmal so viel wert (`GEM_FACTOR`).
 **Galaxien und Supernova (Prestige):** Die Planeten 1 bis 4 liegen in der **Milchstraße**. Mit 100
 Wiedergeburten kann man einmal zur **Supernova** werden (Welten > Reiter „Supernova“, zweimal klicken):
 
-- Taler und Wiedergeburten gehen auf 0, Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben.
+- Moneten und Wiedergeburten gehen auf 0, Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben.
 - Alles ist danach für immer fünfmal so viel wert (`SUPERNOVA.bonus`, zusätzlich zu den Wiedergeburten).
 - Die zweite Galaxie **Juwelnebel** öffnet sich. Dort findet man Edelsteine statt Münzen.
 
-| Planet | Portal | Braucht | Welten (Preis, Glück, Wert) |
+| Planet | Portal | Braucht | Welten (Preis in Diamantstaub) |
 |---|---|---|---|
-| Planet 5 · Kristallplanet | Sternentor | Supernova | Quarzfeld (2 Bio.), Amethystgrotte (6 Bio.), Topasdünen (20 Bio.) |
-| Planet 6 · Smaragdplanet | Kristallbrücke | Topasdünen, 2 Wiedergeburten | Smaragdwald (60 Bio.), Jadetempel (200 Bio.), Saphirsee (600 Bio.) |
-| Planet 7 · Diamantplanet | Diamantaufzug | Saphirsee, 5 Wiedergeburten | Rubinvulkan (2 Brd.), Opalwolken (6 Brd.), Diamantkern (20 Brd.) |
+| Planet 5 · Kristallplanet | Sternentor | Supernova | Quarzfeld (gratis), Amethystgrotte (25K), Topasdünen (100K) |
+| Planet 6 · Smaragdplanet | Kristallbrücke | Topasdünen, 2 Wiedergeburten | Smaragdwald (400K), Jadetempel (1,5 Mio.), Saphirsee (6 Mio.) |
+| Planet 7 · Diamantplanet | Diamantaufzug | Saphirsee, 5 Wiedergeburten | Rubinvulkan (25 Mio.), Opalwolken (100 Mio.), Diamantkern (400 Mio.) |
 
-Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Wert von ×320 bis ×2.300.
+Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Edelstein-Wert von ×1 bis ×14.
 
 - **Daten:** `welten/js/worlds.js`: `GALAXIES` (mit `find: 'coins' | 'gems'`), Planeten mit `galaxy`, Portale
   mit `supernovas`, `SUPERNOVA` (`rebirths: 100`, `bonus: 5`, eine Supernova pro weiterer Galaxie). Das Portal zum
@@ -469,7 +481,7 @@ Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Wert von 
 - **Roblox:** `WorldData.Galaxies`, `PlanetsOf`, `GalaxyOfWorld`, `FindsGems`, `Supernova`, `SupernovaMultiplier`,
   `CanSupernova`, `NextGalaxy`; das Attribut `Supernovas` wird gespeichert. `ShopRemote` kennt die Aktion
   `supernova` (prüft der Server mit `WorldData.CanSupernova`).
-- **Achtung Balance:** Eine Wiedergeburt kostet 1 Mio. Taler × 4ⁿ. Die 100. kostet damit rund 10⁶⁵ Taler, also
+- **Achtung Balance:** Eine Wiedergeburt kostet 1 Mio. Moneten × 4ⁿ. Die 100. kostet damit rund 10⁶⁵ Moneten, also
   praktisch unerreichbar, solange die Kosten so steigen. Bevor die Supernova im Spiel erreichbar ist, muss die
   Kostenkurve der Wiedergeburt flacher werden (`REBIRTH.cost` in `welten/js/worlds.js`).
 
@@ -639,7 +651,7 @@ Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumen
 
 In der Weltkarte lassen sich alle Bereiche anklicken. In der Spiel-Oberfläche kann man sie im 3D-Hintergrund
 antippen, und die Spawn-Leiste öffnet **Belohnungen** (sieben Tage Serie, Glücksrad einmal am Tag, Gruppe),
-**Ranglisten** (Taler, Münzen, Wiedergeburten, Level, mit deinem Platz) und **Codes** (`spiel/js/rewards.js`;
+**Ranglisten** (Moneten, Münzen, Wiedergeburten, Level, mit deinem Platz) und **Codes** (`spiel/js/rewards.js`;
 Vorschau-Codes: COINMASTER, SPAWN, GLUECK, RELEASE, DANKE). Im Roblox-Export ist `00-Spawn.rbxmx` dabei,
 mit `SpawnLocation`, Teilen `Portal_<WeltId>` und Schildern mit SurfaceGui-Text.
 
@@ -656,8 +668,8 @@ Sturm, Blasen …).
 
 - In jeder Welt findet man **alle Münzen**. Spätere Welten erhöhen die Chance auf seltene Stufen
   (`luck`) und den Münzwert (`value`).
-- Welten kauft man pro Planet der Reihe nach mit **Talern**.
-- **Wiedergeburt:** kostet Taler (1 Mio., danach jeweils ×4), setzt die Taler auf 0 und macht
+- Welten kauft man pro Planet der Reihe nach mit **Moneten**.
+- **Wiedergeburt:** kostet Moneten (1 Mio., danach jeweils ×4), setzt die Moneten auf 0 und macht
   jede Münze dauerhaft 50 % mehr wert. Welten, Münzen, Level und Skills bleiben.
 - **Planet 3 (Tiefsee)** hat Lichtmuster auf dem Meeresboden, Quallen, Schildkröten, einen Mantarochen,
   Anemonen mit Clownfischen, Kelp und Seeigel. Wahrzeichen: Schiffswrack und Korallenbogen
@@ -703,7 +715,7 @@ Sturm, Blasen …).
 
 In der Spiel-Oberfläche gibt es dazu das Fenster **Welten** (Taste W) zum Kaufen, Teleportieren,
 Öffnen von Portalen und für die Wiedergeburt. Die aktuelle Welt läuft dort als 3D-Hintergrund.
-Der Knopf „+ Test-Taler“ gibt es nur in der Vorschau, damit man spätere Welten ausprobieren kann.
+Der Knopf „+ Test-Moneten“ gibt es nur in der Vorschau, damit man spätere Welten ausprobieren kann.
 
 ## Wetter
 
@@ -757,7 +769,7 @@ Roblox-Module `AuraData` und `AuraFx` aus und zeigt die Aura an einer Roblox-Fig
 genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
 
 - **Themen:** Elemente, Münzen & Schätze, Weltraum & Magie, Lustig & Glitch (je 12 bis 13 Auras).
-- **Seltenheit, Preis und Bonus:** Gewöhnlich (ab 1.000 Taler, +1 bis 3 %) bis Göttlich (bis 1 Mrd. Taler,
+- **Seltenheit, Preis und Bonus:** Gewöhnlich (ab 1.000 Moneten, +1 bis 3 %) bis Göttlich (bis 1 Mrd. Moneten,
   +18 bis 25 %). Jede Aura verbessert genau eine Sache: Glück, Münzwert, Erfahrung oder Tempo.
 - **Grundpaket je Seltenheit** (addiert sich nach oben, so erkennt man die Stufe sofort): Gewöhnlich
   Bodenleuchten und Licht · Selten leuchtender Umriss · Episch Pulswellen und Glimmer · Legendär
@@ -770,7 +782,7 @@ genau wie nach `/aura <id>` in Studio (`auren/js/auraRoblox.js`).
 - **Spiel:** Shop-Reiter „Auras“ mit 3D-Vorschau. Kaufen legt die Aura gleich an; man trägt immer eine.
   Glück, Münzwert und Erfahrung wirken schon beim simulierten Fund, Tempo erst im Roblox-Spiel.
 - **Roblox:** Module `AuraData` und `AuraFx`, das Skript `CoinmasterAuras` (Server, prüft Kaufen und
-  Anlegen über die RemoteFunction `AuraRemote`, Taler aus `leaderstats.Taler`) und `CoinmasterAuraClient`
+  Anlegen über die RemoteFunction `AuraRemote`, Moneten aus `leaderstats.Moneten`) und `CoinmasterAuraClient`
   (zeichnet die Aura jedes Spielers aus ParticleEmittern, Beams, Trails, Neon-Teilen, Highlight und Licht,
   samt Grundpaket je Seltenheit). Roblox zeigt höchstens 31 Highlights gleichzeitig; im Showcase fehlen
   Umriss und Glitch-Flackern deshalb. Dazu
@@ -788,11 +800,11 @@ baut sie als ScreenGui, die Seite führt es aus und zeichnet die ScreenGuis übe
 UIScale, UIAspectRatioConstraint, ScrollingFrame, TextBox zum Tippen). Die Seite spielt dabei den Server:
 Spielstand als Attribute, Aktionen und Daten über Rückrufe.
 
-- **HUD:** Level-Abzeichen, EP-Balken, Skillpunkte, Welt, Taler, Wetter mit Countdown, aktive Boosts,
+- **HUD:** Level-Abzeichen, EP-Balken, Skillpunkte, Welt, Moneten, Wetter mit Countdown, aktive Boosts,
   Menü (Welten, Skills, Inventar, Shop, Index, Optionen) und „Münze suchen“, das einen Fund simuliert.
   Funde und Käufe erscheinen als Hinweise (`GameUI.Toast`).
 - **In Roblox:** `GameUI.Start()` läuft im LocalScript `CoinmasterUI`. Den Spielstand liest es aus
-  Attributen am Spieler (`Taler` oder `leaderstats.Taler`, `Level`, `XP`, `XPMax`, `Points`, `WorldName`,
+  Attributen am Spieler (`Moneten` oder `leaderstats.Moneten`, `Level`, `XP`, `XPMax`, `Points`, `WorldName`,
   `Aura`, `OwnedAuras`, `Egg_<id>`, `Boost_<id>`, dazu `Coins`, `Slots`, `World`, `Worlds`, `Portals`,
   `Rebirths`), das Wetter aus `ReplicatedStorage`. Käufe und Aktionen gehen an die RemoteFunctions
   `ShopRemote` (Server-Skript `CoinmasterShop`: Eier, Boosts, Münzen verkaufen, Welten kaufen,
@@ -808,7 +820,7 @@ Spielstand als Attribute, Aktionen und Daten über Rückrufe.
 - **Welten** (Taste W): Teleport-Menü je Planet mit Welt-Karten (kaufen, teleportieren), Portal-Banner
   mit Bedingungen und Wiedergeburt (siehe oben). Die Regeln stehen einmal in `WorldData` (`CanBuy`,
   `PortalChecks`, `CanOpenPortal`) und gelten für Server und Oberfläche. Der Teleport setzt in Roblox
-  das Attribut `World` und stellt die Figur an den Spawn des Modells `Welt_<Name>`. „+ Test-Taler“ gibt
+  das Attribut `World` und stellt die Figur an den Spawn des Modells `Welt_<Name>`. „+ Test-Moneten“ gibt
   es nur in der Vorschau.
 - **Skilltree** (Taste K, Daten in `spiel/js/skills.js`, in Roblox `SkillData`): Kern plus vier Äste
   mit je fünf Skills (Erkundung, Münzen & Glück, Eier & Haustiere, Komfort). Skillpunkte kommen aus
@@ -816,12 +828,12 @@ Spielstand als Attribute, Aktionen und Daten über Rückrufe.
   Feilscher und Großer Beutel wirken in der Vorschau schon; die Erkundungs-Skills gelten später in den
   Welten. Sichtbar sind nur Skills, deren Vorgänger man gelernt hat. Der Baum besteht aus Frames
   (Linien sind gedrehte Frames); „+“ zoomt um den gewählten Skill.
-- **Shop** (Taste B): Eier, Boosts und Auras für Taler, Robux-Angebote nur angedeutet.
+- **Shop** (Taste B): Eier, Boosts und Auras für Moneten, Robux-Angebote nur angedeutet.
 - **Wetter** (Taste V): Vorhersage der nächsten Phasen und alle Wetter mit ihrer Mutation.
 - **Belohnungen** (`spiel/js/rewards.js`, in Roblox `RewardData`): tägliches Geschenk mit Serie,
   Glücksrad (aus gedrehten Frames, dreht per TweenService) und Gruppen-Bonus.
 - **Codes:** Eingabe im TextBox, Enter oder „Einlösen“.
-- **Ranglisten:** Taler, Münzen, Wiedergeburten, Level, mit deinem Platz (in der Vorschau mit
+- **Ranglisten:** Moneten, Münzen, Wiedergeburten, Level, mit deinem Platz (in der Vorschau mit
   Beispiel-Spielern).
 - **Einstellungen** (Taste O, `js/settings.js`): gelten für alle Seiten, z. B. Grafikqualität der
   3D-Ansichten und „Animationen überspringen“. In Roblox stehen sie als Attribute `Set_…` am Spieler.
@@ -831,17 +843,17 @@ Abstände und Bewegungen der Oberfläche an einer Stelle. Bewegungsregeln: `Fast
 `Normal` 0,22 s (Fenster, Balken), `Pop` 0,22 s mit Überschwingen (Öffnen, Drücken, Hinweise), `Slow`
 0,4 s (Belohnungen), `Exit` 0,16 s (Schließen, schneller als Öffnen). Fenster öffnen und schließen animiert.
 
-**Neu füllen nur wenn nötig:** Jedes Fenster kennt seine Daten (`deps`, z. B. der Shop: Taler, Eier,
+**Neu füllen nur wenn nötig:** Jedes Fenster kennt seine Daten (`deps`, z. B. der Shop: Moneten, Eier,
 Boosts, Auras). Ändert sich etwas anderes, bleibt es stehen; mehrere Änderungen im selben Bild ergeben einen
 Neuaufbau. Countdowns (Wetter, Belohnungen, Boosts im HUD) ändern jede Sekunde nur ihren Text.
 
-**Spielgefühl:** Taler zählen hoch statt zu springen, ein grünes „+500“ steigt neben dem Taler-Feld auf
+**Spielgefühl:** Moneten zählen hoch statt zu springen, ein grünes „+500“ steigt neben dem Moneten-Feld auf
 und das Feld wippt; der EP-Balken gleitet (bei einem neuen Level erst voll, dann von vorn). Beim Verkaufen
-fliegen Münzen vom Knopf zum Taler-Feld (`GameUI.FlyCoins`). Funde zeigt `GameUI.Found` je nach Seltenheit:
+fliegen Münzen vom Knopf zum Moneten-Feld (`GameUI.FlyCoins`). Funde zeigt `GameUI.Found` je nach Seltenheit:
 
 | Stufe | Seltenheit | Effekt |
 | --- | --- | --- |
-| 1 | Normal, Selten | Hinweis, „+Taler“ steigt auf, Münzen fliegen zum Taler-Feld, der Knopf springt |
+| 1 | Normal, Selten | Hinweis, „+Moneten“ steigt auf, Münzen fliegen zum Moneten-Feld, der Knopf springt |
 | 2 | Sehr selten, Episch | dazu Fundkarte mit Glanz und leichtes Wackeln |
 | 3 | Legendär, Mystisch, Engelsgleich | dazu Bildschirm-Blitz, Funken, Strahlenkranz, große Ansage, kräftiges Wackeln |
 | 4 | Göttlich, Galaktisch, Unerreichbar | dazu kurze Zeitlupe (Bild wird dunkel, Kamera zoomt) und Münzregen |
@@ -850,11 +862,18 @@ Eine Mutation hebt um eine Stufe. „Animationen überspringen“ zeigt nur den 
 halbiert Funken, Konfetti und Münzregen.
 
 **Mehr Juice** (alles aus Frames und Tweens, abschaltbar über „Animationen überspringen“):
+- *Glanz*: Aktionsknöpfe haben einen Verlauf, einen dunklen Rand und Text mit Kontur (Simulator-Stil); ein
+  Lichtstreifen läuft alle paar Sekunden schräg darüber, ebenso über Moneten, Diamantstaub, Level-Abzeichen und
+  Fenster-Icon, und beim Drüberfahren über jeden Knopf und Reiter (`shine`, `glossy`).
+- *Icons wackeln*, wenn die Maus über einen Knopf fährt; der gewählte Reiter glänzt golden und springt beim Wechsel auf.
+- *„Münze suchen“* pulsiert mit seinem Rand und glänzt regelmäßig; im Juwelnebel wird er lila.
+- *Fenster* sind oben warm angeleuchtet, haben eine goldene Zierlinie und funkelnde Sterne im Kopf; Karten sind
+  oben in ihrer Randfarbe getönt.
 - *Knöpfe* drücken sich ein und federn beim Loslassen nach (Elastic), dazu ein kleiner Funkenkranz.
 - *Fenster* springen aus der Mitte auf, federn nach und kippen dabei kurz.
-- *Käufe* lassen Konfetti regnen und das Taler-Feld wippen; große Momente (neue Welt, Portal, Wiedergeburt)
-  bekommen Blitz, Wackeln, Strahlenkranz und Ansage. Geht ein Kauf nicht, schüttelt das Taler-Feld den Kopf.
-- *Taler* leuchten beim Gewinn weiß auf, das Feld wippt stärker, je mehr es ist.
+- *Käufe* lassen Konfetti regnen und das Moneten-Feld wippen; große Momente (neue Welt, Portal, Wiedergeburt)
+  bekommen Blitz, Wackeln, Strahlenkranz und Ansage. Geht ein Kauf nicht, schüttelt das Moneten-Feld den Kopf.
+- *Moneten* leuchten beim Gewinn weiß auf, das Feld wippt stärker, je mehr es ist.
 - *Level-Aufstieg*: das Abzeichen springt, Goldkonfetti, Strahlen und (im Spiel) die Ansage „LEVEL X!“.
 - *Münzrollen* enden mit Wackeln und Konfetti.
 - *Bewegung und Kamera* (LocalScript `CoinmasterJuice`, `roblox/js/juiceLuau.js`, nur im Spiel): Staub beim
@@ -881,7 +900,7 @@ die Motive hochgeladen und in `CoinData` eingetragen sind (Schritt 3). Haustiere
 sobald das Spiel geschlüpfte Tiere speichert. In der Vorschau hat jedes ViewportFrame eine eigene kleine
 Welt (`js/rbx/screen.js`), die nur neu gezeichnet wird, wenn sich darin etwas bewegt.
 
-Test-Knöpfe nur in der Vorschau: „+ Test-Taler“, „Test: Wetter“, „Test: nächster Tag“, „Test:
+Test-Knöpfe nur in der Vorschau: „+ Test-Moneten“, „Test: Wetter“, „Test: nächster Tag“, „Test:
 Spielstand neu beginnen“.
 
 Tastenkürzel: W Welten, K Skills, I Inventar, B Shop, V Wetter, O Einstellungen, F Münze suchen,
@@ -904,7 +923,7 @@ weder Knopf noch Fenster. Jede Aktion prüft der Server; das Panel schickt nur W
 | Reiter | Was geht |
 |---|---|
 | Wetter & Welt | jedes Wetter für 5, 10, 15 oder 30 Minuten erzwingen (danach geht der Zeitplan weiter), „Zurück zum Zeitplan“; Uhrzeit für alle (Morgen, Mittag, Abend, Nacht oder Licht der Welt); Teleport in jede Welt; alle Welten und Portale für sich freischalten |
-| Spieler | alle Spieler auf dem Server mit Spielstand (Level, Taler, Welt, Welten, Wiedergeburten, Münzen, Funde, Eier, Auras, Online-Zeit); Hinreisen, Kicken und Bannen (1 Stunde, 1 Tag, 7 Tage, für immer) mit Grund; Spielstand zurücksetzen (zweimal tippen) |
+| Spieler | alle Spieler auf dem Server mit Spielstand (Level, Moneten, Welt, Welten, Wiedergeburten, Münzen, Funde, Eier, Auras, Online-Zeit); Hinreisen, Kicken und Bannen (1 Stunde, 1 Tag, 7 Tage, für immer) mit Grund; Spielstand zurücksetzen (zweimal tippen) |
 | Server-Events | Ansage an alle (höchstens 160 Zeichen, von Roblox gefiltert); Boosts für alle (Glückstrank, Weisheitsrolle, Wetterglocke) für 10, 30 oder 60 Minuten, verlängern oder beenden; Admin Egg an alle verteilen; Protokoll aller Admin-Aktionen auf dem Server |
 | Banns | per UserId bannen, auch wer gerade nicht da ist; Liste aller Banns mit Dauer, Grund und Admin; Aufheben |
 
@@ -922,7 +941,7 @@ weder Knopf noch Fenster. Jede Aktion prüft der Server; das Panel schickt nur W
 - **Banns:** im DataStore `CoinmasterBans` (ein Schlüssel `Liste`), gelten auf allen Servern: beim Beitreten
   geprüft, jeder Server liest die Liste alle 60 Sekunden neu und wirft Gebannte hinaus. Ohne DataStore (Studio
   ohne API-Zugriff) gelten sie nur auf diesem Server.
-- **Zurücksetzen:** `PlayerData.Reset(player)` setzt Taler, Fortschritt, Münzen und Garten auf Anfang
+- **Zurücksetzen:** `PlayerData.Reset(player)` setzt Moneten, Fortschritt, Münzen und Garten auf Anfang
   (Einstellungen bleiben) und meldet das über `PlayerData.Resetted`.
 - **Ansagen:** RemoteEvent `AdminEvent` an alle (`"announce"` oder `"event"`), groß unter der Wetter-Ansage
   (`GameUI.AdminAnnounce`), am Handy oben.
@@ -943,7 +962,7 @@ lädt und speichert den Spielstand im DataStore `CoinmasterAdventure` (ein Profi
 - **Sicher speichern:** jeder Zugriff mit bis zu drei Wiederholungen, Autosave alle 2 Minuten, beim
   Verlassen und beim Herunterfahren (`BindToClose`).
 - **Versionsnummer:** `PlayerData.Migrate` bringt ältere Profile auf den neuesten Stand.
-- **Was gespeichert wird:** `leaderstats.Taler`, die Münz-Stapel und die Attribute (Level, EP, Welten,
+- **Was gespeichert wird:** `leaderstats.Moneten`, die Münz-Stapel und die Attribute (Level, EP, Welten,
   Portale, Wiedergeburten, Supernovas, Edelsteine (`Gem_`, `GemValue_`), Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen, Münzbaumgarten).
 - Level-Aufstieg, Skillpunkte, Inventarplätze und Eier-Rabatt rechnet der Server daraus.
 

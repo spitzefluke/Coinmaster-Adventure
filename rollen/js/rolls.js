@@ -94,7 +94,7 @@ export const ROLLS = [
 export const rollById = Object.fromEntries(ROLLS.map((r) => [r.id, r]));
 
 export const fmtPrice = (p) =>
-  !p ? 'Nicht kaufbar' : p.currency === 'robux' ? `R$ ${p.amount.toLocaleString('de-DE')}` : `${p.amount.toLocaleString('de-DE')} Taler`;
+  !p ? 'Nicht kaufbar' : p.currency === 'robux' ? `R$ ${p.amount.toLocaleString('de-DE')}` : `${p.amount.toLocaleString('de-DE')} Moneten`;
 
 // Chance je Seltenheit (in %) für eine Sache aus dieser Rolle; minIndex schneidet darunter ab
 export function tierChances(roll, minIndex = 0) {

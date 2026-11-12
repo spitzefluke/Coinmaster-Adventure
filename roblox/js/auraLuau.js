@@ -34,7 +34,7 @@ export function auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }) {
 		Look = ${lookTable(a.look)},
 	}`);
   return `${HEADER('Auras')}
--- ${AURAS.length} Auras. Man kauft sie mit Talern und legt eine an. Die angelegte Aura gibt einen
+-- ${AURAS.length} Auras. Man kauft sie mit Moneten und legt eine an. Die angelegte Aura gibt einen
 -- kleinen Bonus in Prozent: glueck (wie „Glückspilz“), wert (Münzwert), ep (Erfahrung), tempo (Laufen).
 -- Look beschreibt die Effekte, AuraFx baut sie daraus.
 
@@ -634,7 +634,7 @@ return AuraFx
 // Server: Kaufen und Anlegen über eine RemoteFunction, alles wird hier geprüft
 export const AURA_SERVER = `-- Coinmaster Adventure · Auras (Server)
 -- Kaufen und Anlegen. Der Client fragt nur, der Server prüft Preis, Besitz und Aura-Id.
--- Taler kommen aus leaderstats.Taler (IntValue oder NumberValue), falls es das gibt.
+-- Moneten kommen aus leaderstats.Moneten (IntValue oder NumberValue), falls es das gibt.
 -- Gespeichert wird über PlayerData (Attribute OwnedAuras und Aura).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -655,7 +655,7 @@ local lastCall = {}
 
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
-	local taler = stats and stats:FindFirstChild("Taler")
+	local taler = stats and stats:FindFirstChild("Moneten")
 	if taler and (taler:IsA("IntValue") or taler:IsA("NumberValue")) then
 		return taler
 	end
@@ -707,10 +707,10 @@ local function handle(player, action, id)
 		end
 		local taler = talerOf(player)
 		if not taler then
-			return false, "Keine Taler gefunden (leaderstats.Taler fehlt)"
+			return false, "Keine Moneten gefunden (leaderstats.Moneten fehlt)"
 		end
 		if taler.Value < aura.Price then
-			return false, "Zu wenig Taler"
+			return false, "Zu wenig Moneten"
 		end
 		taler.Value = taler.Value - aura.Price
 		addOwned(player, id)

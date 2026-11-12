@@ -239,7 +239,7 @@ function buildDetailCoin() {
   });
   const tier = tierById[dData.tier];
   const m = dMutation && mutationById[dMutation];
-  document.getElementById('detail-value').textContent = m ? `${mutatedValue(tier.value, m)} Taler (${fmtMultiplier(m)})` : `${tier.value} Taler`;
+  document.getElementById('detail-value').textContent = m ? `${mutatedValue(tier.value, m)} Moneten (${fmtMultiplier(m)})` : `${tier.value} Moneten`;
   for (const chip of mutationChips.children) chip.setAttribute('aria-pressed', String((chip.dataset.mutation || null) === dMutation));
 }
 

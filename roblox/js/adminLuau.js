@@ -271,7 +271,7 @@ do
 				stroke(on and C.goldHi or C.line, on and 2 or 1),
 			})
 			label({ Size = UDim2.new(1, -110, 0, 22), Position = UDim2.new(0, 14, 0, 6), Text = p.DisplayName .. (p.Me and " (du)" or ""), Font = FONT, TextSize = T.Medium, TextXAlignment = LEFT, Parent = b })
-			label({ Size = UDim2.new(1, -110, 0, 16), Position = UDim2.new(0, 14, 0, 30), Text = "@" .. p.Name .. " · Level " .. (p.Level or 1) .. " · " .. (p.World or "?") .. " · " .. GameUI.Format(p.Taler or 0) .. " Taler", TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = LEFT, Font = TEXT, Parent = b })
+			label({ Size = UDim2.new(1, -110, 0, 16), Position = UDim2.new(0, 14, 0, 30), Text = "@" .. p.Name .. " · Level " .. (p.Level or 1) .. " · " .. (p.World or "?") .. " · " .. GameUI.Format(p.Moneten or 0) .. " Moneten", TextSize = T.Tiny, TextColor3 = C.muted, TextXAlignment = LEFT, Font = TEXT, Parent = b })
 			if p.Admin then
 				new("TextLabel", { Size = UDim2.new(0, 70, 0, 22), Position = UDim2.new(1, -12, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = ACCENT, BackgroundTransparency = 0.75, Text = "ADMIN", TextColor3 = ACCENT, Font = BODY, TextSize = T.Tiny, Parent = b }, { corner(R.Round), stroke(ACCENT, 1) })
 			end
@@ -297,7 +297,7 @@ do
 		label({ Size = UDim2.new(1, 0, 0, 26), Text = sel.DisplayName, Font = FONT, TextSize = T.Big, TextXAlignment = LEFT, TextScaled = utf8.len(sel.DisplayName) > 18, Parent = side })
 		label({ Size = UDim2.new(1, 0, 0, 14), Position = UDim2.new(0, 0, 0, 28), Text = "@" .. sel.Name .. " · UserId " .. tostring(sel.UserId), TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, TextXAlignment = LEFT, Parent = side })
 		local facts = {
-			{ "Level", tostring(sel.Level or 1) }, { "Taler", GameUI.Format(sel.Taler or 0) },
+			{ "Level", tostring(sel.Level or 1) }, { "Moneten", GameUI.Format(sel.Moneten or 0) },
 			{ "Welt", sel.World or "?" }, { "Welten", tostring(sel.Worlds or 0) },
 			{ "Wiedergeburten", tostring(sel.Rebirths or 0) }, { "Münzen", GameUI.Format(sel.Coins or 0) },
 			{ "Gefunden", GameUI.Format(sel.Found or 0) }, { "Eier", tostring(sel.Eggs or 0) },
@@ -660,7 +660,7 @@ end
 -- ── Helfer ──
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
-	local t = stats and stats:FindFirstChild("Taler")
+	local t = stats and stats:FindFirstChild("Moneten")
 	return t and t.Value or 0
 end
 local function count(list)
@@ -727,7 +727,7 @@ function QUERIES.players(admin)
 		local world = WorldData.ById[p:GetAttribute("World") or "spawn"]
 		table.insert(list, {
 			UserId = p.UserId, Name = p.Name, DisplayName = p.DisplayName, Me = p == admin, Admin = isAdmin(p),
-			Ready = PlayerData.IsReady(p), Level = p:GetAttribute("Level") or 1, Taler = math.floor(talerOf(p)),
+			Ready = PlayerData.IsReady(p), Level = p:GetAttribute("Level") or 1, Moneten = math.floor(talerOf(p)),
 			World = world and world.Name or "?", Worlds = count(p:GetAttribute("Worlds")), Rebirths = p:GetAttribute("Rebirths") or 0,
 			Coins = PlayerData.CoinCount(p), Found = p:GetAttribute("CoinsFound") or 0, Eggs = eggs(p),
 			Auras = count(p:GetAttribute("OwnedAuras")), Minutes = math.floor((os.time() - (joined[p] or os.time())) / 60),

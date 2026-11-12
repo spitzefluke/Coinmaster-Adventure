@@ -35,7 +35,7 @@ const LIST = {
     ['Hund', 'Treuer Begleiter, wedelt bei jeder Münze.'],
     ['Hase', 'Hoppelt flink zum nächsten Fund.'],
     ['Fuchs', 'Schlau und immer auf der Spur des Goldes.'],
-    ['Panda', 'Gemütlich, aber mit großem Appetit auf Taler.'],
+    ['Panda', 'Gemütlich, aber mit großem Appetit auf Moneten.'],
     ['Einhorn', 'Ein Horn, das Glück in alle Richtungen strahlt.'],
     ['Goldener Drache', 'Schuppen aus purem Gold, Atem aus Funken.'],
     ['Regenbogen-Phönix', 'Steigt in allen Farben aus der Asche auf.'],
@@ -174,4 +174,24 @@ export function rollPet(eggId, random = Math.random) {
   const pool = PETS.filter((p) => p.egg === eggId);
   let r = random() * pool.reduce((sum, p) => sum + p.chance, 0);
   return pool.find((p) => (r -= p.chance) <= 0) || pool[0];
+}
+
+// ── Füttern und Level ────────────────────────────────────────────────────────
+// Früchte aus dem Münzbaumgarten sind Futter: Jede Frucht gibt dem Haustier ein paar EP, je seltener der Baum,
+// desto mehr. Verkaufen kann man Früchte nicht. Ein Haustier steigt so langsam bis Level PET_MAX_LEVEL.
+export const PET_MAX_LEVEL = 50;
+export const FRUIT_XP = { gewoehnlich: 1, selten: 2, episch: 3, legendaer: 5, mythisch: 8, goettlich: 12, kosmisch: 18, himmlisch: 25, geheim: 40 };
+// EP von Level n auf n + 1
+export const petXpFor = (n) => Math.round(10 * Math.pow(n, 1.5));
+// EP gutschreiben, gibt die Zahl der neuen Level zurück (pet = { lvl, xp })
+export function feedPetXp(pet, xp) {
+  let ups = 0;
+  pet.xp += xp;
+  while (pet.lvl < PET_MAX_LEVEL && pet.xp >= petXpFor(pet.lvl)) {
+    pet.xp -= petXpFor(pet.lvl);
+    pet.lvl++;
+    ups++;
+  }
+  if (pet.lvl >= PET_MAX_LEVEL) pet.xp = 0;
+  return ups;
 }

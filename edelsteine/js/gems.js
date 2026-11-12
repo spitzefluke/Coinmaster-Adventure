@@ -1,12 +1,12 @@
 // Edelsteine: Im Juwelnebel (Galaxie 2, nach der Supernova) findet man Edelsteine statt Münzen.
 // Sie haben dieselben 10 Seltenheitsstufen wie die Münzen (gleiche Drop-Chancen, gleiches Glück), sind aber
-// zehnmal so viel wert. Man verkauft sie wie Münzen für Taler.
+// zehnmal so viel wert. Man verkauft sie für Diamantstaub, die Währung des Juwelnebels.
 //
 // cut: Schliff (rund, oval, tropfen, smaragd, herz, prinzess, stern), colors: [hell, Grundfarbe, dunkel]
 
 import { TIERS, tierById } from '../../muenzen/js/coins.js';
 
-export const GEM_FACTOR = 10; // Edelstein = 10 × Münzwert der Stufe
+export const GEM_FACTOR = 10; // Edelstein = 10 × Münzwert der Stufe, in Diamantstaub
 
 export const GEMS = [
   // Normal
@@ -44,10 +44,96 @@ export const GEMS = [
 export const gemById = Object.fromEntries(GEMS.map((g) => [g.id, g]));
 export const gemsOfTier = (tierId) => GEMS.filter((g) => g.tier === tierId);
 
-// Grundwert eines Edelsteins in Talern (ohne Welt, Wiedergeburt, Supernova)
+// Grundwert eines Edelsteins in Diamantstaub (ohne Welt, Wiedergeburt, Supernova)
 export function gemBaseValue(gem) {
   const base = Number(tierById[gem.tier].value);
   return (Number.isFinite(base) ? base : 1000000) * GEM_FACTOR;
 }
 
 export { TIERS, tierById };
+
+// ── Edelstein-Taschen ────────────────────────────────────────────────────────
+// 50 eigene Taschen nur für Edelsteine, in 5 Stufen. Man kauft sie der Reihe nach mit Diamantstaub;
+// die Kapazität sagt, wie viele Edelsteine man gleichzeitig tragen kann. Nr. 1 hat jeder von Anfang an.
+
+export const GEM_BAG_TIERS = [
+  { id: 'splitter', name: 'Splitter', color: '#c8c2dc' },
+  { id: 'kristall', name: 'Kristall', color: '#c98bff' },
+  { id: 'juwel', name: 'Juwel', color: '#3ee08a' },
+  { id: 'prisma', name: 'Prisma', color: '#5ad8ff' },
+  { id: 'supernova', name: 'Supernova', color: '#ff5fd2' },
+];
+
+const BAG_NAMES = [
+  // Splitter
+  ['Quarzsäckchen', 'Ein Säckchen aus grobem Leinen mit einem Quarz als Knopf.'],
+  ['Glitzerbeutel', 'Innen mit Glitzerstoff gefüttert, damit nichts zerkratzt.'],
+  ['Steinchen-Dose', 'Eine runde Blechdose. Klappert bei jedem Schritt.'],
+  ['Funkelranzen', 'Ein kleiner Ranzen, dessen Nieten wie Splitter glänzen.'],
+  ['Kieselkorb', 'Geflochten aus Weidenruten, am Rücken festgeschnallt.'],
+  ['Schürftasche', 'Die Tasche der Edelsteinschürfer, voller Staub.'],
+  ['Rosenquarz-Beutel', 'Zartrosa und weich wie ein Kissen.'],
+  ['Glimmerkiste', 'Eine Holzkiste mit Glimmerplättchen an den Seiten.'],
+  ['Achatrucksack', 'Die Klappe ist mit einer Achatscheibe verziert.'],
+  ['Splitterköcher', 'Statt Pfeilen stecken darin glitzernde Splitter.'],
+  // Kristall
+  ['Amethyst-Ranzen', 'Ein Ranzen aus violettem Leder mit Amethyst-Schnallen.'],
+  ['Kristallkästchen', 'Ein gläsernes Kästchen, in dem die Steine schweben.'],
+  ['Drusen-Rucksack', 'Wie eine aufgebrochene Druse: außen Fels, innen Kristall.'],
+  ['Topas-Tornister', 'Goldgelb wie die Dünen von Planet 5.'],
+  ['Prismatasche', 'Wirft kleine Regenbögen, wenn Licht darauf fällt.'],
+  ['Eiskristall-Kiepe', 'Eine Rückentrage aus durchsichtigem Kristall.'],
+  ['Glockenbeutel', 'Klingt bei jedem neuen Stein wie ein Glöckchen.'],
+  ['Mondsteinschale', 'Eine Schale auf dem Rücken, die nachts bläulich schimmert.'],
+  ['Kristallflügel', 'Zwei kleine Flügel aus Kristall, darunter Fächer für Steine.'],
+  ['Grottenrucksack', 'So groß wie eine kleine Grotte und genauso funkelnd.'],
+  // Juwel
+  ['Smaragdtruhe', 'Eine grüne Truhe mit goldenen Beschlägen.'],
+  ['Jadeschrein', 'Ein kleiner Tempel aus Jade, den man auf dem Rücken trägt.'],
+  ['Saphirkoffer', 'Königsblau, mit einem Schloss aus Silber.'],
+  ['Juwelenkranz', 'Ein Kranz aus Juwelen, der um den Rücken schwebt.'],
+  ['Rubinpanzer', 'Ein Rückenpanzer aus Rubinplatten, glühend rot.'],
+  ['Schatzkammer-Ranzen', 'Innen größer als außen: eine ganze Schatzkammer.'],
+  ['Juwelendrache', 'Ein kleiner Drache, der Edelsteine in seinem Bauch sammelt.'],
+  ['Kronjuwelenkiste', 'Die Kiste, in der früher die Kronjuwelen lagen.'],
+  ['Smaragdflügel', 'Flügel aus Smaragdblättern, die leise klingen.'],
+  ['Juwelenturm', 'Ein kleiner Turm mit einem Edelstein in jedem Fenster.'],
+  // Prisma
+  ['Opalkapsel', 'Eine Kapsel, die in allen Farben schillert.'],
+  ['Regenbogenschrein', 'Jedes Fach hat eine andere Farbe des Regenbogens.'],
+  ['Lichtprisma', 'Ein schwebendes Prisma, das Steine in Licht verwandelt und zurück.'],
+  ['Diamantgehäuse', 'Ein Gehäuse aus Diamantglas. Fast unzerbrechlich.'],
+  ['Alexandrit-Flügel', 'Am Tag grün, in der Nacht rot, wie der Stein.'],
+  ['Kristallthron', 'Ein Thron auf dem Rücken. Die Steine sitzen in der Lehne.'],
+  ['Spektralrucksack', 'Zeigt seinen Inhalt als leuchtendes Farbspektrum.'],
+  ['Feueropal-Laterne', 'Eine Laterne, in der kleine Flammen die Steine wärmen.'],
+  ['Prismenrad', 'Ein drehendes Rad aus Prismen, jedes Fach ein Stein.'],
+  ['Diamantschwingen', 'Große Schwingen aus Diamant, die beim Fliegen funkeln.'],
+  // Supernova
+  ['Sternsaphir-Kern', 'Ein leuchtender Kern, um den die Steine kreisen.'],
+  ['Nebelsphäre', 'Eine Kugel voller Sternennebel. Steine verschwinden darin.'],
+  ['Kometenschweif', 'Ein Schweif aus Licht, der Edelsteine hinter dir herzieht.'],
+  ['Galaxienrad', 'Eine kleine Spiralgalaxie, die sich langsam dreht.'],
+  ['Supernova-Ring', 'Ein Ring aus Sternenfeuer, der um dich schwebt.'],
+  ['Sternenschmiede', 'Eine Schmiede, in der neue Edelsteine entstehen.'],
+  ['Pulsar-Herz', 'Pulsiert im Takt. Je mehr Steine, desto schneller.'],
+  ['Juwelnebel-Wolke', 'Ein Stück des Juwelnebels, das dir folgt.'],
+  ['Schwarzes Loch', 'Passt fast alles hinein. Nur Licht entkommt.'],
+  ['Herz des Juwelnebels', 'Die größte Tasche, die es gibt. Hier passen alle Edelsteine hinein.'],
+];
+
+const roundNice = (n) => {
+  const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1));
+  return Math.round(n / p) * p;
+};
+
+// Kapazität wächst von 25 auf 100.000 Steine, der Preis von gratis bis rund 5 Mrd. Diamantstaub
+export const GEM_BAGS = BAG_NAMES.map(([name, text], i) => ({
+  nr: i + 1,
+  name,
+  text,
+  tier: GEM_BAG_TIERS[Math.floor(i / 10)].id,
+  capacity: i === 49 ? 100000 : roundNice(25 * Math.pow(100000 / 25, i / 49)),
+  price: i === 0 ? 0 : roundNice(500 * Math.pow(5e9 / 500, (i - 1) / 48)),
+}));
+export const gemBagByNr = (nr) => GEM_BAGS[Math.max(1, Math.min(GEM_BAGS.length, nr | 0)) - 1];
