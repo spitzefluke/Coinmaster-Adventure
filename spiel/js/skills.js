@@ -60,8 +60,8 @@ export const SKILLS = [
   // ── Komfort (links) ──
   { id: 'beutel', branch: 'komfort', name: 'Großer Beutel', max: 5, cost: 1, x: -1, y: 0, req: 'kern', per: 10, icon: 'bag',
     text: 'Mehr Platz im Inventar.', format: (v) => `+${v} Inventarplätze` },
-  { id: 'offline', branch: 'komfort', name: 'Offline-Taler', max: 5, cost: 1, x: -2, y: 0.8, req: 'beutel', per: 5, icon: 'moon',
-    text: 'Du verdienst Taler, während du nicht spielst.', format: (v) => `${v} % der Einnahmen offline` },
+  { id: 'offline', branch: 'komfort', name: 'Offline-Moneten', max: 5, cost: 1, x: -2, y: 0.8, req: 'beutel', per: 5, icon: 'moon',
+    text: 'Du verdienst Moneten, während du nicht spielst.', format: (v) => `${v} % der Einnahmen offline` },
   { id: 'autosammeln', branch: 'komfort', name: 'Auto-Sammeln', max: 1, cost: 2, x: -2, y: -0.8, req: 'beutel', per: 1, icon: 'auto',
     text: 'Münzen im Sammelradius werden automatisch eingesammelt.', format: () => 'Automatisches Einsammeln' },
   { id: 'autoverkauf', branch: 'komfort', name: 'Auto-Verkauf', max: 1, cost: 2, x: -3, y: 0.8, req: 'offline', per: 1, icon: 'coins',

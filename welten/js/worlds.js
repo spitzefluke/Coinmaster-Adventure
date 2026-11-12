@@ -1,6 +1,6 @@
 // Planeten und Welten.
 //
-// Innerhalb eines Planeten kauft man die Welten der Reihe nach mit Talern. Zum nächsten Planeten
+// Innerhalb eines Planeten kauft man die Welten der Reihe nach mit Moneten. Zum nächsten Planeten
 // führt ein Portal (Rakete, Tiefsee-Portal …): Es öffnet sich, wenn man die letzte Welt des
 // vorigen Planeten besitzt und genug Wiedergeburten hat.
 //
@@ -10,12 +10,13 @@
 //
 // Galaxien: Die Planeten 1 bis 4 liegen in der Milchstraße. Wer 100 Wiedergeburten hat, kann einmal zur
 // Supernova werden (unten SUPERNOVA) und öffnet damit den Juwelnebel mit den Planeten 5 bis 7. Dort findet
-// man Edelsteine statt Münzen (edelsteine/js/gems.js).
+// man Edelsteine statt Münzen (edelsteine/js/gems.js). Edelsteine bringen Diamantstaub statt Moneten;
+// die Welten des Juwelnebels kauft man mit Diamantstaub (currency der Galaxie).
 
 export const GALAXIES = [
-  { id: 'g1', name: 'Milchstraße', title: 'Heimatgalaxie', color: '#ffd76a', find: 'coins', supernovas: 0,
+  { id: 'g1', name: 'Milchstraße', title: 'Heimatgalaxie', color: '#ffd76a', find: 'coins', currency: 'moneten', supernovas: 0,
     text: 'Vier Planeten voller Münzen: vom Heimatplaneten bis zum Thron der Götter.' },
-  { id: 'g2', name: 'Juwelnebel', title: 'Galaxie der Edelsteine', color: '#ff5fd2', find: 'gems', supernovas: 1,
+  { id: 'g2', name: 'Juwelnebel', title: 'Galaxie der Edelsteine', color: '#ff5fd2', find: 'gems', currency: 'staub', supernovas: 1,
     text: 'Hinter der Supernova: Planeten aus Kristall, Smaragd und Diamant. Hier findest du Edelsteine statt Münzen.' },
 ];
 
@@ -156,36 +157,36 @@ export const WORLDS = [
     text: 'Ein Thron auf dem höchsten Gipfel über allen Wolken. Hier sind die Münzen am meisten wert.',
     sky: ['#1a1040', '#ffcf7a'], ground: '#fff0c8', side: '#d8c090', rock: '#a08858', accent: '#ffe7a8', fx: 'flares' },
 
-  // ── Planet 5 (Juwelnebel): hier gibt es Edelsteine statt Münzen ──
-  { id: 'quarzfeld', neu: true, planet: 'p5', name: 'Quarzfeld', price: 2000000000000, luck: 13, value: 320,
+  // ── Planet 5 (Juwelnebel): Edelsteine statt Münzen. price in Diamantstaub, value macht Edelsteine mehr wert ──
+  { id: 'quarzfeld', neu: true, planet: 'p5', name: 'Quarzfeld', price: 0, luck: 13, value: 1,
     text: 'Weiße Quarzsäulen wachsen aus hellem Fels. Zwischen ihnen glitzern die ersten Edelsteine.',
     sky: ['#2a1f4a', '#d8ccff'], ground: '#e8e4f4', side: '#a8a0c4', rock: '#7a7298', accent: '#ffffff', fx: 'spores' },
-  { id: 'amethystgrotte', neu: true, planet: 'p5', name: 'Amethystgrotte', price: 6000000000000, luck: 14.5, value: 400,
+  { id: 'amethystgrotte', neu: true, planet: 'p5', name: 'Amethystgrotte', price: 25000, luck: 14.5, value: 1.5,
     text: 'Eine offene Grotte, aus deren Wänden violette Amethyst-Drusen wachsen.',
     sky: ['#1a0a30', '#8a4ad8'], ground: '#6a4a9a', side: '#4a2e72', rock: '#2e1a50', accent: '#c98bff', fx: 'spores' },
-  { id: 'topasduenen', neu: true, planet: 'p5', name: 'Topasdünen', price: 20000000000000, luck: 16, value: 500,
+  { id: 'topasduenen', neu: true, planet: 'p5', name: 'Topasdünen', price: 100000, luck: 16, value: 2,
     text: 'Goldgelbe Dünen aus Topas-Sand, aus denen große Kristalle ragen.',
     sky: ['#3a1a08', '#ffc46a'], ground: '#f2c46a', side: '#c8904a', rock: '#8a5a2a', accent: '#ffb02e', fx: 'dust' },
 
   // ── Planet 6 ──
-  { id: 'smaragdwald', neu: true, planet: 'p6', name: 'Smaragdwald', price: 60000000000000, luck: 18, value: 640,
+  { id: 'smaragdwald', neu: true, planet: 'p6', name: 'Smaragdwald', price: 400000, luck: 18, value: 3,
     text: 'Bäume mit Blättern aus Smaragd. Wenn der Wind weht, klingen sie wie Glöckchen.',
     sky: ['#0a2a1a', '#7ae8b0'], ground: '#2fa86a', side: '#1e6a44', rock: '#14482e', accent: '#3ee08a', fx: 'fireflies' },
-  { id: 'jadetempel', neu: true, planet: 'p6', name: 'Jadetempel', price: 200000000000000, luck: 20, value: 820,
+  { id: 'jadetempel', neu: true, planet: 'p6', name: 'Jadetempel', price: 1500000, luck: 20, value: 4,
     text: 'Ein Stufentempel aus grüner Jade mit goldenen Dächern, bewacht von Steinlöwen.',
     sky: ['#14301e', '#d8f0c0'], ground: '#8ad0a0', side: '#5a9a70', rock: '#3a6a4a', accent: '#ffd76a', fx: 'pollen' },
-  { id: 'saphirsee', neu: true, planet: 'p6', name: 'Saphirsee', price: 600000000000000, luck: 22, value: 1050,
+  { id: 'saphirsee', neu: true, planet: 'p6', name: 'Saphirsee', price: 6000000, luck: 22, value: 5.5,
     text: 'Ein tiefblauer See, in dem Saphire wie Sterne auf dem Grund leuchten.',
     sky: ['#06123a', '#4a8aff'], ground: '#cfe0ff', side: '#6a8ad0', rock: '#3a5aa0', accent: '#3a7aff', fx: 'stars' },
 
   // ── Planet 7 ──
-  { id: 'rubinvulkan', neu: true, planet: 'p7', name: 'Rubinvulkan', price: 2000000000000000, luck: 25, value: 1350,
+  { id: 'rubinvulkan', neu: true, planet: 'p7', name: 'Rubinvulkan', price: 25000000, luck: 25, value: 7.5,
     text: 'Ein Vulkan, der statt Lava rote Rubine ausspuckt. Der Boden glüht in Karminrot.',
     sky: ['#2a0610', '#ff4a6a'], ground: '#3a1a22', side: '#2a1018', rock: '#1a080e', accent: '#ff3a5a', fx: 'embers' },
-  { id: 'opalwolken', neu: true, planet: 'p7', name: 'Opalwolken', price: 6000000000000000, luck: 28, value: 1750,
+  { id: 'opalwolken', neu: true, planet: 'p7', name: 'Opalwolken', price: 100000000, luck: 28, value: 10,
     text: 'Inseln auf schillernden Wolken. Jede Wolke leuchtet in allen Farben eines Opals.',
     sky: ['#3a5ad8', '#ffe2f6'], ground: '#f4f0ff', side: '#d0c8f0', rock: '#a8a0d0', accent: '#ff9ae0', fx: 'sprinkles' },
-  { id: 'diamantkern', neu: true, planet: 'p7', name: 'Diamantkern', price: 20000000000000000, luck: 32, value: 2300,
+  { id: 'diamantkern', neu: true, planet: 'p7', name: 'Diamantkern', price: 400000000, luck: 32, value: 14,
     text: 'Das Herz des Planeten: ein Diamant so groß wie ein Berg. Hier sind die Edelsteine am meisten wert.',
     sky: ['#040814', '#8af0ff'], ground: '#dff8ff', side: '#9ad0e0', rock: '#5a8aa0', accent: '#e8fdff', fx: 'flares' },
 ];
@@ -234,7 +235,7 @@ export const worldsOf = (planetId) => WORLDS.filter((w) => w.planet === planetId
 export const playable = (planetId) => worldsOf(planetId).filter((w) => !w.soon);
 
 // ── Wiedergeburt ─────────────────────────────────────────────────────────────
-// Kostet Taler, setzt die Taler auf 0 und macht alle Münzen dauerhaft mehr wert.
+// Kostet Moneten, setzt die Moneten auf 0 und macht alle Münzen dauerhaft mehr wert.
 // Welten, Münzen, Level und Skills bleiben.
 export const REBIRTH = {
   cost: (n) => 1000000 * Math.pow(4, n), // n = Wiedergeburten bisher
@@ -243,7 +244,7 @@ export const REBIRTH = {
 export const rebirthMultiplier = (n) => 1 + REBIRTH.bonus * n;
 
 // ── Supernova (Prestige) ─────────────────────────────────────────────────────
-// Ab 100 Wiedergeburten kann man zur Supernova werden: Taler und Wiedergeburten gehen auf 0, dafür ist
+// Ab 100 Wiedergeburten kann man zur Supernova werden: Moneten und Wiedergeburten gehen auf 0, dafür ist
 // alles für immer fünfmal so viel wert und die nächste Galaxie öffnet sich (pro Galaxie einmal).
 // Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben.
 export const SUPERNOVA = {
@@ -254,6 +255,13 @@ export const SUPERNOVA = {
 export const supernovaMultiplier = (n) => Math.pow(SUPERNOVA.bonus, n);
 // Welt-Galaxie: was man dort findet ('coins' oder 'gems')
 export const galaxyOfWorld = (w) => galaxyById[planetById[w.planet]?.galaxy] || GALAXIES[0];
+
+// Währungen: Münzen bringen Moneten, Edelsteine Diamantstaub
+export const CURRENCIES = {
+  moneten: { id: 'moneten', name: 'Moneten', color: '#ffd76a', icon: 'coin' },
+  staub: { id: 'staub', name: 'Diamantstaub', color: '#8af0ff', icon: 'gem' },
+};
+export const currencyOfWorld = (w) => CURRENCIES[galaxyOfWorld(w).currency] || CURRENCIES.moneten;
 
 // Anzeige
 export const fmtLuck = (w) => (w.luck ? `+${Math.round(w.luck * 100).toLocaleString('de-DE')} %` : '±0 %');

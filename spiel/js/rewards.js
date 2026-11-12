@@ -24,7 +24,7 @@ export function grant(s, prize) {
 }
 const boostName = (id) => BOOSTS.find((b) => b.id === id)?.name ?? id;
 export const prizeText = (p) =>
-  p.taler ? `${p.taler.toLocaleString('de-DE')} Taler` : p.boost ? `${boostName(p.boost)} (${p.minutes} Min.)` : p.egg ? `${EGG_NAMES[p.egg]}` : p.xp ? `${p.xp} EP` : '–';
+  p.taler ? `${p.taler.toLocaleString('de-DE')} Moneten` : p.boost ? `${boostName(p.boost)} (${p.minutes} Min.)` : p.egg ? `${EGG_NAMES[p.egg]}` : p.xp ? `${p.xp} EP` : '–';
 const EGG_NAMES = { normal: 'Normal Egg', wald: 'Wald Egg', eis: 'Eis Egg', engel: 'Engels Egg', galaxie: 'Galaxie Egg', admin: 'Admin Egg', release: 'Release Egg' };
 
 // ── Tägliche Belohnung: sieben Tage, danach von vorn ──
@@ -108,7 +108,7 @@ export function redeem(s, input) {
 // ── Ranglisten ──
 const RIVALS = ['MünzMax', 'GlitzerGrete', 'TalerTom', 'Schatzsucherin', 'KometenKai', 'PerlenPia', 'GoldGustav', 'DrachenDana', 'NebelNico', 'LavaLuis', 'EisElla', 'PixelPaul', 'RubinRita', 'SternSami', 'KobaltKim'];
 export const BOARDS = [
-  { id: 'taler', label: 'Taler', color: '#ffd76a', top: 9.8e9, k: 0.62, mine: (s) => Math.floor(s.taler) },
+  { id: 'taler', label: 'Moneten', color: '#ffd76a', top: 9.8e9, k: 0.62, mine: (s) => Math.floor(s.taler) },
   { id: 'coins', label: 'Münzen', color: '#7ad0ff', top: 4800, k: 0.82, mine: (s) => s.inventory.length + (s.sold ?? 0) },
   { id: 'rebirths', label: 'Wiedergeburten', color: '#ff8ac8', top: 42, k: 0.86, mine: (s) => s.rebirths | 0 },
   { id: 'level', label: 'Level', color: '#8cff7a', top: 180, k: 0.9, mine: (s) => s.level },

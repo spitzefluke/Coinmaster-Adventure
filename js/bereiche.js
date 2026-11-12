@@ -34,7 +34,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Münzbaumgarten',
-    text: 'Ein kleiner Garten, den man mit Talern kauft. Münzbäume aus den Rollen wachsen in fünf Phasen, manche golden. Ihre Früchte verkaufst du am Marktstand mit schwankenden Preisen oder ziehst daraus neue Samen.',
+    text: 'Ein kleiner Garten, den man mit Moneten kauft. Münzbäume aus den Rollen wachsen in fünf Phasen, manche golden. Ihre Früchte verkaufst du am Marktstand mit schwankenden Preisen oder ziehst daraus neue Samen.',
     href: 'garten/',
     status: 'vorschau',
     eckdaten: ['17 Münzbäume', '9 Zäune', 'bis 12 Beete'],
@@ -62,7 +62,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Auras',
-    text: '50 Auras, die um den Spieler leuchten: Elemente, Münzen und Schätze, Weltraum und Magie, dazu Lustiges und Glitches. Jede Aura kostet Taler und gibt einen kleinen Bonus.',
+    text: '50 Auras, die um den Spieler leuchten: Elemente, Münzen und Schätze, Weltraum und Magie, dazu Lustiges und Glitches. Jede Aura kostet Moneten und gibt einen kleinen Bonus.',
     href: 'auren/',
     status: 'vorschau',
     eckdaten: ['50 Auras', '6 Seltenheiten', 'Bonus'],

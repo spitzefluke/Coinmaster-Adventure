@@ -1,7 +1,8 @@
+import { FRUIT_XP } from '../../haustiere/js/pets.js';
 // Münzbaumgarten: Garten kaufen, Beete, Samen säen, Gießen, Düngen, Ernten. Wachsende Bäume zeigen einen Timer.
-// Geerntet werden Früchte: Sie liegen im Fruchtkorb und werden am Marktstand verkauft oder zu Samen gezogen.
+// Geerntet werden Früchte: Sie liegen im Inventar, sind Futter für die Haustiere (Pet-EP) oder werden zu Samen gezogen.
 // Der Garten in 3D ist GardenBuilder aus dem Installer (1:1 wie in Roblox), die Regeln stehen in
-// garden.js (wie GardenData). Taler und Inventar teilt sich die Seite mit den Münzrollen.
+// garden.js (wie GardenData). Moneten und Inventar teilt sich die Seite mit den Münzrollen.
 
 import * as THREE from 'three';
 import {
@@ -79,7 +80,7 @@ function useItem(id) {
   if (item.kind === 'taler') {
     state.taler += item.amount;
     take(id);
-    hint(`<strong>+${fmt(item.amount)} Taler</strong> aus dem ${item.name}.`);
+    hint(`<strong>+${fmt(item.amount)} Moneten</strong> aus dem ${item.name}.`);
     return save();
   }
   if (item.kind === 'bed') {
@@ -187,6 +188,8 @@ function dig(i) {
 
 // Marktstand: Früchte zum Preis von jetzt verkaufen (id oder 'all')
 function sell(id) {
+  // Früchte kann man nicht mehr verkaufen: Sie sind Futter für die Haustiere
+  if (id) return hint('Früchte kann man nicht verkaufen. Im Spiel fütterst du damit deine Haustiere (Inventar › Haustiere).');
   const t = now(state);
   let total = 0;
   let count = 0;
@@ -198,7 +201,7 @@ function sell(id) {
   }
   if (!count) return;
   state.taler += total;
-  hint(`${id === 'all' ? `${fmt(count)} Früchte` : fruitLabel(lootById[id], count)} verkauft: <strong>+${fmt(total)} Taler</strong>.`);
+  hint(`${id === 'all' ? `${fmt(count)} Früchte` : fruitLabel(lootById[id], count)} verkauft: <strong>+${fmt(total)} Moneten</strong>.`);
   save();
 }
 
@@ -224,12 +227,12 @@ function renderBar() {
   buy.hidden = state.owned;
   $('buy-text').textContent = `${GARDEN.startBeds} Beete, umzäunt, mit Tor und Schild. Später auf bis zu ${GARDEN.maxBeds} Beete erweiterbar.`;
   const bb = $('buy-btn');
-  bb.textContent = state.taler >= GARDEN.price ? `Kaufen für ${fmt(GARDEN.price)} Taler` : `Zu wenig Taler (${fmt(GARDEN.price)})`;
+  bb.textContent = state.taler >= GARDEN.price ? `Kaufen für ${fmt(GARDEN.price)} Moneten` : `Zu wenig Moneten (${fmt(GARDEN.price)})`;
   bb.disabled = state.taler < GARDEN.price;
   const bed = $('buy-bed');
   bed.hidden = !state.owned;
   const price = GARDEN.bedPrice(state.beds);
-  bed.textContent = state.beds >= GARDEN.maxBeds ? 'Alle Beete gekauft' : `Beet kaufen · ${fmt(price)} Taler`;
+  bed.textContent = state.beds >= GARDEN.maxBeds ? 'Alle Beete gekauft' : `Beet kaufen · ${fmt(price)} Moneten`;
   bed.disabled = state.beds >= GARDEN.maxBeds || state.taler < price;
   $('harvest-all').hidden = !state.owned;
 }
@@ -240,7 +243,7 @@ let bedsOwned = null;
 function renderBeds(t) {
   const el = $('beds');
   if (!state.owned) {
-    if (bedsOwned !== false) el.innerHTML = '<p class="bed-empty">Noch kein Garten. Kauf ihn oben für Taler.</p>';
+    if (bedsOwned !== false) el.innerHTML = '<p class="bed-empty">Noch kein Garten. Kauf ihn oben für Moneten.</p>';
     bedsOwned = false;
     return;
   }
@@ -361,33 +364,26 @@ function renderInv() {
     .join(''));
 }
 
-// Fruchtkorb und Marktstand: Preis schwankt alle 10 Minuten (Pfeil zeigt, ob er über dem Grundpreis liegt)
+// Früchte: Futter für die Haustiere (verkaufen geht nicht), daraus lassen sich Samen ziehen
 let marketHtml = '';
 function renderMarket(t) {
   const el = $('market');
   const ids = TREES.map((x) => x.id).filter((id) => state.fruits[id] > 0);
   $('market-left').textContent = fmtTime(marketLeft(t));
-  const total = ids.reduce((a, id) => a + state.fruits[id] * fruitPrice(id, t), 0);
-  const all = $('sell-all');
-  all.disabled = !ids.length;
-  all.textContent = ids.length ? `Alles verkaufen · +${fmt(total)} Taler` : 'Alles verkaufen';
+  $('sell-all').hidden = true;
   const html = !ids.length
-    ? '<p class="inv-empty">Der Korb ist leer. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier.</p>'
+    ? '<p class="inv-empty">Noch keine Früchte. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier und im Inventar.</p>'
     : ids.map((id) => {
         const tree = lootById[id];
         const rar = rarityById[tree.rarity];
         const n = state.fruits[id];
-        const m = marketMult(id, t);
-        const price = fruitPrice(id, t);
-        const trend = m > 1 ? `<span class="trend up">▲ ${Math.round((m - 1) * 100)} %</span>` : m < 1 ? `<span class="trend down">▼ ${Math.round((1 - m) * 100)} %</span>` : '<span class="trend">Grundpreis</span>';
         const cost = seedCost(tree);
         return `<article class="item fruit" style="--t:${rar.color}">
           <span class="item-icon" aria-hidden="true">${fruitIcon(tree)}</span>
           <p class="item-name">${n === 1 ? tree.fruitName : tree.fruitPlural}<small>×${fmt(n)}</small></p>
           <p class="item-rar${rar.rainbow ? ' rainbow-text' : ''}">${rar.name} · vom ${tree.name}</p>
-          <p class="item-text">${fmt(price)} Taler je Stück ${trend}</p>
+          <p class="item-text">Futter: +${FRUIT_XP[tree.rarity] || 1} Pet-EP je Stück</p>
           <div class="item-btns">
-            <button class="btn gold small" data-sell="${id}">Verkaufen · +${fmt(n * price)}</button>
             <button class="btn small" data-seed="${id}" ${n >= cost ? '' : 'disabled'} title="${cost} Früchte ergeben einen Samen">Samen ziehen · ${cost} Stück</button>
           </div>
         </article>`;
@@ -442,7 +438,7 @@ $('cheat').addEventListener('click', () => {
   save();
 });
 $('reset').addEventListener('click', () => {
-  if (!confirm('Garten, Inventar und Taler der Vorschau zurücksetzen?')) return;
+  if (!confirm('Garten, Inventar und Moneten der Vorschau zurücksetzen?')) return;
   state = freshState();
   selected = null;
   hint('');

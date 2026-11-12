@@ -2,6 +2,8 @@
 // (Tier aus dem Ordner „Haustiere“ klonen) und HatchFx (Schlüpf-Animation mit Tweens und Partikeln).
 // Reiner Text wie luau.js, damit es auch in Node prüfbar ist.
 
+import { PET_MAX_LEVEL, FRUIT_XP, petXpFor } from '../../haustiere/js/pets.js';
+
 const str = (s) => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
 const num = (n) => String(Math.round(n * 1000) / 1000);
 
@@ -29,6 +31,27 @@ for _, pet in ipairs(PetData.Pets) do
 	PetData.ById[pet.Id] = pet
 	PetData.ByEgg[pet.Egg] = PetData.ByEgg[pet.Egg] or {}
 	table.insert(PetData.ByEgg[pet.Egg], pet)
+end
+
+-- Füttern: Früchte aus dem Münzbaumgarten geben Pet-EP (FruitXp nach Seltenheit des Baums).
+-- Am Spieler steht die Liste im Attribut Pets (JSON): { { U = Nummer, Id = petId, L = Level, X = EP } }
+PetData.MaxLevel = ${PET_MAX_LEVEL}
+PetData.FruitXp = { ${Object.entries(FRUIT_XP).map(([k, v]) => `${k} = ${v}`).join(', ')} }
+-- EP von Level n auf n + 1 (gleiche Formel wie petXpFor in haustiere/js/pets.js: ${petXpFor(1)}, ${petXpFor(2)}, ${petXpFor(3)} …)
+function PetData.XpFor(n)
+	return math.floor(10 * n ^ 1.5 + 0.5)
+end
+-- EP gutschreiben (pet = { L, X }), gibt die Zahl neuer Level zurück
+function PetData.AddXp(pet, xp)
+	local ups = 0
+	pet.X = (pet.X or 0) + xp
+	while pet.L < PetData.MaxLevel and pet.X >= PetData.XpFor(pet.L) do
+		pet.X = pet.X - PetData.XpFor(pet.L)
+		pet.L = pet.L + 1
+		ups = ups + 1
+	end
+	if pet.L >= PetData.MaxLevel then pet.X = 0 end
+	return ups
 end
 
 -- Ein Tier aus einem Ei ziehen (rng optional, z. B. Random.new())

@@ -414,7 +414,7 @@ export class Discovery {
     u.mutation.hidden = !m;
     if (m) {
       u.mutation.style.setProperty('--mut', m.color);
-      u.mutation.textContent = `Mutation: ${m.name} · ${fmtMultiplier(m)} · Wert ${mutatedValue(tier.value, m)} Taler`;
+      u.mutation.textContent = `Mutation: ${m.name} · ${fmtMultiplier(m)} · Wert ${mutatedValue(tier.value, m)} Moneten`;
     }
     u.text.classList.remove('is-shown', 'is-glitch');
     u.done.hidden = true;

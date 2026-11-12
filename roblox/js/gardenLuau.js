@@ -19,7 +19,7 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 -- und neu übertragen, sonst gehen sie beim nächsten Import verloren.
 `;
 
-const KIND = { water: 'Water', boost: 'Boost', taler: 'Taler', bed: 'Bed' };
+const KIND = { water: 'Water', boost: 'Boost', taler: 'Moneten', bed: 'Bed' };
 
 export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], GARDEN }) {
   const rarities = GARDEN_RARITIES.map((r, i) => fields({ Id: str(r.id), Name: str(r.name), Index: num(i + 1), Chance: num(r.chance), Color: color(r.color), Rainbow: r.rainbow ? 'true' : undefined }));
@@ -66,17 +66,17 @@ export function gardenDataSource({ GARDEN_RARITIES, TREES, TOOLS, FENCES = [], G
     fields({ Id: str(f.id), Type: str('Fence'), Name: str(f.name), Rarity: str(f.rarity), Standard: f.standard ? 'true' : undefined, Color: color(f.color), Text: str(f.text) }),
   );
   return `${HEADER('Münzbaumgarten')}
--- Den Garten kauft man mit Talern (Garden.Price). Samen und Werkzeug gibt es aus Münzrollen (RollData);
+-- Den Garten kauft man mit Moneten (Garden.Price). Samen und Werkzeug gibt es aus Münzrollen (RollData);
 -- ein Baum steckt als Samen (SeedName) im Inventar und wächst nach dem Säen mit Timer (Grow Sekunden).
--- Geerntet werden keine Taler, sondern Früchte (FruitName): Sie kommen in den Fruchtkorb (Fruits) und
--- lassen sich zum Marktpreis verkaufen (Yield × MarketMult, wechselt alle Garden.MarketSlot Sekunden)
--- oder gegen Samen desselben Baums tauschen (SeedCost Früchte).
+-- Geerntet werden keine Moneten, sondern Früchte (FruitName): Sie kommen ins Inventar (Fruits) und
+-- lassen sich gegen Samen desselben Baums tauschen (SeedCost Früchte). Verkaufen geht nicht mehr
+-- (FruitPrice/MarketMult bleiben nur als Wert-Angabe).
 -- Ein Beet (Plot) im Spielstand: { Tree = id, Planted = os.time(), Bonus = 0, Harvested = 0, Boost = 1, BoostEnd = 0, Golden = true? }
 --   Bonus     Sekunden, die der Baum durch Gießen schon gewachsen ist
 --   Harvested Zeit der letzten Ernte, Boost/BoostEnd Dünger
 --   Golden    wächst golden (Chance Garden.GoldenChance beim Säen) und trägt doppelt
 -- Werkzeug (Kind): Water = Seconds schneller wachsen (math.huge: sofort fertig), Boost = Mult × Ernte
--- für Seconds, Taler = Amount Taler, Bed = ein Beet mehr.
+-- für Seconds, Moneten = Amount Moneten, Bed = ein Beet mehr.
 -- Wichtig: Ernten und Benutzen nur auf dem Server rechnen.
 
 local GardenData = {}
@@ -294,8 +294,8 @@ function GardenData.FruitLabel(tree, n)
 	return fmtNum(n) .. " " .. (n == 1 and tree.FruitName or tree.FruitPlural)
 end
 
--- Eine Aktion auf dem Spielstand ausführen. Ändert g, rechnet aber keine Taler ab:
--- gibt ok, Text und die Taler-Änderung zurück (negativ = kostet). taler = Taler, die der Spieler hat.
+-- Eine Aktion auf dem Spielstand ausführen. Ändert g, rechnet aber keine Moneten ab:
+-- gibt ok, Text und die Moneten-Änderung zurück (negativ = kostet). taler = Moneten, die der Spieler hat.
 --   buyGarden · buyBed · plant (Beet, Baum-Id) · use (Werkzeug-Id, Beet) · harvest (Beet oder "all"): Früchte in den Korb · dig (Beet)
 --   fence (Zaun-Id): Zaun anbringen (aus dem Inventar oder der Standard-Holzzaun)
 --   sell (Baum-Id oder "all"): Früchte zum Marktpreis verkaufen · seed (Baum-Id): Früchte gegen einen Samen tauschen
@@ -309,7 +309,7 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 	end
 	if action == "buyGarden" then
 		if g.Owned then return false, "Du hast schon einen Garten", 0 end
-		if taler < G.Price then return false, "Zu wenig Taler", 0 end
+		if taler < G.Price then return false, "Zu wenig Moneten", 0 end
 		g.Owned = true
 		g.Beds = math.max(g.Beds, G.StartBeds)
 		return true, "Der Münzbaumgarten gehört dir!", -G.Price
@@ -320,7 +320,7 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 	if action == "buyBed" then
 		if g.Beds >= G.MaxBeds then return false, "Mehr Beete gehen nicht", 0 end
 		local price = GardenData.BedPrice(g.Beds)
-		if taler < price then return false, "Zu wenig Taler", 0 end
+		if taler < price then return false, "Zu wenig Moneten", 0 end
 		g.Beds = g.Beds + 1
 		return true, "Beet " .. g.Beds .. " ist umgegraben", -price
 	elseif action == "plant" then
@@ -338,9 +338,9 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 	elseif action == "use" then
 		local tool = GardenData.ById[a]
 		if not tool or tool.Type ~= "Tool" or (g.Inv[a] or 0) < 1 then return false, "Das hast du nicht", 0 end
-		if tool.Kind == "Taler" then
+		if tool.Kind == "Moneten" then
 			take(g, a)
-			return true, "+" .. fmtNum(tool.Amount) .. " Taler aus " .. tool.Name, tool.Amount
+			return true, "+" .. fmtNum(tool.Amount) .. " Moneten aus " .. tool.Name, tool.Amount
 		elseif tool.Kind == "Bed" then
 			if g.Beds >= G.MaxBeds then return false, "Mehr Beete gehen nicht", 0 end
 			take(g, a)
@@ -388,7 +388,7 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 			table.insert(parts, "+" .. GardenData.FruitLabel(GardenData.ById[id], got[id]))
 		end
 		local extra = #gone > 0 and (" · " .. table.concat(gone, ", ") .. " abgeerntet, das Beet ist frei") or ""
-		return true, table.concat(parts, ", ") .. " in den Fruchtkorb" .. extra, 0
+		return true, table.concat(parts, ", ") .. " ins Inventar" .. extra, 0
 	elseif action == "dig" then
 		local plot = plotAt(bed)
 		if not plot then return false, "Auf dem Beet wächst nichts", 0 end
@@ -398,7 +398,7 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 		local extra = ""
 		if fruits > 0 then
 			addFruit(g, plot.Tree, fruits)
-			extra = " · +" .. GardenData.FruitLabel(tree, fruits) .. " in den Fruchtkorb"
+			extra = " · +" .. GardenData.FruitLabel(tree, fruits) .. " ins Inventar"
 		end
 		-- nur ein noch nicht ausgewachsener Baum gibt seine Samen zurück (sonst ließe sich die Erntegrenze umgehen)
 		if GardenData.Stage(plot, now) < 3 then
@@ -407,22 +407,8 @@ function GardenData.Act(g, action, a, b, now, taler, rng)
 		end
 		return true, tree.Name .. " ausgerissen, das Beet ist frei" .. extra, 0
 	elseif action == "sell" then
-		-- Früchte am Marktstand verkaufen, zum Marktpreis von jetzt
-		local total, count, ids = 0, 0, {}
-		for id in pairs(g.Fruits) do table.insert(ids, id) end
-		for _, id in ipairs(ids) do
-			local n = g.Fruits[id]
-			if (a == "all" or id == a) and n and n > 0 and GardenData.ById[id] then
-				total = total + n * GardenData.FruitPrice(id, now)
-				count = count + n
-				g.Fruits[id] = nil
-			end
-		end
-		if count == 0 then return false, "Keine Früchte im Korb", 0 end
-		if a == "all" then
-			return true, fmtNum(count) .. " Früchte verkauft: +" .. fmtNum(total) .. " Taler", total
-		end
-		return true, GardenData.FruitLabel(GardenData.ById[a], count) .. " verkauft: +" .. fmtNum(total) .. " Taler", total
+		-- Früchte kann man nicht verkaufen: Sie sind Futter für die Haustiere (Pet-EP)
+		return false, "Früchte kann man nicht verkaufen. Füttere damit deine Haustiere (Inventar › Haustiere).", 0
 	elseif action == "seed" then
 		-- Samen ziehen: SeedCost Früchte eines Baums gegen einen Samen desselben Baums
 		local tree = GardenData.ById[a]
@@ -612,7 +598,7 @@ function CROWNS.mushroom(m, t, leaf, h)
 	end
 	return Vector3.new(0, h + 0.15, 0), 1.9, 0
 end
--- Wolkenbaum: weiche Wolkenkugeln, darunter fallen Taler wie Regen
+-- Wolkenbaum: weiche Wolkenkugeln, darunter fallen Moneten wie Regen
 function CROWNS.cloud(m, t, leaf, h)
 	local c = Vector3.new(0, h + 1.5, 0)
 	for _, o in ipairs({ { 0, 0.3, 0, 3 }, { -1.3, 0, 0.2, 2.3 }, { 1.3, -0.1, -0.1, 2.4 }, { 0.2, -0.2, 1.2, 2.2 }, { -0.2, 0.1, -1.2, 2.3 }, { 0.6, 0.9, 0.3, 1.8 } }) do
@@ -1265,16 +1251,16 @@ function TOOLS.bag(m, t, accent)
 	for _, side in ipairs({ -1, 1 }) do
 		ellipsoid(m, "Schleife", Vector3.new(0.34, 0.22, 0.08), CFrame.new(side * 0.2, 1.62, -0.38) * CFrame.Angles(0, 0, side * math.rad(20)), Color3.fromRGB(214, 52, 60))
 	end
-	-- großes Taler-Zeichen vorne
+	-- großes Moneten-Zeichen vorne
 	local front = CFrame.new(0, 0.85, -0.78)
 	cyl(m, "Zeichen", 0.06, 0.62, front * FRONT, accent, Enum.Material.Neon)
 	cyl(m, "ZeichenInnen", 0.08, 0.42, front * CFrame.new(0, 0, -0.01) * FRONT, Color3.fromRGB(255, 214, 90), Enum.Material.Metal)
-	-- Taler daneben: ein kleiner Stapel und zwei schräge
+	-- Moneten daneben: ein kleiner Stapel und zwei schräge
 	for i = 0, 3 do
-		cyl(m, "Taler", 0.1, 0.5, CFrame.new(1.05, 0.06 + i * 0.1, -0.35) * UP * CFrame.Angles(math.rad(i * 25), 0, 0), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
+		cyl(m, "Moneten", 0.1, 0.5, CFrame.new(1.05, 0.06 + i * 0.1, -0.35) * UP * CFrame.Angles(math.rad(i * 25), 0, 0), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
 	end
-	cyl(m, "Taler", 0.1, 0.5, CFrame.new(-0.95, 0.2, -0.6) * CFrame.Angles(0, math.rad(60), math.rad(70)), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
-	cyl(m, "Taler", 0.1, 0.5, CFrame.new(0.55, 0.06, -0.95) * UP, Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
+	cyl(m, "Moneten", 0.1, 0.5, CFrame.new(-0.95, 0.2, -0.6) * CFrame.Angles(0, math.rad(60), math.rad(70)), Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
+	cyl(m, "Moneten", 0.1, 0.5, CFrame.new(0.55, 0.06, -0.95) * UP, Color3.fromRGB(255, 205, 80), Enum.Material.Metal)
 	return body
 end
 function TOOLS.spade(m, t, accent)
@@ -1316,18 +1302,18 @@ function TOOLS.chest(m, t, accent)
 	end
 	box(m, "Schloss", Vector3.new(0.34, 0.4, 0.1), CFrame.new(0, 0.82, -0.68), gold, Enum.Material.Foil)
 	ball(m, "Schlossstein", 0.16, Vector3.new(0, 0.82, -0.74), accent, Enum.Material.Neon)
-	-- Schatz: Berg aus Talern, Edelsteine, ein paar Taler fallen heraus
+	-- Schatz: Berg aus Moneten, Edelsteine, ein paar Moneten fallen heraus
 	ellipsoid(m, "Schatz", Vector3.new(1.85, 0.65, 1.15), CFrame.new(0, 1.0, 0), gold, Enum.Material.Neon)
 	local rng = Random.new(9)
 	for i = 0, 10 do
 		local a = i * 2.4
-		cyl(m, "Taler", 0.08, 0.36, CFrame.new(math.cos(a) * 0.6 * rng:NextNumber(0.3, 1), 1.18 + rng:NextNumber(0, 0.12), math.sin(a) * 0.35 * rng:NextNumber(0.3, 1)) * UP * CFrame.Angles(rng:NextNumber(-0.5, 0.5), 0, rng:NextNumber(-0.4, 0.4)), Color3.fromRGB(255, 226, 120), Enum.Material.Metal)
+		cyl(m, "Moneten", 0.08, 0.36, CFrame.new(math.cos(a) * 0.6 * rng:NextNumber(0.3, 1), 1.18 + rng:NextNumber(0, 0.12), math.sin(a) * 0.35 * rng:NextNumber(0.3, 1)) * UP * CFrame.Angles(rng:NextNumber(-0.5, 0.5), 0, rng:NextNumber(-0.4, 0.4)), Color3.fromRGB(255, 226, 120), Enum.Material.Metal)
 	end
 	for i, col in ipairs({ Color3.fromRGB(255, 70, 110), Color3.fromRGB(80, 200, 255), Color3.fromRGB(120, 255, 140) }) do
 		ball(m, "Edelstein", 0.24, Vector3.new(-0.6 + i * 0.35, 1.28, -0.15 + (i % 2) * 0.2), col, Enum.Material.Neon)
 	end
 	for i = 0, 2 do
-		cyl(m, "Taler", 0.08, 0.38, CFrame.new(-0.4 + i * 0.4, 0.05 + (i % 2) * 0.05, -0.95) * UP, Color3.fromRGB(255, 214, 100), Enum.Material.Metal)
+		cyl(m, "Moneten", 0.08, 0.38, CFrame.new(-0.4 + i * 0.4, 0.05 + (i % 2) * 0.05, -0.95) * UP, Color3.fromRGB(255, 214, 100), Enum.Material.Metal)
 	end
 	return body
 end
@@ -2244,7 +2230,7 @@ export const GARDEN_SERVER = `-- Coinmaster Adventure · Münzbaumgarten und Mü
 -- (buyGarden, buyBed, plant, use, harvest, dig). Der Server prüft alles und würfelt selbst.
 -- Der Garten steht als JSON im Attribut Garden am Spieler. Gespeichert wird er mit dem ganzen Spielstand
 -- (ServerScriptService > CoinmasterServer > PlayerData); Aufträge gibt es erst, wenn der Spielstand geladen ist.
--- Taler kommen aus leaderstats.Taler (legt PlayerData an).
+-- Moneten kommen aus leaderstats.Moneten (legt PlayerData an).
 -- Robux-Rollen brauchen ein Developer Product: Id in ROLL_PRODUCTS eintragen.
 
 local Players = game:GetService("Players")
@@ -2278,7 +2264,7 @@ local lastCall = {}
 
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
-	local taler = stats and stats:FindFirstChild("Taler")
+	local taler = stats and stats:FindFirstChild("Moneten")
 	if taler and (taler:IsA("IntValue") or taler:IsA("NumberValue")) then
 		return taler
 	end
@@ -2348,7 +2334,7 @@ remote.OnServerInvoke = function(player, action, a, b)
 	end
 	local taler = talerOf(player)
 	if not taler then
-		return false, "Keine Taler gefunden (leaderstats.Taler fehlt)"
+		return false, "Keine Moneten gefunden (leaderstats.Moneten fehlt)"
 	end
 	if action == "openRoll" then
 		local roll = RollData.ById[a or ""]
@@ -2362,7 +2348,7 @@ remote.OnServerInvoke = function(player, action, a, b)
 			end
 			return false, "Robux-Rollen brauchen ein Developer Product"
 		end
-		if taler.Value < roll.Price.Amount then return false, "Zu wenig Taler" end
+		if taler.Value < roll.Price.Amount then return false, "Zu wenig Moneten" end
 		taler.Value = taler.Value - roll.Price.Amount
 		local id, item = openRoll(player, entry, roll)
 		return true, roll.Name .. ": " .. GardenData.LootName(item) .. "!", id

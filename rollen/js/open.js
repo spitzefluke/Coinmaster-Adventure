@@ -132,7 +132,7 @@ export class Opener {
     const how = item.type === 'tree' ? `Säen, und in ${fmtTime(item.grow)} wächst daraus ein ${item.name} (${item.harvests}× ernten).` : item.type === 'fence' ? `${item.text} Im Garten anbringen.` : item.text;
     u.loot.innerHTML = `<li style="--t:${tier.color}">${how}</li>`;
     u.again.disabled = !canPay(roll, state);
-    u.again.textContent = u.again.disabled ? 'Zu wenig Taler' : 'Noch eine';
+    u.again.textContent = u.again.disabled ? 'Zu wenig Moneten' : 'Noch eine';
     u.text.classList.remove('is-shown');
     u.done.hidden = u.again.hidden = true;
     u.hint.hidden = false;

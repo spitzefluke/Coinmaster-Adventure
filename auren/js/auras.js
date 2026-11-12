@@ -1,4 +1,4 @@
-// 50 Auras, die um den Spieler leuchten. Man kauft sie im Shop mit Talern; die angelegte Aura gibt
+// 50 Auras, die um den Spieler leuchten. Man kauft sie im Shop mit Moneten; die angelegte Aura gibt
 // einen kleinen Bonus. Seltenere Auras kosten mehr und geben mehr.
 //
 // look beschreibt den Effekt (auraFactory.js baut daraus 3D, luau.js die Roblox-Partikel):
@@ -53,7 +53,7 @@ const LIST = [
   ['elementar', 'Elementarherr', 'elemente', 'goettlich', 'glueck', 'Feuer, Eis, Blitz und Erde gehorchen dir.', { cols: ['#ff6a1a', '#7ad0ff', '#ffe94a', '#7aff5a'], orbit: { kind: 'orb', n: 4 }, bolts: true, pillar: true, ring: 'rune', tex: 'star' }],
 
   // ── Münzen & Schätze ──
-  ['taler', 'Talerregen', 'schaetze', 'gewoehnlich', 'wert', 'Ab und zu fällt ein Taler vom Himmel.', { cols: ['#ffcf4a', '#ffe08a'], fall: { n: 24 }, tex: 'coin' }],
+  ['taler', 'Monetenregen', 'schaetze', 'gewoehnlich', 'wert', 'Ab und zu fällt ein Moneten vom Himmel.', { cols: ['#ffcf4a', '#ffe08a'], fall: { n: 24 }, tex: 'coin' }],
   ['silber', 'Silberstaub', 'schaetze', 'selten', 'glueck', 'Feiner Silberstaub glitzert um dich.', { cols: ['#dfe4ee', '#ffffff'], swirl: { n: 80 }, tex: 'star' }],
   ['muenzwirbel', 'Münzwirbel', 'schaetze', 'selten', 'wert', 'Goldmünzen drehen sich im Kreis.', { cols: ['#ffcf4a'], orbit: { kind: 'coin', n: 8 }, tex: 'coin' }],
   ['edelstein', 'Edelsteinkranz', 'schaetze', 'selten', 'glueck', 'Rubine, Saphire und Smaragde kreisen.', { cols: ['#e3263f', '#2a7de1', '#2aa860'], orbit: { kind: 'gem', n: 6 }, tex: 'star' }],

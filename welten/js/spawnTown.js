@@ -272,7 +272,7 @@ export function buildSpawnTown(ctx, K) {
       }) },
     { a: 115, id: 'robux', name: 'Robux-Palast', sub: 'Angebote & VIP-Pass', wall: '#f2fff6', roof: '#e8c060', accent: '#2aa860', palace: true },
     { a: 155, id: 'haustiere', name: 'Haustier-Hof', sub: 'Ausrüsten & pflegen', wall: '#fff0f6', roof: '#d84a8a', accent: '#d84a8a' },
-    { a: 205, id: 'verkaufen', name: 'Verkaufs-Kontor', sub: 'Münzen gegen Taler', wall: '#fff4e0', roof: '#8a5a3a', accent: '#c8701a',
+    { a: 205, id: 'verkaufen', name: 'Verkaufs-Kontor', sub: 'Münzen gegen Moneten', wall: '#fff4e0', roof: '#8a5a3a', accent: '#c8701a',
       items: (g, D) => [[-1, 0.95], [0, 0.95], [1, 0.95], [-0.5, 1.65], [0.5, 1.65]].forEach(([x, y]) => {
         for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), M('#ffcf4a', { metalness: 0.7, roughness: 0.3 })), x, y + k * 0.055, -D / 2 + 0.32));
       }) },
@@ -317,7 +317,7 @@ export function buildSpawnTown(ctx, K) {
 
   // ── Ranglisten, Münzindex ──
   {
-    const boards = [['Meiste Taler', '#ffd76a', 'taler'], ['Münzen gesammelt', '#7ad0ff', 'coins'], ['Wiedergeburten', '#ff8ac8', 'rebirths']];
+    const boards = [['Meiste Moneten', '#ffd76a', 'taler'], ['Münzen gesammelt', '#7ad0ff', 'coins'], ['Wiedergeburten', '#ff8ac8', 'rebirths']];
     boards.forEach(([t, c, k], i) => {
       const o = placeAt(leaderboard(t, c, rankRows(k, rand)), deg(292 + i * 25), 7.8, 1.6);
       o.userData.area = 'ranglisten';
@@ -399,7 +399,7 @@ export function buildSpawnTown(ctx, K) {
       g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 4), M('#3f8a46')), s * 3.4, 4.45, 1.6));
     }
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.6, 0.8), stone), 0, 4.1, 1.6));
-    const sg = signBoard('Heimatplanet', { w: 3.4, h: 0.7, bg: '#2f6a3a', fg: '#ffffff', sub: '7 Welten · mit Talern kaufen' });
+    const sg = signBoard('Heimatplanet', { w: 3.4, h: 0.7, bg: '#2f6a3a', fg: '#ffffff', sub: '7 Welten · mit Moneten kaufen' });
     sg.position.set(0, 3.45, 2.05);
     g.add(sg);
     for (const s of [-1, 1]) {

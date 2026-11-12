@@ -109,7 +109,7 @@ return SkillData
 
 const prize = (p) =>
   '{ ' +
-  [p.taler && `Taler = ${num(p.taler)}`, p.boost && `Boost = ${str(p.boost)}, Minutes = ${num(p.minutes)}`, p.egg && `Egg = ${str(p.egg)}`, p.xp && `XP = ${num(p.xp)}`, p.w && `Weight = ${num(p.w)}`, p.color && `Color = ${color(p.color)}`]
+  [p.taler && `Moneten = ${num(p.taler)}`, p.boost && `Boost = ${str(p.boost)}, Minutes = ${num(p.minutes)}`, p.egg && `Egg = ${str(p.egg)}`, p.xp && `XP = ${num(p.xp)}`, p.w && `Weight = ${num(p.w)}`, p.color && `Color = ${color(p.color)}`]
     .filter(Boolean)
     .join(', ') +
   ' }';
@@ -117,7 +117,7 @@ const prize = (p) =>
 export function rewardDataSource({ DAILY, WHEEL, GROUP_BONUS, BOARDS }) {
   return `${HEADER('Belohnungen und Ranglisten')}
 -- Tägliches Geschenk (sieben Tage, wer einen Tag auslässt, fängt bei Tag 1 an), Glücksrad (einmal am Tag),
--- Gruppen-Bonus (einmalig) und die Ranglisten. Ein Gewinn ist { Taler } | { Boost, Minutes } | { Egg } | { XP }.
+-- Gruppen-Bonus (einmalig) und die Ranglisten. Ein Gewinn ist { Moneten } | { Boost, Minutes } | { Egg } | { XP }.
 -- Am Spieler: DailyDay, DailyStreak, WheelDay (Tag als "Jahr-Monat-Tag"), Group, Codes (eingelöste Codes).
 -- Die Codes selbst stehen nur im Server-Skript CoinmasterPlayer.
 
@@ -149,7 +149,7 @@ local function dots(n)
 end
 
 function RewardData.PrizeText(p)
-	if p.Taler then return dots(p.Taler) .. " Taler" end
+	if p.Moneten then return dots(p.Moneten) .. " Moneten" end
 	if p.Boost then
 		local b = ShopData.BoostById[p.Boost]
 		return (b and b.Name or p.Boost) .. " (" .. p.Minutes .. " Min.)"
@@ -163,7 +163,7 @@ function RewardData.PrizeText(p)
 end
 -- Icon-Name (UITheme.Icons) zu einem Gewinn
 function RewardData.PrizeIcon(p)
-	if p.Taler then return "coins" end
+	if p.Moneten then return "coins" end
 	if p.Boost then return p.Boost == "xp" and "star" or "clover" end
 	if p.Egg then return "egg" end
 	return "sparkle"
@@ -238,14 +238,14 @@ end
 
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
-	return stats and stats:FindFirstChild("Taler")
+	return stats and stats:FindFirstChild("Moneten")
 end
 
 -- Gewinn gutschreiben
 local function grant(player, p)
-	if p.Taler then
+	if p.Moneten then
 		local t = talerOf(player)
-		if t then t.Value = t.Value + p.Taler end
+		if t then t.Value = t.Value + p.Moneten end
 	end
 	if p.Boost then
 		local key = "Boost_" .. p.Boost
@@ -722,7 +722,7 @@ do
 
 	-- ── Belohnungen ──
 	local function shortPrize(p)
-		return (RewardData.PrizeText(p):gsub(" Taler", ""):gsub(" %(.*%)", ""))
+		return (RewardData.PrizeText(p):gsub(" Moneten", ""):gsub(" %(.*%)", ""))
 	end
 	local function fillDaily(w, st)
 		label({ Size = UDim2.new(1, 0, 0, 22), Text = "Hol dir jeden Tag ein Geschenk. Wer einen Tag auslässt, fängt wieder bei Tag 1 an.", TextSize = T.Small, TextXAlignment = Enum.TextXAlignment.Left, Parent = w.body })
@@ -734,7 +734,11 @@ do
 			local today = i == st.Next and not st.ClaimedToday
 			local c = card(days, today and C.goldHi or (done and C.green or C.line))
 			c.LayoutOrder = i
-			if today then c.BackgroundColor3 = C.highlight end
+			if today then
+				local g = c:FindFirstChildOfClass("UIGradient")
+				if g then g:Destroy() end
+				c.BackgroundColor3 = C.highlight
+			end
 			label({ Size = UDim2.new(1, 0, 0, 16), Text = "Tag " .. i, TextSize = T.Tiny, Font = MONO, TextColor3 = C.muted, Parent = c })
 			icon(RewardData.PrizeIcon(p), { Size = UDim2.new(0, 42, 0, 42), Position = UDim2.new(0.5, 0, 0, 22), AnchorPoint = Vector2.new(0.5, 0), Parent = c })
 			label({ Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), Text = RewardData.PrizeText(p), TextSize = T.Small, TextWrapped = true, Parent = c })
@@ -780,7 +784,7 @@ do
 
 		local side = new("Frame", { Size = UDim2.new(1, -370, 1, 0), Position = UDim2.new(0, 370, 0, 0), BackgroundTransparency = 1, Parent = w.body })
 		label({ Size = UDim2.new(1, 0, 0, 30), Text = "Glücksrad", Font = FONT, TextSize = T.Title, TextXAlignment = Enum.TextXAlignment.Left, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 34), Text = "Einmal am Tag gratis drehen. Das seltene rote Feld bringt die meisten Taler.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 34), Text = "Einmal am Tag gratis drehen. Das seltene rote Feld bringt die meisten Moneten.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT, Parent = side })
 		for i, p in ipairs(RewardData.Wheel) do
 			local y = 76 + (i - 1) * 26
 			new("Frame", { Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 0, 0, y + 3), BackgroundColor3 = p.Color, Parent = side }, { corner(R.XS) })

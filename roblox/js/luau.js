@@ -17,7 +17,7 @@ import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_C
 import { adminDataSource, adminServerSource } from './adminLuau.js';
 import { ADMIN, ADMIN_IDS } from '../../spiel/js/admin.js';
 import { GALAXIES as ALL_GALAXIES, SUPERNOVA as SUPERNOVA_RULES } from '../../welten/js/worlds.js';
-import { GEMS as ALL_GEMS, GEM_FACTOR } from '../../edelsteine/js/gems.js';
+import { GEMS as ALL_GEMS, GEM_FACTOR, GEM_BAGS, GEM_BAG_TIERS } from '../../edelsteine/js/gems.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ export function coinDataSource({ TIERS, COINS }) {
 
 local CoinData = {}
 
--- Value: Nennwert in Talern (math.huge = unendlich), Chance: Drop-Chance in Prozent
+-- Value: Nennwert in Moneten (math.huge = unendlich), Chance: Drop-Chance in Prozent
 CoinData.Tiers = ${list(tiers)}
 
 CoinData.Coins = ${list(coins)}
@@ -323,7 +323,7 @@ function Gacha.Forecast(n, now)
 	return out
 end
 
--- Wert einer Münze in Talern, mit Multiplikator der Mutation
+-- Wert einer Münze in Moneten, mit Multiplikator der Mutation
 function Gacha.Value(coin, mutation)
 	local value = CoinData.TierById[coin.Tier].Value
 	if mutation then
@@ -547,13 +547,14 @@ export function worldDataSource({ PLANETS, WORLDS, REBIRTH, GALAXIES = ALL_GALAX
           Price: num(w.price),
           Luck: num(w.luck),
           Value: num(w.value),
+          Currency: str(GALAXIES.find((g) => g.id === (PLANETS.find((p) => p.id === w.planet)?.galaxy || 'g1'))?.currency || 'moneten'),
           Ground: color(w.ground),
           Accent: color(w.accent),
           Text: str(w.text),
         }),
   );
   return `${HEADER('Galaxien, Planeten, Welten, Wiedergeburt, Supernova')}
--- Welten kauft man pro Planet der Reihe nach mit Talern. Ein Portal zum nächsten Planeten öffnet
+-- Welten kauft man pro Planet der Reihe nach mit Moneten. Ein Portal zum nächsten Planeten öffnet
 -- sich, wenn die letzte Welt des vorigen Planeten (derselben Galaxie) gekauft ist und genug
 -- Wiedergeburten da sind. Das erste Portal einer neuen Galaxie braucht eine Supernova.
 -- Luck wirkt wie der Skill „Glückspilz“ (0.5 = +50 % auf alle Stufen außer Normal),
@@ -629,7 +630,7 @@ function WorldData.RebirthMultiplier(n)
 end
 
 -- Supernova (Prestige): ab Rebirths Wiedergeburten, einmal pro weiterer Galaxie (Max).
--- Taler und Wiedergeburten gehen auf 0, alles ist danach für immer Bonus-mal so viel wert.
+-- Moneten und Wiedergeburten gehen auf 0, alles ist danach für immer Bonus-mal so viel wert.
 WorldData.Supernova = {
 	Rebirths = ${num(SUPERNOVA.rebirths)},
 	Bonus = ${num(SUPERNOVA.bonus)},
@@ -658,7 +659,16 @@ function WorldData.NextGalaxy(state)
 end
 
 -- ── Regeln für Kaufen und Portale (Server und Oberfläche nutzen dieselben) ──
--- state = { Owned = { [worldId] = true }, Portals = { [planetId] = true }, Taler = n, Rebirths = n, Supernovas = n }
+-- state = { Owned = { [worldId] = true }, Portals = { [planetId] = true }, Moneten = n, Staub = n, Rebirths = n, Supernovas = n }
+-- Currency einer Welt: "moneten" (Milchstraße) oder "staub" (Diamantstaub, Juwelnebel)
+WorldData.Currencies = {
+	moneten = { Name = "Moneten", Attribute = "Moneten", Icon = "coin", Color = Color3.fromHex("#ffd76a") },
+	staub = { Name = "Diamantstaub", Attribute = "Diamantstaub", Icon = "gem", Color = Color3.fromHex("#8af0ff") },
+}
+function WorldData.Wallet(state, currency)
+	if currency == "staub" then return state.Staub or 0 end
+	return state.Moneten or 0
+end
 -- Am Spieler stehen sie als Attribute: Worlds und Portals (Ids mit Komma), Rebirths, Supernovas, World (aktuelle Welt)
 
 function WorldData.ParseList(text)
@@ -688,7 +698,7 @@ function WorldData.CanBuy(state, worldId)
 			return "Erst „" .. list[i - 1].Name .. "“ kaufen"
 		end
 	end
-	if state.Taler < world.Price then return "Zu wenig Taler" end
+	if WorldData.Wallet(state, world.Currency) < world.Price then return "Zu wenig " .. WorldData.Currencies[world.Currency or "moneten"].Name end
 	return nil
 end
 
@@ -748,9 +758,11 @@ export function gemDataSource({ GEMS = ALL_GEMS } = {}) {
       Text: str(g.text),
     }),
   );
+  const bagTiers = GEM_BAG_TIERS.map((t) => fields({ Id: str(t.id), Name: str(t.name), Color: color(t.color) }));
+  const bags = GEM_BAGS.map((b) => fields({ Nr: num(b.nr), Name: str(b.name), Tier: str(b.tier), Capacity: num(b.capacity), Price: num(b.price), Text: str(b.text) }));
   return `${HEADER('Edelsteine')}
 -- Im Juwelnebel (Galaxie 2, nach der Supernova) findet man Edelsteine statt Münzen.
--- Tier: Stufe aus CoinData (gleiche Drop-Chancen). Wert in Talern: CoinData-Stufenwert × Factor,
+-- Tier: Stufe aus CoinData (gleiche Drop-Chancen). Wert in Moneten: CoinData-Stufenwert × Factor,
 -- beim Fund mal Welt, Wiedergeburt und Supernova. Am Spieler: Gem_<id> (Anzahl), GemValue_<id> (Gesamtwert).
 
 local GemData = {}
@@ -762,6 +774,19 @@ GemData.Gems = ${list(gems)}
 GemData.ById = {}
 for _, gem in ipairs(GemData.Gems) do
 	GemData.ById[gem.Id] = gem
+end
+
+-- Edelstein-Taschen: der Reihe nach mit Diamantstaub kaufen (Attribut GemBag = Nr. der Tasche, Start 1).
+-- Capacity = wie viele Edelsteine man gleichzeitig tragen kann.
+GemData.BagTiers = ${list(bagTiers)}
+GemData.BagTierById = {}
+for _, t in ipairs(GemData.BagTiers) do
+	GemData.BagTierById[t.Id] = t
+end
+GemData.Bags = ${list(bags)}
+
+function GemData.Bag(nr)
+	return GemData.Bags[math.clamp(math.floor(nr or 1), 1, #GemData.Bags)]
 end
 
 return GemData

@@ -21,7 +21,7 @@ export function shopDataSource({ BOOSTS, ROBUX }) {
   const boosts = BOOSTS.map((b) => `{ Id = ${str(b.id)}, Name = ${str(b.name)}, Minutes = ${num(b.minutes)}, Price = ${num(b.price)}, Text = ${str(b.text)}, Icon = ${str(b.icon || 'sparkle')} }`);
   const robux = ROBUX.map((r) => `{ Id = ${str(r.id)}, Name = ${str(r.name)}, Text = ${str(r.text)}, Robux = ${num(r.robux)}, Badge = ${r.badge ? str(r.badge) : 'nil'} }`);
   return `${HEADER('Shop')}
--- Boosts kauft man mit Talern, sie laufen eine Zeit lang. Robux-Angebote brauchen im Spiel Developer Products.
+-- Boosts kauft man mit Moneten, sie laufen eine Zeit lang. Robux-Angebote brauchen im Spiel Developer Products.
 
 local ShopData = {}
 
@@ -64,6 +64,7 @@ UITheme.Colors = {
 	red = Color3.fromRGB(232, 74, 90), blue = Color3.fromRGB(0, 162, 255), cyan = Color3.fromRGB(56, 240, 255),
 	-- Juwelnebel und Supernova (Edelsteine)
 	gem = Color3.fromRGB(200, 74, 216), gemHi = Color3.fromRGB(255, 150, 236), gemDark = Color3.fromRGB(110, 30, 130),
+	dust = Color3.fromRGB(138, 240, 255), -- Diamantstaub
 	-- Erfahrung
 	xp = Color3.fromRGB(160, 120, 255), xpHi = Color3.fromRGB(196, 160, 255), xpDark = Color3.fromRGB(120, 80, 230),
 	-- Glanz auf Flächen (UIGradient)
@@ -98,7 +99,7 @@ UITheme.Space = { XS = 4, S = 8, M = 12, L = 16, XL = 24 }
 --   Exit    Verschwinden (schneller als Erscheinen)
 --   Spin    Glücksrad
 --   Float   aufsteigende Zahlen und Funken
---   Fly     Münzen fliegen zum Taler-Feld (werden schneller)
+--   Fly     Münzen fliegen zum Moneten-Feld (werden schneller)
 UITheme.Motion = {
 	Fast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 	Normal = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -107,7 +108,7 @@ UITheme.Motion = {
 	Exit = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 	Spin = TweenInfo.new(4.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 	Float = TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), -- „+500“ steigt auf, Funken fliegen
-	Fly = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), -- Münzen fliegen zum Taler-Feld
+	Fly = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), -- Münzen fliegen zum Moneten-Feld
 }
 UITheme.ExitTime = 0.16
 
@@ -132,13 +133,14 @@ return UITheme
 
 export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- GameUI.Start(options) baut die Oberfläche im PlayerGui des lokalen Spielers (LocalScript).
--- Spielstand kommt aus Attributen am Spieler: Taler (sonst leaderstats.Taler), Level, XP, XPMax, Points,
+-- Spielstand kommt aus Attributen am Spieler: Moneten (sonst leaderstats.Moneten), Level, XP, XPMax, Points,
 -- WorldName, WorldPlanet, Aura, OwnedAuras, Egg_<id> (Anzahl), Boost_<id> (Ende als os.time()),
 -- EggDiscount (Prozent). Das Wetter steht an ReplicatedStorage (Weather, WeatherEnds).
 -- Inventar: Münzen als Stapel über das RemoteEvent InventoryEvent ("full", Liste) und ("set", Schlüssel, Stapel);
 -- in der Vorschau ruft die Seite GameUI.ApplyInventory direkt auf. Plätze im Attribut Slots.
 -- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths, Supernovas.
--- Edelsteine (Juwelnebel): Gem_<id> (Anzahl), GemValue_<id> (Gesamtwert in Talern).
+-- Haustiere: Pets (JSON-Liste { U, Id, L, X }); Früchte aus dem Garten (Garden.Fruits) sind ihr Futter.
+-- Edelsteine (Juwelnebel): Gem_<id> (Anzahl), GemValue_<id> (Gesamtwert in Diamantstaub).
 -- Garten: Garden (JSON, siehe GardenData), Aktionen garden… und openRoll gehen an GardenRemote.
 -- options.PlayRoll(rollId, itemId)         zeigt eine geöffnete Rolle mit Rollband (Standard: RollFx vor dem Spieler)
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
@@ -147,7 +149,7 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- options.Query(kind, arg) → table          Daten: forecast (Wettervorhersage), board (Rangliste)
 -- options.Sound(kind, level)               Klang zu Effekten (z. B. "found", Stufe 1–4), optional
 -- GameUI.Found(info)                        zeigt einen Fund je nach Seltenheit (Hinweis bis große Ansage)
--- options.DevTools                          zeigt Test-Knöpfe (nur Vorschau, z. B. „+ Test-Taler“)
+-- options.DevTools                          zeigt Test-Knöpfe (nur Vorschau, z. B. „+ Test-Moneten“)
 -- Skills (Attribut Skills), Belohnungen (DailyDay, DailyStreak, WheelDay, Group, Codes) und
 -- Einstellungen (Set_sfx, Set_music, Set_quality, Set_fewerParticles, Set_skipAnimations, Set_shortNumbers)
 -- gehen über die RemoteFunction PlayerRemote (Server-Skript CoinmasterPlayer).
@@ -167,6 +169,7 @@ local MutationData = require(root:WaitForChild("MutationData"))
 local CoinData = require(root:WaitForChild("CoinData"))
 local WorldData = require(root:WaitForChild("WorldData"))
 local GemData = require(root:WaitForChild("GemData"))
+local PetData = require(root:WaitForChild("PetData"))
 local GardenData = require(root:WaitForChild("GardenData"))
 local RollData = require(root:WaitForChild("RollData"))
 local AdminData = require(root:WaitForChild("AdminData"))
@@ -256,13 +259,59 @@ local Juice = { calm = function() return false end }
 local SPRING = TweenInfo.new(0.42, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out, 0, false, 0)
 local SQUASH = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Knopf mit Hover-Vergrößerung, Eindrücken beim Drücken und Federn beim Loslassen
+-- Glanzstreifen, der schräg über eine Fläche läuft (Knöpfe, Geld-Anzeigen, Abzeichen).
+-- every: alle so viele Sekunden von selbst (sonst nur beim Drüberfahren). Gibt die Funktion zum Auslösen zurück.
+local shines = setmetatable({}, { __mode = "k" })
+local function shine(object, every, width)
+	object.ClipsDescendants = true
+	local bar = new("Frame", { Name = "Glanz", Size = UDim2.new(0, width or 22, 2, 0), Position = UDim2.new(0, -70, -0.5, 0), Rotation = 24, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.62, BorderSizePixel = 0, ZIndex = 3, Parent = object })
+	local function sweep()
+		if not bar.Parent or Juice.calm() then return end
+		bar.Position = UDim2.new(0, -70, -0.5, 0)
+		TweenService:Create(bar, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { Position = UDim2.new(1, 40, -0.5, 0) }):Play()
+	end
+	shines[object] = sweep
+	if every then
+		task.spawn(function()
+			task.wait(0.4 + math.random() * every)
+			while bar.Parent do
+				sweep()
+				task.wait(every + math.random() * 0.8)
+			end
+		end)
+	end
+	return sweep
+end
+
+-- Fläche mit Verlauf: oben heller, unten dunkler (Background weiß, Farben im UIGradient)
+local function glossy(object, color, light, dark)
+	object.BackgroundColor3 = Color3.new(1, 1, 1)
+	local g = object:FindFirstChildOfClass("UIGradient") or new("UIGradient", { Parent = object })
+	g.Rotation = 90
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color:Lerp(Color3.new(1, 1, 1), light or 0.28)),
+		ColorSequenceKeypoint.new(0.48, color),
+		ColorSequenceKeypoint.new(1, color:Lerp(Color3.new(0, 0, 0), dark or 0.22)),
+	})
+	return g
+end
+
+-- Knopf mit Hover-Vergrößerung, Eindrücken beim Drücken und Federn beim Loslassen.
+-- Beim Drüberfahren läuft ein Glanzstreifen und das Icon wackelt.
+local WIGGLE = TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
 local function pressable(button, onClick)
 	local scale = new("UIScale", { Scale = 1, Parent = button })
 	local hover = false
 	button.MouseEnter:Connect(function()
 		hover = true
 		TweenService:Create(scale, M.Fast, { Scale = 1.07 }):Play()
+		if Juice.calm() then return end
+		if shines[button] then shines[button]() end
+		local ic = button:FindFirstChild("Icon")
+		if ic and ic:IsA("GuiObject") then
+			ic.Rotation = -14
+			TweenService:Create(ic, WIGGLE, { Rotation = 0 }):Play()
+		end
 	end)
 	button.MouseLeave:Connect(function()
 		hover = false
@@ -297,10 +346,10 @@ local function attr(name, default)
 	return v
 end
 local function taler()
-	local v = player:GetAttribute("Taler")
+	local v = player:GetAttribute("Moneten")
 	if v then return v end
 	local stats = player:FindFirstChild("leaderstats")
-	local t = stats and stats:FindFirstChild("Taler")
+	local t = stats and stats:FindFirstChild("Moneten")
 	return t and t.Value or 0
 end
 
@@ -336,6 +385,7 @@ local function buildHud(playerGui)
 	ui.levelText = label({ Size = UDim2.new(1, 0, 1, 0), Text = "1", Font = FONT, TextSize = 30, TextColor3 = C.goldInk, Parent = level })
 	pressable(level, function() GameUI.Toggle("skills") end)
 	ui.levelBadge = level
+	shine(level, 6, 18)
 	local info = new("Frame", { Name = "Spieler", Size = UDim2.new(0, 250, 0, 58), Position = UDim2.new(0, 72, 0, 11), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Parent = gui }, {
 		corner(R.M),
 		new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }),
@@ -354,27 +404,40 @@ local function buildHud(playerGui)
 	})
 	ui.worldText = label({ Size = UDim2.new(1, -20, 1, 0), Position = UDim2.new(0, 10, 0, 0), Text = "Spawn", Font = FONT, TextSize = T.Large, Parent = ui.world })
 
-	-- Taler, Wetter, Boosts oben rechts
+	-- Moneten, Wetter, Boosts oben rechts
 	ui.info = info
 	local right = new("Frame", { Name = "Rechts", Size = UDim2.new(0, 320, 0, 220), Position = UDim2.new(1, -16, 0, 8), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = gui }, {
 		new("UIListLayout", { Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	local coins = new("Frame", { Name = "Taler", Size = UDim2.new(0, 220, 0, 52), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, LayoutOrder = 1, Parent = right }, {
+	local coins = new("Frame", { Name = "Moneten", Size = UDim2.new(0, 220, 0, 52), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, LayoutOrder = 1, Parent = right }, {
 		corner(R.Round),
 		stroke(C.gold, 3),
 		icon("coin", { Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) }),
-		label({ Name = "Einheit", Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -60, 0, 2), Text = "Taler", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right }),
+		label({ Name = "Einheit", Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -60, 0, 2), Text = "Moneten", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right }),
 	})
 	ui.talerPill = coins
+	shine(coins, 4.2, 26)
 	ui.talerScale = new("UIScale", { Scale = 1, Parent = coins })
 	ui.taler = label({ Size = UDim2.new(1, -116, 1, 0), Position = UDim2.new(0, 52, 0, 0), Text = "0", Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Left, Parent = coins })
-	ui.weather = new("TextButton", { Name = "Wetter", Size = UDim2.new(0, 300, 0, 36), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Text = "", AutoButtonColor = false, LayoutOrder = 2, Parent = right }, { corner(R.Round) })
+	-- Diamantstaub (Juwelnebel): erscheint nach der ersten Supernova
+	local dust = new("Frame", { Name = "Diamantstaub", Size = UDim2.new(0, 220, 0, 44), BackgroundColor3 = C.bg, BackgroundTransparency = 0.08, LayoutOrder = 2, Visible = false, Parent = right }, {
+		corner(R.Round),
+		stroke(C.dust, 3),
+		icon("gem", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) }),
+		label({ Name = "Einheit", Size = UDim2.new(0, 60, 1, 0), Position = UDim2.new(1, -70, 0, 2), Text = "Staub", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right }),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), C.shade) }),
+	})
+	ui.dustPill = dust
+	shine(dust, 4.8, 24)
+	ui.dustScale = new("UIScale", { Scale = 1, Parent = dust })
+	ui.dust = label({ Size = UDim2.new(1, -126, 1, 0), Position = UDim2.new(0, 50, 0, 0), Text = "0", Font = FONT, TextSize = T.Big, TextColor3 = C.dust, TextXAlignment = Enum.TextXAlignment.Left, Parent = dust })
+	ui.weather = new("TextButton", { Name = "Wetter", Size = UDim2.new(0, 300, 0, 36), BackgroundColor3 = C.bg, BackgroundTransparency = 0.12, Text = "", AutoButtonColor = false, LayoutOrder = 3, Parent = right }, { corner(R.Round) })
 	ui.weatherStroke = stroke(C.blue, 2)
 	ui.weatherStroke.Parent = ui.weather
 	icon("cloud", { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.weather })
 	ui.weatherText = label({ Size = UDim2.new(1, -48, 1, 0), Position = UDim2.new(0, 38, 0, 0), Text = "", TextSize = T.Small, Parent = ui.weather })
 	pressable(ui.weather, function() GameUI.Toggle("wetter") end)
-	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 200), BackgroundTransparency = 1, LayoutOrder = 3, Parent = right }, {
+	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 200), BackgroundTransparency = 1, LayoutOrder = 4, Parent = right }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 
@@ -398,6 +461,8 @@ local function buildHud(playerGui)
 			icon(e[2], { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0.5, 0, 0, 6), AnchorPoint = Vector2.new(0.5, 0) }),
 			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -20), Text = e[3], TextSize = T.Tiny, Font = BODY }),
 		})
+		glossy(b, C.bg2, 0.1, 0.35)
+		shine(b)
 		local badge = new("TextLabel", { Name = "Zahl", Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -14, 0, -8), BackgroundColor3 = C.red, Text = "", Font = BODY, TextSize = T.Small, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 2, Parent = b }, { corner(R.Round), stroke(C.bg, 2) })
 		ui.badges[e[1]] = badge
 		pressable(b, function()
@@ -417,12 +482,15 @@ local function buildHud(playerGui)
 	-- Suchen unten in der Mitte
 	ui.find = new("TextButton", { Name = "Suchen", Size = UDim2.new(0, 270, 0, 64), Position = UDim2.new(0.5, 0, 1, -34), AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = C.green, Text = "", Parent = gui }, {
 		corner(R.L),
-		stroke(C.greenDark, 3),
-		gradient(C.greenHi, C.greenDeep),
 	})
+	glossy(ui.find, C.green, 0.35, 0.3)
+	ui.findColor = C.green
 	icon("search", { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0, 28, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.find })
-	ui.findLabel = label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
-	ui.findStroke = new("UIStroke", { Color = C.greenDark, Thickness = 2, Parent = ui.find })
+	ui.findLabel = label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = C.greenInk, TextStrokeTransparency = 0.35, TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
+	ui.findStroke = new("UIStroke", { Color = C.greenDark, Thickness = 3, Parent = ui.find })
+	-- der wichtigste Knopf: pulsierender Rand und regelmäßiger Glanz
+	shine(ui.find, 2.6, 30)
+	TweenService:Create(ui.findStroke, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Thickness = 6, Transparency = 0.35 }):Play()
 	pressable(ui.find, function() options.OnAction("find") end)
 	ui.findHint = label({ Size = UDim2.new(0, 320, 0, 18), Position = UDim2.new(0.5, 0, 1, -12), AnchorPoint = Vector2.new(0.5, 1), Text = "", TextSize = T.Tiny, TextColor3 = C.ink, TextStrokeTransparency = 0.5, Font = BODY, Parent = gui })
 
@@ -461,10 +529,19 @@ local function refreshHud()
 	ui.worldText.Text = (planet ~= "" and (planet .. " · ") or "") .. attr("WorldName", "Spawn")
 	ui.world.Size = UDim2.new(0, math.max(160, #ui.worldText.Text * 11 + 30), 0, 38)
 	ui.findHint.Text = attr("FindHint", "")
+	-- Diamantstaub: zählt wie die Moneten hoch und wippt bei Gewinn
+	local dustNow = attr("Diamantstaub", 0)
+	ui.dustPill.Visible = attr("Supernovas", 0) > 0 or dustNow > 0
+	if GameUI._showDust then GameUI._showDust(dustNow) end
 	-- im Juwelnebel findet man Edelsteine statt Münzen
 	local gems = WorldData.FindsGems(attr("World", "spawn"))
 	ui.findLabel.Text = gems and "Edelstein suchen" or "Münze suchen"
-	ui.find.BackgroundColor3 = gems and C.gem or C.green
+	local findColor = gems and C.gem or C.green
+	if ui.findColor ~= findColor then
+		ui.findColor = findColor
+		glossy(ui.find, findColor, 0.35, 0.3)
+		ui.findLabel.TextStrokeColor3 = gems and C.gemDark or C.greenInk
+	end
 	ui.findStroke.Color = gems and C.gemDark or C.greenDark
 	-- Wetter mit Countdown
 	local wid = ReplicatedStorage:GetAttribute("Weather") or "klar"
@@ -513,22 +590,34 @@ local function refreshHud()
 end
 
 -- ── Shop ──
-local TABS = { { "eier", "Eier", 110, "egg" }, { "boosts", "Boosts", 120, "bolt" }, { "auras", "Auras", 110, "sparkle" }, { "robux", "Robux", 116, "robux" } }
+local TABS = { { "eier", "Eier", 110, "egg" }, { "boosts", "Boosts", 120, "bolt" }, { "auras", "Auras", 110, "sparkle" }, { "taschen", "Taschen", 116, "gem" }, { "robux", "Robux", 116, "robux" } }
 
+-- Karte: oben in der Farbe des Rands getönt, unten dunkel
 local function card(parent, accent)
-	return new("Frame", { Size = UDim2.new(0, 100, 0, 100), BackgroundColor3 = C.bg2, Parent = parent }, {
+	local c = new("Frame", { Size = UDim2.new(0, 100, 0, 100), BackgroundColor3 = Color3.new(1, 1, 1), Parent = parent }, {
 		corner(R.M),
 		stroke(accent or C.line, 2),
 		new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12) }),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, C.bg2:Lerp(accent or C.line, 0.22)),
+			ColorSequenceKeypoint.new(0.45, C.bg2),
+			ColorSequenceKeypoint.new(1, C.bg),
+		}) }),
 	})
+	return c
 end
+-- Aktionsknopf im Simulator-Stil: Verlauf, dunkler Rand, Text mit Kontur; aktive Knöpfe glänzen ab und zu
 local function actionButton(parent, text, color, enabled, onClick)
-	local b = new("TextButton", { Name = "Kaufen", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, -40), BackgroundColor3 = color, Text = text, Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = enabled, Parent = parent }, {
+	local b = new("TextButton", { Name = "Kaufen", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, -40), BackgroundColor3 = color, Text = text, Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = color:Lerp(Color3.new(0, 0, 0), 0.6), TextStrokeTransparency = enabled and 0.45 or 1, AutoButtonColor = enabled, Parent = parent }, {
 		corner(R.S),
+		stroke(color:Lerp(Color3.new(0, 0, 0), 0.35), 2),
 	})
+	glossy(b, color)
 	if not enabled then
 		b.BackgroundTransparency = 0.45
 		b.TextTransparency = 0.3
+	else
+		shine(b, color ~= C.line and 3.5 or nil)
 	end
 	pressable(b, function()
 		if enabled then onClick() end
@@ -549,7 +638,7 @@ local function fillShop()
 		if c:IsA("GuiObject") then c:Destroy() end
 	end
 	local money = taler()
-	windows.shop.sub.Text = GameUI.Format(money) .. " Taler verfügbar"
+	windows.shop.sub.Text = GameUI.Format(money) .. " Moneten verfügbar"
 	local grid = list:FindFirstChildOfClass("UIGridLayout")
 	grid.CellSize = windows.shop.tab == "auras" and UDim2.new(0, 200, 0, 200) or UDim2.new(0, 200, 0, 236)
 	if windows.shop.tab == "eier" then
@@ -617,6 +706,42 @@ local function fillShop()
 				actionButton(c, "Kaufen · " .. GameUI.Format(a.Price), C.green, money >= a.Price, function() result(options.Invoke("aura", "buy", a.Id)) end)
 			end
 		end
+	elseif windows.shop.tab == "taschen" then
+		-- Edelstein-Taschen: der Reihe nach mit Diamantstaub kaufen
+		local dust = attr("Diamantstaub", 0)
+		local mine = attr("GemBag", 1)
+		windows.shop.sub.Text = GameUI.Format(dust) .. " Diamantstaub · Tasche Nr. " .. mine .. " · " .. GameUI.Format(GemData.Bag(mine).Capacity) .. " Plätze"
+		for i, bag in ipairs(GemData.Bags) do
+			local tier = GemData.BagTierById[bag.Tier]
+			local c = card(list, bag.Nr == mine and C.goldHi or (bag.Nr < mine and tier.Color or C.line))
+			c.LayoutOrder = i
+			local art = new("Frame", { Name = "Bild", Size = UDim2.new(0, 72, 0, 72), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = c }, {
+				corner(R.L),
+				new("UIGradient", { Rotation = 135, Color = ColorSequence.new(tier.Color:Lerp(Color3.new(1, 1, 1), 0.45), tier.Color:Lerp(Color3.new(0, 0, 0), 0.35)) }),
+				stroke(tier.Color:Lerp(Color3.new(1, 1, 1), 0.3), 2),
+				icon("bag", { Size = UDim2.new(0, 44, 0, 44), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
+			})
+			label({ Size = UDim2.new(0, 34, 0, 18), Position = UDim2.new(0, -4, 0, -4), Text = "#" .. bag.Nr, TextSize = T.Tiny, TextColor3 = C.muted, Font = MONO, Parent = c })
+			if bag.Nr == mine then
+				new("TextLabel", { Size = UDim2.new(0, 70, 0, 20), Position = UDim2.new(1, 6, 0, -16), AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = C.gold, Text = "Deine", Font = BODY, TextSize = T.Tiny, TextColor3 = C.goldInk, ZIndex = 2, Parent = c }, { corner(R.Round) })
+				if not Juice.calm() then
+					TweenService:Create(art, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 6 }):Play()
+				end
+			end
+			label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 78), Text = bag.Name, Font = FONT, TextScaled = true, Parent = c })
+			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 102), Text = tier.Name, TextSize = T.Tiny, TextColor3 = tier.Color, Parent = c })
+			label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 120), Text = bag.Text, TextSize = T.Tiny, TextColor3 = C.muted, TextWrapped = true, TextTruncate = Enum.TextTruncate.AtEnd, Font = TEXT, Parent = c })
+			label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 154), Text = "💎 " .. GameUI.Format(bag.Capacity) .. " Plätze", TextSize = T.Small, TextColor3 = C.mint, Font = MONO, Parent = c })
+			if bag.Nr <= mine then
+				actionButton(c, bag.Nr == mine and "✔ Angelegt" or "✔ Gekauft", C.line, false, function() end)
+			elseif bag.Nr == mine + 1 then
+				actionButton(c, "Kaufen · " .. GameUI.Format(bag.Price) .. " 💠", C.gem, dust >= bag.Price, function()
+					result(options.Invoke("buyGemBag", tostring(bag.Nr)), nil, tier.Color, "Neue Tasche!")
+				end)
+			else
+				actionButton(c, "🔒 " .. GameUI.Format(bag.Price) .. " 💠", C.line, false, function() end)
+			end
+		end
 	else
 		for i, r in ipairs(ShopData.Robux) do
 			local c = card(list)
@@ -649,17 +774,35 @@ local function buildWindow(playerGui, key, iconName, title, tabs, fill)
 		corner(R.XL),
 		stroke(C.gold, 3),
 	})
+	-- Fenster: oben warm angeleuchtet, unten tief; ein goldener Streifen unter dem Kopf
+	new("UIGradient", { Rotation = 90, Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, C.bg2:Lerp(C.gold, 0.12)),
+		ColorSequenceKeypoint.new(0.22, C.bg),
+		ColorSequenceKeypoint.new(1, C.deep),
+	}), Parent = win })
+	win.BackgroundColor3 = Color3.new(1, 1, 1)
+	new("Frame", { Name = "Zierlinie", Size = UDim2.new(1, -80, 0, 2), Position = UDim2.new(0.5, 0, 0, 82), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = win }, {
+		new("UIGradient", { Color = ColorSequence.new(C.gold), Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.2), NumberSequenceKeypoint.new(1, 1) }) }),
+	})
+	-- funkelnde Sterne im Kopf
+	for i = 1, 6 do
+		local star = new("Frame", { Name = "Funkeln", Size = UDim2.new(0, 5, 0, 5), Position = UDim2.new(0.28 + i * 0.07, 0, 0, 14 + (i * 17) % 50), Rotation = 45, BackgroundColor3 = C.goldHi, BackgroundTransparency = 0.4, BorderSizePixel = 0, Parent = win })
+		TweenService:Create(star, TweenInfo.new(0.7 + i * 0.17, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 1, Size = UDim2.new(0, 2, 0, 2) }):Play()
+	end
 	w.win = win
 	w.limit = new("UISizeConstraint", { MaxSize = Vector2.new(980, 640), Parent = win })
 	w.baseScale = 1 -- am Handy kleiner, damit mehr hineinpasst
 	w.scale = new("UIScale", { Scale = 1, Parent = win })
 	local head = new("Frame", { Name = "Kopf", Size = UDim2.new(1, -40, 0, 64), Position = UDim2.new(0, 20, 0, 14), BackgroundTransparency = 1, Parent = win })
-	new("Frame", { Size = UDim2.new(0, 56, 0, 56), BackgroundColor3 = C.gold, Parent = head }, {
+	local badge = new("Frame", { Size = UDim2.new(0, 56, 0, 56), BackgroundColor3 = C.gold, Parent = head }, {
 		corner(R.M),
 		gradient(C.goldHi, C.goldDark),
+		stroke(C.goldDark, 2),
 		icon(iconName, { Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
 	})
-	label({ Size = UDim2.new(0.5, 0, 0, 34), Position = UDim2.new(0, 70, 0, 2), Text = title, Font = FONT, TextSize = T.Hero, TextXAlignment = Enum.TextXAlignment.Left, Parent = head })
+	w.badge = badge
+	shine(badge, 3.8, 16)
+	label({ Size = UDim2.new(0.5, 0, 0, 34), Position = UDim2.new(0, 70, 0, 2), Text = title, Font = FONT, TextSize = T.Hero, TextColor3 = C.cream, TextStrokeColor3 = C.goldDark, TextStrokeTransparency = 0.55, TextXAlignment = Enum.TextXAlignment.Left, Parent = head })
 	w.sub = label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 70, 0, 38), Text = "", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = head })
 	-- Werkzeuge rechts im Kopf (z. B. „Zum Spawn“)
 	w.tools = new("Frame", { Name = "Werkzeuge", Size = UDim2.new(0, 360, 0, 38), Position = UDim2.new(1, -58, 0, 8), AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, Parent = head }, {
@@ -678,6 +821,7 @@ local function buildWindow(playerGui, key, iconName, title, tabs, fill)
 			w.tabLabels[t[1]] = label({ Size = UDim2.new(1, -50, 1, 0), Position = UDim2.new(0, 42, 0, 0), Text = t[2], Font = FONT, TextSize = T.Medium, TextXAlignment = Enum.TextXAlignment.Left, Parent = b })
 		end
 		w.buttons[t[1]] = b
+		shine(b)
 		pressable(b, function()
 			w.tab = t[1]
 			w.keep = {}
@@ -734,10 +878,26 @@ end
 local function rebuild(w)
 	for _, t in ipairs(w.tabs) do
 		local on = t[1] == w.tab
-		w.buttons[t[1]].BackgroundColor3 = on and C.gold or C.bg2
-		w.buttons[t[1]].TextColor3 = on and C.goldInk or C.ink
+		local b = w.buttons[t[1]]
+		b.BackgroundColor3 = on and C.gold or C.bg2
+		b.TextColor3 = on and C.goldInk or C.ink
 		if w.tabLabels[t[1]] then w.tabLabels[t[1]].TextColor3 = on and C.goldInk or C.ink end
+		-- gewählter Reiter glänzt golden und springt beim Wechsel kurz auf
+		local g = b:FindFirstChild("Glanzverlauf")
+		if on and not g then
+			new("UIGradient", { Name = "Glanzverlauf", Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 190, 160)), Parent = b })
+		elseif not on and g then
+			g:Destroy()
+		end
+		if on and w.lastTab ~= t[1] and not Juice.calm() then
+			local sc = b:FindFirstChildOfClass("UIScale")
+			if sc then
+				sc.Scale = 0.8
+				TweenService:Create(sc, WIGGLE, { Scale = 1 }):Play()
+			end
+		end
 	end
+	w.lastTab = w.tab
 	-- Bildlauf merken, dann neu füllen
 	for _, d in ipairs(w.body:GetDescendants()) do
 		if d:IsA("ScrollingFrame") then w.keep[d.Name] = d.CanvasPosition end
@@ -1063,7 +1223,7 @@ local function fillCoins(w, entries)
 			y = y + 28
 		end
 		label({ Size = UDim2.new(1, 0, 0, 32), Position = UDim2.new(0, 0, 0, y), Text = sel.Coin.Text, TextSize = T.Tiny, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = side })
-		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = (sel.Count > 1 and (sel.Count .. " Stück · je ") or "Wert: ") .. GameUI.Format(sel.Value) .. " Taler", TextSize = T.Small, TextColor3 = C.goldHi, Parent = side })
+		label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, y + 34), Text = (sel.Count > 1 and (sel.Count .. " Stück · je ") or "Wert: ") .. GameUI.Format(sel.Value) .. " Moneten", TextSize = T.Small, TextColor3 = C.goldHi, Parent = side })
 		-- eine verkaufen oder den ganzen Stapel
 		local row = new("Frame", { Name = "Verkaufen", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, -110), BackgroundTransparency = 1, Parent = side })
 		local one = new("Frame", { Size = UDim2.new(sel.Count > 1 and 0.5 or 1, sel.Count > 1 and -4 or 0, 1, 0), BackgroundTransparency = 1, Parent = row })
@@ -1110,13 +1270,22 @@ local function fillEggs(w)
 			GameUI.EggView(row, egg, UDim2.new(0, 62, 0, 62), UDim2.new(0, 40, 0.5, -31), 1.35)
 			label({ Size = UDim2.new(0.6, 0, 0, 24), Position = UDim2.new(0, 76, 0, 12), Text = egg.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
 			label({ Size = UDim2.new(0.6, 0, 0, 18), Position = UDim2.new(0, 76, 0, 38), Text = egg.RankName, TextSize = T.Small, TextColor3 = egg.Glow, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
-			label({ Size = UDim2.new(0, 90, 1, 0), Position = UDim2.new(1, -106, 0, 0), Text = "×" .. n, Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
+			label({ Size = UDim2.new(0, 90, 1, 0), Position = UDim2.new(1, -270, 0, 0), Text = "×" .. n, Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
+			-- Schlüpfen: das Haustier kommt unter „Haustiere“
+			local hold = new("Frame", { Size = UDim2.new(0, 150, 0, 44), Position = UDim2.new(1, -164, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = row })
+			local hb = actionButton(hold, "🐣 Schlüpfen", C.green, true, function()
+				local ok, msg, petId = options.Invoke("hatch", egg.Id)
+				result(ok, msg, egg.Glow, ok and "Geschlüpft!" or nil)
+				if ok and GameUI.PetReveal then GameUI.PetReveal(petId) end
+			end)
+			hb.Size = UDim2.new(1, 0, 1, 0)
+			hb.Position = UDim2.new(0, 0, 0, 0)
 		end
 	end
 	if not any then
 		label({ Size = UDim2.new(1, 0, 0, 40), Text = "Noch keine Eier. Im Shop gibt es welche.", TextSize = T.Body, TextColor3 = C.muted, Parent = list })
 	end
-	label({ Size = UDim2.new(1, -190, 0, 40), Position = UDim2.new(0, 0, 1, -40), Text = "Eier schlüpfen im Spiel nach einer Brutzeit.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
+	label({ Size = UDim2.new(1, -190, 0, 40), Position = UDim2.new(0, 0, 1, -40), Text = "„Schlüpfen“ öffnet ein Ei. Das Haustier wird mit Früchten aus dem Garten stärker.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
 	local shop = new("TextButton", { Name = "ZumShop", Size = UDim2.new(0, 170, 0, 40), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = C.green, Text = "Eier kaufen", Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(R.S) })
 	pressable(shop, function() GameUI.Open("shop", "eier") end)
 end
@@ -1172,7 +1341,7 @@ local function fillGems(w)
 		})
 		gemIcon(row, e.Gem, 58, { Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
 		label({ Size = UDim2.new(1, -420, 0, 24), Position = UDim2.new(0, 80, 0, 12), Text = e.Gem.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
-		label({ Size = UDim2.new(1, -420, 0, 18), Position = UDim2.new(0, 80, 0, 40), Text = e.Tier.Name .. " · " .. GameUI.Format(math.floor(e.V / e.N + 0.5)) .. " Taler pro Stein", TextSize = T.Small, TextColor3 = e.Tier.Color, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+		label({ Size = UDim2.new(1, -420, 0, 18), Position = UDim2.new(0, 80, 0, 40), Text = e.Tier.Name .. " · " .. GameUI.Format(math.floor(e.V / e.N + 0.5)) .. " Staub pro Stein", TextSize = T.Small, TextColor3 = e.Tier.Color, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
 		label({ Size = UDim2.new(0, 70, 1, 0), Position = UDim2.new(1, -330, 0, 0), Text = "×" .. e.N, Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
 		local one = new("Frame", { Size = UDim2.new(0, 110, 0, 40), Position = UDim2.new(1, -244, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = row })
 		actionButton(one, "1 verkaufen", C.blue, true, function()
@@ -1187,10 +1356,11 @@ local function fillGems(w)
 	if #entries == 0 then
 		label({ Size = UDim2.new(1, -40, 0, 80), Position = UDim2.new(0, 20, 0, 40), Text = "Noch keine Edelsteine. Du findest sie im Juwelnebel, der Galaxie hinter der Supernova (Welten > Supernova).", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = list })
 	end
-	label({ Size = UDim2.new(1, -330, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "Edelsteine liegen in einem eigenen Beutel und belegen keine Inventarplätze.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
+	local bag = GemData.Bag(attr("GemBag", 1))
+	label({ Size = UDim2.new(1, -330, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "💎 " .. count .. " / " .. GameUI.Format(bag.Capacity) .. " in deiner Tasche „" .. bag.Name .. "“. Größere Taschen gibt es im Shop.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
 	local holder = new("Frame", { Size = UDim2.new(0, 310, 0, 46), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundTransparency = 1, Parent = w.body })
 	local b
-	b = actionButton(holder, count > 0 and ("Alle verkaufen · " .. GameUI.Format(math.floor(total + 0.5)) .. " Taler") or "Alle verkaufen", C.gem, count > 0, function()
+	b = actionButton(holder, count > 0 and ("Alle verkaufen · " .. GameUI.Format(math.floor(total + 0.5)) .. " Staub") or "Alle verkaufen", C.gem, count > 0, function()
 		if result(options.Invoke("sellGems"), nil, C.gemHi) and GameUI.FlyCoins then GameUI.FlyCoins(b, 10) end
 	end)
 	b.Size = UDim2.new(1, 0, 1, 0)
@@ -1220,14 +1390,16 @@ local function fillInventory(w)
 	elseif w.tab == "edelsteine" then
 		fillGems(w)
 	elseif w.tab == "tiere" then
-		label({ Size = UDim2.new(1, -80, 0, 80), Position = UDim2.new(0, 40, 0, 60), Text = "Hier erscheinen deine geschlüpften Haustiere mit ihrem Bonus, sobald das Schlüpfen im Spiel läuft.", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Parent = w.body })
+		GameUI._fillPets(w)
+	elseif w.tab == "fruechte" then
+		GameUI._fillFruits(w)
 	else
 		fillCoins(w, entries)
 	end
 end
 
 local function buildInventory(playerGui)
-	buildWindow(playerGui, "inventar", "bag", "Inventar", { { "muenzen", "Münzen", 120, "coin" }, { "edelsteine", "Edelsteine", 140, "gem" }, { "eier", "Eier", 100, "egg" }, { "tiere", "Haustiere", 136, "paw" } }, fillInventory)
+	buildWindow(playerGui, "inventar", "bag", "Inventar", { { "muenzen", "Münzen", 110, "coin" }, { "edelsteine", "Edelsteine", 130, "gem" }, { "fruechte", "Früchte", 104, "sprout" }, { "eier", "Eier", 80, "egg" }, { "tiere", "Haustiere", 124, "paw" } }, fillInventory)
 end
 function GameUI.OpenInventory(tab) GameUI.Open("inventar", tab) end
 
@@ -1236,7 +1408,8 @@ local function worldState()
 	return {
 		Owned = WorldData.ParseList(attr("Worlds", "")),
 		Portals = WorldData.ParseList(attr("Portals", "p1")),
-		Taler = taler(),
+		Moneten = taler(),
+		Staub = attr("Diamantstaub", 0),
 		Rebirths = attr("Rebirths", 0),
 		Supernovas = attr("Supernovas", 0),
 	}
@@ -1292,12 +1465,13 @@ local function worldCard(parent, st, world, number, order, here)
 		actionButton(c, "Teleportieren", C.blue, true, function()
 			if result(options.Invoke("teleport", world.Id)) then GameUI.Close("welten") end
 		end)
-	elseif not why or why == "Zu wenig Taler" then
-		local b = actionButton(c, "Kaufen · " .. GameUI.Format(world.Price), C.green, true, function()
+	elseif not why or string.sub(why, 1, 9) == "Zu wenig " then
+		local cur = WorldData.Currencies[world.Currency or "moneten"]
+		local b = actionButton(c, world.Price == 0 and "Gratis freischalten" or ("Kaufen · " .. GameUI.Format(world.Price) .. (world.Currency == "staub" and " 💠" or "")), world.Currency == "staub" and C.gem or C.green, true, function()
 			local now = worldState()
 			local reason = WorldData.CanBuy(now, world.Id)
-			if reason == "Zu wenig Taler" then
-				result(false, "Dafür fehlen noch " .. GameUI.Format(math.ceil(world.Price - now.Taler)) .. " Taler")
+			if reason and string.sub(reason, 1, 9) == "Zu wenig " then
+				result(false, "Dafür fehlen noch " .. GameUI.Format(math.ceil(world.Price - WorldData.Wallet(now, world.Currency))) .. " " .. cur.Name)
 			elseif result(options.Invoke("buyWorld", world.Id), nil, world.Accent or C.gold, "Neue Welt!") then
 				GameUI.Close("welten")
 			end
@@ -1391,32 +1565,32 @@ local function fillRebirth(w, st)
 	local nova = WorldData.SupernovaMultiplier(st.Supernovas)
 	fact(facts, "Münzwert jetzt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths) * nova), nil, 1)
 	fact(facts, "Nach der Wiedergeburt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths + 1) * nova), C.green, 2)
-	fact(facts, "Kosten", GameUI.Format(cost) .. " Taler", C.goldHi, 3)
+	fact(facts, "Kosten", GameUI.Format(cost) .. " Moneten", C.goldHi, 3)
 	for _, p in ipairs(WorldData.Planets) do
 		if p.Portal and not p.ComingSoon and not st.Portals[p.Id] and (p.Portal.Supernovas or 0) <= st.Supernovas and p.Portal.Rebirths > st.Rebirths then
 			fact(facts, p.Portal.Name, "ab " .. p.Portal.Rebirths .. " Wiedergeburt" .. (p.Portal.Rebirths > 1 and "en" or ""), nil, 4)
 			break
 		end
 	end
-	local pct = math.clamp(st.Taler / cost, 0, 1)
+	local pct = math.clamp(st.Moneten / cost, 0, 1)
 	local bar = new("Frame", { Name = "Fortschritt", Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 146), BackgroundColor3 = C.bg2, Parent = main }, {
 		corner(R.Round),
 		stroke(C.line, 1),
 	})
 	new("Frame", { Size = UDim2.new(math.max(pct, 0.02), 0, 1, 0), BackgroundColor3 = C.gold, Parent = bar }, { corner(R.Round), gradient(C.goldHi, C.goldDark) })
-	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = GameUI.Format(math.floor(st.Taler)) .. " von " .. GameUI.Format(cost) .. " Taler", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = main })
+	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = GameUI.Format(math.floor(st.Moneten)) .. " von " .. GameUI.Format(cost) .. " Moneten", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = main })
 	local rules = {
-		{ "✕ Deine Taler sind danach weg", C.red },
+		{ "✕ Deine Moneten sind danach weg", C.red },
 		{ "✔ Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben", C.ink },
 		{ "✔ Jede Münze ist für immer " .. math.floor(WorldData.Rebirth.Bonus * 100 + 0.5) .. " % mehr wert", C.ink },
 	}
 	for i, r in ipairs(rules) do
 		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0, 180 + i * 24), Text = r[1], TextSize = T.Small, TextColor3 = r[2], TextXAlignment = Enum.TextXAlignment.Left, Parent = main })
 	end
-	local ready = st.Taler >= cost
+	local ready = st.Moneten >= cost
 	local holder = new("Frame", { Size = UDim2.new(0, 320, 0, 52), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1, Parent = main })
 	local armed = ui.rebirthArmed and os.clock() - ui.rebirthArmed < 3
-	local text = not ready and ("Noch " .. GameUI.Format(math.ceil(cost - st.Taler)) .. " Taler") or (armed and "Sicher? Nochmal klicken" or "Wiedergeboren werden")
+	local text = not ready and ("Noch " .. GameUI.Format(math.ceil(cost - st.Moneten)) .. " Moneten") or (armed and "Sicher? Nochmal klicken" or "Wiedergeboren werden")
 	local b = actionButton(holder, text, armed and C.red or C.gold, ready, function()
 		if not (ui.rebirthArmed and os.clock() - ui.rebirthArmed < 3) then
 			-- erst bestätigen lassen
@@ -1470,7 +1644,7 @@ local function fillSupernova(w, st)
 	new("Frame", { Size = UDim2.new(math.max(pct, 0.02), 0, 1, 0), BackgroundColor3 = C.gem, Parent = bar }, { corner(R.Round), gradient(C.gemHi, C.gemDark) })
 	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = math.min(st.Rebirths, need) .. " von " .. need .. " Wiedergeburten", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = main })
 	local rules = {
-		{ "✕ Taler und Wiedergeburten gehen auf 0", C.red },
+		{ "✕ Moneten und Wiedergeburten gehen auf 0", C.red },
 		{ "✔ Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben", C.ink },
 		{ "✔ Alles ist für immer " .. decimal(WorldData.Supernova.Bonus) .. "-mal so viel wert", C.ink },
 	}
@@ -1527,12 +1701,12 @@ local function fillWorlds(w)
 	local here = WorldData.ById[attr("World", "spawn")]
 	local inHub = not here or here.Planet == "hub"
 	local planet = here and WorldData.PlanetById[here.Planet]
-	w.sub.Text = (inHub and "Spawn" or (planet.Name .. " · " .. here.Name)) .. " · " .. GameUI.Format(st.Taler) .. " Taler"
+	w.sub.Text = (inHub and "Spawn" or (planet.Name .. " · " .. here.Name)) .. " · " .. GameUI.Format(st.Moneten) .. " Moneten"
 	toolButton(w.tools, inHub and "Im Spawn" or "Zum Spawn", 1, not inHub, function()
 		if result(options.Invoke("teleport", "spawn")) then GameUI.Close("welten") end
 	end)
 	if options.DevTools then
-		toolButton(w.tools, "+ Test-Taler", 2, true, function()
+		toolButton(w.tools, "+ Test-Moneten", 2, true, function()
 			result(options.Invoke("testTaler"), nil, C.blue)
 		end)
 	end
@@ -1819,7 +1993,7 @@ function GameUI.WorldView(parent, world)
 	return GameUI.ModelView(parent, { Size = UDim2.new(1, 0, 1, 0) }, model, { Tilt = 32, Zoom = 1.0 })
 end
 
--- Taler: zählen hoch oder runter, bei Gewinn steigt „+1.250“ auf und das Feld wippt
+-- Moneten: zählen hoch oder runter, bei Gewinn steigt „+1.250“ auf und das Feld wippt
 function GameUI._showTaler(target)
 	if ui.talerTarget == nil or setting("skipAnimations", false) then
 		ui.talerTarget, ui.talerShown = target, target
@@ -1847,6 +2021,30 @@ function GameUI._showTaler(target)
 	-- warten, bis fliegende Münzen angekommen sind
 	local wait = (ui.talerHold or 0) - os.clock()
 	if wait > 0 then task.delay(wait, run) else run() end
+end
+
+-- Diamantstaub: wie die Moneten, in Eisblau
+function GameUI._showDust(target)
+	if ui.dustTarget == nil or setting("skipAnimations", false) then
+		ui.dustTarget, ui.dustShown = target, target
+		ui.dust.Text = GameUI.Format(target)
+		return
+	end
+	if target == ui.dustTarget then return end
+	local gain = target - ui.dustTarget
+	ui.dustTarget = target
+	animate("dust", ui.dustShown or target, target, 0.6, function(v)
+		ui.dustShown = v
+		ui.dust.Text = GameUI.Format(v)
+	end)
+	if gain > 0 then
+		ui.dust.TextColor3 = Color3.new(1, 1, 1)
+		TweenService:Create(ui.dust, M.Slow, { TextColor3 = C.dust }):Play()
+		ui.dustScale.Scale = 1
+		TweenService:Create(ui.dustScale, M.Pop, { Scale = 1.12 }):Play()
+		task.delay(0.25, function() TweenService:Create(ui.dustScale, M.Normal, { Scale = 1 }):Play() end)
+		GameUI.FloatText("+" .. GameUI.Format(gain), ui.dustPill.AbsolutePosition + Vector2.new(-70, ui.dustPill.AbsoluteSize.Y * 0.5), C.dust)
+	end
 end
 
 -- EP-Balken gleitet; bei einem neuen Level erst voll, dann von vorn
@@ -1881,7 +2079,7 @@ function GameUI.FloatText(text, at, color)
 	task.delay(0.8, function() t:Destroy() end)
 end
 
--- Münzen fliegen von einem Knopf zum Taler-Feld
+-- Münzen fliegen von einem Knopf zum Moneten-Feld
 function GameUI.FlyCoins(from, count)
 	if not ui.fx or setting("skipAnimations", false) then return end
 	local start = typeof(from) == "Vector2" and from or centerOf(from)
@@ -2125,7 +2323,7 @@ function Juice.bought(color, big, text)
 		Juice.punch(ui.talerPill, 0.12)
 	end
 end
--- Kauf ging nicht: Taler-Feld schüttelt den Kopf
+-- Kauf ging nicht: Moneten-Feld schüttelt den Kopf
 function Juice.denied()
 	if Juice.calm() or not ui.talerPill then return end
 	local p = ui.talerPill.Position
@@ -2170,14 +2368,14 @@ function GameUI.Found(info)
 	local color = mutation and mutation.Color or tier.Color
 	if options.Sound then options.Sound("found", level) end
 	if setting("skipAnimations", false) then
-		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Taler", color)
+		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Moneten", color)
 		return
 	end
-	-- jeder Fund: der Knopf springt, Münzen fliegen zum Taler-Feld, die Zahl steigt auf
+	-- jeder Fund: der Knopf springt, Münzen fliegen zum Moneten-Feld, die Zahl steigt auf
 	Juice.punch(ui.find, 0.14 + level * 0.05)
 	GameUI.FlyCoins(ui.find, 2 + level * 2)
 	if level == 1 then
-		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Taler", color)
+		GameUI.Toast(coin.Name .. " · " .. line .. " · " .. GameUI.Format(value) .. " Moneten", color)
 		GameUI.FloatText("+" .. GameUI.Format(value), centerOf(ui.find) - Vector2.new(0, 46), color)
 		return
 	end
@@ -2210,7 +2408,7 @@ function GameUI.FoundGem(info)
 	local line = tier.Name .. (count > 1 and " · ×" .. count or "") .. (info.Upgraded and " · Goldene Hand!" or "") .. " · +" .. (info.Xp or 0) .. " EP"
 	local color = gem.Color
 	if options.Sound then options.Sound("found", level) end
-	GameUI.Toast("💎 " .. gem.Name .. " · " .. line .. " · Wert " .. GameUI.Format(value) .. " Taler", tier.Color)
+	GameUI.Toast("💎 " .. gem.Name .. " · " .. line .. " · Wert " .. GameUI.Format(value) .. " Diamantstaub", tier.Color)
 	if setting("skipAnimations", false) then return end
 	Juice.punch(ui.find, 0.14 + level * 0.05)
 	GameUI.FloatText("💎 +" .. GameUI.Format(value), centerOf(ui.find) - Vector2.new(0, 46), color)
@@ -2225,7 +2423,7 @@ function GameUI.FoundGem(info)
 	gemIcon(card, gem, 88, { Position = UDim2.new(0, 16, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
 	label({ Size = UDim2.new(1, -124, 0, 18), Position = UDim2.new(0, 112, 0, 18), Text = GameUI.Upper(tier.Name), TextSize = T.Tiny, TextColor3 = tier.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = card })
 	label({ Size = UDim2.new(1, -124, 0, 30), Position = UDim2.new(0, 112, 0, 36), Text = gem.Name, Font = FONT, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
-	label({ Size = UDim2.new(1, -124, 0, 20), Position = UDim2.new(0, 112, 0, 72), Text = GameUI.Format(value) .. " Taler", TextSize = T.Body, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = card })
+	label({ Size = UDim2.new(1, -124, 0, 20), Position = UDim2.new(0, 112, 0, 72), Text = GameUI.Format(value) .. " Diamantstaub", TextSize = T.Body, TextColor3 = C.dust, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = card })
 	TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	task.delay(hold, function()
 		TweenService:Create(scale, M.Exit, { Scale = 0.6 }):Play()
@@ -2251,12 +2449,12 @@ end
 -- gardenBuy, gardenBed, gardenPlant (Beet, Baum), gardenUse (Werkzeug, Beet), gardenHarvest (Beet | "all"),
 -- gardenDig (Beet), gardenFence (Zaun), gardenSell (Baum | "all"), gardenSeed (Baum),
 -- openRoll (Rolle) → ok, Text, Id. Danach spielt GameUI.PlayRoll die Rollanimation.
--- Tab „Korb“: Früchte aus der Ernte, Marktpreis (wechselt alle 10 Minuten), verkaufen oder Samen ziehen.
+-- Tab „Früchte“ (korb): Früchte aus der Ernte, Futter für Haustiere oder Samen ziehen (verkaufen geht nicht).
 -- Name einer Seltenheit; ??? bekommt einen Regenbogen davor
 local function rarityName(r)
 	return (r.Rainbow and "🌈 " or "") .. r.Name
 end
-local GARDEN_TABS = { { "beete", "Beete", 104, "sprout" }, { "korb", "Korb", 96, "tree" }, { "sachen", "Sachen", 110, "bag" }, { "rollen", "Rollen", 110, "coins" } }
+local GARDEN_TABS = { { "beete", "Beete", 104, "sprout" }, { "korb", "Früchte", 110, "tree" }, { "sachen", "Sachen", 110, "bag" }, { "rollen", "Rollen", 110, "coins" } }
 local LOOT_ICON = { bush = "🌿", round = "🌳", oval = "🌳", cone = "🌲", spruce = "🌲", oak = "🌳", maple = "🍁", blossom = "🌸", weeping = "🌳", palm = "🌴", star = "🌌", mushroom = "🍄", cloud = "☁️", crystal = "💎", planet = "🪐", angel = "😇", rainbow = "🌈", can = "💧", sack = "🌱", bag = "💰", spade = "⚒️", chest = "💎" }
 local FRUIT_ICON = { apple = "🍎", pear = "🍐", berry = "🫐", cone = "🌰", acorn = "🌰", cherry = "🍒", drop = "💧", dragon = "🐉", star = "⭐", moon = "🌕" }
 local function fruitIcon(tree)
@@ -2274,6 +2472,140 @@ end
 local function lootIcon(item)
 	return LOOT_ICON[item.Crown or item.Model] or "🌳"
 end
+
+-- ── Inventar: Früchte und Haustiere ──
+-- Früchte kommen aus dem Garten (Garden.Fruits) und sind Futter: verkaufen geht nicht.
+local function petList()
+	local ok, list = pcall(function() return HttpService:JSONDecode(attr("Pets", "[]")) end)
+	return ok and type(list) == "table" and list or {}
+end
+local function fruitList()
+	local g = gardenState()
+	local out = {}
+	for _, tree in ipairs(GardenData.Trees) do
+		local n = g.Fruits[tree.Id] or 0
+		if n > 0 then table.insert(out, { Tree = tree, N = n, Xp = PetData.FruitXp[tree.Rarity] or 1, R = GardenData.RarityById[tree.Rarity] }) end
+	end
+	return out
+end
+
+function GameUI._fillFruits(w)
+	local fruits = fruitList()
+	local list = scroller(w, w.body, "Fruechte", { Size = UDim2.new(1, 8, 1, -58) }, {
+		new("UIGridLayout", { CellSize = UDim2.new(0, 200, 0, 150), CellPadding = UDim2.new(0, 12, 0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingRight = UDim.new(0, 12), PaddingLeft = UDim.new(0, 4) }),
+	})
+	for i, f in ipairs(fruits) do
+		local c = card(list, f.R.Color)
+		c.LayoutOrder = i
+		local bub = new("Frame", { Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = f.R.Color, BackgroundTransparency = 0.7, Parent = c }, {
+			corner(R.Round),
+			stroke(f.R.Color, 2),
+			label({ Size = UDim2.new(0.8, 0, 0.8, 0), Position = UDim2.new(0.1, 0, 0.1, 0), Text = fruitIcon(f.Tree), TextScaled = true, Font = EMOJI }),
+		})
+		if not Juice.calm() then
+			TweenService:Create(bub, TweenInfo.new(0.9 + (i % 4) * 0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = UDim2.new(0.5, 0, 0, -5) }):Play()
+		end
+		label({ Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, 66), Text = f.N == 1 and f.Tree.FruitName or f.Tree.FruitPlural, Font = FONT, TextScaled = true, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 90), Text = "×" .. GameUI.Format(f.N) .. " · " .. rarityName(f.R), TextSize = T.Small, TextColor3 = f.R.Color, Parent = c })
+		label({ Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 108), Text = "🐾 +" .. f.Xp .. " Pet-EP je Stück", TextSize = T.Small, TextColor3 = C.mint, Font = MONO, Parent = c })
+	end
+	if #fruits == 0 then
+		label({ Size = UDim2.new(1, -40, 0, 80), Position = UDim2.new(0, 20, 0, 30), Text = "Noch keine Früchte. Ernte ausgewachsene Münzbäume im Garten, dann landen ihre Früchte hier.", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = list })
+	end
+	label({ Size = UDim2.new(1, -250, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "Früchte kann man nicht verkaufen. Sie sind Futter: Jede Frucht macht ein Haustier etwas stärker.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
+	local go = new("TextButton", { Name = "Fuettern", Size = UDim2.new(0, 230, 0, 46), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundColor3 = C.green, Text = "🐾 Haustiere füttern", Font = FONT, TextSize = T.Medium, TextColor3 = Color3.new(1, 1, 1), Parent = w.body }, { corner(R.S) })
+	pressable(go, function() GameUI.Open("inventar", "tiere") end)
+end
+
+function GameUI._fillPets(w)
+	local pets = petList()
+	local fruits = fruitList()
+	-- gewähltes Futter (Chips oben); Standard: die erste Frucht
+	local sel = nil
+	for _, f in ipairs(fruits) do
+		if f.Tree.Id == ui.feedFruit then sel = f end
+	end
+	sel = sel or fruits[1]
+	ui.feedFruit = sel and sel.Tree.Id or nil
+	local chips = new("Frame", { Name = "Futter", Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, ClipsDescendants = true, Parent = w.body }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center }),
+	})
+	label({ Size = UDim2.new(0, 60, 1, 0), Text = "Futter:", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0, Parent = chips })
+	for i, f in ipairs(fruits) do
+		local on = sel == f
+		local chip = new("TextButton", { Size = UDim2.new(0, 140, 0, 36), BackgroundColor3 = on and C.gold or C.bg2, Text = fruitIcon(f.Tree) .. " ×" .. GameUI.Format(f.N) .. "  +" .. f.Xp .. " EP", Font = BODY, TextSize = T.Small, TextColor3 = on and C.goldInk or C.ink, LayoutOrder = i, Parent = chips }, { corner(R.Round), stroke(f.R.Color, 2) })
+		pressable(chip, function()
+			ui.feedFruit = f.Tree.Id
+			GameUI.Refresh("inventar")
+		end)
+	end
+	if #fruits == 0 then
+		label({ Size = UDim2.new(0, 420, 1, 0), Text = "Keine Früchte. Ernte Münzbäume im Garten.", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1, Parent = chips })
+	end
+	local list = scroller(w, w.body, "Tiere", { Size = UDim2.new(1, 8, 1, -54), Position = UDim2.new(0, 0, 0, 52) }, {
+		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 2) }),
+	})
+	-- stärkste zuerst
+	table.sort(pets, function(a, b)
+		if a.L ~= b.L then return a.L > b.L end
+		return a.U > b.U
+	end)
+	for i, p in ipairs(pets) do
+		local pet = PetData.ById[p.Id]
+		if pet then
+			local row = new("Frame", { Name = "Tier" .. p.U, Size = UDim2.new(1, 0, 0, 76), BackgroundColor3 = C.bg2, LayoutOrder = i, Parent = list }, {
+				corner(R.M),
+				stroke(pet.Glow, 2),
+			})
+			local orb = new("Frame", { Size = UDim2.new(0, 56, 0, 56), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Color3.new(1, 1, 1), Parent = row }, {
+				corner(R.Round),
+				new("UIGradient", { Rotation = 135, Color = ColorSequence.new(pet.Glow:Lerp(Color3.new(1, 1, 1), 0.5), pet.Glow:Lerp(Color3.new(0, 0, 0), 0.3)) }),
+				stroke(pet.Glow, 2),
+				icon("paw", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
+			})
+			new("TextLabel", { Name = "Level", Size = UDim2.new(0, 30, 0, 22), Position = UDim2.new(0, 50, 1, -26), BackgroundColor3 = C.gold, Text = tostring(p.L), Font = FONT, TextSize = T.Body, TextColor3 = C.goldInk, ZIndex = 2, Parent = row }, { corner(R.Round), stroke(C.bg, 2) })
+			label({ Size = UDim2.new(1, -350, 0, 24), Position = UDim2.new(0, 92, 0, 8), Text = pet.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+			label({ Size = UDim2.new(1, -350, 0, 16), Position = UDim2.new(0, 92, 0, 32), Text = pet.Rarity .. " · Level " .. p.L .. (p.L >= PetData.MaxLevel and " (max.)" or ""), TextSize = T.Small, TextColor3 = pet.Glow, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+			local need = PetData.XpFor(p.L)
+			local bar = new("Frame", { Size = UDim2.new(1, -460, 0, 8), Position = UDim2.new(0, 92, 0, 56), BackgroundColor3 = C.deep, Parent = row }, { corner(R.Round) })
+			new("Frame", { Size = UDim2.new(p.L >= PetData.MaxLevel and 1 or math.clamp((p.X or 0) / need, 0.03, 1), 0, 1, 0), BackgroundColor3 = C.mint, Parent = bar }, { corner(R.Round), gradient(C.greenHi, C.greenDeep) })
+			label({ Size = UDim2.new(0, 100, 0, 16), Position = UDim2.new(1, -360, 0, 52), Text = p.L >= PetData.MaxLevel and "max." or ((p.X or 0) .. " / " .. need .. " EP"), TextSize = T.Tiny, TextColor3 = C.muted, Font = MONO, TextXAlignment = Enum.TextXAlignment.Left, Parent = row })
+			for k, n in ipairs({ 1, 10 }) do
+				local hold = new("Frame", { Size = UDim2.new(0, 112, 0, 44), Position = UDim2.new(1, k == 1 and -244 or -124, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = row })
+				local ok = sel ~= nil and p.L < PetData.MaxLevel
+				local b = actionButton(hold, (sel and fruitIcon(sel.Tree) or "🍎") .. " Füttern" .. (n > 1 and (" ×" .. n) or ""), n == 1 and C.green or C.blue, ok, function()
+					local done, msg = options.Invoke("feedPet", tostring(p.U), sel.Tree.Id .. "|" .. n)
+					result(done, msg, pet.Glow)
+					if done then
+						Juice.punch(orb, 0.3)
+						GameUI.FloatText("+" .. sel.Xp * math.min(n, sel.N) .. " EP", centerOf(orb) + Vector2.new(20, -30), C.mint)
+					end
+				end)
+				b.Size = UDim2.new(1, 0, 1, 0)
+				b.Position = UDim2.new(0, 0, 0, 0)
+				b.TextSize = T.Small
+			end
+		end
+	end
+	if #pets == 0 then
+		label({ Size = UDim2.new(1, -40, 0, 80), Position = UDim2.new(0, 20, 0, 30), Text = "Noch keine Haustiere. Kaufe ein Ei im Shop und lass es unter „Eier“ schlüpfen.", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = list })
+	end
+end
+
+-- Großer Moment beim Schlüpfen: Ansage mit Name und Seltenheit
+function GameUI.PetReveal(petId)
+	local pet = PetData.ById[petId or ""]
+	if not pet or setting("skipAnimations", false) then return end
+	local rare = pet.Epic
+	flash(pet.Glow, rare and 0.55 or 0.3)
+	burst(pet.Glow, rare and 22 or 10)
+	Juice.rays(Vector2.new(ui.fx.AbsoluteSize.X * 0.5, ui.fx.AbsoluteSize.Y * 0.4), pet.Glow, rare and 620 or 380, rare and 2.2 or 1.4)
+	banner(GameUI.Upper(pet.Rarity) .. "!", pet.Name, pet.Glow, rare and 2.2 or 1.4)
+	if rare then Juice.shake(12, 0.5) end
+end
+
 local function gardenSignature(g, now)
 	local parts = { tostring(g.Owned), g.Beds, ui.gardenSel or "" }
 	for i = 1, g.Beds do
@@ -2317,7 +2649,7 @@ fillGarden = function(w)
 	local now = os.time()
 	local money = taler()
 	ui.gardenSig = gardenSignature(g, now)
-	w.sub.Text = GameUI.Format(money) .. " Taler · " .. (g.Owned and (g.Beds .. " Beete") or "noch kein Garten")
+	w.sub.Text = GameUI.Format(money) .. " Moneten · " .. (g.Owned and (g.Beds .. " Beete") or "noch kein Garten")
 	if g.Owned then
 		local go = new("TextButton", { Name = "Besuchen", Size = UDim2.new(0, 150, 1, 0), BackgroundColor3 = C.blue, Text = "🚪 Zum Garten", Font = FONT, TextSize = 16, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 1, Parent = w.tools }, { corner(R.Round) })
 		pressable(go, function()
@@ -2374,7 +2706,7 @@ fillGarden = function(w)
 		local c = card(list, C.gold)
 		text(c, 0, 52, "🌳", 44, C.ink, EMOJI)
 		text(c, 56, 22, "Münzbaumgarten", 20, C.ink, FONT)
-		text(c, 80, 70, GardenData.Garden.StartBeds .. " Beete für Münzbäume aus Münzrollen. Ausgewachsen tragen sie Früchte, die du am Markt verkaufst.", 12, C.muted, TEXT)
+		text(c, 80, 70, GardenData.Garden.StartBeds .. " Beete für Münzbäume aus Münzrollen. Ausgewachsen tragen sie Früchte: Futter für deine Haustiere.", 12, C.muted, TEXT)
 		actionButton(c, "Kaufen · " .. GameUI.Format(GardenData.Garden.Price), C.green, money >= GardenData.Garden.Price, function()
 			gardenDo("gardenBuy")
 		end)
@@ -2382,14 +2714,9 @@ fillGarden = function(w)
 	end
 
 	if w.tab == "korb" then
-		-- Marktstand: alle Früchte auf einmal verkaufen
-		local total, any = 0, false
-		for id, n in pairs(g.Fruits) do
-			total = total + n * GardenData.FruitPrice(id, now)
-			any = true
-		end
-		local all = new("TextButton", { Name = "AllesVerkaufen", Size = UDim2.new(0, 230, 1, 0), BackgroundColor3 = any and C.green or C.line, Text = "💰 Alles verkaufen · +" .. GameUI.Format(total), Font = FONT, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 2, Parent = w.tools }, { corner(R.Round) })
-		pressable(all, function() if any then gardenDo("gardenSell", "all") end end)
+		-- Früchte sind Futter für die Haustiere (verkaufen geht nicht)
+		local all = new("TextButton", { Name = "Fuettern", Size = UDim2.new(0, 230, 1, 0), BackgroundColor3 = C.green, Text = "🐾 Haustiere füttern", Font = FONT, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = 2, Parent = w.tools }, { corner(R.Round) })
+		pressable(all, function() GameUI.Open("inventar", "tiere") end)
 		local n = 0
 		for _, tree in ipairs(GardenData.Trees) do
 			local count = g.Fruits[tree.Id] or 0
@@ -2398,34 +2725,22 @@ fillGarden = function(w)
 				local r = GardenData.RarityById[tree.Rarity]
 				local c = card(list, r.Color)
 				c.LayoutOrder = n
-				local mult = GardenData.MarketMult(tree.Id, now)
-				local price = GardenData.FruitPrice(tree.Id, now)
 				local fname = (count == 1 and tree.FruitName or tree.FruitPlural)
 				text(c, 0, 40, fruitIcon(tree), 34, C.ink, EMOJI)
 				text(c, 44, 20, fname, #fname > 14 and 14 or 17, C.ink, FONT)
 				text(c, 66, 16, "×" .. GameUI.Format(count) .. " · " .. rarityName(r), 12, r.Color)
-				local trend = mult > 1 and ("▲ " .. math.floor((mult - 1) * 100 + 0.5) .. " %") or (mult < 1 and ("▼ " .. math.floor((1 - mult) * 100 + 0.5) .. " %") or "Grundpreis")
-				text(c, 84, 18, GameUI.Format(price) .. " Taler/Stück", 12, C.ink, MONO)
-				text(c, 104, 16, trend, 12, mult > 1 and C.green or (mult < 1 and C.red or C.muted), MONO)
+				text(c, 84, 18, "🐾 +" .. (PetData.FruitXp[tree.Rarity] or 1) .. " Pet-EP/Stück", 12, C.mint, MONO)
 				local cost = GardenData.SeedCost(tree)
 				local seedBtn = actionButton(c, "🌱 Samen ziehen · " .. cost, C.blue, count >= cost, function() gardenDo("gardenSeed", tree.Id) end)
-				seedBtn.Position = UDim2.new(0, 0, 1, -86)
 				seedBtn.TextSize = 14
-				local sellBtn = actionButton(c, "Verkaufen · +" .. GameUI.Format(count * price), C.green, true, function() gardenDo("gardenSell", tree.Id) end)
-				sellBtn.TextSize = 14
 			end
 		end
-		-- Hinweis mit Countdown bis zu neuen Preisen
+		-- Hinweis: Futter für Haustiere
 		local info = card(list, C.line)
 		info.LayoutOrder = 1000
-		text(info, 0, 46, "🏪", 38, C.ink, EMOJI)
-		text(info, 50, 22, "Marktstand", 20, C.ink, FONT)
-		local live = text(info, 76, 34, "", 13, C.ink, MONO)
-		text(info, 112, 80, n == 0 and "Der Korb ist leer. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier." or "Preise schwanken zwischen 60 % und 180 % des Grundpreises. Ein Samen kostet so viele Früchte, wie der Baum Ernten hat.", 12, C.muted, TEXT)
-		table.insert(ui.gardenLive, function(t)
-			live.Text = "Neue Preise in " .. GardenData.FormatTime(GardenData.MarketLeft(t))
-		end)
-		for _, fn in ipairs(ui.gardenLive) do fn(now) end
+		text(info, 0, 46, "🐾", 38, C.ink, EMOJI)
+		text(info, 50, 22, "Futter", 20, C.ink, FONT)
+		text(info, 80, 110, n == 0 and "Noch keine Früchte. Ernte ausgewachsene Bäume, dann landen ihre Früchte hier und im Inventar." or "Früchte kann man nicht verkaufen: Sie sind Futter für deine Haustiere. Ein Samen kostet so viele Früchte, wie der Baum Ernten hat.", 12, C.muted, TEXT)
 		return
 	end
 
@@ -2462,7 +2777,7 @@ fillGarden = function(w)
 				text(c, 74, 16, rarityName(r) .. (item.Type == "Tree" and " · Samen" or " · Werkzeug"), 12, r.Color)
 				local info = item.Type == "Tree" and ("Wächst in " .. GardenData.FormatTime(item.Grow) .. " zum " .. item.Name .. ", dann " .. item.FruitPlural .. " alle " .. GardenData.FormatTime(item.Cycle) .. ", " .. item.Harvests .. "× ernten") or item.Text
 				text(c, 94, 48, info, 12, C.muted, TEXT)
-				if item.Kind == "Taler" or item.Kind == "Bed" then
+				if item.Kind == "Moneten" or item.Kind == "Bed" then
 					actionButton(c, "Benutzen", C.blue, true, function() gardenDo("gardenUse", item.Id) end)
 				else
 					local verb = item.Type == "Tree" and "Säen" or (item.Kind == "Water" and "Gießen" or "Düngen")
@@ -2576,7 +2891,7 @@ end
 
 local function buildGarden(playerGui)
 	local w = buildWindow(playerGui, "garten", "sprout", "Garten", GARDEN_TABS, fillGarden)
-	-- Neu bauen, wenn sich Garten oder Taler ändern; jede Sekunde nur Countdowns, bei neuer Stufe oder Ernte neu
+	-- Neu bauen, wenn sich Garten oder Moneten ändern; jede Sekunde nur Countdowns, bei neuer Stufe oder Ernte neu
 	w.deps = { "Garden", "@taler" }
 end
 function GameUI.OpenGarden(tab) GameUI.Open("garten", tab) end
@@ -2681,9 +2996,9 @@ function GameUI.Start(opts)
 	buildGarden(playerGui)
 	buildAdmin(playerGui)
 	local DEPS = {
-		shop = { "@taler", "EggDiscount", "Egg_", "Boost_", "OwnedAuras", "Aura" },
-		inventar = { "Slots", "Egg_", "Gem_", "GemValue_", "@inventory" },
-		welten = { "@taler", "World", "Worlds", "Portals", "Rebirths", "Supernovas" },
+		shop = { "@taler", "EggDiscount", "Egg_", "Boost_", "OwnedAuras", "Aura", "Diamantstaub", "GemBag" },
+		inventar = { "Slots", "Egg_", "Gem_", "GemValue_", "GemBag", "Pets", "Garden", "@inventory" },
+		welten = { "@taler", "Diamantstaub", "World", "Worlds", "Portals", "Rebirths", "Supernovas" },
 		skills = { "Skills", "Level" },
 		einstellungen = { "Set_" },
 		wetter = { "Skills", "@weather" },
@@ -2720,8 +3035,8 @@ function GameUI.Start(opts)
 		inventoryEvent:FireServer("full")
 	end
 	local stats = player:FindFirstChild("leaderstats")
-	if stats and stats:FindFirstChild("Taler") then
-		stats.Taler.Changed:Connect(changed)
+	if stats and stats:FindFirstChild("Moneten") then
+		stats.Moneten.Changed:Connect(changed)
 	end
 	-- Countdowns jede Sekunde
 	task.spawn(function()
@@ -2737,9 +3052,9 @@ end
 return GameUI
 `;
 
-// Server: Eier und Boosts kaufen, Münzen und Edelsteine verkaufen, Welten, Portale, Wiedergeburt, Supernova (Taler aus leaderstats.Taler)
+// Server: Eier und Boosts kaufen, Münzen und Edelsteine verkaufen, Welten, Portale, Wiedergeburt, Supernova (Moneten aus leaderstats.Moneten)
 export const SHOP_SERVER = `-- Coinmaster Adventure · Shop, Inventar und Welten (Server)
--- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Taler und Regeln (WorldData).
+-- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Moneten und Regeln (WorldData).
 -- Ein gekauftes Ei zählt das Attribut Egg_<id> hoch, ein Boost setzt Boost_<id> auf sein Ende (os.time()).
 -- Münzen liegen als Stapel im Spielstand (PlayerData), Welten und Portale als Ids mit Komma in Worlds und
 -- Portals, die aktuelle Welt in World, Wiedergeburten in Rebirths, Supernovas in Supernovas.
@@ -2755,6 +3070,8 @@ local CoinData = require(root:WaitForChild("CoinData"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local WorldData = require(root:WaitForChild("WorldData"))
 local GemData = require(root:WaitForChild("GemData"))
+local PetData = require(root:WaitForChild("PetData"))
+local GardenData = require(root:WaitForChild("GardenData"))
 local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterServer"):WaitForChild("PlayerData"))
 
 local remote = root:FindFirstChild("ShopRemote")
@@ -2773,7 +3090,7 @@ local lastCall = {}
 local teleport, sellCoins
 local function talerOf(player)
 	local stats = player:FindFirstChild("leaderstats")
-	local taler = stats and stats:FindFirstChild("Taler")
+	local taler = stats and stats:FindFirstChild("Moneten")
 	if taler and (taler:IsA("IntValue") or taler:IsA("NumberValue")) then
 		return taler
 	end
@@ -2782,10 +3099,10 @@ end
 local function pay(player, price)
 	local taler = talerOf(player)
 	if not taler then
-		return false, "Keine Taler gefunden (leaderstats.Taler fehlt)"
+		return false, "Keine Moneten gefunden (leaderstats.Moneten fehlt)"
 	end
 	if taler.Value < price then
-		return false, "Zu wenig Taler"
+		return false, "Zu wenig Moneten"
 	end
 	taler.Value = taler.Value - price
 	return true
@@ -2796,15 +3113,21 @@ local function stateOf(player)
 	return {
 		Owned = WorldData.ParseList(player:GetAttribute("Worlds")),
 		Portals = WorldData.ParseList(player:GetAttribute("Portals") or "p1"),
-		Taler = taler and taler.Value or 0,
+		Moneten = taler and taler.Value or 0,
+		Staub = player:GetAttribute("Diamantstaub") or 0,
 		Rebirths = player:GetAttribute("Rebirths") or 0,
 		Supernovas = player:GetAttribute("Supernovas") or 0,
 	}
 end
 
--- Edelsteine gutschreiben (vom Fund-Skript auf dem Server): value = Wert eines Steins in Talern
+-- Edelsteine gutschreiben (vom Fund-Skript auf dem Server): value = Wert eines Steins in Diamantstaub
 local function addGems(player, gemId, count, value)
 	if not GemData.ById[gemId] then return end
+	-- nur so viele, wie in die Edelstein-Tasche passen
+	local have = 0
+	for _, g in ipairs(GemData.Gems) do have = have + (player:GetAttribute("Gem_" .. g.Id) or 0) end
+	count = math.min(count, GemData.Bag(player:GetAttribute("GemBag") or 1).Capacity - have)
+	if count <= 0 then return end
 	player:SetAttribute("Gem_" .. gemId, (player:GetAttribute("Gem_" .. gemId) or 0) + count)
 	player:SetAttribute("GemValue_" .. gemId, (player:GetAttribute("GemValue_" .. gemId) or 0) + value * count)
 end
@@ -2816,7 +3139,7 @@ if not gemFound then
 end
 gemFound.Event:Connect(addGems)
 
--- Edelsteine verkaufen: count Stück zum Durchschnittswert; gibt Anzahl und Taler zurück
+-- Edelsteine verkaufen: count Stück zum Durchschnittswert; gibt Anzahl und Diamantstaub zurück
 local function takeGems(player, gemId, count)
 	local have = player:GetAttribute("Gem_" .. gemId) or 0
 	if not GemData.ById[gemId] or have <= 0 then return 0, 0 end
@@ -2863,9 +3186,9 @@ sellCoins = function(player, action, key, count)
 	end
 	if n == 0 then return false, "Keine Münze gewählt" end
 	local taler = talerOf(player)
-	if not taler then return false, "Keine Taler gefunden (leaderstats.Taler fehlt)" end
+	if not taler then return false, "Keine Moneten gefunden (leaderstats.Moneten fehlt)" end
 	taler.Value = taler.Value + total
-	return true, n .. " Münze" .. (n > 1 and "n" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
+	return true, n .. " Münze" .. (n > 1 and "n" or "") .. " für " .. math.floor(total + 0.5) .. " Moneten verkauft"
 end
 
 remote.OnServerInvoke = function(player, action, id, extra)
@@ -2882,7 +3205,7 @@ remote.OnServerInvoke = function(player, action, id, extra)
 	if action == "buyEgg" then
 		local egg = EggData.ById[id]
 		if not egg or not egg.Price or egg.Price.Currency ~= "Coins" then
-			return false, "Dieses Ei gibt es nicht für Taler"
+			return false, "Dieses Ei gibt es nicht für Moneten"
 		end
 		local discount = math.clamp(player:GetAttribute("EggDiscount") or 0, 0, 90)
 		local ok, err = pay(player, math.floor(egg.Price.Amount * (1 - discount / 100) + 0.5))
@@ -2907,8 +3230,13 @@ remote.OnServerInvoke = function(player, action, id, extra)
 		local why = WorldData.CanBuy(stateOf(player), id)
 		if why then return false, why end
 		local world = WorldData.ById[id]
-		local ok, err = pay(player, world.Price)
-		if not ok then return false, err end
+		if world.Currency == "staub" then
+			-- Juwelnebel: mit Diamantstaub bezahlen (CanBuy hat den Kontostand schon geprüft)
+			player:SetAttribute("Diamantstaub", (player:GetAttribute("Diamantstaub") or 0) - world.Price)
+		else
+			local ok, err = pay(player, world.Price)
+			if not ok then return false, err end
+		end
 		player:SetAttribute("Worlds", (player:GetAttribute("Worlds") or "") .. "," .. id)
 		teleport(player, world)
 		return true, world.Name .. " freigeschaltet!"
@@ -2934,10 +3262,58 @@ remote.OnServerInvoke = function(player, action, id, extra)
 			end
 		end
 		if n == 0 then return false, "Kein Edelstein gewählt" end
-		local taler = talerOf(player)
-		if not taler then return false, "Keine Taler gefunden (leaderstats.Taler fehlt)" end
-		taler.Value = taler.Value + math.floor(total + 0.5)
-		return true, n .. " Edelstein" .. (n > 1 and "e" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
+		-- Edelsteine bringen Diamantstaub, nicht Moneten
+		player:SetAttribute("Diamantstaub", (player:GetAttribute("Diamantstaub") or 0) + math.floor(total + 0.5))
+		return true, n .. " Edelstein" .. (n > 1 and "e" or "") .. " für " .. math.floor(total + 0.5) .. " Diamantstaub verkauft"
+	elseif action == "hatch" then
+		-- Ei aus dem Inventar schlüpfen lassen: Haustier in die Liste Pets (JSON)
+		local n = player:GetAttribute("Egg_" .. id) or 0
+		if n <= 0 then return false, "Dieses Ei hast du nicht" end
+		local pet = PetData.Roll(id, Random.new())
+		if not pet then return false, "Aus diesem Ei schlüpft noch nichts" end
+		local ok, pets = pcall(function() return HttpService:JSONDecode(player:GetAttribute("Pets") or "[]") end)
+		pets = ok and type(pets) == "table" and pets or {}
+		local u = 0
+		for _, p in ipairs(pets) do u = math.max(u, p.U or 0) end
+		table.insert(pets, { U = u + 1, Id = pet.Id, L = 1, X = 0 })
+		player:SetAttribute("Egg_" .. id, n - 1)
+		player:SetAttribute("Pets", HttpService:JSONEncode(pets))
+		return true, pet.Name .. " geschlüpft! (" .. pet.Rarity .. ")", pet.Id
+	elseif action == "feedPet" then
+		-- Haustier mit Früchten aus dem Garten füttern: extra = "<Baum-Id>|<Anzahl>"
+		local treeId, count = string.match(tostring(extra or ""), "^([%w_%-]+)|(%d+)$")
+		local tree = treeId and GardenData.ById[treeId]
+		if not tree then return false, "Ungültig" end
+		local ok1, pets = pcall(function() return HttpService:JSONDecode(player:GetAttribute("Pets") or "[]") end)
+		local ok2, garden = pcall(function() return HttpService:JSONDecode(player:GetAttribute("Garden") or "null") end)
+		if not ok1 or not ok2 or type(pets) ~= "table" or type(garden) ~= "table" then return false, "Ungültig" end
+		local pet
+		for _, p in ipairs(pets) do
+			if tostring(p.U) == id then pet = p end
+		end
+		if not pet then return false, "Dieses Haustier gibt es nicht" end
+		if pet.L >= PetData.MaxLevel then return false, "Schon auf dem höchsten Level" end
+		garden.Fruits = garden.Fruits or {}
+		local have = garden.Fruits[treeId] or 0
+		if have <= 0 then return false, "Keine solche Frucht im Inventar" end
+		local n = math.clamp(tonumber(count) or 1, 1, have)
+		garden.Fruits[treeId] = have - n > 0 and have - n or nil
+		local xp = (PetData.FruitXp[tree.Rarity] or 1) * n
+		local ups = PetData.AddXp(pet, xp)
+		player:SetAttribute("Garden", HttpService:JSONEncode(garden))
+		player:SetAttribute("Pets", HttpService:JSONEncode(pets))
+		local name = PetData.ById[pet.Id] and PetData.ById[pet.Id].Name or "Haustier"
+		if ups > 0 then return true, name .. " ist jetzt Level " .. pet.L .. "! (+" .. xp .. " EP)" end
+		return true, name .. " frisst " .. (n == 1 and tree.FruitName or (n .. " " .. tree.FruitPlural)) .. ": +" .. xp .. " EP"
+	elseif action == "buyGemBag" then
+		local nr = (player:GetAttribute("GemBag") or 1) + 1
+		local bag = GemData.Bags[nr]
+		if not bag or tonumber(id) ~= nr then return false, "Diese Tasche gibt es nicht (der Reihe nach kaufen)" end
+		local dust = player:GetAttribute("Diamantstaub") or 0
+		if dust < bag.Price then return false, "Zu wenig Diamantstaub" end
+		player:SetAttribute("Diamantstaub", dust - bag.Price)
+		player:SetAttribute("GemBag", nr)
+		return true, bag.Name .. " gekauft: Platz für " .. bag.Capacity .. " Edelsteine"
 	elseif action == "supernova" then
 		local state = stateOf(player)
 		local why = WorldData.CanSupernova(state)
@@ -2953,7 +3329,7 @@ remote.OnServerInvoke = function(player, action, id, extra)
 		local taler = talerOf(player)
 		local cost = WorldData.RebirthCost(n)
 		if not taler or taler.Value < cost then
-			return false, "Zu wenig Taler"
+			return false, "Zu wenig Moneten"
 		end
 		taler.Value = 0
 		player:SetAttribute("Rebirths", n + 1)

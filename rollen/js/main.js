@@ -1,5 +1,5 @@
 // Münzrollen: Galerie aller Rollen, Detailansicht zum Drehen und Öffnen-Animation.
-// Die Rollen kosten Taler aus dem Münzbaumgarten, der Inhalt landet dort im Inventar.
+// Die Rollen kosten Moneten aus dem Münzbaumgarten, der Inhalt landet dort im Inventar.
 // Wie in der Eierhalle rendert ein einziges WebGL-Canvas alle Karten per Scissor-Test.
 // Alles 1:1 wie in Roblox: RollBuilder und RollFx aus dem Installer (rollRoblox.js).
 
@@ -77,7 +77,7 @@ const lootCam = (item) => (item.type === 'tree' ? { dist: 7, y: 1.15 } : item.ty
 // Chance einer Sache in einer Rolle: Chance ihrer Seltenheit geteilt durch die Anzahl Sachen dieser Seltenheit
 const poolSize = Object.fromEntries(RARITIES.map((r) => [r.id, LOOT.filter((l) => l.rarity === r.id).length]));
 const itemChance = (roll, item) => rollChances(roll)[rarityById[item.rarity].index] / poolSize[item.rarity];
-const lootInfo = (item) => (item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}: ${item.fruitPlural} alle ${fmtTime(item.cycle)} (je ${fmt(item.yield)} Taler am Markt), ${item.harvests}× ernten. ${item.text}` : item.type === 'fence' ? `${item.text} Für deinen Garten, bleibt im Inventar.` : item.text);
+const lootInfo = (item) => (item.type === 'tree' ? `Wächst in ${fmtTime(item.grow)} zum ${item.name}: ${item.fruitPlural} alle ${fmtTime(item.cycle)} (Futter für Haustiere), ${item.harvests}× ernten. ${item.text}` : item.type === 'fence' ? `${item.text} Für deinen Garten, bleibt im Inventar.` : item.text);
 
 const lootList = document.getElementById('loot');
 const sortedLoot = [...LOOT].sort((a, b) => rarityById[a.rarity].index - rarityById[b.rarity].index || (a.type === b.type ? 0 : a.type === 'tree' ? -1 : 1));
@@ -284,19 +284,19 @@ document.getElementById('detail-open').addEventListener('click', () => {
   startOpen(dData);
 });
 
-// Taler-Anzeige und Knöpfe, die mehr kosten als man hat
+// Moneten-Anzeige und Knöpfe, die mehr kosten als man hat
 const wallet = document.getElementById('wallet');
 function refreshWallet(state = loadState()) {
   wallet.textContent = fmt(state.taler);
   for (const c of cards) {
     const btn = c.card.querySelector('.open-btn');
     btn.disabled = !canPay(c.roll, state);
-    btn.textContent = btn.disabled ? 'Zu wenig Taler' : 'Aufreißen';
+    btn.textContent = btn.disabled ? 'Zu wenig Moneten' : 'Aufreißen';
   }
   const d = document.getElementById('detail-open');
   if (dData) {
     d.disabled = !canPay(dData, state);
-    d.textContent = d.disabled ? 'Zu wenig Taler' : 'Aufreißen';
+    d.textContent = d.disabled ? 'Zu wenig Moneten' : 'Aufreißen';
   }
 }
 opener.onChange = refreshWallet;
