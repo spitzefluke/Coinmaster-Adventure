@@ -14,6 +14,7 @@ import { planet3Before, planet3After } from './planet3.js';
 import { MODEL_WORLDS } from './modelWorlds.js';
 import { SKYBOXES } from './skyboxes.js';
 import { NEW_WORLDS, planet4Before, planet4After } from './planet4.js';
+import { GEM_WORLDS, galaxy2After } from './galaxie2.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -344,7 +345,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
-  ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || null;
+  ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
   const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
@@ -369,6 +370,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   planet2After(ctx, kit);
   planet3After(ctx, kit);
   planet4After(ctx, kit);
+  galaxy2After(ctx, kit); // Juwelnebel: Funkeln und Klänge
 
   // Teleport-Plattform am Rand: Ankunftsort und Rückweg zum Hub.
   // Daneben bleibt ein freier Platz für den Größenvergleich mit einer Roblox-Figur.

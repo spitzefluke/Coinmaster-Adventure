@@ -62,6 +62,8 @@ UITheme.Colors = {
 	green = Color3.fromRGB(64, 200, 112), greenHi = Color3.fromRGB(96, 226, 140), greenDeep = Color3.fromRGB(36, 160, 84),
 	greenDark = Color3.fromRGB(20, 90, 44), greenInk = Color3.fromRGB(10, 40, 20), mint = Color3.fromRGB(159, 227, 181),
 	red = Color3.fromRGB(232, 74, 90), blue = Color3.fromRGB(0, 162, 255), cyan = Color3.fromRGB(56, 240, 255),
+	-- Juwelnebel und Supernova (Edelsteine)
+	gem = Color3.fromRGB(200, 74, 216), gemHi = Color3.fromRGB(255, 150, 236), gemDark = Color3.fromRGB(110, 30, 130),
 	-- Erfahrung
 	xp = Color3.fromRGB(160, 120, 255), xpHi = Color3.fromRGB(196, 160, 255), xpDark = Color3.fromRGB(120, 80, 230),
 	-- Glanz auf Flächen (UIGradient)
@@ -135,7 +137,8 @@ export const GAME_UI = `${HEADER('Spiel-Oberfläche')}
 -- EggDiscount (Prozent). Das Wetter steht an ReplicatedStorage (Weather, WeatherEnds).
 -- Inventar: Münzen als Stapel über das RemoteEvent InventoryEvent ("full", Liste) und ("set", Schlüssel, Stapel);
 -- in der Vorschau ruft die Seite GameUI.ApplyInventory direkt auf. Plätze im Attribut Slots.
--- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths.
+-- Welten: World (aktuelle Welt), Worlds und Portals (Ids mit Komma), Rebirths, Supernovas.
+-- Edelsteine (Juwelnebel): Gem_<id> (Anzahl), GemValue_<id> (Gesamtwert in Talern).
 -- Garten: Garden (JSON, siehe GardenData), Aktionen garden… und openRoll gehen an GardenRemote.
 -- options.PlayRoll(rollId, itemId)         zeigt eine geöffnete Rolle mit Rollband (Standard: RollFx vor dem Spieler)
 -- options.Invoke(action, a, b) → ok, text   Käufe und Aktionen (buyEgg, buyBoost, aura, robux, sell, sellNormal,
@@ -163,6 +166,7 @@ local AuraData = require(root:WaitForChild("AuraData"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local CoinData = require(root:WaitForChild("CoinData"))
 local WorldData = require(root:WaitForChild("WorldData"))
+local GemData = require(root:WaitForChild("GemData"))
 local GardenData = require(root:WaitForChild("GardenData"))
 local RollData = require(root:WaitForChild("RollData"))
 local AdminData = require(root:WaitForChild("AdminData"))
@@ -223,7 +227,7 @@ end
 -- Zahlen: 1.250 · 12,5K · 3,4 Mio. · 1,2 Mrd.
 function GameUI.Format(n)
 	n = n or 0
-	local units = { { 1e12, " Bio." }, { 1e9, " Mrd." }, { 1e6, " Mio." }, { 1e4, "K" } }
+	local units = { { 1e15, " Brd." }, { 1e12, " Bio." }, { 1e9, " Mrd." }, { 1e6, " Mio." }, { 1e4, "K" } }
 	for _, u in ipairs(units) do
 		if math.abs(n) >= u[1] then
 			local v = n / (u[1] == 1e4 and 1e3 or u[1])
@@ -418,7 +422,7 @@ local function buildHud(playerGui)
 	})
 	icon("search", { Size = UDim2.new(0, 32, 0, 32), Position = UDim2.new(0, 28, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.find })
 	ui.findLabel = label({ Size = UDim2.new(1, -86, 1, 0), Position = UDim2.new(0, 70, 0, 0), Text = "Münze suchen", Font = FONT, TextSize = T.Title, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Left, Parent = ui.find })
-	new("UIStroke", { Color = C.greenDark, Thickness = 2, Parent = ui.find })
+	ui.findStroke = new("UIStroke", { Color = C.greenDark, Thickness = 2, Parent = ui.find })
 	pressable(ui.find, function() options.OnAction("find") end)
 	ui.findHint = label({ Size = UDim2.new(0, 320, 0, 18), Position = UDim2.new(0.5, 0, 1, -12), AnchorPoint = Vector2.new(0.5, 1), Text = "", TextSize = T.Tiny, TextColor3 = C.ink, TextStrokeTransparency = 0.5, Font = BODY, Parent = gui })
 
@@ -457,6 +461,11 @@ local function refreshHud()
 	ui.worldText.Text = (planet ~= "" and (planet .. " · ") or "") .. attr("WorldName", "Spawn")
 	ui.world.Size = UDim2.new(0, math.max(160, #ui.worldText.Text * 11 + 30), 0, 38)
 	ui.findHint.Text = attr("FindHint", "")
+	-- im Juwelnebel findet man Edelsteine statt Münzen
+	local gems = WorldData.FindsGems(attr("World", "spawn"))
+	ui.findLabel.Text = gems and "Edelstein suchen" or "Münze suchen"
+	ui.find.BackgroundColor3 = gems and C.gem or C.green
+	ui.findStroke.Color = gems and C.gemDark or C.greenDark
 	-- Wetter mit Countdown
 	local wid = ReplicatedStorage:GetAttribute("Weather") or "klar"
 	local w = MutationData.WeatherById[wid]
@@ -1112,6 +1121,90 @@ local function fillEggs(w)
 	pressable(shop, function() GameUI.Open("shop", "eier") end)
 end
 
+-- ── Edelsteine (Juwelnebel) ──
+-- Ein Edelstein als Fläche: runde Schliffe als Kreis/Oval, die anderen als gedrehte Raute, mit Glanz
+local function gemIcon(parent, gem, size, props)
+	local holder = new("Frame", { Name = "Edelstein", Size = UDim2.new(0, size, 0, size), BackgroundTransparency = 1, Parent = parent })
+	for k, v in pairs(props or {}) do holder[k] = v end
+	local round = gem.Cut == "rund" or gem.Cut == "oval"
+	local stone = new("Frame", { Name = "Stein", Size = round and UDim2.new(gem.Cut == "oval" and 0.78 or 0.9, 0, 0.9, 0) or UDim2.new(0.66, 0, 0.66, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = round and 0 or 45, BackgroundColor3 = Color3.new(1, 1, 1), Parent = holder }, {
+		corner(round and R.Round or UDim.new(0, math.floor(size * 0.08))),
+		new("UIGradient", { Rotation = round and 135 or 90, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, gem.Light), ColorSequenceKeypoint.new(0.45, gem.Color), ColorSequenceKeypoint.new(1, gem.Dark) }) }),
+		new("UIStroke", { Color = gem.Dark, Thickness = math.max(1, math.floor(size / 28)) }),
+	})
+	-- Tafel (obere Facette) und Glanzpunkt
+	new("Frame", { Size = UDim2.new(0.42, 0, 0.42, 0), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = gem.Light, BackgroundTransparency = 0.45, Parent = stone }, {
+		corner(round and R.Round or UDim.new(0, 2)),
+	})
+	new("Frame", { Size = UDim2.new(0.16, 0, 0.16, 0), Position = UDim2.new(0.24, 0, 0.2, 0), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.15, Parent = stone }, {
+		corner(R.Round),
+	})
+	return holder
+end
+GameUI.GemIcon = gemIcon
+
+local function gemEntries()
+	local list = {}
+	for _, gem in ipairs(GemData.Gems) do
+		local n = attr("Gem_" .. gem.Id, 0)
+		if n > 0 then table.insert(list, { Gem = gem, Tier = CoinData.TierById[gem.Tier], N = n, V = attr("GemValue_" .. gem.Id, 0) }) end
+	end
+	-- seltene zuerst
+	table.sort(list, function(a, b)
+		if a.Tier.Index ~= b.Tier.Index then return a.Tier.Index > b.Tier.Index end
+		return a.Gem.Index < b.Gem.Index
+	end)
+	return list
+end
+
+local function fillGems(w)
+	local entries = gemEntries()
+	local list = scroller(w, w.body, "Edelsteine", { Size = UDim2.new(1, 8, 1, -58) }, {
+		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 2) }),
+	})
+	local total, count = 0, 0
+	for i, e in ipairs(entries) do
+		total, count = total + e.V, count + e.N
+		local row = new("Frame", { Name = e.Gem.Id, Size = UDim2.new(1, 0, 0, 74), BackgroundColor3 = C.bg2, LayoutOrder = i, Parent = list }, {
+			corner(R.M),
+			stroke(e.Tier.Color, 2),
+		})
+		gemIcon(row, e.Gem, 58, { Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
+		label({ Size = UDim2.new(1, -420, 0, 24), Position = UDim2.new(0, 80, 0, 12), Text = e.Gem.Name, Font = FONT, TextSize = T.Large, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+		label({ Size = UDim2.new(1, -420, 0, 18), Position = UDim2.new(0, 80, 0, 40), Text = e.Tier.Name .. " · " .. GameUI.Format(math.floor(e.V / e.N + 0.5)) .. " Taler pro Stein", TextSize = T.Small, TextColor3 = e.Tier.Color, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+		label({ Size = UDim2.new(0, 70, 1, 0), Position = UDim2.new(1, -330, 0, 0), Text = "×" .. e.N, Font = FONT, TextSize = T.Title, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Right, Parent = row })
+		local one = new("Frame", { Size = UDim2.new(0, 110, 0, 40), Position = UDim2.new(1, -244, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = row })
+		actionButton(one, "1 verkaufen", C.blue, true, function()
+			result(options.Invoke("sellGem", e.Gem.Id, "1"), nil, e.Gem.Color)
+		end).TextSize = T.Small
+		local all = new("Frame", { Size = UDim2.new(0, 118, 0, 40), Position = UDim2.new(1, -126, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, Parent = row })
+		actionButton(all, "Alle · " .. GameUI.Format(math.floor(e.V + 0.5)), C.green, true, function()
+			result(options.Invoke("sellGem", e.Gem.Id, tostring(e.N)), nil, e.Gem.Color)
+			if GameUI.FlyCoins then GameUI.FlyCoins(all, 6) end
+		end).TextSize = T.Small
+	end
+	if #entries == 0 then
+		label({ Size = UDim2.new(1, -40, 0, 80), Position = UDim2.new(0, 20, 0, 40), Text = "Noch keine Edelsteine. Du findest sie im Juwelnebel, der Galaxie hinter der Supernova (Welten > Supernova).", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Font = TEXT, Parent = list })
+	end
+	label({ Size = UDim2.new(1, -330, 0, 44), Position = UDim2.new(0, 0, 1, -44), Text = "Edelsteine liegen in einem eigenen Beutel und belegen keine Inventarplätze.", TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = TEXT, Parent = w.body })
+	local holder = new("Frame", { Size = UDim2.new(0, 310, 0, 46), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1), BackgroundTransparency = 1, Parent = w.body })
+	local b
+	b = actionButton(holder, count > 0 and ("Alle verkaufen · " .. GameUI.Format(math.floor(total + 0.5)) .. " Taler") or "Alle verkaufen", C.gem, count > 0, function()
+		if result(options.Invoke("sellGems"), nil, C.gemHi) and GameUI.FlyCoins then GameUI.FlyCoins(b, 10) end
+	end)
+	b.Size = UDim2.new(1, 0, 1, 0)
+	b.Position = UDim2.new(0, 0, 0, 0)
+end
+
+local function gemTotal()
+	local n = 0
+	for _, gem in ipairs(GemData.Gems) do
+		n = n + attr("Gem_" .. gem.Id, 0)
+	end
+	return n
+end
+
 local function fillInventory(w)
 	clear(w.body)
 	clear(w.tools)
@@ -1120,9 +1213,12 @@ local function fillInventory(w)
 	for _, egg in ipairs(EggData.Eggs) do
 		eggs = eggs + attr("Egg_" .. egg.Id, 0)
 	end
-	w.sub.Text = coinTotal(entries) .. " Münzen · " .. eggs .. " Eier"
+	local gems = gemTotal()
+	w.sub.Text = coinTotal(entries) .. " Münzen · " .. eggs .. " Eier" .. (gems > 0 and (" · " .. gems .. " Edelsteine") or "")
 	if w.tab == "eier" then
 		fillEggs(w)
+	elseif w.tab == "edelsteine" then
+		fillGems(w)
 	elseif w.tab == "tiere" then
 		label({ Size = UDim2.new(1, -80, 0, 80), Position = UDim2.new(0, 40, 0, 60), Text = "Hier erscheinen deine geschlüpften Haustiere mit ihrem Bonus, sobald das Schlüpfen im Spiel läuft.", TextSize = T.Body, TextWrapped = true, TextColor3 = C.muted, Parent = w.body })
 	else
@@ -1131,7 +1227,7 @@ local function fillInventory(w)
 end
 
 local function buildInventory(playerGui)
-	buildWindow(playerGui, "inventar", "bag", "Inventar", { { "muenzen", "Münzen", 120, "coin" }, { "eier", "Eier", 100, "egg" }, { "tiere", "Haustiere", 136, "paw" } }, fillInventory)
+	buildWindow(playerGui, "inventar", "bag", "Inventar", { { "muenzen", "Münzen", 120, "coin" }, { "edelsteine", "Edelsteine", 140, "gem" }, { "eier", "Eier", 100, "egg" }, { "tiere", "Haustiere", 136, "paw" } }, fillInventory)
 end
 function GameUI.OpenInventory(tab) GameUI.Open("inventar", tab) end
 
@@ -1142,6 +1238,7 @@ local function worldState()
 		Portals = WorldData.ParseList(attr("Portals", "p1")),
 		Taler = taler(),
 		Rebirths = attr("Rebirths", 0),
+		Supernovas = attr("Supernovas", 0),
 	}
 end
 local function decimal(n)
@@ -1222,7 +1319,7 @@ local function portalBanner(parent, st, planet)
 	new("Frame", { Size = UDim2.new(0, 70, 0, 70), Position = UDim2.new(0, 18, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = planet.Color, BackgroundTransparency = 0.6, Parent = banner }, {
 		corner(R.Round),
 		stroke(planet.Color, 2),
-		icon(planet.ComingSoon and "lock" or (planet.Id == "p2" and "rocket" or "portal"), { Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
+		icon(planet.ComingSoon and "lock" or (planet.Id == "p2" and "rocket" or ((planet.Portal.Supernovas or 0) > 0 and "sparkle" or "portal")), { Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5) }),
 	})
 	if planet.ComingSoon then
 		label({ Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 106, 0, 24), Text = planet.Name .. " · Coming soon", Font = FONT, TextSize = T.Big, TextXAlignment = Enum.TextXAlignment.Left, Parent = banner })
@@ -1243,8 +1340,9 @@ local function portalBanner(parent, st, planet)
 end
 
 local function fillPlanet(w, planet, st)
+	local galaxy = WorldData.GalaxyById[planet.Galaxy] or WorldData.Galaxies[1]
 	new("Frame", { Name = "Planet", Size = UDim2.new(1, 0, 0, 78), BackgroundTransparency = 1, Parent = w.body }, {
-		label({ Size = UDim2.new(1, 0, 0, 16), Text = GameUI.Upper(planet.Name), TextSize = T.Tiny, TextColor3 = planet.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO }),
+		label({ Size = UDim2.new(1, 0, 0, 16), Text = GameUI.Upper(galaxy.Name .. " · " .. planet.Name) .. (galaxy.Find == "gems" and "  ·  💎 EDELSTEINE STATT MÜNZEN" or ""), TextSize = T.Tiny, TextColor3 = planet.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO }),
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 16), Text = planet.Title, Font = FONT, TextSize = T.Title, TextXAlignment = Enum.TextXAlignment.Left }),
 		label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0, 46), Text = planet.Text, TextSize = T.Small, TextWrapped = true, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = TEXT }),
 	})
@@ -1290,11 +1388,12 @@ local function fillRebirth(w, st)
 	local facts = new("Frame", { Size = UDim2.new(1, 0, 0, 132), BackgroundTransparency = 1, Parent = main }, {
 		new("UIGridLayout", { CellSize = UDim2.new(0.5, -6, 0, 60), CellPadding = UDim2.new(0, 12, 0, 12), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	fact(facts, "Münzwert jetzt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths)), nil, 1)
-	fact(facts, "Nach der Wiedergeburt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths + 1)), C.green, 2)
+	local nova = WorldData.SupernovaMultiplier(st.Supernovas)
+	fact(facts, "Münzwert jetzt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths) * nova), nil, 1)
+	fact(facts, "Nach der Wiedergeburt", "×" .. decimal(WorldData.RebirthMultiplier(st.Rebirths + 1) * nova), C.green, 2)
 	fact(facts, "Kosten", GameUI.Format(cost) .. " Taler", C.goldHi, 3)
 	for _, p in ipairs(WorldData.Planets) do
-		if p.Portal and not p.ComingSoon and p.Portal.Rebirths > st.Rebirths then
+		if p.Portal and not p.ComingSoon and not st.Portals[p.Id] and (p.Portal.Supernovas or 0) <= st.Supernovas and p.Portal.Rebirths > st.Rebirths then
 			fact(facts, p.Portal.Name, "ab " .. p.Portal.Rebirths .. " Wiedergeburt" .. (p.Portal.Rebirths > 1 and "en" or ""), nil, 4)
 			break
 		end
@@ -1308,7 +1407,7 @@ local function fillRebirth(w, st)
 	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = GameUI.Format(math.floor(st.Taler)) .. " von " .. GameUI.Format(cost) .. " Taler", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = main })
 	local rules = {
 		{ "✕ Deine Taler sind danach weg", C.red },
-		{ "✔ Welten, Portale, Münzen, Eier, Level und Skills bleiben", C.ink },
+		{ "✔ Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben", C.ink },
 		{ "✔ Jede Münze ist für immer " .. math.floor(WorldData.Rebirth.Bonus * 100 + 0.5) .. " % mehr wert", C.ink },
 	}
 	for i, r in ipairs(rules) do
@@ -1335,10 +1434,96 @@ local function fillRebirth(w, st)
 	b.TextSize = T.Large
 end
 
+-- ── Supernova (Prestige): ab 100 Wiedergeburten, öffnet die nächste Galaxie ──
+local function fillSupernova(w, st)
+	local need = WorldData.Supernova.Rebirths
+	local nextG = WorldData.NextGalaxy(st)
+	local why = WorldData.CanSupernova(st)
+	local hero = new("Frame", { Name = "Supernovas", Size = UDim2.new(0, 210, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = w.body }, {
+		corner(R.L),
+		stroke(C.gemHi, 2),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 20, 90)), ColorSequenceKeypoint.new(0.6, Color3.fromRGB(30, 14, 50)), ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 8, 24)) }) }),
+		icon("sparkle", { Size = UDim2.new(0, 56, 0, 56), Position = UDim2.new(0.5, 0, 0.5, -94), AnchorPoint = Vector2.new(0.5, 0) }),
+		label({ Size = UDim2.new(1, 0, 0, 70), Position = UDim2.new(0, 0, 0.5, -34), Text = tostring(st.Supernovas), Font = FONT, TextSize = 64, TextColor3 = C.gemHi }),
+		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0.5, 40), Text = st.Supernovas == 1 and "Supernova" or "Supernovas", TextSize = T.Small, TextColor3 = C.muted }),
+	})
+	-- funkelnde Sterne im Bild
+	for i = 1, 7 do
+		local star = new("Frame", { Size = UDim2.new(0, 4, 0, 4), Position = UDim2.new(((i * 37) % 90 + 5) / 100, 0, ((i * 53) % 80 + 8) / 100, 0), Rotation = 45, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.3, Parent = hero })
+		if not Juice.calm() then
+			TweenService:Create(star, TweenInfo.new(0.8 + i * 0.13, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { BackgroundTransparency = 0.95 }):Play()
+		end
+	end
+	local main = new("Frame", { Size = UDim2.new(1, -230, 1, 0), Position = UDim2.new(0, 230, 0, 0), BackgroundTransparency = 1, Parent = w.body })
+	local facts = new("Frame", { Size = UDim2.new(1, 0, 0, 132), BackgroundTransparency = 1, Parent = main }, {
+		new("UIGridLayout", { CellSize = UDim2.new(0.5, -6, 0, 60), CellPadding = UDim2.new(0, 12, 0, 12), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	fact(facts, "Wert-Faktor jetzt", "×" .. decimal(WorldData.SupernovaMultiplier(st.Supernovas)), nil, 1)
+	fact(facts, "Nach der Supernova", "×" .. decimal(WorldData.SupernovaMultiplier(st.Supernovas + 1)), C.gemHi, 2)
+	fact(facts, "Braucht", need .. " Wiedergeburten", C.goldHi, 3)
+	fact(facts, "Öffnet", nextG and nextG.Name or "–", nextG and nextG.Color or C.muted, 4)
+	local pct = math.clamp(st.Rebirths / need, 0, 1)
+	local bar = new("Frame", { Name = "Fortschritt", Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 0, 146), BackgroundColor3 = C.bg2, Parent = main }, {
+		corner(R.Round),
+		stroke(C.line, 1),
+	})
+	new("Frame", { Size = UDim2.new(math.max(pct, 0.02), 0, 1, 0), BackgroundColor3 = C.gem, Parent = bar }, { corner(R.Round), gradient(C.gemHi, C.gemDark) })
+	label({ Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 0, 168), Text = math.min(st.Rebirths, need) .. " von " .. need .. " Wiedergeburten", TextSize = T.Small, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = main })
+	local rules = {
+		{ "✕ Taler und Wiedergeburten gehen auf 0", C.red },
+		{ "✔ Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben", C.ink },
+		{ "✔ Alles ist für immer " .. decimal(WorldData.Supernova.Bonus) .. "-mal so viel wert", C.ink },
+	}
+	if nextG then table.insert(rules, { "✔ Neue Galaxie " .. nextG.Name .. ": Planeten, auf denen du Edelsteine statt Münzen findest", C.gemHi }) end
+	if not nextG then table.insert(rules, { "Du hast alle Galaxien geöffnet. Weitere kommen mit späteren Updates.", C.muted }) end
+	for i, r in ipairs(rules) do
+		label({ Size = UDim2.new(1, 0, 0, 20), Position = UDim2.new(0, 0, 0, 176 + i * 24), Text = r[1], TextSize = T.Small, TextColor3 = r[2], TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = main })
+	end
+	local holder = new("Frame", { Size = UDim2.new(0, 340, 0, 52), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1, Parent = main })
+	local armed = ui.novaArmed and os.clock() - ui.novaArmed < 3
+	local text = not nextG and "Alle Galaxien offen" or (why and ("Noch " .. math.max(0, need - st.Rebirths) .. " Wiedergeburten") or (armed and "Sicher? Nochmal klicken" or "Supernova auslösen"))
+	local b = actionButton(holder, text, armed and C.red or C.gem, why == nil, function()
+		if not (ui.novaArmed and os.clock() - ui.novaArmed < 3) then
+			ui.novaArmed = os.clock()
+			GameUI.Refresh("welten")
+			task.delay(3, function() GameUI.Refresh("welten") end)
+			return
+		end
+		ui.novaArmed = nil
+		if result(options.Invoke("supernova"), nil, C.gemHi, "SUPERNOVA!") then
+			if Juice.rays and not Juice.calm() then
+				Juice.rays(Vector2.new(ui.fx.AbsoluteSize.X * 0.5, ui.fx.AbsoluteSize.Y * 0.45), C.gemHi, 760, 2.6)
+			end
+			-- gleich zur neuen Galaxie
+			local g = WorldData.Galaxies[st.Supernovas + 2]
+			local first = g and WorldData.PlanetsOf(g.Id)[1]
+			if first then
+				w.tab = first.Id
+				if w.onTab then w.onTab(first.Id) end
+			end
+		end
+		GameUI.Refresh("welten")
+	end)
+	b.Size = UDim2.new(1, 0, 1, 0)
+	b.Position = UDim2.new(0, 0, 0, 0)
+	b.TextSize = T.Large
+	if options.DevTools then
+		-- nur Vorschau: Wiedergeburten zum Ausprobieren
+		local t = new("Frame", { Size = UDim2.new(0, 180, 0, 52), Position = UDim2.new(0, 352, 1, 0), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1, Parent = main })
+		local tb = actionButton(t, "+10 Test-Wiedergeb.", C.blue, st.Rebirths < need, function()
+			result(options.Invoke("testRebirths"), nil, C.blue)
+		end)
+		tb.Size = UDim2.new(1, 0, 1, 0)
+		tb.Position = UDim2.new(0, 0, 0, 0)
+		tb.TextSize = T.Small
+	end
+end
+
 local function fillWorlds(w)
 	clear(w.body)
 	clear(w.tools)
 	local st = worldState()
+	if w.showGalaxy then w.showGalaxy() end
 	local here = WorldData.ById[attr("World", "spawn")]
 	local inHub = not here or here.Planet == "hub"
 	local planet = here and WorldData.PlanetById[here.Planet]
@@ -1353,18 +1538,58 @@ local function fillWorlds(w)
 	end
 	if w.tab == "wiedergeburt" then
 		fillRebirth(w, st)
+	elseif w.tab == "supernova" then
+		fillSupernova(w, st)
 	else
 		fillPlanet(w, WorldData.PlanetById[w.tab] or WorldData.Planets[1], st)
 	end
 end
 
+-- Reiter: die Planeten der gezeigten Galaxie, „Galaxie“ (wechselt zur nächsten), Wiedergeburt, Supernova
 local function buildWorlds(playerGui)
 	local tabs = {}
 	for _, p in ipairs(WorldData.Planets) do
-		table.insert(tabs, { p.Id, p.Name, 120 })
+		table.insert(tabs, { p.Id, p.Name, 100 })
 	end
+	local several = #WorldData.Galaxies > 1
+	if several then table.insert(tabs, { "galaxie", WorldData.Galaxies[2].Name, 120, "globe" }) end
 	table.insert(tabs, { "wiedergeburt", "Wiedergeburt", 160, "rebirth" })
+	if several then table.insert(tabs, { "supernova", "Supernova", 120, "sparkle" }) end
 	local w = buildWindow(playerGui, "welten", "globe", "Welten", tabs, fillWorlds)
+	local shown = WorldData.Galaxies[1].Id
+	-- Nur die Planeten der gezeigten Galaxie als Reiter; der Galaxie-Reiter nennt die andere
+	w.showGalaxy = function()
+		local planet = WorldData.PlanetById[w.tab]
+		if planet then shown = planet.Galaxy end
+		local nextG
+		for i, g in ipairs(WorldData.Galaxies) do
+			if g.Id == shown then nextG = WorldData.Galaxies[i % #WorldData.Galaxies + 1] end
+		end
+		for _, p in ipairs(WorldData.Planets) do
+			w.buttons[p.Id].Visible = p.Galaxy == shown
+			w.buttons[p.Id].Size = UDim2.new(0, GameUI.Compact and 86 or 100, 1, 0)
+		end
+		if several then
+			w.tabLabels.galaxie.Text = nextG.Name
+			w.buttons.galaxie.Size = UDim2.new(0, GameUI.Compact and 132 or 144, 1, 0)
+			w.buttons.wiedergeburt.Size = UDim2.new(0, GameUI.Compact and 160 or 184, 1, 0)
+			w.buttons.supernova.Size = UDim2.new(0, GameUI.Compact and 128 or 144, 1, 0)
+			-- Supernova-Reiter leuchtet, sobald sie bereit ist
+			local ready = WorldData.CanSupernova(worldState()) == nil
+			w.buttons.supernova.BackgroundColor3 = w.tab == "supernova" and C.gold or (ready and C.gem or C.bg2)
+		end
+	end
+	w.onTab = function(tab)
+		if tab ~= "galaxie" then return end
+		-- zur nächsten Galaxie: deren erster Planet
+		for i, g in ipairs(WorldData.Galaxies) do
+			if g.Id == shown then
+				shown = WorldData.Galaxies[i % #WorldData.Galaxies + 1].Id
+				break
+			end
+		end
+		w.tab = WorldData.PlanetsOf(shown)[1].Id
+	end
 	-- Standard-Reiter: Planet der aktuellen Welt
 	w.defaultTab = function()
 		local here = WorldData.ById[attr("World", "spawn")]
@@ -1973,6 +2198,53 @@ function GameUI.Found(info)
 	end
 end
 
+-- Edelstein gefunden (Juwelnebel): dieselben Stufen wie bei Münzen, mit Edelstein statt Münze
+-- info = { GemId, Count, Value, Xp, Upgraded }
+function GameUI.FoundGem(info)
+	local gem = GemData.ById[info.GemId]
+	if not gem then return end
+	local tier = CoinData.TierById[gem.Tier]
+	local level = tier.Index <= 2 and 1 or (tier.Index <= 4 and 2 or (tier.Index <= 7 and 3 or 4))
+	local count = info.Count or 1
+	local value = (info.Value or 0) * count
+	local line = tier.Name .. (count > 1 and " · ×" .. count or "") .. (info.Upgraded and " · Goldene Hand!" or "") .. " · +" .. (info.Xp or 0) .. " EP"
+	local color = gem.Color
+	if options.Sound then options.Sound("found", level) end
+	GameUI.Toast("💎 " .. gem.Name .. " · " .. line .. " · Wert " .. GameUI.Format(value) .. " Taler", tier.Color)
+	if setting("skipAnimations", false) then return end
+	Juice.punch(ui.find, 0.14 + level * 0.05)
+	GameUI.FloatText("💎 +" .. GameUI.Format(value), centerOf(ui.find) - Vector2.new(0, 46), color)
+	if level == 1 then return end
+	-- Karte mit dem Stein, der kurz aufspringt
+	local hold = level == 2 and 1.6 or (level == 3 and 2.2 or 3)
+	local card = new("Frame", { Name = "Edelsteinfund", Size = UDim2.new(0, 300, 0, 120), Position = UDim2.new(0.5, 0, 0.62, 0), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.bg, Parent = ui.fx }, {
+		corner(R.L),
+		stroke(tier.Color, 3),
+	})
+	local scale = new("UIScale", { Scale = 0.4, Parent = card })
+	gemIcon(card, gem, 88, { Position = UDim2.new(0, 16, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
+	label({ Size = UDim2.new(1, -124, 0, 18), Position = UDim2.new(0, 112, 0, 18), Text = GameUI.Upper(tier.Name), TextSize = T.Tiny, TextColor3 = tier.Color, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = card })
+	label({ Size = UDim2.new(1, -124, 0, 30), Position = UDim2.new(0, 112, 0, 36), Text = gem.Name, Font = FONT, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, Parent = card })
+	label({ Size = UDim2.new(1, -124, 0, 20), Position = UDim2.new(0, 112, 0, 72), Text = GameUI.Format(value) .. " Taler", TextSize = T.Body, TextColor3 = C.goldHi, TextXAlignment = Enum.TextXAlignment.Left, Font = MONO, Parent = card })
+	TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(hold, function()
+		TweenService:Create(scale, M.Exit, { Scale = 0.6 }):Play()
+		TweenService:Create(card, M.Exit, { BackgroundTransparency = 1 }):Play()
+		task.delay(0.2, function() card:Destroy() end)
+	end)
+	Juice.shake(level == 2 and 4 or (level == 3 and 10 or 16), level == 4 and 0.7 or 0.4)
+	if level >= 3 then
+		local few = setting("fewerParticles", false)
+		flash(color, level == 3 and 0.35 or 0.6)
+		burst(color, few and (level == 3 and 4 or 8) or (level == 3 and 14 or 26))
+		Juice.rays(Vector2.new(ui.fx.AbsoluteSize.X * 0.5, ui.fx.AbsoluteSize.Y * 0.36), color, level == 3 and 420 or 620, level == 3 and 1.6 or 2.4)
+		banner(GameUI.Upper(tier.Name) .. "!", gem.Name, color, level == 3 and 1.6 or 2.4)
+	end
+	if level == 4 then
+		Juice.slowmo(color, 0.9)
+	end
+end
+
 -- Standard-Verbindungen in Roblox: Käufe über RemoteFunctions, fremde Fenster als BindableEvent
 -- ── Münzbaumgarten: Beete, Sachen aus Münzrollen, Rollen kaufen ──
 -- Spielstand aus dem Attribut Garden (JSON, schreibt der Server). Aktionen über Invoke:
@@ -2410,8 +2682,8 @@ function GameUI.Start(opts)
 	buildAdmin(playerGui)
 	local DEPS = {
 		shop = { "@taler", "EggDiscount", "Egg_", "Boost_", "OwnedAuras", "Aura" },
-		inventar = { "Slots", "Egg_", "@inventory" },
-		welten = { "@taler", "World", "Worlds", "Portals", "Rebirths" },
+		inventar = { "Slots", "Egg_", "Gem_", "GemValue_", "@inventory" },
+		welten = { "@taler", "World", "Worlds", "Portals", "Rebirths", "Supernovas" },
 		skills = { "Skills", "Level" },
 		einstellungen = { "Set_" },
 		wetter = { "Skills", "@weather" },
@@ -2465,12 +2737,14 @@ end
 return GameUI
 `;
 
-// Server: Eier und Boosts kaufen, Münzen verkaufen, Welten, Portale, Wiedergeburt (Taler aus leaderstats.Taler)
+// Server: Eier und Boosts kaufen, Münzen und Edelsteine verkaufen, Welten, Portale, Wiedergeburt, Supernova (Taler aus leaderstats.Taler)
 export const SHOP_SERVER = `-- Coinmaster Adventure · Shop, Inventar und Welten (Server)
 -- Alles über die RemoteFunction ShopRemote; der Server prüft Preis, Taler und Regeln (WorldData).
 -- Ein gekauftes Ei zählt das Attribut Egg_<id> hoch, ein Boost setzt Boost_<id> auf sein Ende (os.time()).
 -- Münzen liegen als Stapel im Spielstand (PlayerData), Welten und Portale als Ids mit Komma in Worlds und
--- Portals, die aktuelle Welt in World, Wiedergeburten in Rebirths. Gespeichert wird über PlayerData.
+-- Portals, die aktuelle Welt in World, Wiedergeburten in Rebirths, Supernovas in Supernovas.
+-- Edelsteine (Juwelnebel): Gem_<id> (Anzahl) und GemValue_<id> (Gesamtwert). Wer sie im Spiel findet
+-- (Fund-Skript), ruft am besten GemFound (BindableEvent unten) auf. Gespeichert wird über PlayerData.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -2480,6 +2754,7 @@ local ShopData = require(root:WaitForChild("ShopData"))
 local CoinData = require(root:WaitForChild("CoinData"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local WorldData = require(root:WaitForChild("WorldData"))
+local GemData = require(root:WaitForChild("GemData"))
 local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("CoinmasterServer"):WaitForChild("PlayerData"))
 
 local remote = root:FindFirstChild("ShopRemote")
@@ -2523,7 +2798,34 @@ local function stateOf(player)
 		Portals = WorldData.ParseList(player:GetAttribute("Portals") or "p1"),
 		Taler = taler and taler.Value or 0,
 		Rebirths = player:GetAttribute("Rebirths") or 0,
+		Supernovas = player:GetAttribute("Supernovas") or 0,
 	}
+end
+
+-- Edelsteine gutschreiben (vom Fund-Skript auf dem Server): value = Wert eines Steins in Talern
+local function addGems(player, gemId, count, value)
+	if not GemData.ById[gemId] then return end
+	player:SetAttribute("Gem_" .. gemId, (player:GetAttribute("Gem_" .. gemId) or 0) + count)
+	player:SetAttribute("GemValue_" .. gemId, (player:GetAttribute("GemValue_" .. gemId) or 0) + value * count)
+end
+local gemFound = root:FindFirstChild("GemFound")
+if not gemFound then
+	gemFound = Instance.new("BindableEvent")
+	gemFound.Name = "GemFound"
+	gemFound.Parent = root
+end
+gemFound.Event:Connect(addGems)
+
+-- Edelsteine verkaufen: count Stück zum Durchschnittswert; gibt Anzahl und Taler zurück
+local function takeGems(player, gemId, count)
+	local have = player:GetAttribute("Gem_" .. gemId) or 0
+	if not GemData.ById[gemId] or have <= 0 then return 0, 0 end
+	local n = math.clamp(math.floor(count), 1, have)
+	local total = player:GetAttribute("GemValue_" .. gemId) or 0
+	local value = n == have and total or total / have * n
+	player:SetAttribute("Gem_" .. gemId, have - n > 0 and have - n or nil)
+	player:SetAttribute("GemValue_" .. gemId, have - n > 0 and total - value or nil)
+	return n, value
 end
 
 -- Spieler in eine Welt setzen: Modell „Welt_<Name>“ aus der .rbxmx-Datei, dort der Spawn oder die Mitte
@@ -2623,6 +2925,29 @@ remote.OnServerInvoke = function(player, action, id, extra)
 		local planet = WorldData.PlanetById[id]
 		player:SetAttribute("Portals", (player:GetAttribute("Portals") or "p1") .. "," .. id)
 		return true, planet.Portal.Name .. " bereit: " .. planet.Name .. " ist offen!"
+	elseif action == "sellGem" or action == "sellGems" then
+		local n, total = 0, 0
+		for _, gem in ipairs(GemData.Gems) do
+			if action == "sellGems" or gem.Id == id then
+				local took, value = takeGems(player, gem.Id, action == "sellGems" and math.huge or (tonumber(extra) or 1))
+				n, total = n + took, total + value
+			end
+		end
+		if n == 0 then return false, "Kein Edelstein gewählt" end
+		local taler = talerOf(player)
+		if not taler then return false, "Keine Taler gefunden (leaderstats.Taler fehlt)" end
+		taler.Value = taler.Value + math.floor(total + 0.5)
+		return true, n .. " Edelstein" .. (n > 1 and "e" or "") .. " für " .. math.floor(total + 0.5) .. " Taler verkauft"
+	elseif action == "supernova" then
+		local state = stateOf(player)
+		local why = WorldData.CanSupernova(state)
+		if why then return false, why end
+		local galaxy = WorldData.NextGalaxy(state)
+		local taler = talerOf(player)
+		if taler then taler.Value = 0 end
+		player:SetAttribute("Rebirths", 0)
+		player:SetAttribute("Supernovas", state.Supernovas + 1)
+		return true, "SUPERNOVA! " .. (galaxy and (galaxy.Name .. " ist offen. ") or "") .. "Alles ist jetzt ×" .. WorldData.SupernovaMultiplier(state.Supernovas + 1) .. " wert"
 	elseif action == "rebirth" then
 		local n = player:GetAttribute("Rebirths") or 0
 		local taler = talerOf(player)

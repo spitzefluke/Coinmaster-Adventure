@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Edelsteine · Coinmaster Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="../css/liste.css">
+<style>
+  .gem { width: 44px; height: 44px; justify-self: start; border: 2px solid var(--d); background: linear-gradient(135deg, var(--l), var(--m) 45%, var(--d)); box-shadow: 0 0 18px -4px var(--m), inset 0 0 0 6px color-mix(in srgb, var(--l) 35%, transparent); }
+  .gem.cut-rund { border-radius: 50%; }
+  .gem.cut-oval { border-radius: 50%; width: 36px; }
+  .gem:not(.cut-rund):not(.cut-oval) { transform: rotate(45deg) scale(0.78); border-radius: 6px; margin: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Edelsteine</p>
+    <h1>Edelsteine</h1>
+    <p class="lede">Im Juwelnebel, der Galaxie hinter der Supernova, findest du Edelsteine statt Münzen: 20 Steine in denselben 10 Seltenheitsstufen, vom Quarz bis zum Herz der Galaxie. Ein Edelstein ist zehnmal so viel wert wie eine Münze derselben Stufe.</p>
+  </header>
+
+  <ul id="legend" class="legend" aria-label="Seltenheitsstufen"></ul>
+
+  <nav id="filters" class="filters" aria-label="Nach Stufe filtern"></nav>
+
+  <main id="sections" class="sections"></main>
+
+  <footer class="foot">Werte in Talern ohne Welt, Wiedergeburt und Supernova. Beim Fund zählen dazu der Welt-Faktor, die Wiedergeburten, die Supernova und der Skill „Wertvoller Fund“. Drop-Chancen wie bei den Münzen.</footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

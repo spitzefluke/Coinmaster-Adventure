@@ -6,7 +6,8 @@ import { COINS, TIERS, tierById } from '../../muenzen/js/coins.js';
 import { mutationById, rollMutation, weatherAt } from '../../muenzen/js/mutations.js';
 import { SKILLS, skillById } from './skills.js';
 import { auraById } from '../../auren/js/auras.js';
-import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier } from '../../welten/js/worlds.js';
+import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier, SUPERNOVA, supernovaMultiplier, galaxyById, galaxyOfWorld } from '../../welten/js/worlds.js';
+import { GEMS, gemById, gemBaseValue } from '../../edelsteine/js/gems.js';
 
 export { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../../js/settings.js';
 
@@ -50,6 +51,8 @@ function sampleState() {
     worlds: ['normal', 'wald'],
     portals: ['p1'],
     rebirths: 0,
+    supernovas: 0, // Supernova (Prestige): öffnet die nächste Galaxie
+    gems: {}, // Edelsteine: { id: { n: Anzahl, v: Gesamtwert in Talern } }
     auras: [],
     aura: null, // angelegte Aura
     sample: true,
@@ -109,16 +112,21 @@ export function canBuyWorld(s, id) {
 }
 
 // Bedingungen für ein Portal: [Text, erfüllt?]
+// Der vorige Planet zählt nur in derselben Galaxie; das erste Portal einer neuen Galaxie braucht die Supernova.
 export function portalChecks(s, planetId) {
   const p = planetById[planetId];
   if (!p.portal) return [];
   const prev = PLANETS[PLANETS.indexOf(p) - 1];
-  const last = playable(prev.id).at(-1);
+  const checks = [];
+  if (prev && prev.galaxy === p.galaxy) {
+    const last = playable(prev.id).at(-1);
+    checks.push([`„${last.name}“ auf ${prev.name} gekauft`, ownsWorld(s, last.id)]);
+  }
+  const sn = p.portal.supernovas || 0;
+  if (sn) checks.push([`${sn > 1 ? sn + ' Supernovas' : 'Supernova'} (du hast ${s.supernovas | 0})`, (s.supernovas | 0) >= sn]);
   const n = p.portal.rebirths;
-  return [
-    [`„${last.name}“ auf ${prev.name} gekauft`, ownsWorld(s, last.id)],
-    [`${n} Wiedergeburt${n > 1 ? 'en' : ''} (du hast ${s.rebirths})`, s.rebirths >= n],
-  ];
+  if (n) checks.push([`${n} Wiedergeburt${n > 1 ? 'en' : ''} (du hast ${s.rebirths})`, s.rebirths >= n]);
+  return checks;
 }
 export function canOpenPortal(s, planetId) {
   const p = planetById[planetId];
@@ -134,7 +142,23 @@ export function rebirth(s) {
   s.taler = 0;
   s.rebirths++;
 }
-export { rebirthMultiplier };
+export { rebirthMultiplier, supernovaMultiplier };
+
+// Supernova: ab 100 Wiedergeburten, einmal pro weiterer Galaxie. Taler und Wiedergeburten gehen auf 0.
+export function canSupernova(s) {
+  if ((s.supernovas | 0) >= SUPERNOVA.max) return 'Alle Galaxien sind schon offen';
+  if (s.rebirths < SUPERNOVA.rebirths) return `Erst ${SUPERNOVA.rebirths} Wiedergeburten (du hast ${s.rebirths})`;
+  return null;
+}
+export function supernova(s) {
+  s.taler = 0;
+  s.rebirths = 0;
+  s.supernovas = (s.supernovas | 0) + 1;
+}
+// Galaxie, die die nächste Supernova öffnet
+export const nextGalaxy = (s) => Object.values(galaxyById).find((g) => g.supernovas === (s.supernovas | 0) + 1) || null;
+// Wert-Faktor aus Wiedergeburten und Supernovas zusammen
+export const prestigeMultiplier = (s) => rebirthMultiplier(s.rebirths) * supernovaMultiplier(s.supernovas | 0);
 
 // ── Boosts ───────────────────────────────────────────────────────────────────
 
@@ -199,10 +223,49 @@ export function findCoin(s, random = Math.random, weatherId = weatherAt().w.id) 
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
   const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
   const xp = Math.round((5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
-  // Wert: Skill „Wertvoller Fund“ × Aura × Welt × Wiedergeburten
-  const value = (1 + effect(s, 'wert') / 100) * (1 + auraBonus(s, 'wert') / 100) * currentWorld(s).value * rebirthMultiplier(s.rebirths);
+  // Wert: Skill „Wertvoller Fund“ × Aura × Welt × Wiedergeburten × Supernova
+  const value = findBonus(s);
   return { id, mutation: mutation?.id || null, count, xp, upgraded, bonus: Math.round(value * 1000) / 1000 };
 }
+const findBonus = (s) => (1 + effect(s, 'wert') / 100) * (1 + auraBonus(s, 'wert') / 100) * currentWorld(s).value * prestigeMultiplier(s);
+
+// Findet man hier Edelsteine statt Münzen? (Juwelnebel)
+export const findsGems = (s) => galaxyOfWorld(currentWorld(s)).find === 'gems';
+
+// Edelstein finden: dieselben Stufen, dasselbe Glück und dieselben Skills wie bei Münzen (ohne Mutation)
+export function findGem(s, random = Math.random) {
+  let tier = rollTier(s, random);
+  let upgraded = false;
+  if (random() * 100 < effect(s, 'goldhand') && tier.index < TIERS.length - 1) {
+    tier = TIERS[TIERS.findIndex((t) => t.id === tier.id) + 1];
+    upgraded = true;
+  }
+  const pool = GEMS.filter((g) => g.tier === tier.id);
+  const gem = pool[Math.floor(random() * pool.length)];
+  const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
+  const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
+  const xp = Math.round((5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
+  const value = Math.round(gemBaseValue(gem) * findBonus(s) * 100) / 100;
+  return { gem: gem.id, count, xp, upgraded, value };
+}
+export function addGems(s, id, count, value) {
+  s.gems ||= {};
+  const g = (s.gems[id] ||= { n: 0, v: 0 });
+  g.n += count;
+  g.v = Math.round((g.v + value * count) * 100) / 100;
+}
+// Edelsteine verkaufen: count Stück (Durchschnittswert) oder alle; gibt [Anzahl, Taler] zurück
+export function takeGems(s, id, count) {
+  const g = s.gems?.[id];
+  if (!g || !gemById[id] || g.n <= 0) return [0, 0];
+  const n = Math.min(g.n, Math.max(1, Math.floor(count)));
+  const value = n === g.n ? g.v : Math.round((g.v / g.n) * n * 100) / 100;
+  g.n -= n;
+  g.v = Math.round((g.v - value) * 100) / 100;
+  if (g.n <= 0) delete s.gems[id];
+  return [n, value];
+}
+export const gemCount = (s) => Object.values(s.gems || {}).reduce((a, g) => a + g.n, 0);
 
 // Erfahrung gutschreiben; gibt die Zahl der neuen Level zurück
 export function addXp(s, xp) {
@@ -220,7 +283,7 @@ export function addXp(s, xp) {
 
 export function fmtNumber(n, short) {
   if (!short || Math.abs(n) < 10000) return n.toLocaleString('de-DE', { maximumFractionDigits: 2 });
-  const units = [[1e12, ' Bio.'], [1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']];
+  const units = [[1e15, ' Brd.'], [1e12, ' Bio.'], [1e9, ' Mrd.'], [1e6, ' Mio.'], [1e3, 'K']];
   for (const [v, u] of units) if (Math.abs(n) >= v) return (n / v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + u;
   return String(n);
 }

@@ -1,0 +1,294 @@
+// Juwelnebel (Galaxie 2, nach der Supernova): neun Welten auf drei Planeten. Jede Welt hat ein großes
+// Edelstein-Wahrzeichen, Kristallgruppen in ihren Farben, passende Pflanzen oder Bauten und funkelnde Partikel.
+// Einheiten der Webseite (1 Einheit = 8 Studs), Inselradius R = 16. Aufbau wie planet4.js.
+
+import * as THREE from 'three';
+
+const TAU = Math.PI * 2;
+
+// ── kleine Bausteine ──
+// Geschliffener Edelstein: Würfel auf der Spitze (in Roblox ein gedrehter Block) mit Leuchten
+function gemStone(kit, s, c, glow = 0.6) {
+  const { E, at } = kit;
+  const m = at(new THREE.Mesh(new THREE.BoxGeometry(s * 1.2, s * 1.2, s * 1.2), E(c, glow, { transparent: true, opacity: 0.9, roughness: 0.15, metalness: 0.1 })), 0, s * 1.05, 0);
+  m.rotation.set(Math.atan(Math.SQRT1_2), 0, Math.PI / 4, 'ZXY');
+  return m;
+}
+// Brillant: Krone (Kegelstumpf) über dem Pavillon (Kegel mit der Spitze nach unten)
+function brilliant(kit, r, c, glow = 1) {
+  const { E, at, group } = kit;
+  const mat = E(c, glow, { transparent: true, opacity: 0.88, roughness: 0.1 });
+  const pav = at(new THREE.Mesh(new THREE.ConeGeometry(r, r * 1.3, 8), mat), 0, -r * 0.65, 0);
+  pav.rotation.x = Math.PI;
+  const crown = at(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.6, r, r * 0.45, 8), mat), 0, r * 0.225, 0);
+  const g = group(pav, crown);
+  g.userData.mat = mat;
+  return g;
+}
+// Kristallgruppe in zwei Farben
+function cluster(kit, rand, h, a, b) {
+  const g = kit.crystal(h, a, rand, 1.1);
+  if (b && rand() < 0.6) {
+    const c2 = kit.crystal(h * 0.6, b, rand, 1);
+    c2.position.set((rand() - 0.5) * 0.8, 0, (rand() - 0.5) * 0.8);
+    g.add(c2);
+  }
+  return g;
+}
+// Großes Wahrzeichen: schwebender Edelstein auf einem Sockel, dreht sich langsam
+function landmark(ctx, kit, color, { size = 2.4, base = '#6a6488', ring = null, float = 1.2 } = {}) {
+  const { M, E, at, group } = kit;
+  const p = ctx.spot(3.4, 2.5, 7);
+  if (!p) return null;
+  const parts = [];
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.7, 0.8, 8), M(base)), 0, 0.4, 0));
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.9, 0.5, 8), M(base)), 0, 1.05, 0));
+  const gem = brilliant(kit, size, color, 1.1);
+  gem.position.y = 1.3 + size * 1.3 + float;
+  parts.push(gem);
+  let halo = null;
+  if (ring) {
+    halo = at(new THREE.Mesh(new THREE.TorusGeometry(size * 1.5, 0.12, 6, 32), E(ring, 1.4)), 0, gem.position.y, 0);
+    halo.rotation.x = Math.PI / 2.4;
+    parts.push(halo);
+  }
+  // kleine Steine kreisen um den Sockel
+  const orbit = new THREE.Group();
+  for (let i = 0; i < 6; i++) {
+    const s = gemStone(kit, 0.22, color, 1.4);
+    s.position.set(Math.cos((i / 6) * TAU) * 2.6, 1.6, Math.sin((i / 6) * TAU) * 2.6);
+    orbit.add(s);
+  }
+  parts.push(orbit);
+  const lm = group(...parts);
+  ctx.put(lm, p[0], p[1], { rot: false });
+  const y0 = gem.position.y;
+  ctx.anims.push((t) => {
+    gem.rotation.y = t * 0.4;
+    gem.position.y = y0 + Math.sin(t * 0.9) * 0.25;
+    orbit.rotation.y = -t * 0.6;
+    if (halo) halo.rotation.z = t * 0.5;
+    gem.userData.mat.emissiveIntensity = 0.9 + Math.sin(t * 1.6) * 0.3;
+  });
+  return lm;
+}
+// Säule aus Kristall (Quarz, Topas-Obelisk)
+function pillar(kit, h, c, glow = 0.4) {
+  const { E, at, group } = kit;
+  const shaft = at(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, h, 6), E(c, glow, { transparent: true, opacity: 0.92, roughness: 0.2 })), 0, h / 2, 0);
+  const tip = at(new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 6), E(c, glow + 0.2, { transparent: true, opacity: 0.92 })), 0, h + 0.4, 0);
+  return group(shaft, tip);
+}
+// Baum mit Edelstein-Laub
+function gemTree(kit, rand, h, trunkC, leaf) {
+  const { M, E, at, group } = kit;
+  const g = group(at(new THREE.Mesh(new THREE.CylinderGeometry(h * 0.05, h * 0.08, h * 0.6, 6), M(trunkC)), 0, h * 0.3, 0));
+  for (let i = 0; i < 3; i++) {
+    const s = h * (0.26 - i * 0.04);
+    const b = gemStone(kit, s, leaf, 0.35);
+    b.position.set((rand() - 0.5) * h * 0.3, h * (0.6 + i * 0.16), (rand() - 0.5) * h * 0.3);
+    g.add(b);
+  }
+  return g;
+}
+// Wolkenbausch
+function puff(kit, rand, s, c) {
+  const { M, at, group } = kit;
+  const parts = [];
+  for (let i = 0; i < 4; i++) {
+    const r = s * (0.45 + rand() * 0.3);
+    parts.push(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), M(c, { roughness: 1 })), (i - 1.5) * s * 0.5, r * 0.6, (rand() - 0.5) * s * 0.4));
+  }
+  return group(...parts);
+}
+// Pagode / Tempel in Stufen
+function temple(kit, tiers, w, stone, roof) {
+  const { M, at, group } = kit;
+  const parts = [];
+  let y = 0;
+  for (let i = 0; i < tiers; i++) {
+    const s = w * (1 - i * 0.2);
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s, 0.9, s), M(stone)), 0, y + 0.45, 0));
+    const r = at(new THREE.Mesh(new THREE.ConeGeometry(s * 0.82, 0.6, 4), M(roof, { metalness: 0.5, roughness: 0.35 })), 0, y + 1.2, 0);
+    r.rotation.y = Math.PI / 4;
+    parts.push(r);
+    y += 1.5;
+  }
+  return group(...parts);
+}
+
+// Welt-Rezept: Farben und was gestreut wird
+function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSize }) {
+  return {
+    build(ctx, kit) {
+      const { rand, rr, R, scatter } = ctx;
+      landmark(ctx, kit, gem, { size: landmarkSize ?? 2.4, base, ring });
+      extra?.(ctx, kit);
+      scatter(6, () => cluster(kit, rand, rr(0.8, 1.8), gem, gem2), 0.8, 3, R - 1);
+      scatter(5, () => kit.rockMesh(rr(0.4, 0.8), rock, rand), 0.7, 3, R - 1);
+      scatter(8, () => gemStone(kit, rr(0.14, 0.22), rand() < 0.5 ? gem : gem2 || gem, 0.9), 0.3, 2, R - 1);
+    },
+    emitters(ctx, add) {
+      add('Funkeln', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], [gem, '#ffffff'], 0.14, 16, [0.1, 0.4], [3, 6], { light: 1 });
+      emitters?.(ctx, add);
+    },
+    sounds: sounds || [['Klingen', 'leises Klingen von Kristallen', 0.3]],
+  };
+}
+
+const QUARZFELD = make({
+  gem: '#f4f0ff', gem2: '#d8ccff', base: '#a8a0c4', rock: '#c8c2dc', ring: '#c98bff',
+  extra(ctx, kit) {
+    ctx.scatter(4, () => pillar(kit, ctx.rr(1.4, 3.2), '#f4f0ff', 0.35), 0.9, 4, ctx.R - 1.5);
+  },
+});
+const AMETHYSTGROTTE = make({
+  gem: '#a35ae8', gem2: '#ead2ff', base: '#4a2e72', rock: '#3a2458', ring: '#ead2ff',
+  extra(ctx, kit) {
+    // aufgebrochene Drusen: Halbkugel aus Fels, innen voller Kristalle
+    for (let i = 0; i < 3; i++) {
+      const p = ctx.spot(1.6, 5, ctx.R - 2);
+      if (!p) continue;
+      const shell = kit.at(new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#4a3a5a', { side: THREE.DoubleSide })), 0, 0, 0);
+      shell.rotation.x = -0.9;
+      const g = kit.group(shell);
+      for (let k = 0; k < 6; k++) {
+        const c = kit.crystal(ctx.rr(0.5, 0.9), '#a35ae8', ctx.rand, 1.4);
+        c.position.set((ctx.rand() - 0.5) * 1.4, 0.1, (ctx.rand() - 0.2) * 0.9);
+        g.add(c);
+      }
+      ctx.put(g, p[0], p[1]);
+    }
+  },
+  emitters(ctx, add) {
+    add('Sporen', [0, 1, 0], [ctx.R * 2, 2, ctx.R * 2], ['#c98bff', '#ead2ff'], 0.12, 8, [0.2, 0.5], [6, 9], { light: 0.8 });
+  },
+  sounds: [['Grotte', 'Tropfen und hallendes Klingen in einer Grotte', 0.35]],
+});
+const TOPASDUENEN = make({
+  gem: '#ffb02e', gem2: '#fff0b8', base: '#c8904a', rock: '#d8a25a', ring: '#fff0b8',
+  extra(ctx, kit) {
+    // Topas-Obelisk und Dünenkämme
+    const p = ctx.spot(1.2, 6, ctx.R - 3);
+    if (p) ctx.put(pillar(kit, 5, '#ffb02e', 0.5), p[0], p[1]);
+    ctx.scatter(4, () => {
+      const d = kit.at(new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#f2c46a')), 0, 0, 0);
+      d.scale.set(1.6, 0.45, 0.8);
+      return kit.group(d);
+    }, 1.4, 5, ctx.R - 1.5);
+  },
+  emitters(ctx, add) {
+    add('Goldstaub', [0, 1, 0], [ctx.R * 2.2, 1, ctx.R * 2.2], ['#ffd76a', '#fff0b8'], 0.12, 10, [0.6, 1.2], [4, 6], { spread: [10, 80] });
+  },
+  sounds: [['Wüstenwind', 'warmer Wind über Dünen', 0.35]],
+});
+const SMARAGDWALD = make({
+  gem: '#1ec870', gem2: '#b4ffd6', base: '#1e6a44', rock: '#2a5a40', ring: '#b4ffd6',
+  extra(ctx, kit) {
+    ctx.scatter(7, () => gemTree(kit, ctx.rand, ctx.rr(2.4, 3.8), '#5a4430', ctx.rand() < 0.7 ? '#1ec870' : '#3ee08a'), 1.1, 4, ctx.R - 1);
+    ctx.scatter(5, () => kit.bush(ctx.rr(0.3, 0.5), '#2fa86a', ctx.rand), 0.5, 3, ctx.R - 1);
+  },
+  emitters(ctx, add) {
+    add('Glühwürmchen', [0, 1.5, 0], [ctx.R * 2, 3, ctx.R * 2], ['#b4ffd6', '#d9ff7a'], 0.12, 10, [0.1, 0.3], [4, 7], { light: 1 });
+  },
+  sounds: [['Glöckchen', 'Blätter aus Smaragd klingen im Wind wie Glöckchen', 0.3], ['Vögel', 'fremde Vögel im Dschungel', 0.2]],
+});
+const JADETEMPEL = make({
+  gem: '#5ad8a0', gem2: '#ffd76a', base: '#3a6a4a', rock: '#5a9a70', ring: '#ffd76a', landmarkSize: 1.8,
+  extra(ctx, kit) {
+    const p = ctx.spot(3.6, 7, ctx.R - 4);
+    if (p) ctx.put(temple(kit, 4, 5, '#8ad0a0', '#e8b84a'), p[0], p[1]);
+    ctx.scatter(4, () => temple(kit, 2, 1.8, '#8ad0a0', '#e8b84a'), 1.4, 6, ctx.R - 1.5);
+    ctx.scatter(3, () => kit.roundTree(ctx.rr(1.6, 2.4), '#4aa86a', ctx.rand), 0.9, 4, ctx.R - 1);
+  },
+  sounds: [['Gong', 'ferner Tempelgong', 0.25], ['Wind', 'sanfter Bergwind', 0.3]],
+});
+const SAPHIRSEE = make({
+  gem: '#2a5ae8', gem2: '#cfe0ff', base: '#3a5aa0', rock: '#6a8ad0', ring: '#cfe0ff',
+  extra(ctx, kit) {
+    // See mit Saphiren auf dem Grund
+    const p = ctx.spot(3.4, 6, ctx.R - 4);
+    if (p) {
+      const water = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.12, 24), kit.E('#2a5ae8', 0.25, { transparent: true, opacity: 0.75, roughness: 0.05 })), 0, 0.12, 0);
+      const g = kit.group(water);
+      for (let i = 0; i < 9; i++) {
+        const a = ctx.rand() * TAU, r = ctx.rand() * 2.4;
+        const st = gemStone(kit, 0.16, '#8ab0ff', 1.6);
+        st.position.set(Math.cos(a) * r, 0.1, Math.sin(a) * r);
+        g.add(st);
+      }
+      ctx.put(g, p[0], p[1], { sink: 0.02 });
+    }
+  },
+  emitters(ctx, add) {
+    add('Sterne', [0, 6, 0], [ctx.R * 2.4, 2, ctx.R * 2.4], ['#cfe0ff', '#ffffff'], 0.1, 8, [0, 0.1], [4, 7], { light: 1 });
+  },
+  sounds: [['Wasser', 'ruhiges Plätschern am See', 0.3]],
+});
+const RUBINVULKAN = make({
+  gem: '#e8183a', gem2: '#ff8a9a', base: '#2a1018', rock: '#2a1a20', ring: '#ff4a6a',
+  extra(ctx, kit) {
+    // Vulkan mit glühendem Rubinkrater
+    const p = ctx.spot(3.8, 7, ctx.R - 4);
+    if (p) {
+      const cone = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 3.4, 3.6, 10), kit.M('#2a1a20')), 0, 1.8, 0);
+      const crater = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 10), kit.E('#ff3a5a', 2)), 0, 3.62, 0);
+      const g = kit.group(cone, crater);
+      for (let i = 0; i < 4; i++) {
+        const st = gemStone(kit, 0.25, '#e8183a', 1.4);
+        st.position.set((ctx.rand() - 0.5) * 0.8, 3.75, (ctx.rand() - 0.5) * 0.8);
+        g.add(st);
+      }
+      ctx.put(g, p[0], p[1], { rot: false });
+      ctx.anims.push((t) => (crater.material.emissiveIntensity = 1.6 + Math.sin(t * 1.8) * 0.6));
+    }
+  },
+  emitters(ctx, add) {
+    add('Glut', [0, 0.5, 0], [ctx.R * 2, 1, ctx.R * 2], ['#ff3a5a', '#ffb07a'], 0.12, 12, [0.6, 1.4], [3, 5], { spread: [12, 12], light: 1 });
+  },
+  sounds: [['Grollen', 'tiefes Vulkangrollen', 0.4]],
+});
+const OPALWOLKEN = make({
+  gem: '#ff9ae0', gem2: '#5ad8ff', base: '#d0c8f0', rock: '#e8e2fa', ring: '#5ad8ff',
+  extra(ctx, kit) {
+    const colors = ['#ffe2f6', '#e2f0ff', '#f0ffe8', '#fff2d8'];
+    ctx.scatter(5, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 1);
+  },
+  emitters(ctx, add) {
+    add('Schimmer', [0, 3, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#ff9ae0', '#5ad8ff', '#fff2a0'], 0.14, 14, [0.1, 0.3], [5, 8], { light: 1 });
+  },
+  sounds: [['Höhenwind', 'leiser Wind über den Wolken', 0.3]],
+});
+const DIAMANTKERN = make({
+  gem: '#e8fdff', gem2: '#8af0ff', base: '#5a8aa0', rock: '#9ad0e0', ring: '#8af0ff', landmarkSize: 3,
+  extra(ctx, kit) {
+    // Kristallbögen
+    ctx.scatter(2, () => {
+      const arc = kit.at(new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 6, 16, Math.PI), kit.E('#8af0ff', 0.6, { transparent: true, opacity: 0.85 })), 0, 0, 0);
+      return kit.group(arc);
+    }, 1.6, 6, ctx.R - 1.5);
+    ctx.scatter(3, () => pillar(kit, ctx.rr(1.2, 2.4), '#e8fdff', 0.5), 0.8, 4, ctx.R - 1.5);
+  },
+  emitters(ctx, add) {
+    add('Lichtstrahlen', [0, 0.5, 0], [ctx.R * 1.6, 1, ctx.R * 1.6], ['#e8fdff', '#8af0ff'], 0.18, 8, [1, 2], [3, 5], { spread: [6, 6], light: 1 });
+  },
+  sounds: [['Summen', 'hohes, reines Summen des Diamanten', 0.3]],
+});
+
+export const GEM_WORLDS = {
+  quarzfeld: QUARZFELD, amethystgrotte: AMETHYSTGROTTE, topasduenen: TOPASDUENEN,
+  smaragdwald: SMARAGDWALD, jadetempel: JADETEMPEL, saphirsee: SAPHIRSEE,
+  rubinvulkan: RUBINVULKAN, opalwolken: OPALWOLKEN, diamantkern: DIAMANTKERN,
+};
+for (const w of Object.values(GEM_WORLDS)) w.landmark = false;
+
+// Partikel und Klänge wie bei planet4After
+export function galaxy2After(ctx) {
+  const def = GEM_WORLDS[ctx.world.id];
+  if (!def) return;
+  const list = (ctx.shared.emitters = ctx.shared.emitters || []);
+  const add = (name, pos, size, colors, particleSize, rate, speed, lifetime, opts = {}) =>
+    list.push({ name, pos, size, colors, particleSize, rate, speed, lifetime, spread: opts.spread ?? [180, 180], direction: opts.direction ?? 'Top', lightEmission: opts.light ?? 0 });
+  def.emitters?.(ctx, add);
+  ctx.shared.sounds = (def.sounds || []).map(([name, hint, volume]) => ({ name, hint, volume }));
+}

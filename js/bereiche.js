@@ -54,6 +54,13 @@ export const BEREICHE = [
     eckdaten: ['99 Taschen', '9 Stufen', 'bis unbegrenzt'],
   },
   {
+    titel: 'Edelsteine',
+    text: '20 Edelsteine aus dem Juwelnebel, der Galaxie hinter der Supernova, vom Quarz bis zum Herz der Galaxie. Dort findest du sie statt Münzen, jeder zehnmal so viel wert.',
+    href: 'edelsteine/',
+    status: 'vorschau',
+    eckdaten: ['20 Steine', '10 Stufen', 'Juwelnebel'],
+  },
+  {
     titel: 'Auras',
     text: '50 Auras, die um den Spieler leuchten: Elemente, Münzen und Schätze, Weltraum und Magie, dazu Lustiges und Glitches. Jede Aura kostet Taler und gibt einen kleinen Bonus.',
     href: 'auren/',
@@ -62,10 +69,10 @@ export const BEREICHE = [
   },
   {
     titel: 'Welten',
-    text: 'Ein Spawn mit Shops, Portalen und Ranglisten, dazu vier Planeten mit sechzehn Welten, vom grünen Startgebiet über Mond und Sonne bis nach Atlantis. Jede Welt als drehbare 3D-Insel, dazu Portale und Wiedergeburten.',
+    text: 'Ein Spawn mit Shops, Portalen und Ranglisten, dazu zwei Galaxien: die Milchstraße mit vier Planeten vom grünen Startgebiet bis zum Götterthron und, nach der Supernova, der Juwelnebel mit drei Planeten voller Edelsteine. Jede Welt als drehbare 3D-Insel, dazu Portale, Wiedergeburten und Supernova.',
     href: 'welten/',
     status: 'vorschau',
-    eckdaten: ['Spawn', '4 Planeten', '16 Welten'],
+    eckdaten: ['2 Galaxien', '7 Planeten', '29 Welten'],
   },
   {
     titel: 'Wetter',

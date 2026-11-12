@@ -30,14 +30,14 @@ PlayerData.LOCK_TIMEOUT = 900 -- Sekunden
 
 -- Attribute, die gespeichert werden (dazu alle mit Egg_, Boost_ und Set_ am Anfang). Garden: Münzbaumgarten als JSON
 local KEEP = {
-	"Level", "XP", "World", "Worlds", "Portals", "Rebirths", "Aura", "OwnedAuras", "Skills",
+	"Level", "XP", "World", "Worlds", "Portals", "Rebirths", "Supernovas", "Aura", "OwnedAuras", "Skills",
 	"DailyDay", "DailyStreak", "WheelDay", "Group", "Codes", "CoinsFound", "Garden",
 }
-local KEEP_PREFIX = { "Egg_", "Boost_", "Set_" }
+local KEEP_PREFIX = { "Egg_", "Boost_", "Set_", "Gem_", "GemValue_" } -- Gem_: Edelsteine (Anzahl, Gesamtwert)
 
 -- Startwerte für neue Spieler
 local DEFAULTS = {
-	Level = 1, XP = 0, World = "spawn", Worlds = "normal", Portals = "p1", Rebirths = 0, Skills = "kern:1",
+	Level = 1, XP = 0, World = "spawn", Worlds = "normal", Portals = "p1", Rebirths = 0, Supernovas = 0, Skills = "kern:1",
 	CoinsFound = 0,
 }
 

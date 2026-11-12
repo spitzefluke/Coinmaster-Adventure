@@ -34,6 +34,7 @@ und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Tasc
 | Münzbaumgarten | `garten/` | Vorschau |
 | Haustiere | `haustiere/` | Liste |
 | Taschen | `taschen/` | Liste |
+| Edelsteine | `edelsteine/` | Liste |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
 | Wetter | `wetter/` | Vorschau |
@@ -407,7 +408,70 @@ mehr nur Taschen, sondern auch Rüstungen, Flügel, Türme und Kreaturen. Daten:
 (`BAG_TIERS`, `BAGS`, `fmtCoins`). Noch nicht im Spiel: Die Taschen haben noch keine 3D-Modelle und sind
 noch nicht mit dem Inventar verbunden.
 
+## Edelsteine
+
+`edelsteine/` zeigt die 20 Edelsteine aus dem Juwelnebel (Galaxie 2, nach der Supernova). Dort findet man
+Edelsteine statt Münzen. Sie haben dieselben 10 Seltenheitsstufen und Drop-Chancen wie die Münzen, je zwei
+Steine pro Stufe, und sind zehnmal so viel wert (`GEM_FACTOR`).
+
+| Stufe | Steine | Grundwert (Taler) |
+|---|---|---|
+| Normal | Quarz, Rosenquarz | 10 |
+| Selten | Achat, Jaspis | 50 |
+| Sehr selten | Amethyst, Topas | 100 |
+| Episch | Aquamarin, Peridot | 250 |
+| Legendär | Smaragd, Saphir | 500 |
+| Mystisch | Rubin, Mondstein | 1.000 |
+| Engelsgleich | Opal, Alexandrit | 2.500 |
+| Göttlich | Diamant, Feueropal | 5.000 |
+| Galaktisch | Sternsaphir, Nebelkristall | 10.000 |
+| Unerreichbar | Supernova-Diamant, Herz der Galaxie | 10 Mio. |
+
+- **Daten:** `edelsteine/js/gems.js` (`GEMS` mit Stufe, Schliff, drei Farben und Text, `gemBaseValue`).
+- **Fund:** Beim Fund zählen wie bei Münzen Welt-Faktor, Wiedergeburten, Supernova, „Wertvoller Fund“,
+  Glück, „Goldene Hand“ und „Doppelfund“. Mutationen gibt es bei Edelsteinen (noch) nicht.
+- **Inventar:** eigener Reiter „Edelsteine“. Sie liegen in einem eigenen Beutel und belegen keine Inventarplätze;
+  verkaufen geht einzeln, je Stein alle oder alles auf einmal. In der Vorschau zeigt „Münze suchen“ im
+  Juwelnebel „Edelstein suchen“ (lila Knopf), der Fund kommt mit Edelstein-Karte und Effekten je nach Stufe
+  (`GameUI.FoundGem`).
+- **Roblox:** Modul `GemData`. Am Spieler `Gem_<id>` (Anzahl) und `GemValue_<id>` (Gesamtwert), beide werden
+  gespeichert. Ein Fund-Skript auf dem Server schreibt sie über das BindableEvent `GemFound`
+  (`GemFound:Fire(player, gemId, anzahl, wertProStein)`), verkauft wird über `ShopRemote` (`sellGem`, `sellGems`).
+
 ## Welten
+
+**Galaxien und Supernova (Prestige):** Die Planeten 1 bis 4 liegen in der **Milchstraße**. Mit 100
+Wiedergeburten kann man einmal zur **Supernova** werden (Welten > Reiter „Supernova“, zweimal klicken):
+
+- Taler und Wiedergeburten gehen auf 0, Welten, Portale, Münzen, Edelsteine, Eier, Level und Skills bleiben.
+- Alles ist danach für immer fünfmal so viel wert (`SUPERNOVA.bonus`, zusätzlich zu den Wiedergeburten).
+- Die zweite Galaxie **Juwelnebel** öffnet sich. Dort findet man Edelsteine statt Münzen.
+
+| Planet | Portal | Braucht | Welten (Preis, Glück, Wert) |
+|---|---|---|---|
+| Planet 5 · Kristallplanet | Sternentor | Supernova | Quarzfeld (2 Bio.), Amethystgrotte (6 Bio.), Topasdünen (20 Bio.) |
+| Planet 6 · Smaragdplanet | Kristallbrücke | Topasdünen, 2 Wiedergeburten | Smaragdwald (60 Bio.), Jadetempel (200 Bio.), Saphirsee (600 Bio.) |
+| Planet 7 · Diamantplanet | Diamantaufzug | Saphirsee, 5 Wiedergeburten | Rubinvulkan (2 Brd.), Opalwolken (6 Brd.), Diamantkern (20 Brd.) |
+
+Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Wert von ×320 bis ×2.300.
+
+- **Daten:** `welten/js/worlds.js`: `GALAXIES` (mit `find: 'coins' | 'gems'`), Planeten mit `galaxy`, Portale
+  mit `supernovas`, `SUPERNOVA` (`rebirths: 100`, `bonus: 5`, eine Supernova pro weiterer Galaxie). Das Portal zum
+  ersten Planeten einer neuen Galaxie braucht nur die Supernova, nicht die letzte Welt des vorigen Planeten.
+- **Welten-Fenster:** Die Reiter zeigen die Planeten der gewählten Galaxie; der Galaxie-Reiter wechselt zur
+  anderen. Der Reiter „Supernova“ zeigt Fortschritt (Wiedergeburten von 100), Wert-Faktor vorher und nachher,
+  was bleibt und was weg ist, und leuchtet lila, sobald die Supernova bereit ist. Danach springt das Fenster
+  zum Kristallplaneten. Nur in der Vorschau: „+10 Test-Wiedergeb.“.
+- **3D-Inseln** (`welten/js/galaxie2.js`): jede Welt mit schwebendem Edelstein-Wahrzeichen auf einem Sockel
+  (dreht sich, kleine Steine kreisen), Kristallgruppen und funkelnden Steinen am Boden, dazu je Welt Quarzsäulen,
+  Amethyst-Drusen, Topas-Obelisk und Dünen, Bäume mit Smaragdlaub, Jadetempel, Saphirsee, Rubinvulkan,
+  Opalwolken oder Diamantbögen. Ein eigenes Himmelsbild haben sie noch nicht.
+- **Roblox:** `WorldData.Galaxies`, `PlanetsOf`, `GalaxyOfWorld`, `FindsGems`, `Supernova`, `SupernovaMultiplier`,
+  `CanSupernova`, `NextGalaxy`; das Attribut `Supernovas` wird gespeichert. `ShopRemote` kennt die Aktion
+  `supernova` (prüft der Server mit `WorldData.CanSupernova`).
+- **Achtung Balance:** Eine Wiedergeburt kostet 1 Mio. Taler × 4ⁿ. Die 100. kostet damit rund 10⁶⁵ Taler, also
+  praktisch unerreichbar, solange die Kosten so steigen. Bevor die Supernova im Spiel erreichbar ist, muss die
+  Kostenkurve der Wiedergeburt flacher werden (`REBIRTH.cost` in `welten/js/worlds.js`).
 
 **Umgebung je Welt:** alle 17 Welten (Spawn und Planet 1 bis 3) haben ein eigenes Himmelsbild, eine Felsunterseite aus Modellen, schwebende Inseln oder Brocken und Details am Rand.
 
@@ -880,7 +944,7 @@ lädt und speichert den Spielstand im DataStore `CoinmasterAdventure` (ein Profi
   Verlassen und beim Herunterfahren (`BindToClose`).
 - **Versionsnummer:** `PlayerData.Migrate` bringt ältere Profile auf den neuesten Stand.
 - **Was gespeichert wird:** `leaderstats.Taler`, die Münz-Stapel und die Attribute (Level, EP, Welten,
-  Portale, Wiedergeburten, Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen, Münzbaumgarten).
+  Portale, Wiedergeburten, Supernovas, Edelsteine (`Gem_`, `GemValue_`), Auras, Skills, Belohnungen, Codes, Eier, Boosts, Einstellungen, Münzbaumgarten).
 - Level-Aufstieg, Skillpunkte, Inventarplätze und Eier-Rabatt rechnet der Server daraus.
 
 In Studio speichert es nur mit „Enable Studio Access to API Services“ (Game Settings > Security);
@@ -929,10 +993,11 @@ Dann <http://localhost:8000> öffnen.
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: `js/pets.js` (Seltenheiten, Eier, 99 Pets, `rollPet`), `js/main.js` (Liste)
 - `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste)
+- `edelsteine/` – Edelsteine: `js/gems.js` (20 Steine, Werte), `js/main.js` (Liste)
 - `css/liste.css` – gemeinsame Gestaltung der Listen-Seiten (Haustiere, Taschen)
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
-- `welten/` – Weltkarte: `js/worlds.js` (Daten), `js/worldFactory.js` (3D-Inseln), `js/thumbs.js` (Vorschaubilder)
+- `welten/` – Weltkarte: `js/worlds.js` (Galaxien, Planeten, Welten, Wiedergeburt, Supernova), `js/worldFactory.js` (3D-Inseln), `js/galaxie2.js` (Welten des Juwelnebels), `js/thumbs.js` (Vorschaubilder)
 - `spiel/` – Spiel-Oberfläche: `js/skills.js` (Skilltree-Daten), `js/state.js` (Spielstand, Level, Effekte), `js/rewards.js` (Belohnungen, Codes, Ranglisten), `js/admin.js` (Admins und Zeiten fürs Admin Panel), `js/robloxUi.js` (Roblox-Oberfläche GameUI); Luau des Admin Panels in `roblox/js/adminLuau.js`
 - `js/nav.js` – gemeinsame Navigation (klebende Leiste mit gleitender Messing-Markierung und Münz-Klang, auf dem Handy ausklappbares Menü) und „Nach oben“-Knopf für alle Seiten
 - `roblox/` – Export nach Roblox Studio: `js/luau.js` (Luau-Code), `js/auraLuau.js` (Auras), `js/zip.js` (ZIP), `js/main.js` (Sperre, Downloads)
