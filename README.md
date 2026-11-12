@@ -140,7 +140,7 @@ häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesam
 
 ## Eierhalle
 
-Sieben Eier (`eier/js/eggs.js`), 1:1 wie in Roblox: Jedes Ei baut das Modul `EggBuilder` aus dem
+Elf Eier (`eier/js/eggs.js`, Reihenfolge wie im Design „Tier-Eier“), 1:1 wie in Roblox: Jedes Ei baut das Modul `EggBuilder` aus dem
 Installer, die Seite führt es aus (`eier/js/eggRoblox.js`). Der Luau-Code steht in `roblox/js/eggLuau.js`.
 Die Eier stammen aus Claude Design („Tier-Eier“): eine facettierte Schale aus 70 Stücken in zehn verdrehten
 Streifen, darin ein leuchtender Kern, der durch die Fugen scheint. Das Ei steckt in einem Käfig mit Sockel,
@@ -156,8 +156,12 @@ Vorhängeschloss. In Ruhe atmet das Ei, schwebt, dreht sich langsam und der Kern
 | Eis Egg | Episch | 15.000 Münzen | Eiskristalle, Schneefall |
 | Engels Egg | Engelsgleich | 75.000 Münzen | Heiligenschein, Lichtfunken |
 | Galaxie Egg | Galaktisch | 400.000 Münzen | Umlaufbahn mit Mond, Sternenstaub |
+| Candy Egg | Süß | 5.000 Münzen | Streusel, Streuselregen |
 | Admin Egg | Admin | nicht kaufbar | Glitch-Würfel, Code-Regen |
 | Release Egg (Robux Egg) | Limitiert | R$ 199 | Partyhut, Konfetti |
+| Atlantis Egg | Versunken | 150.000 Münzen | Korallen, Perle, Luftblasen |
+| Lava Egg | Glühend | 1.000.000 Münzen | zuckende Flammen, Glut |
+| Cartoon Egg | Gezeichnet | 30.000 Münzen | Partyhut, Streusel, Konfetti |
 
 **Bühne und Umgebung:** `EggBuilder.BuildStage(egg)` baut den neuneckigen Sockel mit Platte, Leuchtkante und
 Felsbrocken, den Boden, Haupt-, Kanten- und Sockellicht und die Partikel der Ei-Welt.
@@ -177,10 +181,8 @@ In Roblox: `HatchFx.Play(eggId, petId, { CFrame = …, Parent = …, Lighting = 
 (Abschnitte `unlock`, `charge`, `burst`, `reveal`, `done`), am besten auf dem Client; das Tier zieht
 `PetData.Roll(eggId)`.
 
-Nicht übernommen aus „Tier-Eier“: die vier weiteren Eier (Candy, Atlantis, Lava, Cartoon) und die 77 Tiere
-des Designs, denn zu diesen Eiern gibt es im Spiel keine Haustiere.
-Noch nicht übernommen aus v2: Varianten (Shiny, Gold, Regenbogen), Level und Mutationen der Haustiere
-und damit der fünfte Schlupf-Akt „Variante“. Die gehören zu den Haustieren v2.
+Die vier Eier Candy, Atlantis, Lava und Cartoon haben Käfig-Deko und Ei-Welt aus „Tier-Eier“; ihre Pets stehen in
+der Pet-Liste (`haustiere/js/pets.js`).
 
 ## Münzrollen
 
@@ -372,8 +374,8 @@ Drop-Chance und kurzer Beschreibung, oben eine Übersicht der Seltenheiten und F
 | Celestial | 0,49 % |
 | Secret | 0,01 % (1 zu 10.000) |
 
-Die Chancen gelten in jedem Ei gleich. Eier: Normal, Wald, Eis, Engel, Galaxie, Candy, Admin, Atlantis, Release,
-Lava und Cartoon. Candy, Atlantis, Lava und Cartoon gibt es in der Eierhalle noch nicht („Ei kommt noch“).
+Die Chancen gelten in jedem Ei gleich. Eier (Reihenfolge wie im Design „Tier-Eier“): Normal, Wald, Eis, Engel,
+Galaxie, Candy, Admin, Release, Atlantis, Lava und Cartoon; alle elf stehen in der Eierhalle.
 
 - **Daten:** `haustiere/js/pets.js` (`PET_RARITIES`, `EGGS`, `PETS`, `rollPet(eggId)`). Die Beschreibungen sind
   Vorschläge.
@@ -568,7 +570,7 @@ Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumen
 - **Stadtmauer** mit acht Türmen, Fahnen und vier Torbögen; vier Hauptstraßen mit Laternen und Lichterketten, dazu eine Ringstraße
 - **Läden mit Innenraum:** Eier-Laden, Boost-Labor, Robux-Palast (goldene Kuppel), Haustier-Hof, Verkaufs-Kontor; jeweils mit Schaufenstern, Leuchtschrift, Theke, Regalen und Verkäufer
 - **Portal-Hallen:** Heimat-Tor (Planet 1), Raketenstartplatz mit Rakete (Planet 2), Tiefsee-Strudel (Planet 3 und 4)
-- **Spielbereiche:** Ei-Schlüpfplatz mit allen 7 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
+- **Spielbereiche:** Ei-Schlüpfplatz mit allen 11 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
 - **Leben:** Spaziergänger mit Haustieren, Münzregen, Feuerwerk, ein Tag-Nacht-Wechsel (90 Sekunden), bei dem nachts die Laternen heller leuchten
 
 In der Weltkarte lassen sich alle Bereiche anklicken. In der Spiel-Oberfläche kann man sie im 3D-Hintergrund

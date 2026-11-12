@@ -20,6 +20,10 @@ export const EGG_EXTRAS = {
   galaxie: ['Umlaufbahn mit Mond', 'Sternenstaub'],
   admin: ['Glitch-Würfel', 'Code-Regen'],
   release: ['Partyhut', 'Konfetti'],
+  candy: ['Streusel', 'Streuselregen'],
+  cartoon: ['Partyhut', 'Streusel', 'Konfetti'],
+  atlantis: ['Korallen', 'Perle', 'Luftblasen'],
+  lava: ['Flammen', 'Glut'],
 };
 
 // Farben und Welt je Ei (aus creature-data.js des Designs)
@@ -31,6 +35,10 @@ export const EGG_THEMES = {
   galaxie: { shell: ['#5a3aa8', '#1c1838'], bg: '#0c0a1c', glow: '#2e2160', ped: '#2b2547', ped2: '#3d3466', rim: '#b48cff', ground: '#100d22', key: '#e6dcff', fx: 'stars', fxc: ['#cdb8ff', '#8fd8ff', '#f2eeff'], deco: ['orbit'] },
   admin: { shell: ['#26393a', '#3dffb0'], bg: '#0a1412', glow: '#123a32', ped: '#1d2a2a', ped2: '#26393a', rim: '#3dffb0', ground: '#0c1816', key: '#e6fff6', fx: 'code', fxc: ['#3dffb0', '#2fd3ff'], deco: ['glitch'] },
   release: { shell: ['#ff9d3d', '#ffd84a'], bg: '#1a1410', glow: '#5a3418', ped: '#3a2f2a', ped2: '#4a3c34', rim: '#ff9d3d', ground: '#1e1712', key: '#fff2e0', fx: 'confetti', fxc: ['#ff9d3d', '#ffd84a', '#7ad7ff', '#ff6f91', '#9b8cff'], deco: ['hat'] },
+  candy: { shell: ['#ffc2de', '#8be0ff'], bg: '#24141f', glow: '#6a3354', ped: '#f4b6cf', ped2: '#fff1d6', rim: '#ff8fc8', ground: '#2a1824', key: '#fff0f6', fx: 'sprinkles', fxc: ['#ff7eb6', '#8be0ff', '#ffe46b', '#a6f08a'], deco: ['sprinkles'] },
+  cartoon: { shell: ['#ffe14a', '#4ab0ff'], bg: '#141a2a', glow: '#2e3f6a', ped: '#e8e2d4', ped2: '#ff6a8a', rim: '#ffe14a', ground: '#171d2e', key: '#ffffff', fx: 'confetti', fxc: ['#ffe14a', '#4ab0ff', '#ff6a8a', '#7ae07a'], deco: ['sprinkles', 'hat'] },
+  atlantis: { shell: ['#3fb6c8', '#c9b98a'], bg: '#06161c', glow: '#0f4a55', ped: '#2b5a5e', ped2: '#c9b98a', rim: '#4ff0e0', ground: '#082025', key: '#e6fbff', fx: 'bubbles', fxc: ['#a6f4ff'], deco: ['coral', 'pearl'] },
+  lava: { shell: ['#ff7a2a', '#3a1a14'], bg: '#1a0e0b', glow: '#4a1c12', ped: '#3a2a26', ped2: '#4a3430', rim: '#ff8a3d', ground: '#1c110e', key: '#ffe6d0', fx: 'dust', fxc: ['#ff9d4a', '#ffcf6a', '#ff6a3a'], deco: ['flames'] },
 };
 
 const luaStr = (s) => '"' + s + '"';
@@ -233,6 +241,43 @@ function DECO.glitch(A)
 	end
 end
 
+function DECO.sprinkles(A)
+	local cols = { "#ff7eb6", "#8be0ff", "#ffe46b", "#a6f08a", "#f4f1ea" }
+	for _, p in ipairs(A.Back) do
+		for k = 1, 7 do
+			local r = A.Rng
+			blk(A.Deko, V(0.09, 0.025, 0.025), CFrame.new(p + V((r:NextNumber() - 0.5) * 0.4, 0.01, (r:NextNumber() - 0.5) * 0.4)) * CFrame.Angles(0, r:NextNumber() * math.pi, 0), M(cols[(k - 1) % #cols + 1]), "Streusel")
+		end
+	end
+end
+-- verzweigte Koralle aus Ästen
+local function branch(p, cf, len, r, m, depth)
+	cyl(p, V(r * 1.7, len, r * 1.7), cf * CFrame.new(0, len / 2, 0), m, "Koralle")
+	if depth <= 0 then return end
+	for _, ab in ipairs({ { -0.6, 0.55 }, { 0.5, 1 } }) do
+		branch(p, cf * CFrame.new(0, len * ab[2], 0) * CFrame.Angles(-0.15, 0, ab[1]), len * 0.62, r * 0.75, m, depth - 1)
+	end
+end
+function DECO.coral(A)
+	local cols = { "#ff7a8a", "#ffb15a", "#c77dff" }
+	for i, p in ipairs(A.Back) do
+		if i % 2 == 1 then
+			branch(A.Deko, CFrame.new(p) * CFrame.Angles(0, A.Rng:NextNumber() * TAU, (A.Rng:NextNumber() - 0.5) * 0.4), 0.22, 0.035, M(cols[(i - 1) % 3 + 1]), 2)
+		end
+	end
+end
+function DECO.pearl(A)
+	ball(A.Deko, 0.2, at(0, A.Top + 0.05, 0), M("#f4efe6", "SmoothPlastic"), "Perle")
+end
+function DECO.flames(A)
+	for i, p in ipairs(A.Back) do
+		local g = group(A.Deko, "Flamme" .. i, CFrame.new(p))
+		g:SetAttribute("Anim", "Flamme")
+		g:SetAttribute("Ph", i * 2)
+		cone(g, 0.08, 0.28, p, Vector3.yAxis, M("#ffb347", "Neon"), "Flamme")
+	end
+end
+
 -- ── Ei mit Käfig ──
 function EggBuilder.Build(egg)
 	local th = THEMES[egg.Id] or THEMES.normal
@@ -374,6 +419,7 @@ local FX = {
 	code = { V = 0.4, Size = 0.08, Square = true, Glow = true },
 	confetti = { V = -0.45, Size = 0.12, Square = true },
 	bubbles = { V = 0.45, Size = 0.13 },
+	sprinkles = { V = -0.4, Size = 0.11, Square = true },
 }
 
 -- Neuneck aus Blöcken (Apothem R, Höhe h)
@@ -553,6 +599,10 @@ EggBuilder.EaseOutBack = easeOutBack
 local ANIMS = {}
 function ANIMS.Schweben(t) return CFrame.new(0, math.sin(t * 2) * 0.03 * S, 0) end
 function ANIMS.Mond(t) return CFrame.Angles(0, -t * 0.8, 0) end
+function ANIMS.Flamme(t, g)
+	-- Flamme zuckt: kurz gestaucht und gestreckt (Teile wachsen vom Fuß aus)
+	return CFrame.new(0, math.abs(math.sin(t * 9 + (g.Ph or 0))) * 0.05 * S, 0)
+end
 function ANIMS.Glitch(t, g, rec)
 	local a = t * g.Sp + g.Ph
 	local pos = V(math.cos(a) * g.R, g.H + math.sin(t * 2 + g.Ph) * 0.1, math.sin(a) * g.R) * S

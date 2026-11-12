@@ -14,19 +14,19 @@ export const PET_RARITIES = [
 ];
 export const rarityById = Object.fromEntries(PET_RARITIES.map((r, i) => [r.id, { ...r, index: i }]));
 
-// built: das Ei gibt es schon in der Eierhalle (eier/js/eggs.js)
+// built: das Ei gibt es schon in der Eierhalle (eier/js/eggs.js). Reihenfolge wie im Design „Tier-Eier“.
 export const EGGS = [
   { id: 'normal', name: 'Normal Egg', glow: '#ffd89a', built: true },
   { id: 'wald', name: 'Wald Egg', glow: '#b6ff6a', built: true },
   { id: 'eis', name: 'Eis Egg', glow: '#9ff0ff', built: true },
   { id: 'engel', name: 'Engel Egg', glow: '#fff4cf', built: true },
   { id: 'galaxie', name: 'Galaxie Egg', glow: '#b49cff', built: true },
-  { id: 'candy', name: 'Candy Egg', glow: '#ff9ad5', built: false },
+  { id: 'candy', name: 'Candy Egg', glow: '#ff9ad5', built: true },
   { id: 'admin', name: 'Admin Egg', glow: '#ff4058', built: true },
-  { id: 'atlantis', name: 'Atlantis Egg', glow: '#3fd6c8', built: false },
   { id: 'release', name: 'Release Egg', glow: '#ffe07a', built: true },
-  { id: 'lava', name: 'Lava Egg', glow: '#ff6a2a', built: false },
-  { id: 'cartoon', name: 'Cartoon Egg', glow: '#ffffff', built: false },
+  { id: 'atlantis', name: 'Atlantis Egg', glow: '#3fd6c8', built: true },
+  { id: 'lava', name: 'Lava Egg', glow: '#ff6a2a', built: true },
+  { id: 'cartoon', name: 'Cartoon Egg', glow: '#ffffff', built: true },
 ];
 
 // Pro Ei neun Pets in der Reihenfolge der Seltenheiten: [Name, kurze Beschreibung]

@@ -480,18 +480,18 @@ export function buildSpawnTown(ctx, K) {
   addArea('portale-p3', (byPlanet.p4 || []).length ? 'Tiefsee-Strudel und Himmelsleiter (Planet 3 und 4)' : 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), 9.4));
 
   // ── Spielbereiche im äußeren Ring ──
-  // Ei-Schlüpfplatz: alle sieben Eier auf Podesten
+  // Ei-Schlüpfplatz: alle elf Eier auf Podesten im Halbkreis
   {
     const g = new THREE.Group();
-    const eggs = ['#ffd89a', '#b6ff6a', '#9ff0ff', '#fff4cf', '#b49cff', '#ff4058', '#ffe07a'];
+    const eggs = ['#ffd89a', '#b6ff6a', '#9ff0ff', '#fff4cf', '#b49cff', '#ff8fc8', '#ff4058', '#ffe07a', '#4ff0e0', '#ff8a3d', '#ffe14a'];
     eggs.forEach((c, i) => {
-      const t = (i - 3) * 0.42, x = Math.sin(t) * 2.2, z = -Math.cos(t) * 2.2 + 1.6;
-      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.5, 8), M('#4a4458')), x, 0.25, z));
+      const t = (i - 5) * 0.29, x = Math.sin(t) * 2.6, z = -Math.cos(t) * 2.6 + 1.9;
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.5, 8), M('#4a4458')), x, 0.25, z));
       const e = eggIcon(c);
-      e.scale.setScalar(0.85);
+      e.scale.setScalar(0.68);
       e.position.set(x, 0.5, z);
       g.add(e);
-      g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.04, 6, 24), E(c, 1.2)), x, 0.52, z)).children.at(-1).rotation.x = Math.PI / 2;
+      g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.035, 6, 24), E(c, 1.2)), x, 0.52, z)).children.at(-1).rotation.x = Math.PI / 2;
       const ph = i;
       anims.push((tt) => (e.rotation.y = tt * 0.5 + ph));
     });

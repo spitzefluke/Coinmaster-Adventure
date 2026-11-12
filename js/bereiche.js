@@ -23,7 +23,7 @@ export const BEREICHE = [
     text: 'Sieben Eier für die Haustiere, vom Normal Egg bis zum Release Egg. Jedes mit eigenem Look und einer Schlüpf-Animation, die mit der Seltenheit wächst.',
     href: 'eier/',
     status: 'vorschau',
-    eckdaten: ['7 Eier', '3D', 'Schlüpf-Animation'],
+    eckdaten: ['11 Eier', '3D', 'Schlüpf-Animation'],
   },
   {
     titel: 'Münzrollen',
