@@ -19,6 +19,8 @@ const GROUND = {
   mond: 'Rock', neptun: 'Ice', mars: 'Sand', saturn: 'Sand', alien: 'SmoothPlastic', sonne: 'CrackedLava',
   korallenriff: 'Sand', muschelland: 'Sand', atlantis: 'Marble',
   tiefseegraben: 'Slate', wolkenburg: 'Marble', engelsgarten: 'Grass', goetterthron: 'Marble',
+  quarzfeld: 'Marble', amethystgrotte: 'Slate', topasduenen: 'Sand', smaragdwald: 'Grass', jadetempel: 'Grass',
+  saphirsee: 'Marble', rubinvulkan: 'Basalt', opalwolken: 'Marble', diamantkern: 'Ice',
 };
 const ROCK = { lava: 'Basalt', eis: 'Glacier', sonne: 'CrackedLava', mond: 'Rock', hoehle: 'Slate' };
 // Material der Erdschicht unter der Grasdecke (sichtbar an Hängen)

@@ -5,13 +5,14 @@
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
 import { weatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
-import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel } from './state.js';
+import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel, canSupernova, supernova, supernovaMultiplier, nextGalaxy, findsGems, findGem, addGems, takeGems, gemCount } from './state.js';
+import { GEMS, gemById } from '../../edelsteine/js/gems.js';
 import { skillById } from './skills.js';
 import { claimDaily, spinWheel, joinGroup, redeem, prizeText, board, CODES } from './rewards.js';
 import { createRobloxUi } from './robloxUi.js';
 import { EGGS } from '../../eier/js/eggs.js';
 import { auraById, bonusText } from '../../auren/js/auras.js';
-import { planetById, worldById, PLANETS, WORLDS } from '../../welten/js/worlds.js';
+import { planetById, worldById, PLANETS, WORLDS, SUPERNOVA } from '../../welten/js/worlds.js';
 import { ADMIN } from './admin.js';
 import { createWorldBg } from './worldBg.js';
 import { newGarden, gardenAct, lootById, lootName } from '../../garten/js/garden.js';
@@ -67,7 +68,8 @@ function renderHud() {
   set('InventoryFull', state.inventory.length >= slots(state));
   set('WorldName', w.hub ? 'Spawn' : w.name);
   set('WorldPlanet', w.hub ? 'Treffpunkt' : p.name);
-  set('FindHint', w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“`);
+  set('FindHint', w.hub ? 'Im Spawn gibt es keine Münzen' : `Simuliert einen Fund in „${w.name}“${findsGems(state) ? ' (Edelsteine)' : ''}`);
+  set('FindGems', !w.hub && findsGems(state));
   set('Aura', state.aura || '');
   set('OwnedAuras', (state.auras || []).join(','));
   set('EggDiscount', effect(state, 'feilscher'));
@@ -80,6 +82,12 @@ function renderHud() {
   set('Worlds', state.worlds.join(','));
   set('Portals', state.portals.join(','));
   set('Rebirths', state.rebirths);
+  set('Supernovas', state.supernovas | 0);
+  // Edelsteine: Anzahl und Gesamtwert je Stein (in Roblox schreibt das der Server)
+  for (const g of GEMS) {
+    set('Gem_' + g.id, state.gems?.[g.id]?.n || 0);
+    set('GemValue_' + g.id, state.gems?.[g.id]?.v || 0);
+  }
   set('Garden', JSON.stringify(state.garden));
   // Skills, Belohnungen, Einstellungen
   set('Skills', Object.entries(state.skills).filter(([, n]) => n > 0).map(([id, n]) => `${id}:${n}`).join(','));
@@ -211,6 +219,7 @@ function find() {
     toast('Inventar voll. Verkaufe Münzen oder lerne „Großer Beutel“.', '#ff8a96');
     return;
   }
+  if (findsGems(state)) return findGemHere();
   const r = findCoin(state, Math.random, currentWeather().w.id);
   const tier = tierById[COINS[r.id].tier];
   const space = slots(state) - state.inventory.length;
@@ -228,6 +237,19 @@ function find() {
   if (ups) levelUp(before, state.level);
 }
 
+// Im Juwelnebel: Edelsteine statt Münzen (eigener Beutel, belegt keine Inventarplätze)
+function findGemHere() {
+  const r = findGem(state);
+  const gem = gemById[r.gem];
+  addGems(state, gem.id, r.count, r.value);
+  const before = state.level;
+  const ups = addXp(state, r.xp);
+  save();
+  renderHud();
+  sound(1.2 + tierById[gem.tier].index * 0.05);
+  rui?.foundGem({ gemId: gem.id, count: r.count, value: r.value, xp: r.xp, upgraded: r.upgraded });
+  if (ups) levelUp(before, state.level);
+}
 
 // ── Level-Aufstieg ──
 function levelUp(from, to) {
@@ -275,6 +297,7 @@ const AREA_ACTIONS = {
   'portale-p1': () => openPanel('welten', 'p1'),
   'portale-p2': () => openPanel('welten', 'p2'),
   'portale-p3': () => openPanel('welten', 'p3'),
+  'portale-p5': () => openPanel('welten', 'p5'),
   quests: () => toast('Quest-Brett: Tagesaufgaben kommen mit einem späteren Update.', '#ffe7a8'),
   obby: () => toast('Obby-Turm: Im Roblox-Spiel springst du bis zur Spitze, oben wartet eine Truhe.', '#8cff7a'),
 };
@@ -456,6 +479,33 @@ function invoke(action, a, b) {
     sound(1.6);
     return done(`${p.portal.name} bereit: ${p.name} ist offen!`);
   }
+  // Edelsteine: einen Stein (count Stück) oder alle verkaufen
+  if (action === 'sellGem' || action === 'sellGems') {
+    const ids = action === 'sellGems' ? Object.keys(state.gems || {}) : [a];
+    let total = 0, count = 0;
+    for (const id of ids) {
+      const [n, v] = takeGems(state, id, action === 'sellGems' ? Infinity : Number(b) || 1);
+      count += n;
+      total += v;
+    }
+    if (!count) return [false, 'Kein Edelstein gewählt'];
+    state.taler = Math.round((state.taler + total) * 100) / 100;
+    return done(`${count} Edelstein${count > 1 ? 'e' : ''} für ${fmtNumber(Math.round(total * 100) / 100, settings.shortNumbers)} Taler verkauft`);
+  }
+  if (action === 'supernova') {
+    const why = canSupernova(state);
+    if (why) return [false, why];
+    const g = nextGalaxy(state);
+    supernova(state);
+    flash('#ff5fd2');
+    sound(1.8);
+    return done(`SUPERNOVA! ${g ? g.name + ' ist offen. ' : ''}Alles ist jetzt ×${supernovaMultiplier(state.supernovas).toLocaleString('de-DE')} wert`);
+  }
+  // nur Vorschau: zehn Wiedergeburten auf einmal, um die Supernova auszuprobieren
+  if (action === 'testRebirths') {
+    state.rebirths = Math.min(SUPERNOVA.rebirths, state.rebirths + 10);
+    return done(`Test: ${state.rebirths} Wiedergeburten`);
+  }
   if (action === 'rebirth') {
     if (canRebirth(state)) return [false, 'Zu wenig Taler'];
     rebirth(state);
@@ -601,7 +651,7 @@ function mePlayer() {
   const eggs = Object.values(state.eggs).reduce((a, n) => a + n, 0);
   return {
     UserId: ME_ID, Name: 'Vorschau', DisplayName: 'Du', Me: true, Admin: true, Ready: true, Level: state.level, Taler: Math.floor(state.taler),
-    World: w.name, Worlds: state.worlds.length, Rebirths: state.rebirths, Coins: state.inventory.length, Found: state.inventory.length + (state.sold ?? 0),
+    World: w.name, Worlds: state.worlds.length, Rebirths: state.rebirths, Supernovas: state.supernovas | 0, Coins: state.inventory.length, Found: state.inventory.length + (state.sold ?? 0),
     Eggs: eggs, Auras: (state.auras || []).length, Minutes: Math.floor((Date.now() - PAGE_START) / 60000),
   };
 }

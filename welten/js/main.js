@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice, KULISSE } from './worlds.js';
+import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice, KULISSE, SUPERNOVA, GALAXIES, galaxyById } from './worlds.js';
 import { ISLAND_RADIUS } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
@@ -214,7 +214,11 @@ function renderPlanets() {
   $('planets').innerHTML = [HUB, ...PLANETS].map((p, i) => {
     const n = worldsOf(p.id).filter((w) => !w.soon).length;
     const sub = p.id === 'hub' ? 'Shops · Portale · Ranglisten' : p.soon ? 'Coming soon' : `${n} Welt${n === 1 ? '' : 'en'}${p.portal ? ` · ${p.portal.name}` : ''}`;
-    return `${i ? '<span class="orbit" aria-hidden="true"></span>' : ''}
+    // Übergang in die nächste Galaxie: Supernova-Tor statt Umlaufbahn
+    const prev = [HUB, ...PLANETS][i - 1];
+    const gate = i && p.galaxy && prev?.galaxy && p.galaxy !== prev.galaxy;
+    const g = gate && galaxyById[p.galaxy];
+    return `${!i ? '' : gate ? `<span class="galaxy-gate" style="--c:${g.color}" title="Ab ${SUPERNOVA.rebirths} Wiedergeburten: Supernova"><b>✦ Supernova</b><span>${g.name}</span></span>` : '<span class="orbit" aria-hidden="true"></span>'}
       <button type="button" class="planet${p.soon ? ' is-soon' : ''}" data-planet="${p.id}" aria-pressed="${p.id === planet}"
         style="--c:${p.color};--g:${p.glow};--s1:${p.surface[0]};--s2:${p.surface[1]};--s3:${p.surface[2]}">
         <span class="planet-ball" aria-hidden="true"></span>
@@ -244,7 +248,7 @@ function unlockText(w) {
   const i = list.indexOf(w);
   if (w.soon) return 'Kommt mit einem späteren Update';
   const parts = [];
-  if (i === 0 && p.portal) parts.push(`${p.portal.name}: ${p.portal.rebirths} Wiedergeburt${p.portal.rebirths > 1 ? 'en' : ''}`);
+  if (i === 0 && p.portal) parts.push(`${p.portal.name}: ${portalNeeds(p)}`);
   if (i > 0) parts.push(`nach „${list[i - 1].name}“`);
   if (w.price) parts.push(`${fmtPrice(w.price)} Taler`);
   return parts.length ? parts.join(' · ') : 'Startwelt, von Anfang an offen';
@@ -384,10 +388,23 @@ function renderStrip() {
 
 // ── Erklärungen ─────────────────────────────────────────────────────────────
 
+function portalNeeds(p) {
+  const n = p.portal.rebirths || 0, sn = p.portal.supernovas || 0;
+  return [sn ? (sn > 1 ? `${sn} Supernovas` : 'Supernova') : '', n ? `${n} Wiedergeburt${n > 1 ? 'en' : ''}` : ''].filter(Boolean).join(' und ');
+}
+
 $('rebirth-text').textContent = `Für ${fmtPrice(REBIRTH.cost(0))} Taler (danach jeweils viermal so viel) wirst du wiedergeboren: Deine Taler sind weg, aber jede Münze ist für immer ${Math.round(REBIRTH.bonus * 100)} % mehr wert. Welten, Münzen, Level und Skills bleiben.`;
 $('portal-text').textContent = PLANETS.filter((p) => p.portal && !p.soon)
-  .map((p) => `${p.name} (${p.title}): ${p.portal.name}, braucht die letzte Welt des vorigen Planeten und ${p.portal.rebirths} Wiedergeburt${p.portal.rebirths > 1 ? 'en' : ''}.`)
+  .map((p) => {
+    const prev = PLANETS[PLANETS.indexOf(p) - 1];
+    const same = prev && prev.galaxy === p.galaxy;
+    return `${p.name} (${p.title}): ${p.portal.name}, braucht ${same ? 'die letzte Welt des vorigen Planeten und ' : ''}${portalNeeds(p)}.`;
+  })
   .join(' ');
+{
+  const g = GALAXIES.find((x) => x.supernovas === 1);
+  $('supernova-text').textContent = `Ab ${SUPERNOVA.rebirths} Wiedergeburten wirst du zur Supernova: Taler und Wiedergeburten gehen auf 0, dafür ist alles für immer ${SUPERNOVA.bonus}-mal so viel wert und ${g.name} öffnet sich, eine neue Galaxie mit ${PLANETS.filter((p) => p.galaxy === g.id).length} Planeten. Dort findest du Edelsteine statt Münzen. Welten, Münzen, Level und Skills bleiben.`;
+}
 $('rebirth-table').innerHTML = `
   <caption>Wiedergeburten</caption>
   <thead><tr><th scope="col">Nr.</th><th scope="col">Kosten</th><th scope="col">Münzwert danach</th><th scope="col">Öffnet</th></tr></thead>

@@ -6,7 +6,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { createScreen } from '../../js/rbx/screen.js';
 import { registerImage } from '../../js/rbx/engine.js';
 import { buildIconSheet } from '../../roblox/js/iconSheet.js';
-import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, WEATHER_FX, COIN_BUILDER, EGG_BUILDER, MUTATION_FX } from '../../roblox/js/luau.js';
+import { eggDataSource, mutationDataSource, coinDataSource, worldDataSource, gemDataSource, WEATHER_FX, COIN_BUILDER, EGG_BUILDER, MUTATION_FX } from '../../roblox/js/luau.js';
 import { auraDataSource } from '../../roblox/js/auraLuau.js';
 import { shopDataSource, GAME_UI, UI_THEME } from '../../roblox/js/uiLuau.js';
 import { skillDataSource, rewardDataSource } from '../../roblox/js/uiMoreLuau.js';
@@ -37,6 +37,7 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
   lua.call('__addModule', 'EggData', eggDataSource({ EGGS }));
   lua.call('__addModule', 'CoinData', coinDataSource({ TIERS, COINS }));
   lua.call('__addModule', 'WorldData', worldDataSource({ PLANETS, WORLDS, REBIRTH }));
+  lua.call('__addModule', 'GemData', gemDataSource());
   lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
   lua.call('__addModule', 'AuraData', auraDataSource({ AURAS, RARITIES, THEMES, BONUSES }));
   lua.call('__addModule', 'ShopData', shopDataSource({ BOOSTS, ROBUX }));
@@ -169,6 +170,10 @@ export async function createRobloxUi(host, { onAction, onInvoke, onQuery, onSoun
     // Fund mit Effekten je nach Seltenheit (GameUI.Found)
     found({ coinId, mutation, count, value, xp, upgraded }) {
       lua.run(`__GameUI.Found({ CoinId = ${coinId}, Mutation = ${mutation ? q(mutation) : 'nil'}, Count = ${count}, Value = ${value}, Xp = ${xp}, Upgraded = ${upgraded ? 'true' : 'false'} })`, 'Fund');
+    },
+    // Edelstein-Fund im Juwelnebel (GameUI.FoundGem)
+    foundGem({ gemId, count, value, xp, upgraded }) {
+      lua.run(`__GameUI.FoundGem({ GemId = ${q(gemId)}, Count = ${count}, Value = ${value}, Xp = ${xp}, Upgraded = ${upgraded ? 'true' : 'false'} })`, 'Edelsteinfund');
     },
     toast(text, color = '#d9b26a') {
       lua.run(`__GameUI.Toast(${q(text)}, Color3.fromHex(${q(color)}))`, 'Hinweis');

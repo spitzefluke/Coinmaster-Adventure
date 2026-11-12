@@ -16,6 +16,8 @@ import { rollDataSource, ROLL_BUILDER, ROLL_FX } from './rollLuau.js';
 import { gardenDataSource, LOOT_BUILDER, GARDEN_BUILDER, GARDEN_SERVER, GARDEN_CLIENT } from './gardenLuau.js';
 import { adminDataSource, adminServerSource } from './adminLuau.js';
 import { ADMIN, ADMIN_IDS } from '../../spiel/js/admin.js';
+import { GALAXIES as ALL_GALAXIES, SUPERNOVA as SUPERNOVA_RULES } from '../../welten/js/worlds.js';
+import { GEMS as ALL_GEMS, GEM_FACTOR } from '../../edelsteine/js/gems.js';
 
 // ── Luau-Werte ───────────────────────────────────────────────────────────────
 
@@ -519,15 +521,19 @@ export { MUTATION_FX };
 // EggBuilder (Eier v2) liegt in eggLuau.js
 export { EGG_BUILDER };
 
-export function worldDataSource({ PLANETS, WORLDS, REBIRTH }) {
+export function worldDataSource({ PLANETS, WORLDS, REBIRTH, GALAXIES = ALL_GALAXIES, SUPERNOVA = SUPERNOVA_RULES }) {
+  const galaxies = GALAXIES.map((g) =>
+    fields({ Id: str(g.id), Name: str(g.name), Title: str(g.title), Text: str(g.text), Color: color(g.color), Find: str(g.find), Supernovas: num(g.supernovas) }),
+  );
   const planets = PLANETS.map((p) =>
     fields({
       Id: str(p.id),
+      Galaxy: str(p.galaxy || 'g1'),
       Name: str(p.name),
       Title: str(p.title),
       Text: str(p.text),
       Color: color(p.color),
-      Portal: p.portal ? `{ Name = ${str(p.portal.name)}, Rebirths = ${num(p.portal.rebirths)}, Text = ${str(p.portal.text)} }` : 'nil',
+      Portal: p.portal ? `{ Name = ${str(p.portal.name)}, Rebirths = ${num(p.portal.rebirths || 0)}, Supernovas = ${num(p.portal.supernovas || 0)}, Text = ${str(p.portal.text)} }` : 'nil',
       ComingSoon: p.soon ? 'true' : undefined,
     }),
   );
@@ -546,13 +552,16 @@ export function worldDataSource({ PLANETS, WORLDS, REBIRTH }) {
           Text: str(w.text),
         }),
   );
-  return `${HEADER('Planeten, Welten, Wiedergeburt')}
+  return `${HEADER('Galaxien, Planeten, Welten, Wiedergeburt, Supernova')}
 -- Welten kauft man pro Planet der Reihe nach mit Talern. Ein Portal zum nächsten Planeten öffnet
--- sich, wenn die letzte Welt des vorigen Planeten gekauft ist und genug Wiedergeburten da sind.
+-- sich, wenn die letzte Welt des vorigen Planeten (derselben Galaxie) gekauft ist und genug
+-- Wiedergeburten da sind. Das erste Portal einer neuen Galaxie braucht eine Supernova.
 -- Luck wirkt wie der Skill „Glückspilz“ (0.5 = +50 % auf alle Stufen außer Normal),
--- Value multipliziert den Münzwert.
+-- Value multipliziert den Münzwert. Find: was man in der Galaxie findet ("coins" oder "gems").
 
 local WorldData = {}
+
+WorldData.Galaxies = ${list(galaxies)}
 
 WorldData.Planets = ${list(planets)}
 
@@ -565,6 +574,31 @@ end
 WorldData.PlanetById = {}
 for _, planet in ipairs(WorldData.Planets) do
 	WorldData.PlanetById[planet.Id] = planet
+end
+WorldData.GalaxyById = {}
+for _, galaxy in ipairs(WorldData.Galaxies) do
+	WorldData.GalaxyById[galaxy.Id] = galaxy
+end
+
+-- Planeten einer Galaxie in Reihenfolge
+function WorldData.PlanetsOf(galaxyId)
+	local result = {}
+	for _, planet in ipairs(WorldData.Planets) do
+		if planet.Galaxy == galaxyId then table.insert(result, planet) end
+	end
+	return result
+end
+
+-- Galaxie einer Welt (der Spawn zählt zur ersten)
+function WorldData.GalaxyOfWorld(worldId)
+	local world = WorldData.ById[worldId]
+	local planet = world and WorldData.PlanetById[world.Planet]
+	return (planet and WorldData.GalaxyById[planet.Galaxy]) or WorldData.Galaxies[1]
+end
+
+-- Findet man in dieser Welt Edelsteine statt Münzen?
+function WorldData.FindsGems(worldId)
+	return WorldData.GalaxyOfWorld(worldId).Find == "gems"
 end
 
 -- Spielbare Welten eines Planeten in Kaufreihenfolge
@@ -594,9 +628,38 @@ function WorldData.RebirthMultiplier(n)
 	return 1 + WorldData.Rebirth.Bonus * n
 end
 
+-- Supernova (Prestige): ab Rebirths Wiedergeburten, einmal pro weiterer Galaxie (Max).
+-- Taler und Wiedergeburten gehen auf 0, alles ist danach für immer Bonus-mal so viel wert.
+WorldData.Supernova = {
+	Rebirths = ${num(SUPERNOVA.rebirths)},
+	Bonus = ${num(SUPERNOVA.bonus)},
+	Max = ${num(SUPERNOVA.max)},
+}
+
+function WorldData.SupernovaMultiplier(n)
+	return WorldData.Supernova.Bonus ^ (n or 0)
+end
+
+-- Grund, warum (noch) keine Supernova geht, sonst nil. state wie unten (mit Supernovas)
+function WorldData.CanSupernova(state)
+	if (state.Supernovas or 0) >= WorldData.Supernova.Max then return "Alle Galaxien sind schon offen" end
+	if state.Rebirths < WorldData.Supernova.Rebirths then
+		return "Erst " .. WorldData.Supernova.Rebirths .. " Wiedergeburten (du hast " .. state.Rebirths .. ")"
+	end
+	return nil
+end
+
+-- Galaxie, die die nächste Supernova öffnet (oder nil)
+function WorldData.NextGalaxy(state)
+	for _, g in ipairs(WorldData.Galaxies) do
+		if g.Supernovas == (state.Supernovas or 0) + 1 then return g end
+	end
+	return nil
+end
+
 -- ── Regeln für Kaufen und Portale (Server und Oberfläche nutzen dieselben) ──
--- state = { Owned = { [worldId] = true }, Portals = { [planetId] = true }, Taler = n, Rebirths = n }
--- Am Spieler stehen sie als Attribute: Worlds und Portals (Ids mit Komma), Rebirths, World (aktuelle Welt)
+-- state = { Owned = { [worldId] = true }, Portals = { [planetId] = true }, Taler = n, Rebirths = n, Supernovas = n }
+-- Am Spieler stehen sie als Attribute: Worlds und Portals (Ids mit Komma), Rebirths, Supernovas, World (aktuelle Welt)
 
 function WorldData.ParseList(text)
 	local set = {}
@@ -638,13 +701,20 @@ function WorldData.PortalChecks(state, planetId)
 		if p == planet then prev = WorldData.Planets[i - 1] end
 	end
 	local checks = {}
-	if prev then
+	if prev and prev.Galaxy == planet.Galaxy then
 		local list = WorldData.OfPlanet(prev.Id)
 		local last = list[#list]
 		table.insert(checks, { "„" .. last.Name .. "“ auf " .. prev.Name .. " gekauft", WorldData.Owns(state, last.Id) })
 	end
+	local sn = planet.Portal.Supernovas or 0
+	if sn > 0 then
+		local have = state.Supernovas or 0
+		table.insert(checks, { (sn > 1 and (sn .. " Supernovas") or "Supernova") .. " (du hast " .. have .. ")", have >= sn })
+	end
 	local n = planet.Portal.Rebirths
-	table.insert(checks, { n .. " Wiedergeburt" .. (n > 1 and "en" or "") .. " (du hast " .. state.Rebirths .. ")", state.Rebirths >= n })
+	if n > 0 then
+		table.insert(checks, { n .. " Wiedergeburt" .. (n > 1 and "en" or "") .. " (du hast " .. state.Rebirths .. ")", state.Rebirths >= n })
+	end
 	return checks
 end
 
@@ -660,6 +730,41 @@ function WorldData.CanOpenPortal(state, planetId)
 end
 
 return WorldData
+`;
+}
+
+// Edelsteine (Juwelnebel): dieselben Stufen wie CoinData, Wert = Münzwert der Stufe × Factor
+export function gemDataSource({ GEMS = ALL_GEMS } = {}) {
+  const gems = GEMS.map((g, i) =>
+    fields({
+      Id: str(g.id),
+      Index: num(i + 1),
+      Name: str(g.name),
+      Tier: str(g.tier),
+      Cut: str(g.cut),
+      Light: color(g.colors[0]),
+      Color: color(g.colors[1]),
+      Dark: color(g.colors[2]),
+      Text: str(g.text),
+    }),
+  );
+  return `${HEADER('Edelsteine')}
+-- Im Juwelnebel (Galaxie 2, nach der Supernova) findet man Edelsteine statt Münzen.
+-- Tier: Stufe aus CoinData (gleiche Drop-Chancen). Wert in Talern: CoinData-Stufenwert × Factor,
+-- beim Fund mal Welt, Wiedergeburt und Supernova. Am Spieler: Gem_<id> (Anzahl), GemValue_<id> (Gesamtwert).
+
+local GemData = {}
+
+GemData.Factor = ${num(GEM_FACTOR)}
+
+GemData.Gems = ${list(gems)}
+
+GemData.ById = {}
+for _, gem in ipairs(GemData.Gems) do
+	GemData.ById[gem.Id] = gem
+end
+
+return GemData
 `;
 }
 
@@ -1537,6 +1642,7 @@ export function moduleSources(data) {
     { name: 'MutationData', source: mutationDataSource(data) },
     { name: 'EggData', source: eggDataSource(data) },
     { name: 'WorldData', source: worldDataSource(data) },
+    { name: 'GemData', source: gemDataSource(data) },
     { name: 'Gacha', source: GACHA },
     { name: 'CoinBuilder', source: COIN_BUILDER },
     { name: 'MutationFx', source: MUTATION_FX },
