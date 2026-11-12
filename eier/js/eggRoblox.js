@@ -1,13 +1,12 @@
 // Eier, Schlüpfen und Haustiere 1:1 wie in Roblox: Die Seite führt EggBuilder, PetBuilder und HatchFx aus
-// dem Installer aus. Die Haustiere entstehen aus denselben Teilen wie die Datei Haustiere.rbxmx
-// (roblox/js/petParts.js) und liegen wie in Roblox im Ordner „Haustiere“.
+// dem Installer aus. Die Pets haben noch keine Modelle: PetBuilder zeigt eine leuchtende Kugel in der Farbe
+// der Seltenheit.
 
 import * as THREE from 'three';
 import { createLua } from '../../js/rbx/lua.js';
 import { RbxWorld } from '../../js/rbx/engine.js';
 import { eggDataSource, EGG_BUILDER } from '../../roblox/js/luau.js';
 import { petDataSource, PET_BUILDER, HATCH_FX } from '../../roblox/js/petLuau.js';
-import { petToParts } from '../../roblox/js/petParts.js';
 import { EGGS } from './eggs.js';
 import { PETS } from '../../haustiere/js/pets.js';
 
@@ -16,47 +15,6 @@ local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdvent
 local EggData = require(root.EggData)
 local EggBuilder = require(root.EggBuilder)
 local HatchFx = require(root.HatchFx)
-local pets = Instance.new("Folder")
-pets.Name = "Haustiere"
-pets.Parent = root
-__petParts = {}
-
--- Tier wie in Haustiere.rbxmx: Model mit unsichtbarer Root und Teilen
-function __definePet(id, height)
-	if pets:FindFirstChild(id) then return end
-	local model = Instance.new("Model")
-	model.Name = id
-	local rootPart = Instance.new("Part")
-	rootPart.Name = "Root"
-	rootPart.Anchored = true
-	rootPart.CanCollide = false
-	rootPart.Transparency = 1
-	rootPart.Size = Vector3.new(2, height, 2)
-	rootPart.CFrame = CFrame.new(0, height / 2, 0)
-	rootPart.Parent = model
-	for _, d in ipairs(__petParts[id]) do
-		local p = Instance.new(d[1] == "Wedge" and "WedgePart" or "Part")
-		p.Anchored = true
-		p.CanCollide = false
-		if d[1] ~= "Wedge" then
-			p.Shape = d[1] == "Cylinder" and Enum.PartType.Cylinder or d[1] == "Ball" and Enum.PartType.Ball or Enum.PartType.Block
-		end
-		p.Size = Vector3.new(d[2], d[3], d[4])
-		p.CFrame = CFrame.new(d[5], d[6], d[7], d[8], d[9], d[10], d[11], d[12], d[13], d[14], d[15], d[16])
-		p.Color = Color3.fromHex(d[17])
-		p.Material = Enum.Material[d[18]]
-		p.Transparency = d[19]
-		if d[1] == "Ellipsoid" then
-			local m = Instance.new("SpecialMesh")
-			m.MeshType = Enum.MeshType.Sphere
-			m.Parent = p
-		end
-		p.Parent = model
-	end
-	model.PrimaryPart = rootPart
-	model.Parent = pets
-end
-
 local previews = {}
 function __buildEgg(key, eggId, withStage)
 	local egg = EggData.ById[eggId]
@@ -87,13 +45,6 @@ function __drop(key)
 end
 `;
 
-const f = (n) => String(Math.round(n * 1000) / 1000);
-function petChunk(id) {
-  const { parts, height } = petToParts(PETS.find((p) => p.id === id));
-  const rows = parts.map((p) => `{${JSON.stringify(p.shape)},${p.size.map(f)},${p.pos.map(f)},${p.rot.map(f)},${JSON.stringify(p.color)},${JSON.stringify(p.material)},${f(p.transparency || 0)}}`);
-  return { code: `__petParts[${JSON.stringify(id)}] = {${rows.join(',')}}`, height };
-}
-
 let luaReady = null;
 export function eggLua() {
   luaReady ||= (async () => {
@@ -107,15 +58,6 @@ export function eggLua() {
     return lua;
   })();
   return luaReady;
-}
-
-const defined = new Set();
-function definePet(lua, id) {
-  if (defined.has(id)) return;
-  const { code, height } = petChunk(id);
-  lua.run(code, 'Haustier ' + id);
-  lua.call('__definePet', id, height);
-  defined.add(id);
 }
 
 let nextKey = 1;
@@ -154,7 +96,6 @@ export async function createRobloxHatch(egg, pet, { shadows = true, onDone, onPh
     lua.register('__hatchPhase', (key, phase) => phaseHandlers.get(key)?.(phase));
     lua.hatchHook = true;
   }
-  definePet(lua, pet.id);
   const world = makeWorld({ shadows, sky: false });
   const key = 'h' + nextKey++;
   let done = false;

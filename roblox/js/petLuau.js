@@ -11,10 +11,11 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 `;
 
 export function petDataSource({ PETS }) {
-  const pets = PETS.map((p) => `{ Id = ${str(p.id)}, Name = ${str(p.name)}, Egg = ${str(p.egg)}, Chance = ${num(p.chance)}, Epic = ${p.epic ? 'true' : 'false'}, Glow = Color3.fromHex(${str(p.glow)}), Text = ${str(p.text)} }`);
+  const pets = PETS.map((p) => `{ Id = ${str(p.id)}, Name = ${str(p.name)}, Egg = ${str(p.egg)}, Chance = ${num(p.chance)}, Rarity = ${str(p.rarityName)}, Epic = ${p.epic ? 'true' : 'false'}, Glow = Color3.fromHex(${str(p.glow)}), Text = ${str(p.text)} }`);
   return `${HEADER('Haustiere')}
--- ${PETS.length} Haustiere, sieben pro Ei. Chance = Schlupfchance innerhalb des Eis in Prozent.
--- Die Modelle liegen im Ordner „Haustiere“ (Datei Haustiere.rbxmx von der Webseite), PetBuilder klont sie.
+-- ${PETS.length} Haustiere, neun pro Ei (eins pro Seltenheit). Chance = Drop-Chance in Prozent, in jedem Ei gleich.
+-- Rarity = Seltenheit (Common … Secret), Epic = ab Legendary. Modelle gibt es noch nicht: PetBuilder baut eine
+-- leuchtende Kugel in der Farbe der Seltenheit, bis Modelle im Ordner „Haustiere“ liegen.
 
 local PetData = {}
 
@@ -51,8 +52,8 @@ return PetData
 }
 
 export const PET_BUILDER = `${HEADER('Haustiere bauen')}
--- PetBuilder.Build(petId) klont das Tier aus ReplicatedStorage > CoinmasterAdventure > Haustiere.
--- Fehlt der Ordner, gibt es eine leuchtende Kugel mit dem Namen als Ersatz.
+-- PetBuilder.Build(petId) klont das Tier aus ReplicatedStorage > CoinmasterAdventure > Haustiere (falls dort ein
+-- Modell mit der Id liegt). Sonst gibt es eine leuchtende Kugel in der Farbe der Seltenheit als Ersatz.
 -- Jedes Modell hat eine unsichtbare PrimaryPart „Root“; ihre Unterseite steht auf dem Boden.
 
 local PetData = require(script.Parent.PetData)

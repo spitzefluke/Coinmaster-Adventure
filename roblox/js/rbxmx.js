@@ -255,38 +255,6 @@ export function worldModel(w, offset = [0, 0, 0]) {
   );
 }
 
-// Haustiere: Ordner „Haustiere“ mit einem Model je Tier (Name = Id). Jedes Model hat eine unsichtbare
-// PrimaryPart „Root“, die Füße stehen auf y = 0. Gehört nach ReplicatedStorage > CoinmasterAdventure.
-export function petsFolder(list) {
-  return folder(
-    'Haustiere',
-    list
-      .map(({ pet, parts, height }) => {
-        const rootRef = referent();
-        const root = item(
-          'Part',
-          [
-            prop.string('Name', 'Root'),
-            prop.bool('Anchored', true),
-            prop.bool('CanCollide', false),
-            prop.bool('CastShadow', false),
-            prop.cframe('CFrame', [0, height / 2, 0], ID.x),
-            prop.color3uint8('Color3uint8', '#ffffff'),
-            prop.token('Material', MATERIAL.SmoothPlastic),
-            prop.float('Transparency', 1),
-            prop.token('shape', SHAPE.Block),
-            prop.vec3('size', [2, height, 2]),
-          ],
-          '',
-          rootRef,
-        );
-        const name = value('StringValue', 'Anzeigename', pet.name);
-        return item('Model', [prop.string('Name', pet.id), `<Ref name="PrimaryPart">${rootRef}</Ref>`], root + parts.map((p) => part(p)).join('') + name);
-      })
-      .join(''),
-  );
-}
-
 export function rbxmxFile(models) {
   return `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>

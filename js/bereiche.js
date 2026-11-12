@@ -41,10 +41,17 @@ export const BEREICHE = [
   },
   {
     titel: 'Haustiere',
-    text: '77 Haustiere im Roblox-Stil, sieben pro Ei: fünf häufige und zwei epische mit eigenen Effekten. Umschaltbar auf die Original-Fassung, und sie schlüpfen auch in der Eierhalle.',
+    text: '99 Pets aus 11 Eiern, neun pro Ei vom Common Hund bis zum Secret Urhund. Jedes mit Seltenheit, Drop-Chance und kurzer Beschreibung.',
     href: 'haustiere/',
     status: 'vorschau',
-    eckdaten: ['77 Tiere', '22 episch', 'Export für Blender'],
+    eckdaten: ['99 Pets', '11 Eier', '9 Seltenheiten'],
+  },
+  {
+    titel: 'Taschen',
+    text: '99 Rücken-Items in 9 Stufen, vom zerschlissenen Kupferbeutel bis zum Unendlichen Münzthron. Jede Tasche mit Beschreibung, Preis und Kapazität für deine Münzen.',
+    href: 'taschen/',
+    status: 'vorschau',
+    eckdaten: ['99 Taschen', '9 Stufen', 'bis unbegrenzt'],
   },
   {
     titel: 'Auras',

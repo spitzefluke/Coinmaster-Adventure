@@ -1,0 +1,71 @@
+/* Listen-Seiten ohne 3D (Haustiere, Taschen) – baut auf theme.css auf.
+   Kopf, Filter-Chips, eine Übersichtstabelle und Abschnitte mit Karten. */
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
+  display: grid;
+  gap: 32px;
+}
+.masthead { max-width: 66ch; }
+.eyebrow { margin: 0 0 4px; font: 600 var(--step--1)/1.2 var(--font-data); letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+.back { color: inherit; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { margin: 0; font: 700 var(--step-4)/0.95 var(--font-display); text-wrap: balance; }
+.lede { margin: 12px 0 0; color: var(--muted); }
+
+/* Übersicht: Seltenheiten bzw. Stufen als Leiste */
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.legend li { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-left: 4px solid var(--c); border-radius: 10px; background: var(--velvet); }
+.legend b { font: 600 0.875rem/1.2 var(--font-body); color: var(--c); }
+.legend span { font: 500 0.75rem/1.3 var(--font-data); color: var(--muted); }
+
+/* Filter */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 8px 14px;
+  border: 1px solid var(--seam); border-radius: 999px; background: transparent; color: var(--ink);
+  font: 600 0.8125rem/1 var(--font-body); cursor: pointer;
+}
+.filter:hover { border-color: var(--c, var(--brass)); }
+.filter i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--brass)); }
+.filter[aria-pressed="true"] { border-color: var(--c, var(--brass)); background: var(--velvet-2); }
+
+/* Abschnitte */
+.sections { display: grid; gap: 36px; }
+.section { display: grid; gap: 14px; }
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding-bottom: 10px; border-bottom: 1px solid var(--seam); }
+.section-head h2 { margin: 0; font: 700 clamp(1.9rem, 4vw, 2.5rem)/1 var(--font-display); color: var(--c, var(--ink)); }
+.section-meta { margin: 0; color: var(--muted); font: 500 0.8125rem/1.3 var(--font-data); }
+.badge { padding: 3px 9px; border: 1px solid var(--seam); border-radius: 999px; color: var(--muted); font: 600 0.6875rem/1.2 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Karten */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.card {
+  position: relative; display: grid; align-content: start; gap: 6px; padding: 14px 16px 16px;
+  border: 1px solid var(--seam); border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 9%, var(--velvet)) 0%, var(--velvet) 60%);
+  overflow: hidden;
+}
+.card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--c); }
+.card.is-top { border-color: color-mix(in srgb, var(--c) 55%, var(--seam)); box-shadow: 0 0 22px -8px var(--c); }
+.card.is-secret::before { background: linear-gradient(90deg, #ff5a5a, #ffd35a, #6fff7a, #5ad1ff, #b07bff, #ff5af0); }
+.pill { justify-self: start; margin: 0; padding: 2px 8px; border: 1px solid var(--c); border-radius: 999px; color: var(--c); font: 600 0.6875rem/1.3 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; }
+.card h3 { margin: 0; font: 600 1.125rem/1.25 var(--font-body); text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); font-size: 0.9375rem; line-height: 1.45; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; }
+.facts div { display: grid; }
+.facts dt { color: var(--muted); font: 500 0.6875rem/1.3 var(--font-data); text-transform: uppercase; letter-spacing: 0.08em; }
+.facts dd { margin: 0; font: 600 0.9375rem/1.3 var(--font-data); color: var(--ink); font-variant-numeric: tabular-nums; }
+.nr { position: absolute; top: 12px; right: 14px; color: var(--muted); font: 500 0.75rem/1 var(--font-data); }
+
+.foot { color: var(--muted); font-size: 0.875rem; }
+.foot a { color: var(--brass); }
+
+@media (max-width: 520px) {
+  .cards { grid-template-columns: 1fr; }
+  .legend { grid-template-columns: repeat(2, 1fr); }
+}
