@@ -907,16 +907,21 @@ end
 function HELD_BUILD.lava(k)
 	local cf = heldAt(k)
 	local rock = hex("#2a1e1a")
-	prism(k, cf * CFrame.new(0, 230, 0), 460, 460, 260, rock, "Basalt", 0, "Grosser Vulkan")
-	local crater = P(k, "Cyl", V(90, 10, 110), cf * CFrame.new(0, 410, -20), hex("#ff6a1a"), "Neon", 0, "Krater")
-	-- Lavaströme laufen innen an den Flanken vom Krater herab (Flanke: Breite 460, Höhe 460)
-	local slope = math.atan2(230, 460)
-	for s = -1, 1, 2 do
-		local top, L = V(s * 18, 400, -131), 300
-		local mid = top + V(s * math.sin(slope), -math.cos(slope), 0) * (L / 2)
-		P(k, "Block", V(8, L, 2), cf * CFrame.new(mid) * CFrame.Angles(0, 0, s * slope), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
+	-- Kegel aus Dreiecken mit offenem Krater (Fuß 240, Höhe 460, Kraterrand bei 0,9 · Höhe)
+	local R0, H = 240, 460
+	local rimY, rimR = mountain(k, cf, R0, H, rock, nil, "Basalt", "Grosser Vulkan", { n = 10, open = true, RR = { 1, 0.5, 0.2 }, YY = { 0, 0.55, 0.9 } })
+	local crater = P(k, "Cyl", V(rimR * 2, 10, rimR * 2), cf * CFrame.new(0, rimY - 8, 0), hex("#ff6a1a"), "Neon", 0, "Krater")
+	-- Lavaströme laufen vom Kraterrand die Vorderflanke hinab (Rand → mittlerer Ring → Fuß), leicht davor
+	for _, a in ipairs({ -0.35, 0.3 }) do
+		local pts = { { 0.2, 0.9 }, { 0.5, 0.55 }, { 1, 0 } }
+		for i = 1, 2 do
+			local p0 = V(math.sin(a) * R0 * pts[i][1], H * pts[i][2], -math.cos(a) * R0 * pts[i][1] * 0.98 - 4)
+			local p1 = V(math.sin(a) * R0 * pts[i + 1][1], H * pts[i + 1][2], -math.cos(a) * R0 * pts[i + 1][1] * 0.98 - 4)
+			local mid, len = (p0 + p1) / 2, (p1 - p0).Magnitude
+			P(k, "Block", V(10 - i * 2, len, 2), CFrame.lookAt(cf * mid, cf * p1) * CFrame.Angles(-math.pi / 2, 0, 0), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
+		end
 	end
-	local host = P(k, "Block", V(40, 2, 40), cf * CFrame.new(0, 416, -20), WHITE, "SmoothPlastic", 1, "Ausbruch")
+	local host = P(k, "Block", V(40, 2, 40), cf * CFrame.new(0, rimY, 0), WHITE, "SmoothPlastic", 1, "Ausbruch")
 	local e = Instance.new("ParticleEmitter")
 	e.Color = ColorSequence.new(hex("#ffd27a"), hex("#ff3a0a"))
 	e.LightEmission = 1

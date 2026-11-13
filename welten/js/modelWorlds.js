@@ -8,7 +8,7 @@
 //   backdrop  ersetzt die Kulisse aus planet1.js
 
 import * as THREE from 'three';
-import { creek } from './detail.js';
+import { creek, layOnGround } from './detail.js';
 import { MODELS } from './modelCatalog.js';
 import { backdrop as planet1Backdrop } from './planet1.js';
 
@@ -722,8 +722,8 @@ const LAVA = {
   landmark: true, // Lavatempel
   keepBase: true, // Vulkan mit Lavastrom und Lavaseen
   baseSpots: [[-0.8, -0.6, 3], [2.8, 2.2, 0.9], [-3, 2.4, 0.9], [1.2, -3.4, 0.9], [-3.6, -1.6, 0.9], [2.2, -0.4, 1.2]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     const forge = place(ctx, 'building_blacksmith_red', 3.6, { rMin: 5, rMax: R - 3, face: [0, 0] });
     if (forge) around(ctx, [forge.position.x, forge.position.z], [['barrel_large', 0.7], ['keg', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['crates_stacked', 0.7]], 2.6, 3.6);
     const ruin = place(ctx, 'building_destroyed@lava', 3.4, { rMin: 5, rMax: R - 3 });
@@ -734,6 +734,49 @@ const LAVA = {
     scatterModels(ctx, 9, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.8, 4.4, { gap: 0.8 });
     // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
     scatterModels(ctx, 3, ['rock_single_C@lava', 'rock_single_D@lava', 'rock_single_B@lava'], 6.5, 8.5, { rMin: R * 0.55, gap: 0.7 });
+    // wie auf einem echten Lavafeld: Flecken aus Asche und erkalteter Kruste, Felder aus scharfkantigem
+    // Lavageröll, glühende Risse im Boden, kleine Schlackenkegel und zähe, dunkelgrüne Sträucher
+    const inner = R - 2.6;
+    for (let i = 0; i < 16; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#3e3632', 'Slate'], ['#5a4e48', 'Ground'], ['#2a2422', 'Basalt']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.6), c, m);
+    }
+    ctx.scatter(7, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.7), pick(rand, ['#1e1a18', '#2a2422', '#161210']), rand);
+        rock.scale.setScalar(rr(0.45, 0.8));
+        rock.position.set(rr(-0.7, 0.7), 0, rr(-0.7, 0.7));
+        rock.rotation.y = rand() * TAU;
+        g.add(rock);
+      }
+      return g;
+    }, 1, 2, inner);
+    const glow = new THREE.MeshStandardMaterial({ color: '#ff5a14', emissive: '#ff5a14', emissiveIntensity: 1.4 });
+    for (let c = 0; c < 6; c++) {
+      const p0 = ctx.spot(0.4, 3, inner);
+      if (!p0) continue;
+      let [x, z] = p0, a = rand() * TAU;
+      for (let s = 0; s < 5; s++) {
+        const len = rr(0.5, 0.9), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > inner) break;
+        const crack = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.07), glow);
+        layOnGround(crack, ctx.height, (x + nx) / 2, (z + nz) / 2, { yaw: -a, lift: 0.01 });
+        ctx.root.add(crack);
+        x = nx; z = nz; a += rr(-0.9, 0.9);
+      }
+    }
+    ctx.scatter(2, () => {
+      const g = new THREE.Group();
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.2, 1.1, 9, 1, true), new THREE.MeshStandardMaterial({ color: '#4a2a22', flatShading: true }));
+      cone.position.y = 0.5;
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.05, 9), glow);
+      top.position.y = 1.0;
+      g.add(cone, top);
+      return g;
+    }, 1.3, 3, inner);
+    ctx.scatter(8, () => kit.bush(rr(0.22, 0.34), pick(rand, ['#3f6a3a', '#4a7240', '#365e34']), rand), 0.4, 2, inner);
   },
   backdrop(ctx, kit) {
     // keine gestuften Vulkane aus planet1.js: die Fernkulisse von WorldFx hat schon Vulkane

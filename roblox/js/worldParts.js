@@ -170,6 +170,10 @@ export function convertMesh(out, mesh, world) {
       const rt = P.radiusTop, rb = P.radiusBottom, h = P.height, r = Math.max(rt, rb);
       if (P.radialSegments <= 4) return emit(out, mesh, 'Block', S(r * 1.5, h, r * 1.2), lk, ex); // Prisma (Dach)
       if (Math.abs(rt - rb) / r < 0.3) return emit(out, mesh, 'Cylinder', mul(RZ90.clone(), S(h, rt + rb, rt + rb)), lk, ex);
+      // stark verjüngt mit wenigen Ecken (Vulkankegel, Schalen, Turmdächer): Flächen aus Keilen statt Stufen
+      const cu = mesh.userData.rbx || {};
+      if (!cu.sky && !cu.text && P.radialSegments <= 12 && P.heightSegments <= 4)
+        return facetMesh(out, mesh, lk, { facetThick: Math.min(0.14, r * 0.2), name: ex.name || 'Kegel', facetsAll: P.openEnded }, world);
       const n = rt < 0.01 || rb < 0.01 ? 4 : 3;
       for (let i = 0; i < n; i++) {
         const k = (i + 0.5) / n, ri = rb + (rt - rb) * k;
