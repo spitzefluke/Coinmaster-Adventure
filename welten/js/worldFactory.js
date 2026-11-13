@@ -319,9 +319,26 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
   const reserve = (x, z, d) => taken.push([x, z, d]);
   const placed = []; // alles, was per put() auf der Insel steht (für die Lichtung um die Figur)
-  const put = (obj, x, z, { sink = 0.05, rot = true } = {}) => {
+  // Auf Hängen steht ein Gegenstand auf dem tiefsten Punkt unter seiner Grundfläche: so schwebt keine Ecke
+  // über dem Boden (bergauf sitzt er etwas tiefer im Hang, höchstens 0,35). exact: genau auf der Mitte.
+  const fbox = new THREE.Box3(), fsize = new THREE.Vector3();
+  const groundUnder = (obj, x, z, exact) => {
+    const h0 = height(x, z);
+    if (exact) return h0;
+    obj.updateMatrixWorld(true);
+    fbox.setFromObject(obj).getSize(fsize);
+    const r = Math.min(2.5, Math.max(fsize.x, fsize.z) * 0.35);
+    if (!(r > 0.2)) return h0;
+    let low = h0;
+    for (let i = 0; i < 8; i++) {
+      const b = (i / 8) * Math.PI * 2;
+      low = Math.min(low, height(x + Math.cos(b) * r, z + Math.sin(b) * r));
+    }
+    return Math.max(low, h0 - 0.35);
+  };
+  const put = (obj, x, z, { sink = 0.05, rot = true, exact = false } = {}) => {
     placed.push([obj, x, z]);
-    obj.position.set(x, height(x, z) - sink, z);
+    obj.position.set(x, groundUnder(obj, x, z, exact) - sink, z);
     if (rot) obj.rotation.y = rand() * Math.PI * 2;
     obj.traverse((o) => {
       if (o.isMesh) {

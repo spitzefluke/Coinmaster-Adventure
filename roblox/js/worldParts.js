@@ -305,21 +305,39 @@ function terrainSurface(out, built, world) {
   built.groundLow = low;
 }
 
-// Runder Grasrand, der etwas über die Kante hängt
+// Grasrand, der über die Kante hängt: Polster in wechselnder Größe und zwei Tönen, dazwischen ab und zu ein
+// Felsbrocken, der aus der Kante ragt. So wirkt der Rand gewachsen statt wie ein gleichmäßiger Wulst.
 function rimLip(out, built, world) {
-  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.2);
+  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.05);
   const material = GROUND[world.id] || 'SmoothPlastic';
-  const light = shade(vivid(world.ground, 0.25), 0.03, 0.06);
+  const base = vivid(world.ground, 0.25);
+  const tones = [shade(base, 0.03, 0.06), shade(base, 0.02, 0.02), shade(base, 0.03, 0.09)];
+  const rockColor = vivid(world.rock, 0.12), rockMat = ROCK[world.id] || 'Slate';
+  const rand = seededRand(world.id + ':rand');
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2, r = R - 0.15;
+    const a = ((i + (rand() - 0.5) * 0.4) / n) * Math.PI * 2, r = R - 0.12 + (rand() - 0.5) * 0.12;
     const y = Math.max(built.height(Math.cos(a) * (R - 0.5), Math.sin(a) * (R - 0.5)), 0.1);
+    const k = 0.8 + rand() * 0.45;
     out.push({
       shape: 'Ellipsoid', name: 'Rand',
-      pos: [Math.cos(a) * r * STUDS, (y - 0.06) * STUDS, Math.sin(a) * r * STUDS],
+      pos: [Math.cos(a) * r * STUDS, (y - 0.08 + (rand() - 0.5) * 0.06) * STUDS, Math.sin(a) * r * STUDS],
       rot: around(a),
-      size: [1.55 * STUDS, 0.55 * STUDS, 1.15 * STUDS],
-      color: light, material, transparency: 0,
+      size: [1.5 * k * STUDS, 0.5 * (0.85 + rand() * 0.35) * STUDS, 1.1 * k * STUDS],
+      color: tones[Math.floor(rand() * tones.length)], material, transparency: 0,
     });
+    // Felsnase in der Kante (etwa jede elfte Stelle), halb im Rand, leicht schräg
+    if (rand() < 0.09) {
+      const s = 0.5 + rand() * 0.45, rr = R + 0.05;
+      const tilt = new THREE.Matrix4().makeRotationY(-a).multiply(new THREE.Matrix4().makeRotationZ((rand() - 0.5) * 0.6)).multiply(new THREE.Matrix4().makeRotationX((rand() - 0.5) * 0.5));
+      const e = tilt.elements;
+      out.push({
+        shape: 'Block', name: 'Rand',
+        pos: [Math.cos(a) * rr * STUDS, (y - 0.45) * STUDS, Math.sin(a) * rr * STUDS],
+        rot: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
+        size: [s * 1.3 * STUDS, s * 1.1 * STUDS, s * STUDS],
+        color: rockColor, material: rockMat, transparency: 0,
+      });
+    }
   }
 }
 

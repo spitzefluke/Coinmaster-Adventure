@@ -37,3 +37,20 @@ export function creek(ctx, kit, curve, { width = 0.9, bank = '#5d6b3a', water = 
   ribbon(ctx, curve, { width, thick: 0.1, lift: 0.04, material: kit.M(water, { roughness: 0.08, emissive: '#1f6fae', emissiveIntensity: 0.2 }), name: 'Bach' });
   ribbon(ctx, curve, { width: width * 0.28, thick: 0.04, lift: 0.055, segs: 32, material: kit.M(light, { roughness: 0.05, emissive: light, emissiveIntensity: 0.15 }), name: 'Bach' });
 }
+
+// Normale des Geländes an (x, z) aus dem Höhenverlauf
+export function groundNormal(height, x, z, e = 0.15) {
+  const dx = height(x + e, z) - height(x - e, z), dz = height(x, z + e) - height(x, z - e);
+  return new THREE.Vector3(-dx, 2 * e, -dz).normalize();
+}
+
+// Flaches Teil (Wegplatte, Stein, Krater, Teich) an den Boden anlegen: Drehung um die Hochachse (yaw), dann so
+// geneigt, dass es auf dem Hang aufliegt. Mittelpunkt auf Bodenhöhe + lift. Nichts schwebt, nichts steckt im Hang.
+const UP = new THREE.Vector3(0, 1, 0);
+export function layOnGround(obj, height, x, z, { yaw = 0, lift = 0 } = {}) {
+  const n = groundNormal(height, x, z);
+  const tilt = new THREE.Quaternion().setFromUnitVectors(UP, n);
+  obj.quaternion.copy(tilt.multiply(new THREE.Quaternion().setFromAxisAngle(UP, yaw)));
+  obj.position.set(x, height(x, z) + lift, z);
+  return obj;
+}
