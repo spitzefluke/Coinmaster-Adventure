@@ -136,7 +136,7 @@ const TIEFSEEGRABEN = {
       anims.push((t) => (jelly.position.y = base + Math.sin(t * 0.6 + ph) * 0.35));
     }
     scatterModels(ctx, 8, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer'], 2.6, 4.2, { gap: 0.8 });
-    scatterModels(ctx, 2, ['mountain_A@meer', 'mountain_C@meer'], 1.3, 1.7, { rMin: R * 0.6, gap: 0.7 });
+    scatterModels(ctx, 2, ['rock_single_C@meer', 'rock_single_D@meer'], 6, 7.5, { rMin: R * 0.6, gap: 0.7 }); // Felsbrocken statt Sechseck-Bergplatten
     const loot = clearing(ctx, 2.2, 4, R - 3);
     if (loot) {
       stand(ctx, model('chest_gold', 0.8), loot[0], loot[1]);

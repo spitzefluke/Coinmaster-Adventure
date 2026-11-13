@@ -261,9 +261,14 @@ local function cloudBank(k, n, color, transparency, y0, y1)
 			local y = rnd(k, y0 or 30, y1 or 150)
 			local x, z = polar(a, r)
 			local cf = facing(k, x, y, z)
-			for j = 0, 3 do
-				local s = rnd(k, 34, 60)
-				P(k, "Ball", V(s * 1.6, s * 0.8, s), cf * CFrame.new((j - 1.5) * s * 0.7, rnd(k, -6, 8), rnd(k, -8, 8)), color, "SmoothPlastic", transparency or 0, "Wolkenbank")
+			-- Haufenwolke: flacher, breiter Sockel, darauf drei Bäusche (Mitte am höchsten), unten etwas dunkler.
+			-- Durchscheinende Wolken nur sehr zart: überlappende Kugeln wirkten sonst wie Blasen.
+			local s, t = rnd(k, 40, 62), math.min(transparency or 0, 0.12)
+			local under = color:Lerp(hex("#b8c4d8"), 0.22)
+			P(k, "Ball", V(s * 3.2, s * 0.62, s * 1.5), cf * CFrame.new(0, -s * 0.12, 0), under, "SmoothPlastic", t, "Wolkenbank")
+			for j = -1, 1 do
+				local q = s * (j == 0 and rnd(k, 1.15, 1.35) or rnd(k, 0.8, 1))
+				P(k, "Ball", V(q * 1.2, q, q), cf * CFrame.new(j * s * 0.95 + rnd(k, -6, 6), q * (j == 0 and 0.32 or 0.18), rnd(k, -6, 6)), color, "SmoothPlastic", t, "Wolkenbank")
 			end
 		end
 	end)
@@ -363,19 +368,88 @@ end
 -- ── Bausteine der Ferne (cf = Grund auf Meereshöhe, −Z zur Insel; s = Größe; c = getönte Farbe) ──
 local EL = {}
 
+-- Dreieck aus zwei Keilen (Punkte in Weltkoordinaten), wie der Boden der Inseln
+local function tri(k, a, b, c, color, material, name, transparency)
+	local ab, ac, bc = b - a, c - a, c - b
+	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+	if abd > acd and abd > bcd then
+		a, c = c, a
+	elseif acd > bcd and acd > abd then
+		a, b = b, a
+	end
+	ab, ac, bc = b - a, c - a, c - b
+	local right = ac:Cross(ab).Unit
+	local up = bc:Cross(right).Unit
+	local back = bc.Unit
+	local height = math.abs(ab:Dot(up))
+	P(k, "Wedge", V(1.5, height, math.abs(ab:Dot(back))), CFrame.fromMatrix((a + b) / 2, right, up, back), color, material, transparency or 0, name)
+	P(k, "Wedge", V(1.5, height, math.abs(ac:Dot(back))), CFrame.fromMatrix((a + c) / 2, -right, up, -back), color, material, transparency or 0, name)
+end
+
+-- Berg aus Dreiecken: Ring am Fuß, zwei verdrehte Ringe darüber, Spitze. Flächen abwechselnd hell und dunkel
+-- (Grate), mit Schnee über einer zackigen Grenze. Nur die Seite zur Insel (−Z) wird gebaut, die Rückseite sieht
+-- man nie. o: n (Ecken), RR/YY (Radius/Höhe der Ringe), open (oben offen: Krater), plateau (flache Kuppe),
+-- transparency. Gibt Höhe und Radius des obersten Rings zurück (Krater, Thron).
+local function mountain(k, cf, r, h, c, cap, material, name, o)
+	o = o or {}
+	local n = o.n or 7
+	local RR, YY = o.RR or { 1, 0.55, 0.26 }, o.YY or { 0, 0.5, 0.8 }
+	local tw, rings = rnd(k, 0, TAU), {}
+	for i = 1, 3 do
+		local ring = {}
+		for j = 0, n - 1 do
+			local a = tw + j / n * TAU + (i - 1) * 0.33 + rnd(k, -0.12, 0.12)
+			local rr = r * RR[i] * (i == 3 and (o.open or o.plateau) and rnd(k, 0.95, 1.05) or rnd(k, 0.82, 1.15))
+			local y = i == 1 and -12 or h * YY[i] * ((i == 3 and (o.open or o.plateau)) and 1 or rnd(k, 0.93, 1.07))
+			ring[j] = cf * V(math.cos(a) * rr, y, math.sin(a) * rr)
+		end
+		rings[i] = ring
+	end
+	local tip = o.plateau and cf * V(0, h * YY[3], 0) or cf * V(rnd(k, -0.1, 0.1) * r, h, rnd(k, -0.1, 0.1) * r)
+	local shade = { c:Lerp(WHITE, 0.1), c, c:Lerp(DARK, 0.12) }
+	local snow = cap and { cap, cap:Lerp(hex("#c4d2e6"), 0.35) }
+	local mat, tr = material or "Rock", o.transparency or 0
+	local function seen(p) return cf:PointToObjectSpace(p).Z < r * 0.35 end
+	local function face(a, b, d, j, white)
+		if not seen((a + b + d) / 3) then return end
+		if white and snow then tri(k, a, b, d, snow[j % 2 + 1], "Snow", "Schneekappe", tr)
+		else tri(k, a, b, d, shade[j % 3 + 1], mat, name or "Berg", tr) end
+	end
+	for i = 1, 2 do
+		local A, B = rings[i], rings[i + 1]
+		for j = 0, n - 1 do
+			local j1 = (j + 1) % n
+			-- Schnee nur oben und zackig: Dreiecke mit zwei oberen Ecken öfter weiß als die mit zwei unteren
+			face(A[j], B[j], B[j1], j, i == 2 and rnd(k, 0, 1) < 0.6)
+			face(A[j], B[j1], A[j1], j + 1, i == 2 and rnd(k, 0, 1) < 0.15)
+		end
+	end
+	if not o.open then
+		for j = 0, n - 1 do
+			local a, b = rings[3][j], rings[3][(j + 1) % n]
+			if o.plateau then
+				if seen((a + b + tip) / 3) then tri(k, a, tip, b, snow and snow[1] or shade[1], snow and "Snow" or mat, name or "Berg", tr) end
+			else
+				face(a, tip, b, j, true)
+			end
+		end
+	end
+	return h * YY[3], r * RR[3]
+end
+
 function EL.peak(k, cf, s, c, cap, material)
 	local h, w = 330 * s, 230 * s
-	prism(k, cf * CFrame.new(0, h / 2 - 10, 0), w, h, w * 0.5, c, material or "Rock", 0, "Berg")
-	if cap then
-		local ch = h * 0.3
-		prism(k, cf * CFrame.new(0, h - 10 - ch / 2, -2), w * 0.3 + 2, ch + 1, w * 0.5 + 4, cap, "Snow", 0, "Schneekappe")
-	end
-	prism(k, cf * CFrame.new(w * 0.45, h * 0.25, -6), w * 0.6, h * 0.55, w * 0.35, c:Lerp(DARK, 0.08), material or "Rock", 0, "Vorberg")
+	mountain(k, cf, w * 0.55, h, c, cap, material)
+	-- Vorberg seitlich davor, ohne Schnee
+	mountain(k, cf * CFrame.new(w * 0.5, 0, -w * 0.15), w * 0.38, h * 0.5, c:Lerp(DARK, 0.06), nil, material, "Vorberg")
 end
 -- flacher Bergkamm (Stufen in der Ferne)
 function EL.ridge(k, cf, s, c)
 	local h, w = 200 * s, 360 * s
-	prism(k, cf * CFrame.new(0, h / 2 - 10, 0), w, h, w * 0.3, c, "Rock", 0, "Kamm")
+	-- Kamm aus drei flachen Bergen, die ineinander übergehen
+	for j = -1, 1 do
+		mountain(k, cf * CFrame.new(j * w * 0.32, 0, math.abs(j) * 20), w * 0.3, h * (j == 0 and 1 or rnd(k, 0.6, 0.8)), c:Lerp(DARK, math.abs(j) * 0.05), nil, "Rock", "Kamm", { n = 6 })
+	end
 end
 -- Hügel, der aus dem Wolkenmeer ragt; gibt die Höhe der Kuppe zurück
 local function mound(k, cf, w, h, c, material)
@@ -465,8 +539,9 @@ function EL.bridge(k, cf, s, c)
 end
 function EL.spike(k, cf, s, c, material, transparency)
 	local h, w = 260 * s, 80 * s
-	prism(k, cf * CFrame.new(0, h / 2, 0), w, h, w * 0.6, c, material or "Ice", transparency or 0, "Spitze")
-	prism(k, cf * CFrame.new(w * 0.55, h * 0.3, -4), w * 0.55, h * 0.6, w * 0.4, c:Lerp(WHITE, 0.15), material or "Ice", transparency or 0, "Spitze")
+	local o = { n = 5, RR = { 1, 0.6, 0.3 }, transparency = transparency }
+	mountain(k, cf, w * 0.55, h, c, nil, material or "Ice", "Spitze", o)
+	mountain(k, cf * CFrame.new(w * 0.6, 0, -6), w * 0.38, h * 0.6, c:Lerp(WHITE, 0.15), nil, material or "Ice", "Spitze", o)
 end
 -- treibende Eisscholle
 function EL.floe(k, cf, s, c)
@@ -478,8 +553,9 @@ function EL.floe(k, cf, s, c)
 end
 function EL.volcano(k, cf, s, c, lava)
 	local h, w = 200 * s, 230 * s
-	prism(k, cf * CFrame.new(0, h / 2, 0), w, h, w * 0.6, c, "Basalt", 0, "Vulkan")
-	local glow = P(k, "Cyl", V(w * 0.2, 8, w * 0.28), cf * CFrame.new(0, h - h * 0.12, -w * 0.05), lava, "Neon", 0, "Glut")
+	-- Kegel mit offenem Krater, darin glüht die Lava
+	local rimY, rimR = mountain(k, cf, w * 0.5, h, c, nil, "Basalt", "Vulkan", { open = true, RR = { 1, 0.5, 0.2 }, YY = { 0, 0.55, 0.9 } })
+	local glow = P(k, "Cyl", V(rimR * 2, 8, rimR * 2), cf * CFrame.new(0, rimY - 6, 0), lava, "Neon", 0, "Glut")
 	pulse(k, { glow }, 0.1, 0.1, 0.7)
 	local host = P(k, "Block", V(20, 2, 20), cf * CFrame.new(0, h, 0), WHITE, "SmoothPlastic", 1, "Rauchquelle")
 	smoke(k, host, { Color3.fromRGB(70, 50, 45), Color3.fromRGB(40, 30, 30) }, 24, 0.8, 10)
@@ -507,13 +583,19 @@ function EL.lavaLake(k, cf, s, c, lava)
 end
 -- Rauchwand mit rotem Glühen von unten
 function EL.smokeWall(k, cf, s, c, glow)
-	P(k, "Ball", V(260 * s, 260 * s, 120), cf * CFrame.new(0, 110 * s, 0), c, "SmoothPlastic", 0.35, "Rauchwand")
+	-- Rauchbank: flach und breit über dem Glutmeer, darauf seitlich versetzte Bäusche (undurchsichtig:
+	-- durchscheinende, überlappende Kugeln wirkten wie Blasen)
+	P(k, "Ball", V(340 * s, 110 * s, 140), cf * CFrame.new(0, 60 * s, 0), c:Lerp(DARK, 0.2), "SmoothPlastic", 0, "Rauchwand")
+	for j = -1, 1 do
+		local q = (j == 0 and 130 or rnd(k, 85, 105)) * s
+		P(k, "Ball", V(q * 1.4, q, q * 0.8), cf * CFrame.new(j * 110 * s + rnd(k, -15, 15) * s, 60 * s + q * (j == 0 and 0.45 or 0.3), 10), c:Lerp(DARK, 0.08), "SmoothPlastic", 0, "Rauchwand")
+	end
 	local band = P(k, "Block", V(240 * s, 30, 2), cf * CFrame.new(0, 40, -62), glow, "Neon", 0.4, "Glut")
 	pulse(k, { band }, 0.45, 0.15, 0.3)
 end
 function EL.stalagmite(k, cf, s, c, glowC)
 	local h = 180 * s
-	prism(k, cf * CFrame.new(0, h / 2, 0), 70 * s, h, 50 * s, c, "Slate", 0, "Stalagmit")
+	mountain(k, cf, 36 * s, h, c, nil, "Slate", "Stalagmit", { n = 5, RR = { 1, 0.5, 0.22 }, YY = { 0, 0.45, 0.78 } })
 	for j = 1, 3 do
 		local m = P(k, "Ball", V(16, 9, 16), cf * CFrame.new(rnd(k, -30, 30) * s, rnd(k, 30, 80), -28 * s), glowC, "Neon", 0.1, "Leuchtpilz")
 		pulse(k, { m }, 0.15, 0.12, 0.8)
@@ -731,28 +813,38 @@ local HELD_BUILD = {}
 function HELD_BUILD.spawn(k)
 	local cf = heldAt(k)
 	local goldC = hex("#ffcf4a")
-	prism(k, cf * CFrame.new(0, 200, 0), 380, 420, 200, goldC, "Foil", 0, "Muenzberg")
-	prism(k, cf * CFrame.new(150, 110, -10), 220, 240, 150, goldC:Lerp(DARK, 0.1), "Foil", 0, "Muenzberg")
+	-- Berg aus Dreiecken (Mitte 80 hinter dem Platz, Fuß 190): der Münzfall folgt der vorderen Flanke
+	mountain(k, cf * CFrame.new(0, 0, 80), 190, 420, goldC, nil, "Foil", "Muenzberg")
+	mountain(k, cf * CFrame.new(170, 0, 60), 120, 240, goldC:Lerp(DARK, 0.1), nil, "Foil", "Muenzberg")
+	local top, bottom = V(-40, 330, 80 - 55 - 20), V(-40, 0, 80 - 190 - 20)
 	for i = 1, 14 do
 		local coin = P(k, "Cyl", V(18, 3, 18), cf, hex("#ffe07a"), "Neon", 0.1, "Muenze")
 		local ph = i / 14
 		anim(k, function(t)
 			local u = (t * 0.12 + ph) % 1
-			coin.CFrame = cf * CFrame.new(-40 + math.sin(i) * 12, 330 - u * 330, -110 - u * 20) * CFrame.Angles(t * 2 + i, 0, 0.3) * UP
+			local p = top:Lerp(bottom, u)
+			coin.CFrame = cf * CFrame.new(p.X + math.sin(i) * 12, p.Y, p.Z - 6) * CFrame.Angles(t * 2 + i, 0, 0.3) * UP
 			coin.Transparency = u > 0.9 and (u - 0.9) * 10 or 0.1
 		end)
 	end
-	P(k, "Block", V(40, 330, 4), cf * CFrame.new(-40, 165, -104), hex("#ffe07a"), "Neon", 0.75, "Muenzfall")
+	local slope = math.atan2(top.Z - bottom.Z, top.Y - bottom.Y)
+	P(k, "Block", V(40, (top - bottom).Magnitude, 4), cf * CFrame.new((top + bottom) / 2) * CFrame.Angles(slope, 0, 0), hex("#ffe07a"), "Neon", 0.75, "Muenzfall")
 end
 
 -- Normal: großer Wasserfallberg, der Bach fällt ins Wolkenmeer
 function HELD_BUILD.normal(k)
 	local cf = heldAt(k)
-	prism(k, cf * CFrame.new(0, 230, 0), 360, 480, 200, hex("#6d8aa3"), "Rock", 0, "Wasserfallberg")
-	prism(k, cf * CFrame.new(0, 400, -3), 120, 150, 206, WHITE, "Snow", 0, "Schneekappe")
-	local fall = P(k, "Block", V(44, 330, 3), cf * CFrame.new(-30, 160, -104), hex("#bfe8ff"), "Neon", 0.4, "Wasserfall")
+	-- Berg aus Dreiecken (Fuß 200, Höhe 480): vorn liegt die Flanke bei y = 0 etwa 200, bei y = 300 etwa 80
+	-- Studs vor der Mitte; der Wasserfall folgt dieser Schräge knapp davor
+	mountain(k, cf * CFrame.new(0, 0, 60), 200, 480, hex("#6d8aa3"), WHITE, "Rock", "Wasserfallberg")
+	mountain(k, cf * CFrame.new(-190, 0, 90), 130, 260, hex("#62809a"), nil, "Rock", "Vorberg")
+	mountain(k, cf * CFrame.new(200, 0, 70), 150, 320, hex("#6886a0"), WHITE, "Rock", "Vorberg")
+	local top, bottom = V(-30, 300, 60 - 80 - 22), V(-30, 0, 60 - 200 - 22)
+	local len = (top - bottom).Magnitude
+	local slope = math.atan2(top.Z - bottom.Z, top.Y - bottom.Y)
+	local fall = P(k, "Block", V(44, len, 3), cf * CFrame.new((top + bottom) / 2) * CFrame.Angles(slope, 0, 0), hex("#bfe8ff"), "Neon", 0.4, "Wasserfall")
 	anim(k, function(t) fall.Transparency = 0.38 + math.sin(t * 1.2) * 0.08 end)
-	local host = P(k, "Block", V(60, 2, 20), cf * CFrame.new(-30, 10, -110), WHITE, "SmoothPlastic", 1, "Gischt")
+	local host = P(k, "Block", V(60, 2, 20), cf * CFrame.new(bottom.X, 10, bottom.Z - 6), WHITE, "SmoothPlastic", 1, "Gischt")
 	smoke(k, host, { WHITE, hex("#e8f6ff") }, 22, 2, 6)
 end
 
@@ -911,8 +1003,9 @@ end
 function HELD_BUILD.mars(k)
 	local cf = heldAt(k, 560)
 	local c = hex("#a84a24")
-	prism(k, cf * CFrame.new(0, 130, 0), 760, 260, 220, c, "Sandstone", 0, "Olympus Mons")
-	P(k, "Cyl", V(140, 10, 100), cf * CFrame.new(0, 255, -10), c:Lerp(DARK, 0.25), "Sandstone", 0, "Caldera")
+	-- flacher Schildvulkan mit Caldera
+	local rimY, rimR = mountain(k, cf * CFrame.new(0, 0, 60), 380, 260, c, nil, "Sandstone", "Olympus Mons", { n = 9, open = true, RR = { 1, 0.62, 0.3 }, YY = { 0, 0.55, 1 } })
+	P(k, "Cyl", V(rimR * 2, 10, rimR * 2), cf * CFrame.new(0, rimY - 8, 60), c:Lerp(DARK, 0.25), "Sandstone", 0, "Caldera")
 	local host = P(k, "Block", V(500, 2, 40), cf * CFrame.new(0, 40, -120), WHITE, "SmoothPlastic", 1, "Staub")
 	local e = smoke(k, host, { hex("#d8784a"), hex("#a84a24") }, 30, 1.5, 12)
 	e.Acceleration = V(6, 0, 0)
@@ -1069,8 +1162,8 @@ end
 -- Götterthron: Thron auf dem höchsten Gipfel, die Sonnenscheibe dahinter glüht
 function HELD_BUILD.goetterthron(k)
 	local cf = heldAt(k, 540)
-	prism(k, cf * CFrame.new(0, 240, 0), 400, 520, 220, hex("#d8c090"), "Rock", 0, "Hoechster Gipfel")
-	prism(k, cf * CFrame.new(0, 420, -3), 140, 160, 226, hex("#fff8e8"), "Snow", 0, "Gipfelschnee")
+	-- Gipfel mit flacher, verschneiter Kuppe (dort steht der Thron)
+	mountain(k, cf * CFrame.new(0, 0, -20), 200, 500, hex("#d8c090"), hex("#fff8e8"), "Rock", "Hoechster Gipfel", { plateau = true, RR = { 1, 0.5, 0.32 }, YY = { 0, 0.55, 1 } })
 	local top = cf * CFrame.new(0, 500, -20)
 	P(k, "Block", V(60, 26, 40), top * CFrame.new(0, 13, 0), hex("#ffcf4a"), "Foil", 0, "Thron")
 	P(k, "Block", V(60, 80, 10), top * CFrame.new(0, 50, 20), hex("#ffcf4a"), "Foil", 0, "Thronlehne")
