@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -1129,10 +1129,49 @@ function bench() {
   for (const x of [-0.38, 0.38]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.28), M('#2a2830')), x, 0.15, 0));
   return g;
 }
+// Kegel aus n Dreiecken (ohne Boden), Fuß bei y = 0: in Roblox Fläche für Fläche aus Keilen statt gestufter
+// Zylinder. tw: Drehung, wob: Unruhe im Fußring
+function coneFacets(r, h, n, mat, rand = null, { wob = 0, tw = 0, name = null } = {}) {
+  const pts = [];
+  const ring = Array.from({ length: n }, (_, i) => {
+    const a = tw + (i / n) * Math.PI * 2, rr = r * (1 + (rand ? (rand() - 0.5) * wob : 0));
+    return [Math.cos(a) * rr, 0, Math.sin(a) * rr];
+  });
+  for (let i = 0; i < n; i++) pts.push(...ring[i], 0, h, 0, ...ring[(i + 1) % n]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat);
+  m.userData.rbx = { facets: true, facetThick: Math.min(0.08, r * 0.3), ...(name ? { name } : {}) };
+  return m;
+}
 function iceSpike(h, rand) {
-  const m = new THREE.Mesh(new THREE.ConeGeometry(0.22, h, 6), E('#bfe8ff', 0.25, { transparent: true, opacity: 0.85, roughness: 0.1 }));
-  m.position.y = h / 2;
+  const m = coneFacets(0.22, h, 6, E('#bfe8ff', 0.25, { transparent: true, opacity: 0.85, roughness: 0.1 }), rand, { wob: 0.3, tw: rand() * 3, name: 'Eisspitze' });
   m.rotation.set((rand() - 0.5) * 0.3, 0, (rand() - 0.5) * 0.3);
+  return group(m);
+}
+// verschneite Tanne: dunkelgrüne Kegel-Etagen, auf jeder liegt oben eine Schneehaube
+function snowPine(h, c, rand) {
+  const g = group(trunk(h * 0.22, '#5a3e28', h * 0.05));
+  const green = M(c), snow = M('#f4f9ff');
+  for (let i = 0; i < 3; i++) {
+    const r = (0.78 - i * 0.2) * h * 0.36, th = h * 0.4, y = h * (0.18 + i * 0.22), tw = rand() * 3;
+    const tier = coneFacets(r, th, 7, green, rand, { wob: 0.25, tw, name: 'Tanne' });
+    tier.position.y = y;
+    const cap = coneFacets(r * 0.62, th * 0.62, 7, snow, rand, { wob: 0.2, tw, name: 'Schnee' });
+    cap.position.y = y + th * 0.4;
+    cap.scale.setScalar(1.04);
+    g.add(tier, cap);
+  }
+  return g;
+}
+// Schneewehe: flacher, langgezogener Hügel
+function snowDrift(s, rand) {
+  const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.2), M('#f6faff'));
+  m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Schneewehe' };
+  m.scale.set(1.6, 0.32, 0.9);
+  m.rotation.y = rand() * 3;
+  m.position.y = s * 0.05;
   return group(m);
 }
 function sled() {

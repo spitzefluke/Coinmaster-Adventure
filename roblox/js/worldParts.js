@@ -178,6 +178,11 @@ export function convertMesh(out, mesh, world) {
       return;
     }
     case 'ConeGeometry': {
+      // Kegel auf der Insel (Tannen, Dächer, Spitzen) mit wenigen Ecken: Fläche für Fläche aus Keilen, echte Kanten
+      // statt gestufter Zylinder („Torte“). Der Boden zeigt nach unten und fällt weg.
+      const ru = mesh.userData.rbx || {};
+      if (!ru.sky && !ru.tiers && !ru.text && P.radialSegments <= 12)
+        return facetMesh(out, mesh, lk, { facetThick: Math.min(0.12, P.radius * 0.25), name: ex.name || 'Kegel' }, world);
       // große Kegel (Berge der Kulisse) mit mehr Stufen, damit sie nicht wie eine Torte aussehen
       const r = P.radius, h = P.height, n = mesh.userData.rbx?.tiers || 4;
       for (let i = 0; i < n; i++) {

@@ -888,11 +888,18 @@ end
 -- Eis: Gletscherwand mit blauen Spalten
 function HELD_BUILD.eis(k)
 	local cf = heldAt(k, 540)
-	P(k, "Block", V(520, 360, 60), cf * CFrame.new(0, 180, 0), hex("#e8f6ff"), "Glacier", 0, "Gletscherwand")
-	for j = 0, 3 do prism(k, cf * CFrame.new(-210 + j * 140, 380 + (j % 2) * 30, 0), 140, 70 + (j % 2) * 40, 62, WHITE, "Snow", 0, "Gletscherkamm") end
-	local cracks = collect(k, function()
-		for j = 1, 7 do P(k, "Block", V(6, rnd(k, 120, 260), 2), cf * CFrame.new(-220 + j * 55, rnd(k, 120, 220), -31) * CFrame.Angles(0, 0, rnd(k, -0.2, 0.2)), hex("#5ab8ff"), "Neon", 0.25, "Spalte") end
-	end)
+	-- Gletscher aus Eistürmen (Séracs) nebeneinander, verschneite Kuppen, dazwischen leuchtende Spalten.
+	-- Jeder Turm ist ein Berg aus Dreiecken; die Spalten liegen vorn auf seiner Flanke.
+	local cracks = {}
+	for j = -3, 3 do
+		local h, r = rnd(k, 280, 400) - math.abs(j) * 25, rnd(k, 62, 78)
+		local x, z = j * 72 + rnd(k, -8, 8), math.abs(j) * 14 + rnd(k, -6, 6)
+		mountain(k, cf * CFrame.new(x, 0, z), r, h, hex("#d8f0ff"):Lerp(hex("#a8d8f4"), (j + 3) % 2 * 0.4), WHITE, "Glacier", "Gletscherwand", { n = 5, RR = { 1, 0.62, 0.3 }, YY = { 0, 0.55, 0.85 } })
+		-- Spalte auf der Vorderflanke: bei Höhe y liegt die Flanke etwa r · (1 − 0,8 · y / h) vor der Mitte
+		local y = h * rnd(k, 0.25, 0.4)
+		local slope = math.atan2(r * 0.8, h)
+		table.insert(cracks, P(k, "Block", V(5, h * 0.35, 2), cf * CFrame.new(x + rnd(k, -12, 12), y, z - r * (1 - 0.8 * y / h) - 1) * CFrame.Angles(-slope, 0, rnd(k, -0.15, 0.15)), hex("#5ab8ff"), "Neon", 0.25, "Spalte"))
+	end
 	pulse(k, cracks, 0.35, 0.15, 0.3)
 end
 

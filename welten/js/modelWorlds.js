@@ -684,8 +684,8 @@ const EIS = {
   landmark: true, // Eispalast
   keepBase: true, // Iglu, Kristalle, Schneemann, gefrorener See
   baseSpots: [[-1.5, -1, 1.5], [1.8, 1.4, 0.7], [1.6, -2, 1.4]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rr } = ctx;
     place(ctx, 'building_tower_A_blue@eis', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
     const camp = clearing(ctx, 3.2, 4, R - 3);
     if (camp) {
@@ -695,6 +695,18 @@ const EIS = {
     scatterModels(ctx, 6, ['trees_A_large@eis', 'trees_A_medium@eis', 'trees_A_small@eis'], 2.3, 2.8, { gap: 0.6 });
     scatterModels(ctx, 10, ['tree_single_A@eis', 'tree_single_B@eis'], 2.6, 3.4, { gap: 0.75 });
     scatterModels(ctx, 6, ['rock_single_A@eis', 'rock_single_B@eis', 'rock_single_C@eis', 'rock_single_E@eis'], 2.6, 4, { gap: 0.8 });
+    // Kontrast wie im Gebirge: dunkle Tannen mit Schneehauben, dunkler Fels ragt aus dem Schnee, Schneewehen
+    const inner = R - 2.6;
+    ctx.scatter(9, () => kit.snowPine(rr(1.8, 2.8), pick(ctx.rand, ['#2f5a3a', '#355f40', '#2a5236']), ctx.rand), 0.8, 3, inner);
+    ctx.scatter(7, () => {
+      const g = kit.rockMesh(rr(0.45, 0.8), pick(ctx.rand, ['#5a6270', '#4e5562']), ctx.rand);
+      const cap = kit.snowDrift(0.4, ctx.rand);
+      cap.position.y = 0.32;
+      cap.scale.setScalar(0.9);
+      g.add(cap);
+      return g;
+    }, 0.6, 2, inner);
+    ctx.scatter(10, () => kit.snowDrift(rr(0.6, 1.1), ctx.rand), 0.7, 2, inner);
   },
   backdrop(ctx) {
     neighborIsles(ctx, { n: 6, snow: true, peak: 0.8, trees: ['tree_single_A@eis', 'tree_single_B@eis', 'trees_A_medium@eis', 'trees_A_small@eis'] });
