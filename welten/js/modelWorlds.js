@@ -1126,8 +1126,8 @@ const MARS = {
 const SATURN = {
   landmark: true, // Sternwarte
   keepBase: true, // Ring um die Insel, Obsidian, Kristalle
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     // Handelsposten: drei Frachtlager um einen Landeplatz
     const hub = clearing(ctx, 6, 4, R - 5);
     if (hub) {
@@ -1137,6 +1137,37 @@ const SATURN = {
     }
     scatterModels(ctx, 2, ['structure_low', 'space_lights'], 2.4, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'saturn');
+    // erst nach Handelsposten und Sternwarte (die brauchen Platz)
+    // Sandsteinwüste wie im Colorado-Plateau: ein großer Felsbogen, geschichtete Tafelfelsen in Ocker- und
+    // Rosttönen, glatte Sandsteinplatten (Slickrock), Sandrippeln und zähe Wüstensträucher
+    const inner = R - 2.6, bands = ['#c88a52', '#e0b07a', '#b8703e', '#d89a62', '#a8643a'];
+    groundPatches(ctx, 14, [['#d8a868', 'Sand'], ['#c88a52', 'Rock'], ['#e6c08a', 'Sand'], ['#b07a48', 'Ground']]);
+    const archAt = ctx.spot(2.8, 4, inner) || ctx.spot(2.2, 3, inner);
+    if (archAt) {
+      ctx.reserve(archAt[0], archAt[1], 2.6);
+      // quer zur Insel gestellt: von der Mitte aus blickt man durch den Bogen
+      const arch = kit.rockArch(2.3, 0.4, bands, rand);
+      ctx.put(arch, archAt[0], archAt[1], { rot: false });
+      arch.rotation.y = -Math.atan2(archAt[1], archAt[0]) - Math.PI / 2;
+    }
+    ctx.scatter(5, () => kit.butte(rr(1.6, 3.2), rr(0.6, 1), bands, rand), 1.2, 3, inner);
+    ctx.scatter(9, () => {
+      const m = kit.rockMesh(rr(0.6, 1), pick(rand, ['#d8a868', '#c88a52']), rand);
+      m.scale.set(rr(1.6, 2.4), 0.35, rr(1.2, 1.8));
+      return m;
+    }, 1.2, 2, inner);
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#e6c08a', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.5, 0.18, 2.6);
+        m.position.set(i * 0.42, 0, rr(-0.1, 0.1));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    ctx.scatter(10, () => kit.bush(rr(0.18, 0.3), pick(rand, ['#6a7a3a', '#7a8a48', '#5a6a32']), rand), 0.35, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'saturn');

@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -660,6 +660,41 @@ function fallenLog(len, r, c, rand, moss = '#5fae3a') {
     mm.position.set((rand() - 0.5) * len * 0.6, r * 1.45, 0);
     g.add(mm);
   }
+  return g;
+}
+// Felsbogen aus kantigen Blöcken entlang eines Halbkreises (in Roblox Flächen aus Keilen statt einer glatten
+// Röhre), an den Füßen dicker, oben schmaler, in mehreren Steintönen. span: Radius, w: Blockgröße
+function rockArch(span, w, tones, rand) {
+  const g = new THREE.Group();
+  const n = Math.max(8, Math.round(span * 3.5));
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI * (i / n), foot = Math.abs(Math.cos(a));
+    const r = w * (1 + foot * 0.55 + rand() * 0.25);
+    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.35), M(tones[i % tones.length]));
+    b.userData.rbx = { facets: true, facetThick: Math.min(0.18, r * 0.2), name: 'Felsbogen' };
+    b.position.set(Math.cos(a) * span, Math.sin(a) * span - w * 0.15, (rand() - 0.5) * w * 0.35);
+    b.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+    b.castShadow = true;
+    g.add(b);
+  }
+  return g;
+}
+// geschichteter Tafelfelsen (Hoodoo, Butte): Scheiben in Bänderfarben, nach oben schmaler, mit Deckplatte
+function butte(h, w, bands, rand) {
+  const g = new THREE.Group();
+  const n = 4 + Math.floor(rand() * 3);
+  let y = 0;
+  for (let i = 0; i < n; i++) {
+    const th = (h / n) * (0.8 + rand() * 0.4), k = 1 - (i / n) * 0.35;
+    const seg = new THREE.Mesh(jitter(new THREE.CylinderGeometry(w * k * 0.92, w * k, th, 8), rand, w * 0.08), M(bands[i % bands.length]));
+    seg.position.y = y + th / 2;
+    seg.rotation.y = rand() * 3;
+    g.add(seg);
+    y += th;
+  }
+  const cap = new THREE.Mesh(jitter(new THREE.CylinderGeometry(w * 0.78, w * 0.7, h * 0.08, 8), rand, w * 0.06), M(bands[0]));
+  cap.position.y = y + h * 0.04;
+  g.add(cap);
   return g;
 }
 // Blumengruppe: mehrere Blumen einer Farbe dicht beieinander (so wachsen sie auf Wiesen)
@@ -1782,7 +1817,7 @@ const EXTRAS = {
     scatter(4, () => solarPanel(), 0.6, 2, R - 2.6); // feste Anzahl (vorher mit der Inselfläche vervielfacht: 28 Paneele)
   },
   saturn({ scatter, rand, rr }) {
-    scatter(4, () => obsidian(rr(0.6, 1), rand), 0.4);
+    scatter(4, () => obsidian(rr(0.6, 1), rand), 0.4, 2, R - 2.6); // feste Anzahl (vorher 28)
   },
   alien({ scatter }) {
     const cols = ['#7aff5a', '#5affd8', '#ff7ae0'];
@@ -2244,20 +2279,7 @@ const BUILDERS = {
   },
 
   hoehle({ put, scatter, rand, rr, root, anims, world }) {
-    // Felsbogen aus kantigen Blöcken entlang eines Halbkreises (in Roblox Flächen aus Keilen statt einer
-    // glatten Röhre), unten dicker, oben schmaler, in drei Steintönen
-    const archG = new THREE.Group();
-    const tones = ['#3a3446', '#443c52', '#322c3e'];
-    for (let i = 0; i <= 16; i++) {
-      const a = Math.PI * (i / 16), foot = Math.abs(Math.cos(a));
-      const r = 0.82 + foot * 0.45 + rand() * 0.2;
-      const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.35), M(tones[i % 3]));
-      b.userData.rbx = { facets: true, facetThick: 0.18, name: 'Felsbogen' };
-      b.position.set(Math.cos(a) * 4.6, Math.sin(a) * 4.6 - 0.1, (rand() - 0.5) * 0.3);
-      b.rotation.set(rand() * 3, rand() * 3, rand() * 3);
-      b.castShadow = true;
-      archG.add(b);
-    }
+    const archG = rockArch(4.6, 0.82, ['#3a3446', '#443c52', '#322c3e'], rand);
     archG.position.z = -0.6;
     root.add(archG);
     for (let i = 0; i < 7; i++) {
