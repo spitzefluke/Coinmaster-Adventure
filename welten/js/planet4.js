@@ -109,15 +109,37 @@ const TIEFSEEGRABEN = {
         parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, h / 4 + 0.05, 8), M(j % 2 ? '#1e242c' : '#2a323c')), (rand() - 0.5) * 0.12, (j + 0.5) * (h / 4), (rand() - 0.5) * 0.12));
       }
       parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.12, 8), E('#ff8a3a', 1.6)), 0, h + 0.04, 0));
+      // Röhrenwürmer wie an echten Schloten: weiße Röhren mit roten Kiemenbüscheln, dicht am Fuß
+      const tube = M('#ece8dc'), plume = E('#e8302a', 0.5);
+      for (let k = 0; k < 14; k++) {
+        const a = rand() * TAU, d = rr(0.55, 1.1), th = rr(0.35, 0.8);
+        const t = at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, th, 5), tube), Math.cos(a) * d, th / 2, Math.sin(a) * d);
+        t.rotation.set(rr(-0.2, 0.2), 0, rr(-0.2, 0.2));
+        parts.push(t, at(new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 4), plume), Math.cos(a) * d, th + 0.04, Math.sin(a) * d));
+      }
       put(group(...parts), v[0], v[1]);
       ctx.shared.vents.push([v[0], ctx.height(v[0], v[1]) + h, v[1]]);
+      // Bakterienmatten und Muschelbänke rund um den Schlot (bemalter Boden)
+      ctx.paint?.(v[0], v[1], 1.8, '#d8d0a0', 'Sand');
+      ctx.paint?.(v[0] + rr(-0.8, 0.8), v[1] + rr(-0.8, 0.8), 1.1, '#e8e4c8', 'SmoothPlastic');
     }
-    // Felsen mit leuchtenden Adern
-    scatter(7, () => {
+    // Kissenlava: gerundete, dunkle Wülste in Gruppen (erstarrt unter Wasser)
+    scatter(8, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 5; k++) {
+        const m = at(new THREE.Mesh(new THREE.SphereGeometry(rr(0.25, 0.45), 8, 6), M(rand() < 0.5 ? '#141a22' : '#1e2630')), rr(-0.5, 0.5), 0.12, rr(-0.5, 0.5));
+        m.scale.set(1.4, 0.6, 1);
+        m.rotation.y = rand() * 3;
+        g.add(m);
+      }
+      return g;
+    }, 0.8, 2, R - 2.6);
+    // Felsen mit leuchtenden Adern (feste Anzahl, sonst mit der Inselfläche vervielfacht)
+    scatter(14, () => {
       const g = kit.rockMesh(rr(0.5, 0.9), '#1a222c', rand);
       for (let k = 0; k < 3; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, rr(0.3, 0.6), 0.05), E('#5affd8', 1.4)), rr(-0.3, 0.3), rr(0.2, 0.5), rr(-0.3, 0.3)));
       return g;
-    }, 1);
+    }, 1, 2, R - 2.6);
     // Leuchtquallen schweben über dem Boden
     for (let i = 0; i < 6; i++) {
       const q = spot(0.6, 2, R - 1.5);
