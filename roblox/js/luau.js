@@ -48,6 +48,7 @@ export function coinDataSource({ TIERS, COINS }) {
       Index: num(i + 1),
       Value: num(Number(t.value)),
       Chance: num(t.chance),
+      Rank: num((t.rank ?? i) + 1),
       Color: color(t.color),
       Edge: str(t.edge),
       Effects: `{ ${t.fx.map(str).join(', ')} }`,
@@ -62,6 +63,9 @@ export function coinDataSource({ TIERS, COINS }) {
       Text: str(c.text),
       Metal: `{ Light = ${color(c.metal[0])}, Mid = ${color(c.metal[1])}, Dark = ${color(c.metal[2])} }`,
       Accent: c.glow || c.gem || c.ember ? color(c.glow || c.gem || c.ember) : undefined,
+      Value: c.value != null ? num(c.value) : undefined,
+      Weight: c.weight != null ? num(c.weight) : undefined,
+      Special: c.special ? str(c.special) : undefined,
       DecalId: '0',
     }),
   );
@@ -71,7 +75,10 @@ export function coinDataSource({ TIERS, COINS }) {
 
 local CoinData = {}
 
--- Value: Nennwert in Moneten (math.huge = unendlich), Chance: Drop-Chance in Prozent
+-- Value: Nennwert in Moneten (math.huge = unendlich), Chance: Drop-Chance in Prozent,
+-- Rank: zählt für Effekte und EP (Premium wie Legendär). Münzen: Value = eigener Wert (Premium),
+-- Weight = Gewicht innerhalb der Stufe (Standard 1), Special = "glitch" (Wert 1–999 beim Finden) oder
+-- "mystery" (verwandelt sich beim Ziehen in eine andere Münze, siehe Gacha.RollCoin)
 CoinData.Tiers = ${list(tiers)}
 
 CoinData.Coins = ${list(coins)}
@@ -88,11 +95,17 @@ end
 
 -- Wert einer gefundenen Münze: Nennwert (unendlich zählt als 1 Mio.) × Mutation × Fundbonus
 -- (Fundbonus = Skills, Aura, Welt und Wiedergeburten beim Finden)
-function CoinData.EntryValue(coinId, mutationMultiplier, bonus)
+-- Nennwert einer Münze: eigener Wert (Premium) oder Wert der Stufe
+function CoinData.BaseValue(coin)
+	local base = coin.Value or CoinData.TierById[coin.Tier].Value
+	if base == math.huge then base = 1000000 end
+	return base
+end
+-- glitchValue: bei der Glitch-Münze der beim Finden gewürfelte Wert
+function CoinData.EntryValue(coinId, mutationMultiplier, bonus, glitchValue)
 	local coin = CoinData.Coins[coinId]
 	if not coin then return 0 end
-	local base = CoinData.TierById[coin.Tier].Value
-	if base == math.huge then base = 1000000 end
+	local base = glitchValue or CoinData.BaseValue(coin)
 	return math.floor(base * (mutationMultiplier or 1) * (bonus or 1) * 100 + 0.5) / 100
 end
 
@@ -100,9 +113,9 @@ return CoinData
 `;
 }
 
-export function mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES = [], WEATHER_BLOCK = 900, WEATHER_WARN = 60 }) {
+export function mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES = [], WEATHER_BLOCK = 900, WEATHER_WARN = 60, SIDE_CLEAR = 100 }) {
   const muts = MUTATIONS.map((m) =>
-    fields({ Id: str(m.id), Name: str(m.name), Multiplier: num(m.multiplier), Color: color(m.color), Weather: str(m.weather), Chance: num(m.chance), Effect: str(m.effect) }),
+    fields({ Id: str(m.id), Name: str(m.name), Multiplier: num(m.multiplier), Color: color(m.color), Weather: str(m.weather), Chance: num(m.chance), Scale: m.scale ? num(m.scale) : undefined, Effect: str(m.effect) }),
   );
   const weather = WEATHER.map((w) =>
     fields({
@@ -114,7 +127,9 @@ export function mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES = [], 
   return `${HEADER('Mutationen und Wetter')}
 local MutationData = {}
 
--- Chance: Prozent, mit der eine gezogene Münze während des passenden Wetters mutiert
+-- Chance: Prozent, mit der eine gezogene Münze während des passenden Wetters mutiert (Haupt- oder Nebenwetter).
+-- Laufen zwei Wetter, kann eine Münze zwei Mutationen haben: im Spielstand als "big,nass" (Reihenfolge wie hier),
+-- Multiplikatoren werden multipliziert. Scale: Größe der Münze (GIGANT 3,5-fach).
 MutationData.Mutations = ${list(muts)}
 
 -- Weight: wie oft das Wetter in einem Zeitblock gewählt wird (klar = der Block bleibt klar)
@@ -128,6 +143,8 @@ MutationData.WeatherRarities = ${rarities.length ? list(rarities) : '{}'}
 -- Zeitblock in Sekunden (pro Block höchstens ein Wetter) und Vorwarnzeit
 MutationData.WeatherBlock = ${num(WEATHER_BLOCK)}
 MutationData.WeatherWarn = ${num(WEATHER_WARN)}
+-- Nebenwetter: zweite Spur im Zeitplan, Gewicht von „klar“ dort (siehe Gacha.SideWeatherAt)
+MutationData.SideClear = ${num(SIDE_CLEAR)}
 
 MutationData.WeatherRarityById = {}
 for _, r in ipairs(MutationData.WeatherRarities) do
@@ -151,6 +168,44 @@ function MutationData.ForWeather(weatherId)
 		end
 	end
 	return nil
+end
+
+-- "big,nass" → { big, nass } (nur bekannte Mutationen, Reihenfolge wie MutationData.Mutations)
+function MutationData.Parse(text)
+	local set = {}
+	for id in string.gmatch(text or "", "[^,]+") do set[id] = true end
+	local list = {}
+	for _, m in ipairs(MutationData.Mutations) do
+		if set[m.Id] then table.insert(list, m) end
+	end
+	return list
+end
+function MutationData.Key(list)
+	local ids = {}
+	for _, m in ipairs(list) do table.insert(ids, m.Id) end
+	return #ids > 0 and table.concat(ids, ",") or nil
+end
+function MutationData.Multiplier(text)
+	local p = 1
+	for _, m in ipairs(MutationData.Parse(text)) do p = p * m.Multiplier end
+	return p
+end
+-- Name und Farbe einer Kombination: stärkste zuerst ("GIGANT + Sturzflut")
+function MutationData.Name(text)
+	local list = MutationData.Parse(text)
+	table.sort(list, function(a, b) return a.Multiplier > b.Multiplier end)
+	local names = {}
+	for _, m in ipairs(list) do table.insert(names, m.Name) end
+	return table.concat(names, " + "), list[1] and list[1].Color or nil
+end
+-- Eine Mutation oder Kombination als Tabelle wie eine einzelne Mutation (Id = Schlüssel, Name, Color,
+-- Multiplier = Produkt), für Anzeigen; nil ohne Mutation
+function MutationData.Combo(text)
+	local list = MutationData.Parse(text)
+	if #list == 0 then return nil end
+	if #list == 1 then return list[1] end
+	local name, color = MutationData.Name(text)
+	return { Id = MutationData.Key(list), Name = name, Color = color, Multiplier = MutationData.Multiplier(text), List = list }
 end
 
 return MutationData
@@ -197,10 +252,16 @@ local MutationData = require(script.Parent.MutationData)
 
 local Gacha = {}
 
--- Zieht eine Münze nach Drop-Chance: erst die Stufe, dann gleichverteilt innerhalb der Stufe
-function Gacha.RollCoin(rng)
+-- Zieht eine Münze nach Drop-Chance: erst die Stufe, dann nach Gewicht innerhalb der Stufe (Weight, Standard 1).
+-- Die Mystery-Münze verwandelt sich sofort in eine andere Münze: Rückgabe coin, true (= war Mystery).
+-- keepMystery = true: die Mystery-Münze selbst zurückgeben.
+function Gacha.RollCoin(rng, keepMystery)
 	rng = rng or Random.new()
-	local roll = rng:NextNumber() * 100
+	local total = 0
+	for _, tier in ipairs(CoinData.Tiers) do
+		total = total + tier.Chance
+	end
+	local roll = rng:NextNumber() * total
 	local chosen = CoinData.Tiers[1]
 	for _, tier in ipairs(CoinData.Tiers) do
 		roll = roll - tier.Chance
@@ -209,23 +270,61 @@ function Gacha.RollCoin(rng)
 			break
 		end
 	end
-	local pool = {}
+	local pool, weights = {}, 0
 	for _, coin in ipairs(CoinData.Coins) do
 		if coin.Tier == chosen.Id then
 			table.insert(pool, coin)
+			weights = weights + (coin.Weight or 1)
 		end
 	end
-	return pool[rng:NextInteger(1, #pool)]
+	local r = rng:NextNumber() * weights
+	local coin = pool[#pool]
+	for _, c in ipairs(pool) do
+		r = r - (c.Weight or 1)
+		if r <= 0 then
+			coin = c
+			break
+		end
+	end
+	if coin.Special == "mystery" and not keepMystery then
+		local next = coin
+		while next.Special == "mystery" do
+			next = Gacha.RollCoin(rng, true)
+		end
+		return next, true
+	end
+	return coin, false
+end
+
+-- Wert einer Glitch-Münze: beim Finden gewürfelt (1–999)
+function Gacha.GlitchValue(rng)
+	return (rng or Random.new()):NextInteger(1, 999)
 end
 
 -- Gibt die Mutation zurück, wenn die Münze während dieses Wetters mutiert, sonst nil
-function Gacha.RollMutation(weatherId, rng)
+-- bonus: zusätzliche Prozentpunkte (Skill „Wettergespür“)
+function Gacha.RollMutation(weatherId, rng, bonus)
 	rng = rng or Random.new()
 	local m = MutationData.ForWeather(weatherId)
-	if m and rng:NextNumber() * 100 < m.Chance then
+	if m and rng:NextNumber() * 100 < m.Chance + (bonus or 0) then
 		return m
 	end
 	return nil
+end
+
+-- Würfelt für jedes laufende Wetter seine Mutation (Liste von Wetter-Ids, z. B. aus Gacha.WeathersAt).
+-- Gibt den Schlüssel ("big,nass") oder nil zurück.
+function Gacha.RollMutations(weatherIds, rng, bonus)
+	rng = rng or Random.new()
+	local list, seen = {}, {}
+	for _, id in ipairs(weatherIds) do
+		if not seen[id] then
+			seen[id] = true
+			local m = Gacha.RollMutation(id, rng, bonus)
+			if m then table.insert(list, m) end
+		end
+	end
+	return MutationData.Key(MutationData.Parse(MutationData.Key(list)))
 end
 
 -- ── Wetter-Zeitplan (wie weatherAt in muenzen/js/mutations.js) ──
@@ -288,6 +387,47 @@ function Gacha.WeatherAt(now)
 	return MutationData.Weather[1], starts, ns or (b + 1) * B
 end
 
+-- ── Nebenwetter (wie sideWeatherEvent in mutations.js): zweite Spur, kann gleichzeitig laufen ──
+local sideTotal = totalWeight - MutationData.Weather[1].Weight + (MutationData.SideClear or 100)
+function Gacha.SideWeatherEvent(block)
+	local roll = hashR(block, 3) * sideTotal - (MutationData.SideClear or 100)
+	if roll < 0 then return nil end
+	local chosen = MutationData.Weather[#MutationData.Weather]
+	for i = 2, #MutationData.Weather do
+		local w = MutationData.Weather[i]
+		roll = roll - w.Weight
+		if roll < 0 then
+			chosen = w
+			break
+		end
+	end
+	local main = Gacha.WeatherEvent(block)
+	if main and main.Id == chosen.Id then return nil end
+	local B = MutationData.WeatherBlock
+	local start = block * B + math.floor(hashR(block, 4) * (B - chosen.Duration))
+	return chosen, start, start + chosen.Duration
+end
+-- Nebenwetter jetzt: w, Beginn, Ende oder nil
+function Gacha.SideWeatherAt(now)
+	now = now or os.time()
+	local b = math.floor(now / MutationData.WeatherBlock)
+	for _, k in ipairs({ 0, -1 }) do
+		local w, s, e = Gacha.SideWeatherEvent(b + k)
+		if w and now >= s and now < e then return w, s, e end
+	end
+	return nil
+end
+-- Alle Wetter-Ids, die jetzt laufen (ohne klar); mit erzwungenem Wetter vom Admin Panel
+function Gacha.WeathersAt(now)
+	now = now or os.time()
+	local out = {}
+	local main = Gacha.Forced(now) or Gacha.WeatherAt(now)
+	if main.Id ~= "klar" then table.insert(out, main.Id) end
+	local side = Gacha.SideWeatherAt(now)
+	if side and side.Id ~= main.Id then table.insert(out, side.Id) end
+	return out
+end
+
 -- Aktuelles Wetter und Sekunden bis zum Wechsel
 function Gacha.CurrentWeather(now)
 	now = now or os.time()
@@ -323,9 +463,9 @@ function Gacha.Forecast(n, now)
 	return out
 end
 
--- Wert einer Münze in Moneten, mit Multiplikator der Mutation
+-- Wert einer Münze in Moneten (Premium: eigener Wert), mit Multiplikator der Mutation
 function Gacha.Value(coin, mutation)
-	local value = CoinData.TierById[coin.Tier].Value
+	local value = CoinData.BaseValue(coin)
 	if mutation then
 		value = value * mutation.Multiplier
 	end
@@ -795,6 +935,9 @@ return GemData
 
 export const WEATHER_FX = `${HEADER('Wetter-Effekte')}
 -- Läuft auf dem Client (LocalScript): WeatherFx.Apply(weatherId) blendet Himmel, Licht, Nebel, Wolken und
+-- Partikel sanft zum neuen Wetter über. Mehrere Wetter gleichzeitig: WeatherFx.Apply("regen,riesenmond") oder
+-- eine Liste; die Effekte laufen übereinander, das seltenste Wetter bestimmt Licht und Nebel.
+-- (Einzelnes Wetter:)
 -- Partikel sanft zum neuen Wetter über (das alte klingt aus). Die Stärke richtet sich nach dem Wetter
 -- (Intensity): häufiges Wetter bleibt dezent, seltenes wird richtig stark.
 -- WeatherFx.Announce(weatherId, playerGui) zeigt die Ansage beim Beginn, je seltener desto größer.
@@ -813,7 +956,8 @@ local FADE_OUT = 6 -- Sekunden, bis das alte ausgeklungen ist
 local LIGHT = TweenInfo.new(FADE_IN, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 local base = nil -- Lighting vor dem ersten Wetter
-local current = nil -- laufendes Wetter (siehe newSet)
+local actives = {} -- laufende Wetter: [weatherId] = set (siehe newSet)
+local lightFor = nil -- Wetter, dessen Licht gerade gilt
 
 -- Licht setzen: sanft über FADE_IN Sekunden oder sofort
 local function setLight(goal, instant)
@@ -1149,8 +1293,20 @@ function SETUPS.sternschnuppen(set)
 	end)
 end
 
+function SETUPS.riesenmond(set)
+	-- riesiger, warm leuchtender Mond, tief am Himmel, mit Kratern und Hof
+	skyObject(set, { Name = "Riesenmond", Shape = Enum.PartType.Ball, Size = Vector3.new(160, 160, 160), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 196, 120), Transparency = 0 }, Vector3.new(-80, 150, 460))
+	skyObject(set, { Name = "Mondhof", Shape = Enum.PartType.Ball, Size = Vector3.new(230, 230, 230), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 150, 60), Transparency = 0.88 }, Vector3.new(-80, 150, 466))
+	for i, c in ipairs({ { -30, 30, 26 }, { 34, -10, 20 }, { -6, -44, 16 }, { 40, 40, 12 } }) do
+		skyObject(set, { Name = "Krater" .. i, Shape = Enum.PartType.Ball, Size = Vector3.new(c[3], c[3], c[3]), Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(200, 130, 70), Transparency = 0.2 }, Vector3.new(-80 + c[1], 150 + c[2], 384))
+	end
+	-- große, langsam schwebende Staubflocken
+	local mid = holder(set, Vector3.new(80, 20, 80), Vector3.new(0, 10, 0))
+	particles(set, mid, { Rate = 18, Lifetime = NumberRange.new(6, 9), Speed = NumberRange.new(0.3, 1), Size = NumberSequence.new(0.9, 0), Color = ColorSequence.new(Color3.fromRGB(255, 200, 140)), LightEmission = 0.8, SpreadAngle = Vector2.new(180, 180) })
+end
+
 -- Nachts spielen diese Wetter
-local NIGHT = { disconacht = true, blutmond = true, datensturm = true, sternschnuppen = true }
+local NIGHT = { disconacht = true, blutmond = true, datensturm = true, sternschnuppen = true, riesenmond = true }
 
 -- Altes Wetter ausklingen lassen: Effekte enden sofort, Partikel und Himmelsobjekte blenden aus
 local function retire(set, instant)
@@ -1172,25 +1328,9 @@ local function retire(set, instant)
 	end)
 end
 
--- instant = true: ohne Überblenden (für „Animationen überspringen“ / weniger Bewegung)
-function WeatherFx.Apply(weatherId, instant)
-	remember()
-	if current and current.Id == weatherId then return end
-	if current then
-		if current.Ramp then current.Ramp:Disconnect() end
-		retire(current, instant)
-		current = nil
-	end
-	local w = MutationData.WeatherById[weatherId]
-	if not w or weatherId == "klar" then
-		setLight(base, instant)
-		clouds(0.35, 0.3, Color3.fromRGB(255, 255, 255))
-		return
-	end
+-- Licht und Nebel für ein Wetter (je stärker, desto deutlicher die Stimmung)
+local function lightOf(w, instant)
 	local strength = w.Intensity or 1
-	local set = newSet(weatherId, strength)
-	current = set
-	-- Licht und Nebel: je stärker das Wetter, desto deutlicher die Stimmung
 	local sky = w.Sky or base.FogColor
 	local bright = w.Light or 1
 	local mix = math.clamp(0.3 + strength * 0.5, 0.3, 0.9)
@@ -1201,22 +1341,72 @@ function WeatherFx.Apply(weatherId, instant)
 		FogColor = sky,
 		FogEnd = math.min(base.FogEnd, math.max(550, (bright < 0.7 and 700 or 950) / math.max(0.8, strength))),
 		ColorShift_Top = base.ColorShift_Top:Lerp(w.Color, math.min(1, strength)),
-		ClockTime = NIGHT[weatherId] and 0 or base.ClockTime,
+		ClockTime = NIGHT[w.Id] and 0 or base.ClockTime,
 	}, instant)
-	local setup = SETUPS[weatherId]
-	if setup then setup(set) end
-	-- einblenden: Partikel und Himmelsobjekte wachsen über FADE_IN Sekunden
-	if instant then set.Start = os.clock() - FADE_IN end
-	set.Ramp = RunService.Heartbeat:Connect(function()
-		local k = math.clamp((os.clock() - set.Start) / FADE_IN, 0, 1)
-		local eased = k * k * (3 - 2 * k)
-		for _, r in ipairs(set.Emitters) do r.E.Rate = r.Target * eased end
-		for _, f in ipairs(set.Fades) do f(eased) end
-		if k >= 1 then
-			set.Ramp:Disconnect()
-			set.Ramp = nil
+end
+local function rankOf(w)
+	local r = w.Rarity and MutationData.WeatherRarityById[w.Rarity]
+	return r and r.Index or 0
+end
+
+-- weatherIds: "regen", "regen,riesenmond" oder { "regen", "riesenmond" }; klar oder leer = kein Wetter
+-- instant = true: ohne Überblenden (für „Animationen überspringen“ / weniger Bewegung)
+function WeatherFx.Apply(weatherIds, instant)
+	remember()
+	local ids = {}
+	if type(weatherIds) == "table" then
+		ids = weatherIds
+	else
+		for id in string.gmatch(weatherIds or "", "[^,]+") do table.insert(ids, id) end
+	end
+	local want, top = {}, nil
+	for _, id in ipairs(ids) do
+		local w = MutationData.WeatherById[id]
+		if w and id ~= "klar" then
+			want[id] = true
+			if not top or rankOf(w) > rankOf(top) then top = w end
 		end
-	end)
+	end
+	-- was nicht mehr läuft, klingt aus
+	for id, set in pairs(actives) do
+		if not want[id] then
+			if set.Ramp then set.Ramp:Disconnect() end
+			retire(set, instant)
+			actives[id] = nil
+		end
+	end
+	-- Licht: das seltenste laufende Wetter
+	if not top then
+		if lightFor ~= "klar" then
+			setLight(base, instant)
+			clouds(0.35, 0.3, Color3.fromRGB(255, 255, 255))
+		end
+		lightFor = "klar"
+	elseif lightFor ~= top.Id then
+		lightFor = top.Id
+		lightOf(top, instant)
+	end
+	-- neue Wetter einblenden: Partikel und Himmelsobjekte wachsen über FADE_IN Sekunden
+	for _, id in ipairs(ids) do
+		if want[id] and not actives[id] then
+			local w = MutationData.WeatherById[id]
+			local set = newSet(id, w.Intensity or 1)
+			actives[id] = set
+			local setup = SETUPS[id]
+			if setup then setup(set) end
+			if instant then set.Start = os.clock() - FADE_IN end
+			set.Ramp = RunService.Heartbeat:Connect(function()
+				local k = math.clamp((os.clock() - set.Start) / FADE_IN, 0, 1)
+				local eased = k * k * (3 - 2 * k)
+				for _, r in ipairs(set.Emitters) do r.E.Rate = r.Target * eased end
+				for _, f in ipairs(set.Fades) do f(eased) end
+				if k >= 1 then
+					set.Ramp:Disconnect()
+					set.Ramp = nil
+				end
+			end)
+		end
+	end
 end
 
 -- ── Ansagen ──
@@ -1353,6 +1543,7 @@ return WeatherFx
 const WEATHER_SERVER = `-- Coinmaster Adventure · Wetter (Server)
 -- Setzt das Wetter nach dem Zeitplan aus Gacha.WeatherAt. Clients lesen an ReplicatedStorage:
 -- Weather, WeatherEnds (Ende), WeatherNext und WeatherNextAt (nächstes Wetter und sein Beginn, für die Vorwarnung).
+-- Weather2, Weather2Ends: Nebenwetter, das gleichzeitig laufen kann ("" = keins).
 -- Ein Admin kann ein Wetter erzwingen (AdminWeather, AdminWeatherEnds; Admin Panel), danach geht der Zeitplan weiter.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local root = ReplicatedStorage:WaitForChild("CoinmasterAdventure")
@@ -1373,11 +1564,17 @@ local function state(now)
 end
 
 -- jede Sekunde prüfen (Attribute ändern sich nur, wenn der Wert neu ist)
+-- Nebenwetter: Weather2 und Weather2Ends ("" = keins), läuft gleichzeitig mit dem Hauptwetter
 while true do
-	local id, ends, nw, ns = state(os.time())
+	local now = os.time()
+	local id, ends, nw, ns = state(now)
+	local side, _, sideEnds = Gacha.SideWeatherAt(now)
+	if side and side.Id == id then side = nil end
 	ReplicatedStorage:SetAttribute("WeatherNext", nw and nw.Id or "")
 	ReplicatedStorage:SetAttribute("WeatherNextAt", ns or 0)
 	ReplicatedStorage:SetAttribute("WeatherEnds", ends)
+	ReplicatedStorage:SetAttribute("Weather2Ends", side and sideEnds or 0)
+	ReplicatedStorage:SetAttribute("Weather2", side and side.Id or "")
 	ReplicatedStorage:SetAttribute("Weather", id)
 	task.wait(1)
 end
@@ -1392,19 +1589,21 @@ local WeatherFx = require(root:WaitForChild("WeatherFx"))
 local MutationData = require(root:WaitForChild("MutationData"))
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local last = nil
+-- Haupt- und Nebenwetter zusammen anwenden; neu beginnende Wetter bekommen ihre Ansage
+local last, lastSide = nil, nil
 local function update()
 	local id = ReplicatedStorage:GetAttribute("Weather")
-	if not id or id == last then
+	local side = ReplicatedStorage:GetAttribute("Weather2") or ""
+	if not id or (id == last and side == lastSide) then
 		return
 	end
-	WeatherFx.Apply(id)
-	if last then
-		WeatherFx.Announce(id, playerGui)
-	end
-	last = id
+	WeatherFx.Apply(side ~= "" and (id .. "," .. side) or id)
+	if last and id ~= last then WeatherFx.Announce(id, playerGui) end
+	if lastSide ~= nil and side ~= "" and side ~= lastSide then WeatherFx.Announce(side, playerGui) end
+	last, lastSide = id, side
 end
 ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(update)
+ReplicatedStorage:GetAttributeChangedSignal("Weather2"):Connect(update)
 update()
 
 -- Vorwarnung: WeatherWarn Sekunden vor dem nächsten Wetter

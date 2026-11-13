@@ -4,7 +4,7 @@
 // Rückrufe (invoke), Daten für Fenster als Abfragen (query).
 
 import { COINS, tierById } from '../../muenzen/js/coins.js';
-import { weatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
+import { weatherAt, sideWeatherAt, weatherById, mutationForWeather, forecast, nextWeather, WEATHER, WEATHER_WARN } from '../../muenzen/js/mutations.js';
 import { loadState, saveState, loadSettings, saveSettings, DEFAULT_SETTINGS, freshState, xpForLevel, pointsForLevel, freePoints, findCoin, addXp, slots, coinValue, BOOSTS, boostActive, serverBoosts, fmtNumber, currentWorld, ownsWorld, eggPrice, effect, canBuyWorld, canOpenPortal, canRebirth, rebirth, rebirthMultiplier, canLearn, skillLevel, canSupernova, supernova, supernovaMultiplier, nextGalaxy, wallet, spend, findsGems, findGem, addGems, takeGems, gemCount, gemCapacity, canBuyGemBag } from './state.js';
 import { GEMS, gemById, GEM_BAGS } from '../../edelsteine/js/gems.js';
 import { rollPet, petById, FRUIT_XP, feedPetXp, PET_MAX_LEVEL } from '../../haustiere/js/pets.js';
@@ -140,6 +140,13 @@ function currentWeather() {
   if (testWeather && Date.now() < testWeather.until) return { w: weatherById[testWeather.id], starts: testWeather.until - testWeather.ms, ends: testWeather.until };
   return weatherAt();
 }
+// Nebenwetter (läuft gleichzeitig, eigene Spur im Zeitplan) oder null, wenn es dasselbe wie das Hauptwetter ist
+function currentSideWeather() {
+  const side = sideWeatherAt();
+  return side && side.w.id !== currentWeather().w.id ? side : null;
+}
+// Alle laufenden Wetter-Ids (für die Mutationen)
+const currentWeatherIds = () => [currentWeather().w.id, currentSideWeather()?.w.id].filter((id) => id && id !== 'klar');
 // Nächstes Wetter (für Vorwarnung und HUD); im Test kommt erst danach wieder der Zeitplan
 function upcoming() {
   return nextWeather(testWeather && Date.now() < testWeather.until ? testWeather.until : Date.now());
@@ -159,12 +166,19 @@ function renderWeather() {
     warned = next.starts;
     rui?.warn(next.w.id, next.starts);
   }
+  // Nebenwetter: Weather2 und Weather2Ends wie in Roblox
+  const side = currentSideWeather();
+  rui?.setRSAttr('Weather2Ends', side ? Math.round(side.ends / 1000) : 0);
+  rui?.setRSAttr('Weather2', side ? side.w.id : '');
   $('world').dataset.weather = w.id;
-  worldBg.setWeather(w.id);
+  worldBg.setWeather(side ? `${w.id},${side.w.id}` : w.id);
   if (lastWeather && lastWeather !== w.id) announceWeather(w);
+  if (lastSide !== null && side && side.w.id !== lastSide) announceWeather(side.w);
   void m;
   lastWeather = w.id;
+  lastSide = side ? side.w.id : '';
 }
+let lastSide = null;
 
 // Große Ansage beim Wetterwechsel: WeatherFx.Announce wie im Spiel
 let lastWeather = null;
@@ -225,18 +239,19 @@ function find() {
     return;
   }
   if (findsGems(state)) return findGemHere();
-  const r = findCoin(state, Math.random, currentWeather().w.id);
+  const r = findCoin(state, Math.random, currentWeatherIds());
   const tier = tierById[COINS[r.id].tier];
   const space = slots(state) - state.inventory.length;
   const n = Math.min(r.count, space);
-  for (let k = 0; k < n; k++) state.inventory.push({ id: r.id, mutation: r.mutation, at: Date.now(), bonus: r.bonus });
+  for (let k = 0; k < n; k++) state.inventory.push({ id: r.id, mutation: r.mutation, at: Date.now(), bonus: r.bonus, ...(r.glitch ? { glitch: r.glitch } : {}) });
   const before = state.level;
   const ups = addXp(state, r.xp);
   save();
   renderHud();
-  sound(1 + tier.index * 0.05);
+  sound(1 + tier.rank * 0.05);
+  if (r.mystery) toast(`Mystery-Münze! Darin steckte: ${COINS[r.id].name}`, '#b450ff');
 
-  const value = coinValue({ id: r.id, mutation: r.mutation, bonus: r.bonus });
+  const value = coinValue({ id: r.id, mutation: r.mutation, bonus: r.bonus, glitch: r.glitch });
   // Effekte je nach Seltenheit zeigt die Roblox-Oberfläche (GameUI.Found)
   rui?.found({ coinId: r.id + 1, mutation: r.mutation, count: n, value, xp: r.xp, upgraded: r.upgraded });
   if (ups) levelUp(before, state.level);

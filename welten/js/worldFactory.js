@@ -1890,7 +1890,7 @@ function indexBook() {
     g.add(cover);
   }
   g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 20), M('#ffcf4a', { metalness: 0.7 })), 0.45, 1.04, 0));
-  const sign = signBoard('Münzindex', { w: 2, h: 0.55, bg: '#8a1f2a', fg: '#ffe7a8', sub: 'Alle 50 Münzen sammeln' });
+  const sign = signBoard('Münzindex', { w: 2, h: 0.55, bg: '#8a1f2a', fg: '#ffe7a8', sub: 'Alle 60 Münzen sammeln' });
   sign.position.set(0, 1.9, -0.3);
   g.add(sign);
   return g;

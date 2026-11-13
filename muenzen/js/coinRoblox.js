@@ -7,7 +7,7 @@ import { createLua } from '../../js/rbx/lua.js';
 import { RbxWorld, registerImage } from '../../js/rbx/engine.js';
 import { coinDataSource, mutationDataSource, COIN_BUILDER, MUTATION_FX } from '../../roblox/js/luau.js';
 import { TIERS, COINS, tierById } from './coins.js';
-import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from './mutations.js';
+import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN, SIDE_CLEAR, parseMutations, mutationById } from './mutations.js';
 import { renderEmblem } from './emblems.js';
 import { pixelRatio } from '../../js/settings.js';
 
@@ -45,7 +45,7 @@ export function coinLua() {
   luaReady ||= (async () => {
     const lua = await createLua();
     lua.call('__addModule', 'CoinData', coinDataSource({ TIERS, COINS }));
-    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
+    lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN, SIDE_CLEAR }));
     lua.call('__addModule', 'CoinBuilder', COIN_BUILDER);
     lua.call('__addModule', 'MutationFx', MUTATION_FX);
     lua.run(PREVIEW, 'Münz-Vorschau');
@@ -64,7 +64,7 @@ function ensureEmblem(index) {
 }
 
 // Abstand der Kamera je Stufe: Effekte wie Flügel und Ringe brauchen Platz
-export const COIN_CAMERA = [10, 10, 10.5, 12, 12.5, 15, 15.5, 15.5, 16, 15];
+export const COIN_CAMERA = [10, 10, 10.5, 12, 12.5, 15, 15.5, 15.5, 16, 15, 12];
 
 let nextKey = 1;
 // Münze in einer eigenen Roblox-Welt (ohne Himmel, transparenter Hintergrund)
@@ -81,7 +81,8 @@ export async function createRobloxCoin(coin, { mutation = null, shadows = false 
     world,
     coin,
     tier: tierById[coin.tier],
-    distance: COIN_CAMERA[tierById[coin.tier].index],
+    // GIGANT (scale 3,5): Kamera entsprechend weiter weg
+    distance: COIN_CAMERA[tierById[coin.tier].index] * parseMutations(mutation).reduce((f, id) => f * (mutationById[id].scale || 1) ** 0.75, 1),
     step(dt) {
       world.update(dt);
     },

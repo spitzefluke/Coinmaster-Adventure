@@ -436,6 +436,7 @@ local function buildHud(playerGui)
 	ui.weatherStroke.Parent = ui.weather
 	icon("cloud", { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 12, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), Parent = ui.weather })
 	ui.weatherText = label({ Size = UDim2.new(1, -48, 1, 0), Position = UDim2.new(0, 38, 0, 0), Text = "", TextSize = T.Small, Parent = ui.weather })
+	new("UITextSizeConstraint", { MaxTextSize = T.Small, Parent = ui.weatherText }) -- bei zwei Wettern schrumpft der Text höchstens
 	pressable(ui.weather, function() GameUI.Toggle("wetter") end)
 	ui.boosts = new("Frame", { Name = "Boosts", Size = UDim2.new(0, 220, 0, 200), BackgroundTransparency = 1, LayoutOrder = 4, Parent = right }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -546,7 +547,27 @@ local function refreshHud()
 	-- Wetter mit Countdown
 	local wid = ReplicatedStorage:GetAttribute("Weather") or "klar"
 	local w = MutationData.WeatherById[wid]
+	-- Nebenwetter (läuft gleichzeitig): „Regen + Riesenmond · 3 % / 3 %“ (Mutations-Chancen; Namen im Wetter-Fenster)
+	local side = MutationData.WeatherById[ReplicatedStorage:GetAttribute("Weather2") or ""]
+	if side and side.Id ~= wid then
+		local list = {}
+		if wid ~= "klar" then table.insert(list, w) end
+		table.insert(list, side)
+		local names, muts = {}, {}
+		for _, x in ipairs(list) do
+			table.insert(names, x.Name)
+			local m = MutationData.ForWeather(x.Id)
+			if m then table.insert(muts, tostring(m.Chance):gsub("%.", ",") .. " %") end
+		end
+		local ends = wid ~= "klar" and ReplicatedStorage:GetAttribute("WeatherEnds") or ReplicatedStorage:GetAttribute("Weather2Ends")
+		ui.weatherText.Text = table.concat(names, " + ") .. (#muts > 0 and (" · " .. table.concat(muts, " / ")) or "") .. "  " .. mmss((ends or os.time()) - os.time())
+		ui.weatherText.TextScaled = true
+		local top = list[#list]
+		ui.weatherStroke.Color = (os.time() % 2 == 0 and #list > 1) and list[1].Color or top.Color
+		w = nil
+	end
 	if w then
+		ui.weatherText.TextScaled = false
 		local m = MutationData.ForWeather(wid)
 		local left = (ReplicatedStorage:GetAttribute("WeatherEnds") or os.time()) - os.time()
 		local nextW = MutationData.WeatherById[ReplicatedStorage:GetAttribute("WeatherNext") or ""]
@@ -557,7 +578,7 @@ local function refreshHud()
 			ui.weatherText.Text = "⚠ " .. nextW.Name .. " zieht auf  " .. mmss(nextLeft)
 			ui.weatherStroke.Color = (os.time() % 2 == 0) and nextW.Color or C.line
 		else
-			ui.weatherText.Text = w.Name .. (r and (" (" .. r.Name .. ")") or "") .. (m and (" · " .. m.Name .. " " .. m.Chance .. " %") or "") .. "  " .. mmss(left)
+			ui.weatherText.Text = w.Name .. (r and (" (" .. r.Name .. ")") or "") .. (m and (" · " .. m.Name .. " " .. tostring(m.Chance):gsub("%.", ",") .. " %") or "") .. "  " .. mmss(left)
 			ui.weatherStroke.Color = r and r.Color or w.Color
 		end
 	end
@@ -860,7 +881,7 @@ local function signature(w)
 		elseif d == "@inventory" then
 			table.insert(parts, tostring(invVersion))
 		elseif d == "@weather" then
-			table.insert(parts, tostring(ReplicatedStorage:GetAttribute("Weather")))
+			table.insert(parts, tostring(ReplicatedStorage:GetAttribute("Weather")) .. "+" .. tostring(ReplicatedStorage:GetAttribute("Weather2")))
 		elseif string.sub(d, -1) == "_" then
 			local keys = {}
 			for name, value in pairs(player:GetAttributes()) do
@@ -1065,7 +1086,7 @@ local function coinEntries()
 		local coin = CoinData.Coins[st.i]
 		if coin and st.n > 0 then
 			table.insert(out, {
-				Key = key, Coin = coin, Tier = CoinData.TierById[coin.Tier], Mutation = st.m and MutationData.ById[st.m] or nil,
+				Key = key, Coin = coin, Tier = CoinData.TierById[coin.Tier], Mutation = st.m and MutationData.Combo(st.m) or nil,
 				At = st.t or 0, Count = st.n, Total = st.v, Value = math.floor(st.v / st.n * 100 + 0.5) / 100,
 			})
 		end
@@ -2359,8 +2380,9 @@ function GameUI.Found(info)
 	local coin = CoinData.Coins[info.CoinId]
 	if not coin then return end
 	local tier = CoinData.TierById[coin.Tier]
-	local mutation = info.Mutation and MutationData.ById[info.Mutation] or nil
-	local level = tier.Index <= 2 and 1 or (tier.Index <= 4 and 2 or (tier.Index <= 7 and 3 or 4))
+	local mutation = info.Mutation and MutationData.Combo(info.Mutation) or nil
+	local rank = tier.Rank or tier.Index -- Premium zählt wie Legendär
+	local level = rank <= 2 and 1 or (rank <= 4 and 2 or (rank <= 7 and 3 or 4))
 	if mutation then level = math.min(4, level + 1) end
 	local count = info.Count or 1
 	local value = (info.Value or 0) * count
@@ -3028,6 +3050,7 @@ function GameUI.Start(opts)
 	end
 	player.AttributeChanged:Connect(changed)
 	ReplicatedStorage:GetAttributeChangedSignal("Weather"):Connect(changed)
+	ReplicatedStorage:GetAttributeChangedSignal("Weather2"):Connect(changed)
 	-- Münzen vom Server: erst alles, danach nur Änderungen
 	local inventoryEvent = root:WaitForChild("InventoryEvent", 10)
 	if inventoryEvent and inventoryEvent:IsA("RemoteEvent") then

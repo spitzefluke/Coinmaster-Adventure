@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { WEATHER, weatherById, weatherAt, forecast, nextWeather, weatherEvent, weatherRarityById, fmtShare, WEATHER_BLOCK, WEATHER_WARN, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { WEATHER, weatherById, weatherAt, sideWeatherAt, forecast, nextWeather, weatherEvent, weatherRarityById, fmtShare, WEATHER_BLOCK, WEATHER_WARN, mutationForWeather, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { COINS } from '../../muenzen/js/coins.js';
 import { createRobloxCoin, coinLua, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
 import { ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
@@ -113,8 +113,15 @@ function renderNow() {
   const warn = w.id === 'klar' && next && next.starts - Date.now() <= WEATHER_WARN * 1000;
   $('now').style.setProperty('--weather', warn ? next.w.color : w.color);
   $('now').classList.toggle('is-warn', !!warn);
-  $('now').innerHTML = `<p class="now-label">Gerade ${rarityTag(w)}</p><p class="now-name">${w.name}</p><p class="now-mut">${m ? `${m.chance} % ${m.name} · ${fmtMultiplier(m)}` : 'Keine Mutation'}</p>
-    <p class="now-time">${warn ? `⚠ ${next.w.name} zieht auf · ${mmss(next.starts - Date.now())}` : `wechselt in ${mmss(ends - Date.now())}`}</p>`;
+  $('now').innerHTML = `<p class="now-label">Gerade ${rarityTag(w)}</p><p class="now-name">${w.name}</p><p class="now-mut">${m ? `${m.chance.toLocaleString('de-DE')} % ${m.name} · ${fmtMultiplier(m)}` : 'Keine Mutation'}</p>
+    <p class="now-time">${warn ? `⚠ ${next.w.name} zieht auf · ${mmss(next.starts - Date.now())}` : `wechselt in ${mmss(ends - Date.now())}`}</p>${sideLine(w)}`;
+}
+// Nebenwetter: läuft gleichzeitig, eine Münze kann dann zwei Mutationen bekommen
+function sideLine(w) {
+  const side = sideWeatherAt();
+  if (!side || side.w.id === w.id) return '';
+  const sm = mutationForWeather(side.w.id);
+  return `<p class="now-mut" style="color:${side.w.color}">+ gleichzeitig ${side.w.name}${sm ? ` · ${sm.chance.toLocaleString('de-DE')} % ${sm.name} · ${fmtMultiplier(sm)}` : ''} · noch ${mmss(side.ends - Date.now())}</p>`;
 }
 function renderInfo() {
   const w = weatherById[selected], m = mutationForWeather(w.id);
@@ -125,7 +132,7 @@ function renderInfo() {
     <p class="info-text">${w.text}</p>
     ${m ? `<dl class="facts">
       <div><dt>Mutation</dt><dd>${m.name}</dd></div>
-      <div><dt>Chance pro Fund</dt><dd>${m.chance} %</dd></div>
+      <div><dt>Chance pro Fund</dt><dd>${m.chance.toLocaleString('de-DE')} %</dd></div>
       <div><dt>Münzwert</dt><dd>${fmtMultiplier(m)}</dd></div>
       <div><dt>Nächstes Mal</dt><dd>${nextTime(w.id)}</dd></div>
     </dl><p class="info-fx">${m.effect}</p>` : ''}`;

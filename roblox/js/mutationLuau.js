@@ -8,7 +8,9 @@ const HEADER = (title) => `-- Coinmaster Adventure · ${title}
 `;
 
 export const MUTATION_FX = `${HEADER('Mutations-Effekte')}
--- MutationFx.Apply(model, mutationId) hängt die Effekte einer Mutation an eine Münze aus CoinBuilder
+-- MutationFx.Apply(model, mutationId) hängt die Effekte einer Mutation an eine Münze aus CoinBuilder.
+-- Mehrere Mutationen mit Komma ("big,nass"): alle Effekte übereinander; GIGANT (big) vergrößert danach die
+-- ganze Münze samt Effekten auf das 3,5-Fache (Scale aus MutationData), Animationen rechnen mit.
 -- (Münze steht hochkant, Vorder- und Rückseite zeigen entlang X, Radius 2 Studs).
 -- Was fest an der Münze sitzt (Prägungs-Muster, Hörner, Eiszapfen, Spiegelkacheln) dreht sich mit ihr;
 -- Regen, Boden, Funken und Flammen bleiben aufrecht. Animationen laufen, solange die Münze im Spiel ist.
@@ -95,9 +97,11 @@ end
 local function rig(model, body)
 	local k = { Model = model, Body = body, Updates = {} }
 	-- an der Münze (dreht sich mit)
-	function k.spin(x, y, z) return body.CFrame * CFrame.new((z or 0) * S, y * S, x * S) end
+	-- Maßstab der Münze (GIGANT setzt das Attribut FxScale), damit Animationen mitwachsen
+	local function sc() return model:GetAttribute("FxScale") or 1 end
+	function k.spin(x, y, z) local s = S * sc() return body.CFrame * CFrame.new((z or 0) * s, y * s, x * s) end
 	-- aufrecht um die Münzmitte (Regen, Boden, Flammen)
-	function k.fix(x, y, z) return CFrame.new(body.Position + V(x * S, y * S, (z or 0) * S)) end
+	function k.fix(x, y, z) local s = S * sc() return CFrame.new(body.Position + V(x * s, y * s, (z or 0) * s)) end
 	function k.on(fn) table.insert(k.Updates, fn) end
 	-- unsichtbarer Halter für Partikel an einer festen Stelle
 	function k.holder(cf, size)
@@ -995,7 +999,52 @@ function EFFECTS.kosmisch(k)
 	end)
 end
 
+-- Ganze Münze samt Effekten um den Mittelpunkt vergrößern (Teile, Partikel, Lichter, Bänder)
+local function scaleModel(model, f)
+	local pivot = model:GetPivot()
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local rel = pivot:ToObjectSpace(d.CFrame)
+			d.Size = d.Size * f
+			d.CFrame = pivot * (rel - rel.Position + rel.Position * f)
+		elseif d:IsA("ParticleEmitter") then
+			pcall(function()
+				local pts = {}
+				for _, kp in ipairs(d.Size.Keypoints) do
+					table.insert(pts, NumberSequenceKeypoint.new(kp.Time, kp.Value * f, (kp.Envelope or 0) * f))
+				end
+				d.Size = NumberSequence.new(pts)
+				d.Speed = NumberRange.new(d.Speed.Min * f, d.Speed.Max * f)
+			end)
+		elseif d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then
+			d.Range = math.min(60, d.Range * f)
+		elseif d:IsA("Beam") then
+			d.Width0, d.Width1 = d.Width0 * f, d.Width1 * f
+		elseif d:IsA("Attachment") then
+			d.Position = d.Position * f
+		end
+	end
+	model:SetAttribute("FxScale", (model:GetAttribute("FxScale") or 1) * f)
+end
+MutationFx.ScaleModel = scaleModel
+
 function MutationFx.Apply(model, mutationId)
+	local list = MutationData.Parse and MutationData.Parse(mutationId) or { MutationData.ById[mutationId] }
+	if #list > 1 or (list[1] and list[1].Scale) then
+		-- erst alle Effekte in normaler Größe, dann vergrößern
+		local scale, mult = 1, 1
+		for _, m in ipairs(list) do
+			if m.Scale then
+				scale, mult = scale * m.Scale, mult * m.Multiplier
+			else
+				MutationFx.Apply(model, m.Id)
+			end
+		end
+		if scale ~= 1 then scaleModel(model, scale) end
+		model:SetAttribute("Mutation", MutationData.Key(list))
+		model:SetAttribute("Value", (model:GetAttribute("Value") or 0) * mult)
+		return model
+	end
 	local fx = EFFECTS[mutationId]
 	if not fx then return model end
 	local body = model.PrimaryPart

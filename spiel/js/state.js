@@ -2,12 +2,12 @@
 // Liegt im localStorage dieses Browsers. Ein neuer Spielstand startet mit einem Beispiel,
 // damit alle Oberflächen gleich etwas zeigen.
 
-import { COINS, TIERS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, rollMutation, weatherAt } from '../../muenzen/js/mutations.js';
+import { COINS, TIERS, tierById, nextTier, coinWeight, coinBaseValue, rollCoin, glitchValue } from '../../muenzen/js/coins.js';
+import { rollMutations, mutationsMultiplier, weathersAt } from '../../muenzen/js/mutations.js';
 import { SKILLS, skillById } from './skills.js';
 import { auraById } from '../../auren/js/auras.js';
 import { PLANETS, planetById, worldById, playable, REBIRTH, rebirthMultiplier, SUPERNOVA, supernovaMultiplier, galaxyById, galaxyOfWorld, currencyOfWorld } from '../../welten/js/worlds.js';
-import { GEMS, gemById, gemBaseValue, GEM_BAGS, gemBagByNr } from '../../edelsteine/js/gems.js';
+import { GEMS, gemById, gemBaseValue, GEM_BAGS, gemBagByNr, TIERS as GEM_TIERS, tierById as gemTierById } from '../../edelsteine/js/gems.js';
 
 export { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../../js/settings.js';
 
@@ -40,9 +40,9 @@ function sampleState() {
     xp: 60,
     skills: { kern: 1, glueckspilz: 1, beutel: 1 },
     inventory: [
-      pick('Pilzpfennig'), pick('Pilzpfennig', 'nass'), pick('Schneckentaler'), pick('Käsetaler'),
-      pick('Brotgroschen'), pick('Wolfssilber'), pick('Mondsichel', 'disco'), pick('Pinguin-Penny'),
-      pick('Kronendukat'), pick('Drachenauge', 'gestein'),
+      pick('Glutfunke'), pick('Glutfunke', 'nass'), pick('Rostanker'), pick('Würfelglück'),
+      pick('Laternentaler'), pick('Sturmfalke'), pick('Mondsplitter', 'disco'), pick('Silberkompass'),
+      pick('Kronjuwel'), pick('Ouroboros', 'gestein'),
     ],
     eggs: { normal: 2, wald: 1 },
     boosts: {},
@@ -200,41 +200,52 @@ export function auraBonus(s, type) {
 // ── Münze finden ─────────────────────────────────────────────────────────────
 // Simuliert einen Fund in der Welt, mit allen Skill- und Boost-Effekten.
 
+// Wert einer Münze im Inventar: Nennwert (Premium: eigener Wert, Glitch: gewürfelt) × Mutationen × Fundbonus
 export function coinValue(entry) {
   const coin = COINS[entry.id];
-  const base = Number(tierById[coin.tier].value);
-  const n = Number.isFinite(base) ? base : 1000000;
-  const m = entry.mutation ? mutationById[entry.mutation].multiplier : 1;
-  return Math.round(n * m * (entry.bonus || 1) * 100) / 100;
+  const n = entry.glitch ?? coinBaseValue(coin);
+  return Math.round(n * mutationsMultiplier(entry.mutation) * (entry.bonus || 1) * 100) / 100;
 }
 
-function rollTier(s, random) {
+// tiers: Münzen (mit Premium) oder Edelsteine (gems.js, ohne Premium); index/rank kommen aus tierById
+function rollTier(s, random, tiers = TIERS, byId = tierById) {
   // Glück verschiebt Chance von „Normal“ zu den seltenen Stufen
   const luck = effect(s, 'glueckspilz') / 100 + auraBonus(s, 'glueck') / 100 + (boostActive(s, 'glueck') ? 1 : 0) + currentWorld(s).luck;
-  const weights = TIERS.map((t, i) => (i === 0 ? t.chance : t.chance * (1 + luck)));
+  const weights = tiers.map((t, i) => (i === 0 ? t.chance : t.chance * (1 + luck)));
   const total = weights.reduce((a, b) => a + b, 0);
   let r = random() * total;
-  return TIERS[weights.findIndex((w) => (r -= w) <= 0)] || TIERS[0];
+  return byId[(tiers[weights.findIndex((w) => (r -= w) <= 0)] || tiers[0]).id];
 }
 
-export function findCoin(s, random = Math.random, weatherId = weatherAt().w.id) {
+// weatherIds: alle laufenden Wetter (Haupt- und Nebenwetter), je eins kann seine Mutation geben
+export function findCoin(s, random = Math.random, weatherIds = weathersAt().map((e) => e.w.id)) {
   let tier = rollTier(s, random);
-  // Goldene Hand: eine Stufe höher
+  // Goldene Hand: eine Stufe höher (nur auf der Leiter Normal … Unerreichbar)
   let upgraded = false;
-  if (random() * 100 < effect(s, 'goldhand') && tier.index < TIERS.length - 1) {
-    tier = tierById[TIERS[TIERS.findIndex((t) => t.id === tier.id) + 1].id];
+  if (random() * 100 < effect(s, 'goldhand') && nextTier(tier.id)) {
+    tier = nextTier(tier.id);
     upgraded = true;
   }
+  // innerhalb der Stufe nach Gewicht (Premium-Münzen sind unterschiedlich häufig)
   const pool = COINS.map((c, i) => [c, i]).filter(([c]) => c.tier === tier.id);
-  const [, id] = pool[Math.floor(random() * pool.length)];
+  let w = random() * pool.reduce((a, [c]) => a + coinWeight(c), 0);
+  let [coin, id] = pool.find(([c]) => (w -= coinWeight(c)) <= 0) || pool[0];
+  // Mystery-Münze: verwandelt sich in eine zufällige andere Münze
+  let mystery = false;
+  if (coin.special === 'mystery') {
+    mystery = true;
+    coin = rollCoin(random, { keepMystery: false });
+    id = COINS.indexOf(coin);
+    tier = tierById[coin.tier];
+  }
+  const glitch = coin.special === 'glitch' ? glitchValue(random) : undefined;
   const bonus = effect(s, 'wetter') * (boostActive(s, 'wetter') ? 2 : 1);
-  const mutation = rollMutation(weatherId, random, bonus);
+  const mutation = rollMutations([].concat(weatherIds), random, bonus);
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
-  const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
-  const xp = Math.round((5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
+  const xp = Math.round((5 + tier.rank * tier.rank * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
   // Wert: Skill „Wertvoller Fund“ × Aura × Welt × Wiedergeburten × Supernova
   const value = findBonus(s);
-  return { id, mutation: mutation?.id || null, count, xp, upgraded, bonus: Math.round(value * 1000) / 1000 };
+  return { id, mutation: mutation || null, count, xp, upgraded, mystery, glitch, bonus: Math.round(value * 1000) / 1000 };
 }
 const findBonus = (s) => (1 + effect(s, 'wert') / 100) * (1 + auraBonus(s, 'wert') / 100) * currentWorld(s).value * prestigeMultiplier(s);
 
@@ -243,17 +254,16 @@ export const findsGems = (s) => galaxyOfWorld(currentWorld(s)).find === 'gems';
 
 // Edelstein finden: dieselben Stufen, dasselbe Glück und dieselben Skills wie bei Münzen (ohne Mutation)
 export function findGem(s, random = Math.random) {
-  let tier = rollTier(s, random);
+  let tier = rollTier(s, random, GEM_TIERS, gemTierById);
   let upgraded = false;
-  if (random() * 100 < effect(s, 'goldhand') && tier.index < TIERS.length - 1) {
-    tier = TIERS[TIERS.findIndex((t) => t.id === tier.id) + 1];
+  if (random() * 100 < effect(s, 'goldhand') && tier.index < GEM_TIERS.length - 1) {
+    tier = gemTierById[GEM_TIERS[tier.index + 1].id];
     upgraded = true;
   }
   const pool = GEMS.filter((g) => g.tier === tier.id);
   const gem = pool[Math.floor(random() * pool.length)];
   const count = random() * 100 < effect(s, 'doppel') ? 2 : 1;
-  const tierIndex = TIERS.findIndex((t) => t.id === tier.id);
-  const xp = Math.round((5 + tierIndex * tierIndex * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
+  const xp = Math.round((5 + tier.index * tier.index * 4) * count * (boostActive(s, 'xp') ? 2 : 1) * (1 + auraBonus(s, 'ep') / 100));
   const value = Math.round(gemBaseValue(gem) * findBonus(s) * 100) / 100;
   return { gem: gem.id, count, xp, upgraded, value };
 }

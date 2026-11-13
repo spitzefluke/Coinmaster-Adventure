@@ -4,7 +4,11 @@
 //
 // cut: Schliff (rund, oval, tropfen, smaragd, herz, prinzess, stern), colors: [hell, Grundfarbe, dunkel]
 
-import { TIERS, tierById } from '../../muenzen/js/coins.js';
+import { LADDER } from '../../muenzen/js/coins.js';
+
+// Dieselben Seltenheitsstufen wie die Münzen, ohne Premium und mit der ursprünglichen Chance für Normal (40 %)
+export const TIERS = LADDER.map((t) => (t.id === 'normal' ? { ...t, chance: 40 } : t));
+export const tierById = Object.fromEntries(TIERS.map((t, i) => [t.id, { ...t, index: i }]));
 
 export const GEM_FACTOR = 10; // Edelstein = 10 × Münzwert der Stufe, in Diamantstaub
 
@@ -50,7 +54,6 @@ export function gemBaseValue(gem) {
   return (Number.isFinite(base) ? base : 1000000) * GEM_FACTOR;
 }
 
-export { TIERS, tierById };
 
 // ── Edelstein-Taschen ────────────────────────────────────────────────────────
 // 50 eigene Taschen nur für Edelsteine, in 5 Stufen. Man kauft sie der Reihe nach mit Diamantstaub;
