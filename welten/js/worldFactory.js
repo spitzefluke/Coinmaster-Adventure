@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -767,7 +767,38 @@ function lollipop(c, rand) {
   disc.position.y = 2;
   disc.userData.rbx = { color: c };
   const g = group(stick, disc);
+  // in Roblox gibt es die Spiral-Textur nicht: dort zeigen Ringe in Weiß und Farbe die Spirale
+  // (auf der Webseite unsichtbar, die Textur malt sie schon)
+  const ringW = M('#ffffff'), ringC = M(c);
+  ringW.visible = ringC.visible = false;
+  [[0.47, ringW], [0.34, ringC], [0.21, ringW], [0.1, ringC]].forEach(([r, m], i) => {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.17 + i * 0.006, 20), m);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 2;
+    g.add(ring);
+  });
   g.rotation.z = (rand() - 0.5) * 0.2;
+  return g;
+}
+// Gummibär: durchscheinend, Kopf mit Ohren und Schnauze, Arme und Beine
+function gummyBear(h, c) {
+  const m = M(c, { transparent: true, opacity: 0.78, roughness: 0.15, emissive: c, emissiveIntensity: 0.12 });
+  const g = new THREE.Group();
+  const ball = (r, x, y, z, sx = 1, sy = 1, sz = 1) => {
+    const b = at(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), m), x, y, z);
+    b.scale.set(sx, sy, sz);
+    g.add(b);
+  };
+  ball(0.32, 0, 0.42, 0, 1, 1.25, 0.9); // Bauch
+  ball(0.26, 0, 0.92, 0); // Kopf
+  ball(0.09, -0.18, 1.12, 0); // Ohren
+  ball(0.09, 0.18, 1.12, 0);
+  ball(0.1, 0, 0.88, 0.22, 1.2, 0.9, 1); // Schnauze
+  ball(0.11, -0.3, 0.6, 0.06, 1, 1.5, 1); // Arme
+  ball(0.11, 0.3, 0.6, 0.06, 1, 1.5, 1);
+  ball(0.13, -0.16, 0.1, 0.08, 1, 1, 1.4); // Füße
+  ball(0.13, 0.16, 0.1, 0.08, 1, 1, 1.4);
+  g.scale.setScalar(h);
   return g;
 }
 function candyCane() {

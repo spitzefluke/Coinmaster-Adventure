@@ -858,7 +858,51 @@ const CANDY = {
     scatterModels(ctx, 4, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
     scatterModels(ctx, 9, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { gap: 0.75 });
     scatterModels(ctx, 4, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
-    void kit;
+    // wie in einem Süßwarenladen: Zuckergussflecken in Minze, Zitrone und Himbeere, Gummibären,
+    // Gummidrops in Gruppen, Marshmallow-Türme, Lakritzschnecken
+    const { rr } = ctx, inner = R - 2.6;
+    for (let i = 0; i < 12; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.2), pick(rand, ['#c8f4e0', '#fff2b8', '#ffc0dc', '#d8e4ff']), 'SmoothPlastic');
+    }
+    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 4).forEach((c) => {
+      const p = ctx.spot(0.8, 4, inner);
+      if (!p) return;
+      ctx.reserve(p[0], p[1], 0.8);
+      ctx.put(kit.gummyBear(rr(1.1, 1.6), c), p[0], p[1]);
+    });
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const d = kit.gumdrop(pick(rand, ['#ff4a7a', '#ffb02e', '#5ad84a', '#7ac8ff', '#c87aff', '#ffe23a']));
+        d.position.set(rr(-0.5, 0.5), 0, rr(-0.5, 0.5));
+        d.scale.setScalar(rr(0.6, 1));
+        g.add(d);
+      }
+      return g;
+    }, 0.6, 2, inner);
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 3);
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.34, 16), new THREE.MeshStandardMaterial({ color: i % 2 ? '#ffd0e4' : '#fffaf4', roughness: 0.6 }));
+        m.position.set(rr(-0.04, 0.04), 0.17 + i * 0.36, rr(-0.04, 0.04));
+        m.rotation.y = rand();
+        g.add(m);
+      }
+      return g;
+    }, 0.4, 2, inner);
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 20), new THREE.MeshStandardMaterial({ color: '#1e1a20', roughness: 0.4 }));
+      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.2, 12), new THREE.MeshStandardMaterial({ color: '#ff5fb0' }));
+      for (const m of [wheel, mid]) {
+        m.rotation.x = Math.PI / 2;
+        m.position.y = 0.4;
+        g.add(m);
+      }
+      return g;
+    }, 0.5, 2, inner);
   },
   backdrop(ctx, kit) {
     planet1Backdrop(ctx, kit); // Eisberge (Waffel und Kugeln) in der Ferne
