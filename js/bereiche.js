@@ -20,7 +20,7 @@ export const BEREICHE = [
   },
   {
     titel: 'Eierhalle',
-    text: 'Sieben Eier für die Haustiere, vom Normal Egg bis zum Release Egg. Jedes mit eigenem Look und einer Schlüpf-Animation, die mit der Seltenheit wächst.',
+    text: 'Elf Eier für die Haustiere, vom Normal Egg bis zum Cartoon Egg. Jedes mit eigenem Look und einer Schlüpf-Animation, die mit der Seltenheit wächst.',
     href: 'eier/',
     status: 'vorschau',
     eckdaten: ['11 Eier', '3D', 'Schlüpf-Animation'],
