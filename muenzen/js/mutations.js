@@ -8,56 +8,64 @@
 
 import * as THREE from 'three';
 
+// chance: Prozent pro gezogener Münze, nur während das passende Wetter läuft (Haupt- oder Nebenwetter).
+// Laufen zwei Wetter gleichzeitig, kann eine Münze beide Mutationen bekommen; die Multiplikatoren werden
+// multipliziert (z. B. GIGANT + Sturzflut = ×10 × ×1,1). scale: Größe der Münze (GIGANT 3,5-fach).
 export const MUTATIONS = [
   {
-    id: 'nass', name: 'Nass', multiplier: 1.1, color: '#5cc8ff',
-    weather: 'regen', chance: 25,
-    effect: 'Glänzend nass, Tropfen auf der Prägung, Wasser tropft herunter.',
+    id: 'nass', name: 'Sturzflut', multiplier: 1.1, color: '#5cc8ff',
+    weather: 'regen', chance: 3,
+    effect: 'Ein dunkler Wasserfilm, Tropfen rinnen ruckweise herunter, darunter eine Pfütze mit Ringen.',
   },
   {
-    id: 'gestein', name: 'Gestein', multiplier: 1.25, color: '#b59b7a',
-    weather: 'erdbeben', chance: 18,
-    effect: 'Felsbrocken am Rand, steinerner Belag, rieselnder Staub.',
+    id: 'gestein', name: 'Felsenhaut', multiplier: 1.25, color: '#b59b7a',
+    weather: 'erdbeben', chance: 2.5,
+    effect: 'Risse und Felsbrocken überziehen die Münze, bei jedem Beben rieselt Staub.',
   },
   {
-    id: 'gefroren', name: 'Gefroren', multiplier: 1.3, color: '#9fe8ff',
-    weather: 'schneesturm', chance: 20,
-    effect: 'Eiskristalle wachsen am Rand, eine Frostschicht glitzert blau.',
+    id: 'gefroren', name: 'Permafrost', multiplier: 1.3, color: '#9fe8ff',
+    weather: 'schneesturm', chance: 2.5,
+    effect: 'Eisblumen, tropfende Eiszapfen und kalter Nebel, der nie verschwindet.',
   },
   {
-    id: 'disco', name: 'Disco', multiplier: 1.5, color: '#ff5fd2',
-    weather: 'disconacht', chance: 12,
-    effect: 'Bunte Discolichter kreisen um die Münze, Lichtpunkte tanzen.',
+    id: 'disco', name: 'Discofieber', multiplier: 1.5, color: '#ff5fd2',
+    weather: 'disconacht', chance: 2,
+    effect: 'Spiegelkacheln blitzen im Takt, eine Discokugel wirft Lichtkegel auf die Tanzfläche.',
   },
   {
-    id: 'elektrisch', name: 'Elektrisch', multiplier: 1.75, color: '#ffe94a',
-    weather: 'gewitter', chance: 10,
-    effect: 'Kleine Blitzbögen knistern über die Münze, gelbes Leuchten.',
+    id: 'elektrisch', name: 'Hochspannung', multiplier: 1.75, color: '#ffe94a',
+    weather: 'gewitter', chance: 2,
+    effect: 'Blitze schlagen in die Münze ein, Ladungen kriechen über die Prägung.',
   },
   {
-    id: 'daemonisch', name: 'Dämonisch', multiplier: 2, color: '#ff2a2a',
-    weather: 'blutmond', chance: 8,
-    effect: 'Hörner, rote Aura, Höllenflammen und ein Ring aus Blut.',
+    id: 'daemonisch', name: 'Höllenglut', multiplier: 2, color: '#ff2a2a',
+    weather: 'blutmond', chance: 1.5,
+    effect: 'Lavarisse pochen im Herzschlag, Hörner wachsen, ein Beschwörungskreis dreht sich.',
   },
   {
-    id: 'augenkrebs', name: 'Augenkrebs', multiplier: 2.5, color: '#c6ff00',
-    weather: 'neonsturm', chance: 5,
-    effect: 'Grelle Neonfarben wechseln durch, schrille Formen schwirren herum.',
+    id: 'augenkrebs', name: 'Neonrausch', multiplier: 2.5, color: '#c6ff00',
+    weather: 'neonsturm', chance: 1.2,
+    effect: 'Grelle Op-Art dreht sich, Neon-Formen schwirren herum, die Farben laufen durch.',
   },
   {
-    id: 'hacked', name: 'Hacked', multiplier: 3, color: '#3dff7a',
-    weather: 'datensturm', chance: 3,
-    effect: 'Grüner Code-Regen, Glitch-Zucken und ein HACKED-Schild.',
+    id: 'hacked', name: 'Systemfehler', multiplier: 3, color: '#3dff7a',
+    weather: 'datensturm', chance: 1,
+    effect: 'Code-Spalten, Scanlinien und Fehlermeldungen. Die Münze zerfällt in Pixel.',
   },
   {
-    id: 'golden', name: 'Golden', multiplier: 4, color: '#ffd23a',
-    weather: 'goldregen', chance: 4,
-    effect: 'Die ganze Münze wird massiv golden, Funkeln und Goldtropfen.',
+    id: 'golden', name: 'Midas-Gold', multiplier: 4, color: '#ffd23a',
+    weather: 'goldregen', chance: 1,
+    effect: 'Die ganze Münze wird massiv golden, Goldtropfen fallen, Münzen regnen herab.',
   },
   {
-    id: 'kosmisch', name: 'Kosmisch', multiplier: 5, color: '#b07bff',
-    weather: 'sternschnuppen', chance: 2,
-    effect: 'Galaxie-Oberfläche mit ziehenden Sternen, ein Sternenring kreist.',
+    id: 'kosmisch', name: 'Sternenstaub', multiplier: 5, color: '#b07bff',
+    weather: 'sternschnuppen', chance: 0.6,
+    effect: 'Sternenmetall mit Spiralgalaxie, ein Sternbild und kreisende Planeten.',
+  },
+  {
+    id: 'big', name: 'GIGANT', multiplier: 10, color: '#ff9a3c', scale: 3.5,
+    weather: 'riesenmond', chance: 3,
+    effect: 'Die Münze wächst auf das 3,5-Fache, mitsamt allen anderen Mutationen.',
   },
 ];
 
@@ -77,21 +85,50 @@ export const weatherRarityById = Object.fromEntries(WEATHER_RARITIES.map((r, i) 
 // sky/light: Stimmung für Roblox (Lighting, im Modul WeatherFx) und die Roblox-Vorschau der Welten
 export const WEATHER = [
   { id: 'klar', name: 'Klar', weight: 93.3, color: '#d9b26a', text: 'Keine besonderen Einflüsse.' },
-  { id: 'regen', name: 'Regen', rarity: 'gewoehnlich', weight: 30, duration: 360, intensity: 0.35, color: '#5cc8ff', text: 'Gezogene Münzen können nass werden.', sky: '#5a7590', light: 0.65 },
-  { id: 'gewitter', name: 'Gewitter', rarity: 'ungewoehnlich', weight: 16, duration: 300, intensity: 0.5, color: '#ffe94a', text: 'Blitze schlagen ein und laden Münzen auf.', sky: '#2a3040', light: 0.45 },
-  { id: 'erdbeben', name: 'Erdbeben', rarity: 'ungewoehnlich', weight: 13, duration: 150, intensity: 0.55, color: '#b59b7a', text: 'Gestein bricht auf und bleibt an Münzen hängen.', sky: '#9a7f60', light: 0.8 },
-  { id: 'schneesturm', name: 'Schneesturm', rarity: 'ungewoehnlich', weight: 13, duration: 300, intensity: 0.5, color: '#9fe8ff', text: 'Eisiger Wind friert Münzen ein.', sky: '#b8d0e4', light: 0.8 },
-  { id: 'disconacht', name: 'Disconacht', rarity: 'selten', weight: 8, duration: 240, intensity: 0.7, color: '#ff5fd2', text: 'Die Münzen tanzen mit.', sky: '#1d0f3a', light: 0.35 },
-  { id: 'blutmond', name: 'Blutmond', rarity: 'selten', weight: 6, duration: 240, intensity: 0.75, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht.', sky: '#2a0505', light: 0.35 },
-  { id: 'neonsturm', name: 'Neonsturm', rarity: 'episch', weight: 3, duration: 180, intensity: 0.9, color: '#c6ff00', text: 'Grelle Farben überall. Bitte nicht direkt hinsehen.', sky: '#0a2a1a', light: 0.5 },
-  { id: 'goldregen', name: 'Goldregen', rarity: 'episch', weight: 2.5, duration: 150, intensity: 1, color: '#ffd23a', text: 'Es regnet pures Gold. Münzen werden golden.', sky: '#e0b050', light: 1.0 },
-  { id: 'datensturm', name: 'Datensturm', rarity: 'legendaer', weight: 1.2, duration: 150, intensity: 1.05, color: '#3dff7a', text: 'Das System ist kompromittiert.', sky: '#031008', light: 0.35 },
-  { id: 'sternschnuppen', name: 'Sternschnuppen', rarity: 'mythisch', weight: 0.6, duration: 120, intensity: 1.2, color: '#b07bff', text: 'Sterne fallen vom Himmel und machen Münzen kosmisch.', sky: '#0a0820', light: 0.4 },
+  { id: 'regen', name: 'Regen', rarity: 'gewoehnlich', weight: 30, duration: 360, intensity: 0.35, color: '#5cc8ff', text: 'Gezogene Münzen können zur Sturzflut werden.', sky: '#5a7590', light: 0.65 },
+  { id: 'gewitter', name: 'Gewitter', rarity: 'ungewoehnlich', weight: 16, duration: 300, intensity: 0.5, color: '#ffe94a', text: 'Blitze schlagen ein und setzen Münzen unter Hochspannung.', sky: '#2a3040', light: 0.45 },
+  { id: 'erdbeben', name: 'Erdbeben', rarity: 'ungewoehnlich', weight: 13, duration: 150, intensity: 0.55, color: '#b59b7a', text: 'Gestein bricht auf und überzieht Münzen mit Felsenhaut.', sky: '#9a7f60', light: 0.8 },
+  { id: 'schneesturm', name: 'Schneesturm', rarity: 'ungewoehnlich', weight: 13, duration: 300, intensity: 0.5, color: '#9fe8ff', text: 'Eisiger Wind lässt Münzen im Permafrost erstarren.', sky: '#b8d0e4', light: 0.8 },
+  { id: 'disconacht', name: 'Disconacht', rarity: 'selten', weight: 8, duration: 240, intensity: 0.7, color: '#ff5fd2', text: 'Die Münzen tanzen mit und fangen das Discofieber.', sky: '#1d0f3a', light: 0.35 },
+  { id: 'blutmond', name: 'Blutmond', rarity: 'selten', weight: 6, duration: 240, intensity: 0.75, color: '#ff2a2a', text: 'Etwas Dämonisches erwacht. Münzen fangen Höllenglut.', sky: '#2a0505', light: 0.35 },
+  { id: 'neonsturm', name: 'Neonsturm', rarity: 'episch', weight: 3, duration: 180, intensity: 0.9, color: '#c6ff00', text: 'Grelle Farben überall. Münzen geraten in den Neonrausch.', sky: '#0a2a1a', light: 0.5 },
+  { id: 'goldregen', name: 'Goldregen', rarity: 'episch', weight: 2.5, duration: 150, intensity: 1, color: '#ffd23a', text: 'Es regnet pures Gold. Münzen werden zu Midas-Gold.', sky: '#e0b050', light: 1.0 },
+  { id: 'datensturm', name: 'Datensturm', rarity: 'legendaer', weight: 1.2, duration: 150, intensity: 1.05, color: '#3dff7a', text: 'Das System ist kompromittiert. Münzen bekommen einen Systemfehler.', sky: '#031008', light: 0.35 },
+  { id: 'sternschnuppen', name: 'Sternschnuppen', rarity: 'mythisch', weight: 0.6, duration: 120, intensity: 1.2, color: '#b07bff', text: 'Sterne fallen vom Himmel und hüllen Münzen in Sternenstaub.', sky: '#0a0820', light: 0.4 },
+  { id: 'riesenmond', name: 'Riesenmond', rarity: 'episch', weight: 3, duration: 180, intensity: 0.8, color: '#ff9a3c', text: 'Ein riesiger Mond zieht tief über den Himmel. Münzen können zum GIGANTEN anwachsen.', sky: '#24163a', light: 0.5 },
 ];
 
 export const mutationById = Object.fromEntries(MUTATIONS.map((m) => [m.id, m]));
 export const weatherById = Object.fromEntries(WEATHER.map((w) => [w.id, w]));
 export const mutationForWeather = (weatherId) => MUTATIONS.find((m) => m.weather === weatherId) || null;
+
+// ── Mehrere Mutationen an einer Münze ──
+// Im Spielstand steht die Mutation als Text: eine Id ("nass") oder mehrere mit Komma ("big,nass").
+export const parseMutations = (m) => (Array.isArray(m) ? m : m ? String(m).split(',') : []).filter((id) => mutationById[id]);
+// Schlüssel in fester Reihenfolge (wie MUTATIONS), damit gleiche Kombinationen gleich heißen
+export const mutationKey = (ids) => {
+  const list = parseMutations(ids);
+  return list.length ? MUTATIONS.filter((m) => list.includes(m.id)).map((m) => m.id).join(',') : null;
+};
+export const mutationsMultiplier = (m) => parseMutations(m).reduce((p, id) => p * mutationById[id].multiplier, 1);
+export const mutationsName = (m) =>
+  parseMutations(m).map((id) => mutationById[id]).sort((a, b) => b.multiplier - a.multiplier).map((x) => x.name).join(' + ');
+// Farbe einer Kombination: die seltenste (höchster Multiplikator)
+export const mutationsColor = (m) => {
+  const list = parseMutations(m).map((id) => mutationById[id]);
+  return list.length ? list.reduce((a, b) => (b.multiplier > a.multiplier ? b : a)).color : null;
+};
+
+// Würfelt für jedes laufende Wetter seine Mutation. Gibt den Schlüssel ("big,nass") oder null zurück.
+// bonus: zusätzliche Prozentpunkte, z. B. aus dem Skill „Wettergespür“
+export function rollMutations(weatherIds, random = Math.random, bonus = 0) {
+  const ids = [];
+  for (const w of [...new Set(weatherIds)]) {
+    const m = rollMutation(w, random, bonus);
+    if (m) ids.push(m.id);
+  }
+  return mutationKey(ids);
+}
 
 // Würfelt beim Ziehen, ob die Münze mutiert. Gibt die Mutation oder null zurück.
 // bonus: zusätzliche Prozentpunkte, z. B. aus dem Skill „Wettergespür“
@@ -144,6 +181,48 @@ export function weatherAt(now = Date.now()) {
   const next = nextWeather(now);
   return { w: WEATHER[0], starts, ends: next ? next.starts : (b + 1) * WEATHER_BLOCK * 1000 };
 }
+// ── Nebenwetter: eine zweite, seltenere Spur im selben Zeitplan ──
+// Pro Block wird ein zweites Mal gewürfelt (andere Salze, klar sehr viel häufiger). Ein Nebenwetter kann
+// gleichzeitig mit dem Hauptwetter laufen, aber nie dasselbe Wetter sein. Dieselbe Rechnung steht in Gacha.
+export const SIDE_CLEAR = 100; // Gewicht von „klar“ in der Nebenspur (statt WEATHER[0].weight)
+const sideTotal = totalWeight - WEATHER[0].weight + SIDE_CLEAR;
+export function sideWeatherEvent(block) {
+  let roll = hashR(block, 3) * sideTotal - SIDE_CLEAR;
+  if (roll < 0) return null;
+  const w = WEATHER.slice(1).find((x) => (roll -= x.weight) < 0) || WEATHER[WEATHER.length - 1];
+  const main = weatherEvent(block);
+  if (main && main.w.id === w.id) return null;
+  const start = block * WEATHER_BLOCK + Math.floor(hashR(block, 4) * (WEATHER_BLOCK - w.duration));
+  return { w, starts: start * 1000, ends: (start + w.duration) * 1000, side: true };
+}
+// Nebenwetter jetzt oder null
+export function sideWeatherAt(now = Date.now()) {
+  const b = Math.floor(now / 1000 / WEATHER_BLOCK);
+  for (const k of [0, -1]) {
+    const e = sideWeatherEvent(b + k);
+    if (e && now >= e.starts && now < e.ends) return e;
+  }
+  return null;
+}
+// Nächstes Nebenwetter, das nach `now` beginnt
+export function nextSideWeather(now = Date.now()) {
+  const b = Math.floor(now / 1000 / WEATHER_BLOCK);
+  for (let k = 0; k < 96; k++) {
+    const e = sideWeatherEvent(b + k);
+    if (e && e.starts > now) return e;
+  }
+  return null;
+}
+// Alle Wetter, die jetzt laufen (ohne klar): [{ w, starts, ends, side? }]
+export function weathersAt(now = Date.now()) {
+  const out = [];
+  const main = weatherAt(now);
+  if (main.w.id !== 'klar') out.push(main);
+  const side = sideWeatherAt(now);
+  if (side && side.w.id !== main.w.id) out.push(side);
+  return out;
+}
+
 // Die nächsten n Phasen ab jetzt (klar und Wetter im Wechsel) für die Vorhersage
 export function forecast(n = 8, now = Date.now()) {
   const out = [weatherAt(now)];
@@ -161,14 +240,16 @@ export const fmtShare = (w) => {
 };
 
 // Nennwert mit Multiplikator. '∞' bleibt unendlich.
+// mutation: eine Mutation, ihre Id oder eine Kombination ("big,nass")
 export function mutatedValue(value, mutation) {
   if (!mutation) return value;
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
-  return (Math.round(n * mutation.multiplier * 100) / 100).toLocaleString('de-DE');
+  const mult = typeof mutation === 'object' && !Array.isArray(mutation) ? mutation.multiplier : mutationsMultiplier(mutation);
+  return (Math.round(n * mult * 100) / 100).toLocaleString('de-DE');
 }
 
-export const fmtMultiplier = (m) => '×' + m.multiplier.toLocaleString('de-DE');
+export const fmtMultiplier = (m) => '×' + (typeof m === 'object' && !Array.isArray(m) ? m.multiplier : mutationsMultiplier(m)).toLocaleString('de-DE');
 
 // ── Effekte ──────────────────────────────────────────────────────────────────
 // ctx kommt aus createCoin: { spinner, fx, faces, bodyMat, faceZ, track, onUpdate, particles, glowSprite }

@@ -56,60 +56,62 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 
 ## Münzkabinett
 
-`muenzen/` zeigt die 50 Münzen nur noch mit Namen, nach den 10 Seltenheitsstufen gruppiert, mit Drop-Tabelle,
-Stufen-Filter und Suche. Die 3D-Vorschau, die Detailansicht und „Münze ziehen“ gibt es dort nicht mehr; auch die
-drehende Zufallsmünze auf der Startseite ist entfernt. In 3D erscheinen die Münzen weiter im Münzindex, auf der
-Wetter-Seite und in der Spiel-Oberfläche.
+`muenzen/` zeigt alle 60 Münzen mit Namen, nach Stufen gruppiert, mit Drop-Tabelle, Stufen-Filter und Suche:
+50 Münzen in den zehn Seltenheitsstufen (alle neu, mit neuen Namen, Beschreibungen und Motiven) und zehn
+Premium-Münzen aus dem Münzlabor in einer eigenen Stufe. Die 3D-Vorschau gibt es dort nicht mehr; in 3D erscheinen
+die Münzen im Münzindex, auf der Wetter-Seite und in der Spiel-Oberfläche. Alle Motive auf einen Blick:
+`muenzen/praegungen.html`.
 
-**Die Münzen in Roblox:** Jede Münze ist genau die, die `CoinBuilder` und
-`MutationFx` in Roblox bauen (`muenzen/js/coinRoblox.js`): gestufte Prägung aus Randscheibe, Münzkörper
-und Motivplatte, ein Perlkreis und das Motiv als Decal auf beiden Seiten (so, wie es nach dem Hochladen
-der Motive und dem Eintragen der `DecalId` aussieht). Stufen-Effekte und Mutationen kommen aus denselben
-Skripten. Die Beschreibung unten gilt für die gezeichneten Motive (`emblems.js`), die als Decals dienen.
+| Stufe | Münzen | Drop-Chance | Münzen (Auswahl) |
+|---|---|---|---|
+| Normal | 9 | 35 % | Glutfunke, Rostanker, Hufeisen-Heller, Laternentaler, Pfeilschuss, Keimling, Würfelglück, Federkiel, Pilzprinz |
+| Selten | 8 | 25 % | Sturmfalke, Frostzahn, Nachtschwinge, Schattenfuchs, Silberkompass, Runenschild, Mondsplitter, Wellenbrecher |
+| Sehr selten | 7 | 15 % | Kronjuwel, Schwertkreuz, Schatzkarte, Bienenkönigin, Vierblatt, Goldskarabäus, Schatztruhe |
+| Episch | 6 | 9 % | Ouroboros, Kristallherz, Tornadotaler, Sternenhut, Skorpionstachel, Netz der Weberin |
+| Legendär | 5 | 5 % | Drachenatem, Titanenhammer, Feuervogel, Meteoritenkern, Löwenherz |
+| Mystisch | 4 | 3 % | Geisterflamme, Zeitriss, Runenportal, Schattenkrähe |
+| Engelsgleich | 4 | 1,5 % | Himmelsharfe, Lichtfeder, Wolkenschloss, Engelsglocke |
+| Göttlich | 3 | 0,9 % | Donnerkeil, Auge des Ra, Weltenbaum |
+| Galaktisch | 2 | 0,5 % | Schwarzes Loch, Komet Aurora |
+| Unerreichbar | 2 | 0,1 % | Das Unendliche, Das Goldene Huhn |
+| Premium | 10 | 5 % | siehe unten |
 
-**Mutationen, zweite Fassung** (aus Claude Design „Mutationseffekte“, Modul `MutationFx` in
-`roblox/js/mutationLuau.js`): alles aus Parts, Beams, ParticleEmittern, Lichtern und SurfaceGuis auf den Prägungen.
+Normal hat 35 % statt früher 40 %, die 5 % gehen an Premium. Rand, Gravur, Zierband und Effekte je Stufe kommen
+weiter aus `TIERS` (Premium: Guilloche-Rosette, Rauten, Glühen, Glanz und Funkeln).
 
-| Mutation | Effekt |
-|---|---|
-| Nass | dunkler, spiegelnder Wasserfilm, Tropfen rinnen ruckweise, Regen prallt oben ab, Pfütze mit Ringen |
-| Gestein | Risse, Brocken (unten dichter), Beben alle paar Sekunden mit Staub und Krümeln, schwebende Kiesel |
-| Gefroren | Eisblumen, tropfende Eiszapfen, Kristalle, kalter Nebel, Schneeflocken, Funkeln |
-| Disco | Spiegelkacheln im Takt (2× pro Sekunde), Discokugel mit Lichtkegeln, leuchtende Tanzfläche, Lichtflecken |
-| Elektrisch | Blitze mit Kern und Schein, Einschläge mit Funken, kriechende Ladungen, Leuchten steigt mit jedem Blitz |
-| Dämonisch | Lavarisse im Herzschlag, geschwungene Hörner, Flammen und Rauch, drehender Beschwörungskreis |
-| Augenkrebs | Op-Art dreht sich, Neon-Formen mit Kontur (Highlight), Strahlenkranz, Farben laufen weich durch |
-| Hacked | Code-Spalten, Scanlinien, Glitch mit Farbversatz und Drahtgitter, Fehlermeldungen, Pixelzerfall |
-| Golden | massives Gold, Glanzstreifen, Funkeln, Strahlenkranz, Goldtropfen, Münzregen |
-| Kosmisch | Sternenmetall mit Spiralgalaxie, Sternbild, Sternenstaub-Scheibe, Planeten, Sternschnuppen, Nebel |
+**Premium-Münzen** (aus dem Münzlabor-Artefakt): eigene Stufe mit 5 % Drop-Chance. Jede Münze hat ihren eigenen
+Wert (`value`) und ihr eigenes Gewicht innerhalb der Stufe (`weight`). Für Effekte, Ansage und Erfahrung zählt
+Premium wie Legendär (`rank`); „Goldene Hand“ hebt nie zu Premium an.
 
-Alle Münzen sind rund. Die Prägung hat einen spiegelpolierten Grund und ein mattiertes Relief
-mit echter Licht-Reaktion (Normal-Map). Jede Stufe hat ein eigenes Gravurmuster und Zierband.
-Jedes der 50 Motive ist als eigenes Relief gezeichnet (`muenzen/js/emblems.js`) und sieht
-dadurch auf allen Geräten gleich aus. Alle Motive auf einen Blick: `muenzen/praegungen.html`.
+| Münze | Wert | Gewicht | Chance | Besonderheit |
+|---|---|---|---|---|
+| Pixel-Münze | 40 | 3 | 1,63 % | 8-Bit-Herz aus Würfeln |
+| Magma-Kern | 75 | 1,5 | 0,81 % | Lava-Adern im Vulkangestein |
+| Jade-Lotus | 120 | 1,2 | 0,65 % | Lotusblüte |
+| Uhrwerk | 150 | 0,8 | 0,43 % | Zahnräder im Sichtfenster |
+| Galaxie | 300 | 0,5 | 0,27 % | Spiralnebel mit Saturn-Ring |
+| Kristall-Prisma | 400 | 0,3 | 0,16 % | Kristall mit Edelstein-Herz |
+| Drachenauge | 600 | 0,2 | 0,11 % | Schuppen und Schlitzauge |
+| Glitch | 1–999 | 0,15 | 0,08 % | Wert wird beim Finden gewürfelt (`glitchValue`, `Gacha.GlitchValue`) |
+| Engelsmünze | 1.000 | 0,08 | 0,04 % | Flügel und Heiligenschein |
+| Mystery-Münze | – | 1,5 | 0,81 % | verwandelt sich beim Ziehen in eine zufällige andere Münze (`rollCoin`, `Gacha.RollCoin`) |
 
-| Stufe | Münzen | Drop-Chance | Rand | Gravur im Feld | Zierband | Effekte |
-|---|---|---|---|---|---|---|
-| Normal | 9 | 40 % | glatt | – | Perlkreis | – |
-| Selten | 8 | 25 % | geriffelt | Drehrillen | Kordel | – |
-| Sehr selten | 7 | 15 % | geriffelt | Strahlenkranz | Lorbeer | Glanzblitz |
-| Episch | 6 | 9 % | glatt | Rautengitter | Zickzack | Glühen, Edelsteine |
-| Legendär | 5 | 5 % | glatt | Feuerwirbel | Perlkreis | Glühen, Funkenflug |
-| Mystisch | 4 | 3 % | glatt | Bannkreis (Siebenstern) | Runen | leuchtende Prägung, Runenringe |
-| Engelsgleich | 4 | 1,5 % | glatt | Gloriole | Federn | Flügel, Heiligenschein, Funkeln |
-| Göttlich | 3 | 0,9 % | glatt | Strahlenkranz | Strahlen | Strahlenkranz, Funkeln |
-| Galaktisch | 2 | 0,5 % | glatt | Umlaufbahnen, Sterne | Sterne | Nebel, Planetenbahn |
-| Unerreichbar | 2 | 0,1 % | glatt | Guilloche-Rosette | Rauten | Regenbogen, Ringe, Strahlen |
+**Die Münzen in Roblox:** Jede Münze ist genau die, die `CoinBuilder` und `MutationFx` in Roblox bauen
+(`muenzen/js/coinRoblox.js`): gestufte Prägung aus Randscheibe, Münzkörper und Motivplatte, ein Perlkreis und das
+Motiv als Decal auf beiden Seiten (nach dem Hochladen der Motive und dem Eintragen der `DecalId`). `CoinData` hat
+dafür je Münze `Value`, `Weight` und `Special` und je Stufe `Rank`; `CoinData.BaseValue(coin)` liefert den Nennwert.
+Die Motive sind als Relief gezeichnet (`muenzen/js/emblems.js`): erhabene Flächen, Rillen und Vertiefungen, gefärbt
+in den Metallfarben der Münze.
 
 ## Münzindex
 
-Sammelbuch mit 50 Fächern. „Münze ziehen“ zieht nach Drop-Chance. Neue Münzen werden mit einer
-Entdeckungs-Animation enthüllt, doppelte erhöhen nur den Zähler. Der Fortschritt liegt im
-`localStorage` des Browsers.
+Sammelbuch mit einem Fach je Münze (60). „Münze ziehen“ zieht nach Drop-Chance. Neue Münzen werden mit einer
+Entdeckungs-Animation enthüllt, doppelte erhöhen nur den Zähler. Die Mystery-Münze zählt im Index und verwandelt
+sich dann in eine zufällige andere Münze. Der Fortschritt liegt im `localStorage` des Browsers.
 
 Die Animation (`muenzindex/js/discovery.js`) lädt eine „?“-Münze Stufe für Stufe bis zur echten
 Seltenheit auf. Je seltener, desto mehr Stufen, desto länger: etwa 2,5 s bei Normal bis 10 s bei
-Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
+Unerreichbar (Premium wie Legendär). Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
 
 | ab Stufe | Effekt |
 |---|---|
@@ -123,26 +125,52 @@ Unerreichbar. Ab einer Stufe kommen Effekte dazu und bleiben für alle höheren:
 | Galaktisch | Sternen-Warp |
 | Unerreichbar | Regenbogen-Glitch |
 
-Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede einzelne Münze abspielen
-(mit „Nächste Münze“ der Reihe nach durch alle 50) oder eine zufällige Münze einer Stufe.
+Tippen überspringt bis zur Enthüllung. Unter „Animationen testen“ lässt sich jede einzelne Münze abspielen,
+auch mit einer Mutation oder einer Kombination (z. B. GIGANT + Sturzflut).
 
 ## Wetter & Mutationen
 
-Während eines Wetters kann jede gezogene Münze mutieren (`muenzen/js/mutations.js`).
-Die Mutation bleibt dauerhaft an der Münze sichtbar und multipliziert ihren Wert.
+Während eines Wetters kann jede gezogene Münze mutieren (`muenzen/js/mutations.js`). Die Chance gilt nur, solange
+das passende Wetter läuft. Die Mutation bleibt dauerhaft an der Münze sichtbar und multipliziert ihren Wert.
 
 | Wetter | Mutation | Chance | Wert | Effekt |
 |---|---|---|---|---|
-| Regen | Nass | 25 % | ×1,1 | Tropfen auf der Prägung, Wasser tropft herunter |
-| Erdbeben | Gestein | 18 % | ×1,25 | Felsbrocken am Rand, steinerner Belag, Staub |
-| Disconacht | Disco | 12 % | ×1,5 | kreisende bunte Discolichter, Discokugel, Lichtpunkte |
-| Blutmond | Dämonisch | 8 % | ×2 | Hörner, rote Aura, Höllenflammen, Blutring |
-| Neonsturm | Augenkrebs | 5 % | ×2,5 | grelle Neonfarben laufen durch (ohne schnelles Blitzen) |
-| Datensturm | Hacked | 3 % | ×3 | grüner Code-Regen, Glitch-Zucken, HACKED-Schild |
+| Regen | Sturzflut | 3 % | ×1,1 | Wasserfilm, rinnende Tropfen, Pfütze mit Ringen |
+| Erdbeben | Felsenhaut | 2,5 % | ×1,25 | Risse und Felsbrocken, Staub bei jedem Beben |
+| Schneesturm | Permafrost | 2,5 % | ×1,3 | Eisblumen, tropfende Eiszapfen, kalter Nebel |
+| Disconacht | Discofieber | 2 % | ×1,5 | Spiegelkacheln im Takt, Discokugel, Tanzfläche |
+| Gewitter | Hochspannung | 2 % | ×1,75 | Blitzeinschläge, kriechende Ladungen |
+| Blutmond | Höllenglut | 1,5 % | ×2 | Lavarisse, Hörner, Beschwörungskreis |
+| Neonsturm | Neonrausch | 1,2 % | ×2,5 | Op-Art, Neon-Formen, laufende Farben |
+| Datensturm | Systemfehler | 1 % | ×3 | Code-Spalten, Scanlinien, Pixelzerfall |
+| Goldregen | Midas-Gold | 1 % | ×4 | massives Gold, Goldtropfen, Münzregen |
+| Sternschnuppen | Sternenstaub | 0,6 % | ×5 | Sternenmetall, Spiralgalaxie, Planeten |
+| Riesenmond (neu) | GIGANT | 3 % | ×10 | die Münze wächst auf das 3,5-Fache, samt allen anderen Mutationen |
 
-Im Münzindex wechselt das Wetter jede Minute (nach Häufigkeit gewichtet, Klar ist am
-häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesamt gibt es
-50 × 6 = 300. Auf der Wetter-Seite lässt sich jede Mutation an einer Münze ansehen.
+Die Ids der Mutationen (`nass`, `gestein` … `kosmisch`, neu `big`) sind gleich geblieben, nur Namen und Texte sind
+neu. Die Chancen stammen aus dem Münzlabor.
+
+**Mehrere Wetter gleichzeitig:** Neben dem Hauptwetter gibt es eine zweite, seltenere Spur im Zeitplan, das
+**Nebenwetter** (`sideWeatherAt`, `weathersAt` in JS; `Gacha.SideWeatherAt`, `Gacha.WeathersAt` in Luau; Gewicht von
+„klar“ dort `SIDE_CLEAR = 100`). Es ist nie dasselbe Wetter wie das Hauptwetter. Rechnerisch läuft an einem Tag etwa
+3 Stunden ein Nebenwetter und rund 20 Minuten laufen zwei Wetter gleichzeitig. Dann würfelt jedes Wetter seine
+Mutation, und eine Münze kann beide bekommen: Sie stehen dann zusammen an der Münze, die Multiplikatoren werden
+multipliziert (GIGANT + Sturzflut = ×11).
+
+- **Spielstand:** Mutationen als Text, mehrere mit Komma in fester Reihenfolge (`"nass,big"`): `mutationKey`,
+  `parseMutations`, `mutationsMultiplier`, `mutationsName` (stärkste zuerst: „GIGANT + Sturzflut“); in Luau
+  `MutationData.Parse`, `Key`, `Multiplier`, `Name`, `Combo` und `Gacha.RollMutations(weatherIds)`.
+- **Roblox:** Der Wetter-Server setzt zusätzlich `Weather2` und `Weather2Ends` an ReplicatedStorage. Der Client
+  zeigt beide Wetter übereinander (`WeatherFx.Apply("regen,riesenmond")`, das seltenste bestimmt Licht und Nebel)
+  und kündigt ein neues Nebenwetter an. Das HUD zeigt „Regen + Riesenmond · Sturzflut 3 % · GIGANT 3 %“.
+- **GIGANT:** `MutationFx.Apply(model, "nass,big")` bringt erst alle anderen Effekte an und vergrößert dann die ganze
+  Münze samt Partikeln, Lichtern und Bändern (`MutationFx.ScaleModel`); Animationen rechnen mit dem Maßstab
+  (`FxScale`) weiter.
+- **Riesenmond:** riesiger, warm leuchtender Mond mit Kratern und Hof, schwebende Staubflocken, Nachtlicht.
+
+Gefundene Mutationen erscheinen als Punkte an jedem Fach im Münzindex, insgesamt 60 × 11 = 660. Auf der
+Wetter-Seite lässt sich jede Mutation an einer Münze ansehen; läuft ein Nebenwetter, steht es dort unter dem
+aktuellen Wetter.
 
 ## Eierhalle
 
@@ -1030,8 +1058,8 @@ Dann <http://localhost:8000> öffnen.
 - `eier/` – Eierhalle: `js/eggs.js` (Daten, Preise), `js/eggRoblox.js` (Eier und Schlüpfen über Luau), `js/hatch.js` (Schlüpf-Ansicht); Luau in `roblox/js/eggLuau.js`
 - `muenzindex/` – Münzindex: `js/main.js` (Fächer, Ziehen, Spielstand), `js/discovery.js` (Animation)
 - `muenzen/` – Münzkabinett:
-  - `js/coins.js` – Stufen und alle 50 Münzen (Name, Motiv-Schlüssel, Metallfarben, Text)
-  - `js/emblems.js` – die 50 Prägemotive als Relief-Zeichnungen
+  - `js/coins.js` – Stufen (mit Premium) und alle 60 Münzen (Name, Motiv-Schlüssel, Metallfarben, Text, Wert, Gewicht), `rollCoin`, `coinChance`, `coinBaseValue`
+  - `js/emblems.js` – die 60 Prägemotive als Relief-Zeichnungen
   - `js/mutations.js` – Wetter, Mutationen, Chancen, Multiplikatoren und ihre Effekte
   - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
   - `js/main.js` – Namen nach Stufe, Drop-Tabelle, Filter, Suche

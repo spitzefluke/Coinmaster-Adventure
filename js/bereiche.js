@@ -6,17 +6,17 @@
 export const BEREICHE = [
   {
     titel: 'Münzkabinett',
-    text: 'Alle 50 Münzen in 10 Seltenheitsstufen, vom Pilzpfennig bis zur Allmächtigen Kartoffel. Namen nach Stufe, mit Drop-Tabelle, Filter und Suche.',
+    text: 'Alle 60 Münzen: 50 in zehn Seltenheitsstufen vom Glutfunken bis zum Goldenen Huhn, dazu zehn Premium-Münzen. Namen nach Stufe, mit Drop-Tabelle, Filter und Suche.',
     href: 'muenzen/',
     status: 'vorschau',
-    eckdaten: ['50 Münzen', '10 Stufen', 'Suche'],
+    eckdaten: ['60 Münzen', '11 Stufen', 'Suche'],
   },
   {
     titel: 'Münzindex',
     text: 'Das Sammelbuch aus dem Spiel: Münzen ziehen, Index füllen und jede neue Münze mit einer Animation enthüllen, die mit der Seltenheit wächst.',
     href: 'muenzindex/',
     status: 'vorschau',
-    eckdaten: ['50 Fächer', '10 Animationsstufen', 'Spielvorschau'],
+    eckdaten: ['60 Fächer', '10 Animationsstufen', 'Spielvorschau'],
   },
   {
     titel: 'Eierhalle',
@@ -76,10 +76,10 @@ export const BEREICHE = [
   },
   {
     titel: 'Wetter',
-    text: 'Zehn Wetter mit Mutationen, von Regen bis Sternschnuppen. Jedes Wetter in 3D auf jeder Welt, dazu die Münze mit ihrer Mutation und eine Vorhersage.',
+    text: 'Elf Wetter mit Mutationen, von Regen bis zum Riesenmond, manchmal zwei gleichzeitig. Jedes Wetter in 3D auf jeder Welt, dazu die Münze mit ihrer Mutation und eine Vorhersage.',
     href: 'wetter/',
     status: 'vorschau',
-    eckdaten: ['10 Wetter', '10 Mutationen', 'Vorhersage'],
+    eckdaten: ['11 Wetter', '11 Mutationen', 'Nebenwetter'],
   },
   {
     titel: 'Spiel-Oberfläche',

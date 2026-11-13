@@ -14,8 +14,8 @@
 
 import * as THREE from 'three';
 import { pixelRatio, skipAnimations } from '../../js/settings.js';
-import { TIERS, tierById } from '../../muenzen/js/coins.js';
-import { mutationById, mutatedValue, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { TIERS, tierById, coinBaseValue } from '../../muenzen/js/coins.js';
+import { mutatedValue, fmtMultiplier, parseMutations, mutationsName, mutationsColor } from '../../muenzen/js/mutations.js';
 import { makeEnvironment, makeScene, glowSprite, raysTexture, sparkTexture } from '../../muenzen/js/coinFactory.js';
 import { createRobloxCoin, coinLua } from '../../muenzen/js/coinRoblox.js';
 
@@ -361,7 +361,7 @@ export class Discovery {
   play(coin, { number, total, chance, eyebrow = 'Neue Münze entdeckt', mutation = null }) {
     this.reducedMotion = skipAnimations();
     const tier = tierById[coin.tier];
-    const k = tier.index;
+    const k = tier.rank; // Premium zählt wie Legendär
     this.k = k;
     this.tier = tier;
     this.tl = timeline(k);
@@ -410,11 +410,11 @@ export class Discovery {
     });
     u.tier.textContent = tier.name;
     u.meta.textContent = `#${String(number).padStart(2, '0')} von ${total} · ${chance} Drop-Chance`;
-    const m = mutation && mutationById[mutation];
+    const m = parseMutations(mutation).length ? mutation : null;
     u.mutation.hidden = !m;
     if (m) {
-      u.mutation.style.setProperty('--mut', m.color);
-      u.mutation.textContent = `Mutation: ${m.name} · ${fmtMultiplier(m)} · Wert ${mutatedValue(tier.value, m)} Moneten`;
+      u.mutation.style.setProperty('--mut', mutationsColor(m));
+      u.mutation.textContent = `Mutation: ${mutationsName(m)} · ${fmtMultiplier(m)} · Wert ${mutatedValue(coinBaseValue(coin), m)} Moneten`;
     }
     u.text.classList.remove('is-shown', 'is-glitch');
     u.done.hidden = true;

@@ -1,10 +1,10 @@
-// Münzindex: Sammelbuch mit 50 Plätzen, Ziehen nach Drop-Chance und Entdeckungs-Animation.
+// Münzindex: Sammelbuch mit einem Platz je Münze, Ziehen nach Drop-Chance und Entdeckungs-Animation.
 // Fortschritt liegt im localStorage dieses Browsers (Spielvorschau, kein Server).
 
 import * as THREE from 'three';
-import { TIERS, COINS, tierById, rollCoin } from '../../muenzen/js/coins.js';
+import { TIERS, COINS, tierById, rollCoin, coinChance } from '../../muenzen/js/coins.js';
 import { createRobloxCoin, orbitCoin, rbxRenderer } from '../../muenzen/js/coinRoblox.js';
-import { MUTATIONS, WEATHER, weatherById, weatherAt, mutationForWeather, rollMutation, fmtMultiplier } from '../../muenzen/js/mutations.js';
+import { MUTATIONS, WEATHER, weatherById, weatherAt, sideWeatherAt, mutationForWeather, rollMutations, parseMutations, mutationsName, mutationsColor, fmtMultiplier } from '../../muenzen/js/mutations.js';
 import { Discovery } from './discovery.js';
 
 await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
@@ -12,7 +12,6 @@ await Promise.race([document.fonts.load('48px "Marcellus SC"'), new Promise((r) 
 const STORE_KEY = 'coinmaster.muenzindex.v1';
 const fmtPct = (n) => n.toLocaleString('de-DE', { maximumFractionDigits: n < 0.1 ? 3 : 2 }) + ' %';
 const tierCount = Object.fromEntries(TIERS.map((t) => [t.id, COINS.filter((c) => c.tier === t.id).length]));
-const coinChance = (coin) => tierById[coin.tier].chance / tierCount[coin.tier];
 
 // ── Spielstand ───────────────────────────────────────────────────────────────
 
@@ -133,6 +132,8 @@ function renderProgress() {
   document.getElementById('progress-fill').style.width = `${(found / COINS.length) * 100}%`;
   const mutTotal = Object.values(state.mut).reduce((s, o) => s + Object.keys(o).length, 0);
   document.getElementById('mut-count').textContent = mutTotal;
+  document.getElementById('coin-total').textContent = COINS.length;
+  document.getElementById('mut-total').textContent = COINS.length * MUTATIONS.length;
   document.getElementById('mut-progress').replaceChildren(
     ...MUTATIONS.map((m) => {
       const have = COINS.filter((_, i) => state.mut[i]?.[m.id]).length;
@@ -169,16 +170,24 @@ function weatherNow(now = Date.now()) {
   if (manualWeather && now < manualWeather.until) return { w: weatherById[manualWeather.id], ends: manualWeather.until };
   return weatherAt(now);
 }
+// Haupt- und Nebenwetter, die gerade laufen (Ids ohne klar)
+function weathersNow(now = Date.now()) {
+  const main = weatherNow(now).w.id;
+  const side = sideWeatherAt(now);
+  return [main, side?.w.id].filter((id, i, a) => id && id !== 'klar' && a.indexOf(id) === i);
+}
 
 const weatherEl = document.getElementById('weather');
 function renderWeather() {
   const { w, ends } = weatherNow();
-  const m = mutationForWeather(w.id);
+  const side = sideWeatherAt();
+  const two = side && side.w.id !== w.id;
+  const ms = weathersNow().map(mutationForWeather).filter(Boolean);
   weatherEl.dataset.weather = w.id;
   weatherEl.style.setProperty('--weather', w.color);
-  document.getElementById('weather-name').textContent = w.name;
-  document.getElementById('weather-text').textContent = w.text;
-  document.getElementById('weather-mut').textContent = m ? `${m.chance} % Chance auf ${m.name} (${fmtMultiplier(m)})` : 'Keine Mutationen möglich';
+  document.getElementById('weather-name').textContent = w.id === 'klar' && two ? side.w.name : w.name + (two ? ` + ${side.w.name}` : '');
+  document.getElementById('weather-text').textContent = w.id === 'klar' && two ? side.w.text : w.text + (two ? ` ${side.w.text}` : '');
+  document.getElementById('weather-mut').textContent = ms.length ? ms.map((m) => `${m.chance.toLocaleString('de-DE')} % Chance auf ${m.name} (${fmtMultiplier(m)})`).join(' · ') : 'Keine Mutationen möglich';
   const left = Math.max(0, Math.ceil((ends - Date.now()) / 1000));
   document.getElementById('weather-time').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 }
@@ -204,7 +213,7 @@ document.getElementById('mut-rows').replaceChildren(
   ...MUTATIONS.map((m) => {
     const tr = document.createElement('tr');
     tr.style.setProperty('--mut', m.color);
-    tr.innerHTML = `<th scope="row"><span class="mut-pill">${m.name}</span></th><td>${weatherById[m.weather].name}</td><td>${m.chance} %</td><td>${fmtMultiplier(m)}</td><td>${m.effect}</td>`;
+    tr.innerHTML = `<th scope="row"><span class="mut-pill">${m.name}</span></th><td>${weatherById[m.weather].name}</td><td>${m.chance.toLocaleString('de-DE')} %</td><td>${fmtMultiplier(m)}</td><td>${m.effect}</td>`;
     return tr;
   }),
 );
@@ -244,28 +253,39 @@ function showToast(html, color) {
 
 drawBtn.addEventListener('click', async () => {
   if (busy) return;
-  const coin = rollCoin();
+  let coin = rollCoin();
+  // Mystery-Münze: zählt im Index und verwandelt sich in eine zufällige andere Münze
+  let mysteryText = '';
+  if (coin.special === 'mystery') {
+    const mi = COINS.indexOf(coin);
+    state.found[mi] = (state.found[mi] | 0) + 1;
+    renderSlot(mi, { fresh: true });
+    coin = rollCoin(Math.random, { keepMystery: false });
+    mysteryText = 'Mystery-Münze! Darin: ';
+  }
   const i = COINS.indexOf(coin);
-  const m = rollMutation(weatherNow().w.id);
+  const key = rollMutations(weathersNow());
+  const ids = parseMutations(key);
+  const m = key ? { id: key, name: mutationsName(key), color: mutationsColor(key) } : null;
   const isNew = !state.found[i];
-  const mutNew = !!m && !state.mut[i]?.[m.id];
+  const mutNew = ids.some((id) => !state.mut[i]?.[id]);
   state.found[i] = (state.found[i] | 0) + 1;
-  if (m) {
+  for (const id of ids) {
     state.mut[i] ??= {};
-    state.mut[i][m.id] = (state.mut[i][m.id] | 0) + 1;
+    state.mut[i][id] = (state.mut[i][id] | 0) + 1;
   }
   state.draws += 1;
   save();
   renderProgress();
   if (isNew || mutNew) {
-    await play(i, { mutation: m?.id, eyebrow: isNew ? (m ? 'Neue Münze mit Mutation!' : 'Neue Münze entdeckt') : 'Neue Mutation entdeckt' });
+    await play(i, { mutation: m?.id, eyebrow: mysteryText + (isNew ? (m ? 'Neue Münze mit Mutation!' : 'Neue Münze entdeckt') : 'Neue Mutation entdeckt') });
     renderSlot(i, { fresh: true });
     slots[i].scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   } else {
     renderSlot(i, { fresh: true });
     const tier = tierById[coin.tier];
-    const mText = m ? ` · ${m.name} ×${state.mut[i][m.id]}` : '';
-    showToast(`<strong>${coin.name}</strong> ist schon im Index · jetzt ×${state.found[i]}${mText}`, m ? m.color : tier.color);
+    const mText = m ? ` · ${m.name}` : '';
+    showToast(`${mysteryText}<strong>${coin.name}</strong> ist schon im Index · jetzt ×${state.found[i]}${mText}`, m ? m.color : tier.color);
   }
 });
 
@@ -286,7 +306,7 @@ for (const t of TIERS) {
   testEl.append(b);
 }
 
-// Einzelne Münze: Auswahl nach Stufe gruppiert, „Nächste“ geht der Reihe nach durch alle 50
+// Einzelne Münze: Auswahl nach Stufe gruppiert, „Nächste“ geht der Reihe nach durch alle Münzen
 const picker = document.getElementById('test-coin');
 for (const t of TIERS) {
   const group = document.createElement('optgroup');
@@ -298,7 +318,12 @@ for (const t of TIERS) {
   picker.append(group);
 }
 const mutPicker = document.getElementById('test-mut');
-mutPicker.append(new Option('Ohne Mutation', ''), ...MUTATIONS.map((m) => new Option(`${m.name} ${fmtMultiplier(m)}`, m.id)));
+mutPicker.append(
+  new Option('Ohne Mutation', ''),
+  ...MUTATIONS.map((m) => new Option(`${m.name} ${fmtMultiplier(m)}`, m.id)),
+  // zwei Wetter gleichzeitig: Mutationen stapeln sich
+  ...['nass,big', 'golden,big', 'disco,kosmisch'].map((k) => new Option(`${mutationsName(k)} ${fmtMultiplier(k)}`, k)),
+);
 const testMutation = () => mutPicker.value || null;
 document.getElementById('test-play').addEventListener('click', () => !busy && play(+picker.value, { preview: true, mutation: testMutation() }));
 document.getElementById('test-next').addEventListener('click', () => {

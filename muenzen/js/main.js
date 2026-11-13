@@ -1,12 +1,17 @@
 // Münzkabinett: alle Münzen nach Seltenheitsstufe, nur mit Namen. Dazu Drop-Tabelle, Filter und Suche.
 // Die 3D-Vorschau der Münzen gibt es hier nicht mehr (die Münzen in 3D zeigen Münzindex und Wetter-Seite).
 
-import { TIERS, COINS, tierById } from './coins.js';
+import { TIERS, COINS, coinBaseValue } from './coins.js';
 
 const fmtPct = (n) => n.toLocaleString('de-DE', { maximumFractionDigits: n < 0.1 ? 3 : 2 }) + ' %';
 
+// Nennwert der Stufe; Premium-Münzen haben eigene Werte
+function valueText(tier) {
+  if (tier.id !== 'premium') return `Nennwert ${tier.value}`;
+  const vals = COINS.filter((c) => c.tier === tier.id && !c.special).map(coinBaseValue);
+  return `Wert ${Math.min(...vals).toLocaleString('de-DE')} bis ${Math.max(...vals).toLocaleString('de-DE')} je Münze`;
+}
 const tierCount = Object.fromEntries(TIERS.map((t) => [t.id, COINS.filter((c) => c.tier === t.id).length]));
-const coinChance = (coin) => tierById[coin.tier].chance / tierCount[coin.tier];
 
 // ── DOM aufbauen ─────────────────────────────────────────────────────────────
 
@@ -24,7 +29,7 @@ TIERS.forEach((tier, i) => {
   sec.innerHTML = `
     <div class="tier-head">
       <h2>${tier.name}</h2>
-      <p class="facts">${tierCount[tier.id]} Münzen · ${fmtPct(tier.chance)} Drop-Chance · Nennwert ${tier.value}</p>
+      <p class="facts">${tierCount[tier.id]} Münzen · ${fmtPct(tier.chance)} Drop-Chance · ${valueText(tier)}</p>
     </div>
     <ul class="grid"></ul>`;
   const grid = sec.querySelector('.grid');
@@ -61,7 +66,7 @@ const allChip = document.createElement('button');
 allChip.type = 'button';
 allChip.className = 'chip';
 allChip.dataset.tier = 'all';
-allChip.innerHTML = `Alle <span class="num">50</span>`;
+allChip.innerHTML = `Alle <span class="num">${COINS.length}</span>`;
 chipsEl.prepend(allChip);
 
 let activeTier = 'all';

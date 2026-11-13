@@ -329,7 +329,7 @@ function renderInfo() {
       <div><dt>Preis</dt><dd>${w.price ? `${fmtPrice(w.price)} Moneten` : 'Gratis'}</dd></div>
       <div><dt>Glück</dt><dd>${fmtLuck(w)}</dd></div>
       <div><dt>Münzwert</dt><dd>${fmtValue(w)}</dd></div>
-      <div><dt>Münzen</dt><dd>alle 50</dd></div>
+      <div><dt>Münzen</dt><dd>alle 60</dd></div>
       <div class="wide"><dt>Freischalten</dt><dd>${unlockText(w)}</dd></div>
     </dl>
     ${kulisseHtml(w)}
