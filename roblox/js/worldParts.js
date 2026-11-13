@@ -10,6 +10,7 @@
 import { SKYBOXES } from '../../welten/js/skyboxes.js';
 import * as THREE from 'three';
 import { buildWorld, FX } from '../../welten/js/worldFactory.js';
+import { islandShell, miniIsland } from './islandShell.js';
 
 export const STUDS = 8; // 1 Einheit der Webseite = 8 Studs
 
@@ -324,20 +325,6 @@ function terrainSurface(out, built, world) {
       });
     }
   }
-  // Erdkante rundherum: vom Boden bis in die Felsunterseite (darüber hängt der Grasrand)
-  const dirt = vivid(world.side, 0.15), body = BODY[material] || material;
-  const n = TERRAIN_SEGS;
-  for (let j = 0; j < n; j++) {
-    const a = ((j + 0.5) / n) * Math.PI * 2, r = R - 0.2;
-    const top = Math.max(built.height(Math.cos(a) * (R - 0.05), Math.sin(a) * (R - 0.05)), 0) - 0.05, bottom = -1.15;
-    out.push({
-      shape: 'Block', name: 'Boden',
-      pos: [Math.cos(a) * r * STUDS, ((top + bottom) / 2) * STUDS, Math.sin(a) * r * STUDS],
-      rot: around(a),
-      size: [((2 * Math.PI * R) / n + 0.08) * STUDS, (top - bottom) * STUDS, 0.4 * STUDS],
-      color: dirt, material: body, transparency: 0,
-    });
-  }
   // tiefster Punkt des Bodens: die Felsplatte darunter muss tiefer liegen
   let low = Infinity;
   for (const row of ring) for (const v of row) low = Math.min(low, v.y);
@@ -542,8 +529,10 @@ function skyShield(sky, built, world) {
   const id = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   // Kuppel: oben die Himmelsfarbe, zum Horizont hin hellt sie die Atmosphäre auf
   sky.push({ shape: 'Ellipsoid', name: 'Himmelskuppel', inside: true, pos: [0, 0, 0], rot: id, size: [2 * D, 2 * D, 2 * D], color: '#' + top.getHexString(), material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true });
-  // ein zweiter, etwas kleinerer Ring in Horizontfarbe macht den Übergang weich
-  sky.push({ shape: 'Ellipsoid', name: 'Horizont', inside: true, pos: [0, -D * 0.5, 0], rot: id, size: [2 * D * 0.97, D * 0.9, 2 * D * 0.97], color: '#' + horizon.getHexString(), material: 'SmoothPlastic', transparency: 0.6, canCollide: false, castShadow: false, noShadow: true });
+  // ein zweiter, etwas kleinerer Ring in Horizontfarbe macht den Übergang weich. Seine Oberkante liegt unter der
+  // Inselspitze: sonst schnitte die durchscheinende Fläche quer durch die Insel (heller Streifen von unten gesehen).
+  const hh = D * 0.45, htop = -D * 0.42;
+  sky.push({ shape: 'Ellipsoid', name: 'Horizont', inside: true, pos: [0, htop - hh, 0], rot: id, size: [2 * D * 0.97, 2 * hh, 2 * D * 0.97], color: '#' + horizon.getHexString(), material: 'SmoothPlastic', transparency: 0.6, canCollide: false, castShadow: false, noShadow: true });
   // Mit Himmelsbild: eine Wolkenwand am Horizont verdeckt die Nachbarinseln (1500 Studs entfernt), darüber sieht
   // man das Himmelsbild. Sie steht hinter der fernen Kulisse von WorldFx (600–630 Studs) und noch in der Kuppel.
   // Die Kuppel blendet das Licht-Skript aus, sobald die Bild-IDs eingetragen sind.
@@ -561,10 +550,21 @@ function skyShield(sky, built, world) {
         const w = row.w[0] + wr() * (row.w[1] - row.w[0]), h = row.h[0] + wr() * (row.h[1] - row.h[0]);
         // obere Reihe mit Lücken: dort schaut das Himmelsbild durch
         if (ri === 1 && wr() < 0.4) continue;
-        sky.push({
-          shape: 'Ellipsoid', name: 'Wolkenwand', pos: [Math.cos(a) * r, row.y + (wr() - 0.5) * 24, Math.sin(a) * r], rot: around(a),
-          size: [w, h, w * 0.95], color: row.c[Math.floor(wr() * row.c.length)], material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
+        // Wolkenturm: breiter, flacher Sockel und darauf seitlich versetzte Bäusche (wie Haufenwolken),
+        // oben heller als unten
+        const y = row.y + (wr() - 0.5) * 24, tx = -Math.sin(a), tz = Math.cos(a);
+        const cloud = (dx, dy, sw, sh, c) => sky.push({
+          shape: 'Ellipsoid', name: 'Wolkenwand', pos: [Math.cos(a) * r + tx * dx, y + dy, Math.sin(a) * r + tz * dx], rot: around(a),
+          size: [sw, sh, sw * 0.9], color: c, material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
         });
+        cloud(0, -h * 0.14, w * 1.1, h * 0.5, row.c[Math.floor(wr() * row.c.length)]);
+        const puffs = 4 + Math.floor(wr() * 2);
+        for (let k = 0; k < puffs; k++) {
+          const u = k / (puffs - 1) - 0.5, mid = 1 - Math.abs(u) * 1.4;
+          const sw = w * (0.3 + wr() * 0.1) * (0.8 + mid * 0.4);
+          const c = (mid < 0.4 ? W.low : W.mid || W.top)[Math.floor(wr() * 2)];
+          cloud(u * w * 0.78 + (wr() - 0.5) * w * 0.06, h * (0.02 + mid * 0.16 + wr() * 0.05), sw * 1.15, sw * (0.7 + wr() * 0.15), c);
+        }
       }
     });
   }
@@ -591,8 +591,8 @@ function skyShield(sky, built, world) {
       const jx = x + (rand() - 0.5) * step * 0.6, jz = z + (rand() - 0.5) * step * 0.6;
       if (Math.hypot(jx, jz) > D * 0.93) continue;
       const w = step * (1.5 + rand() * 0.6), h = kind === 'duene' ? 22 + rand() * 18 : 34 + rand() * 30;
-      // nahe der Insel etwas höher, damit sie auf den Wolken zu liegen scheint
-      const near = Math.max(0, 1 - Math.hypot(jx, jz) / (R * 1.6));
+      // unter der Insel eine Mulde im Meer: die Felsspitze schwebt frei über den Wolken wie im Vorbild
+      const nr = Math.max(0, 1 - Math.hypot(jx, jz) / (R * 2.3)), near = -(nr * nr * (3 - 2 * nr)) * 2.6;
       // Glutmeer (Lava): zwischen der dunklen Kruste leuchten flachere Lavabecken etwas tiefer
       const glow = SKYBOXES[world.id]?.seaGlow;
       if (glow && rand() < glow.share) {
@@ -704,6 +704,11 @@ export function worldToParts(world) {
       lights.push({ pos: [p.x * STUDS, p.y * STUDS, p.z * STUDS], color: '#' + o.color.getHexString(), range: Math.min(60, (o.distance || 10) * STUDS * 0.6), brightness: 2 });
       return;
     }
+    if (o.userData.rbx?.isle) {
+      const c = o.getWorldPosition(V(0, 0, 0));
+      miniIsland(sky, c, o.userData.rbx.isle.w, world, o.userData.rbx.isle.seed, { peak: o.userData.rbx.isle.peak });
+      return;
+    }
     if (!o.isMesh || !o.visible) return;
     const rbx = o.userData.rbx || {};
     let p = o.parent, skip = rbx.skip;
@@ -717,8 +722,8 @@ export function worldToParts(world) {
   });
   pullInsideDome(sky);
   terrainSurface(parts, built, world);
-  rimLip(parts, built, world);
-  underside(parts, world, built.radius, built.groundLow);
+  // Grasnarbe, Erdschicht und Felszunge als eine modellierte Hülle (roblox/js/islandShell.js)
+  islandShell(parts, built, world);
   clouds(sky, built, world);
   skyShield(sky, built, world);
   const emitter = emitterFor(world, built.radius);

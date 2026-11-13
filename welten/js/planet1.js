@@ -270,12 +270,21 @@ export function backdrop(ctx, kit) {
 function details(ctx, kit) {
   const { M, E, at, group, rockMesh, mushroom, flower } = kit;
   const { scatter, rand, rr } = ctx;
-  // Grasbüschel: zwei gekreuzte schmale Halme (in Roblox zwei Teile)
-  const tuft = (c) => group(...[0, 1].map((i) => {
-    const b = at(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.03), M(c)), 0, 0.15, 0);
-    b.rotation.y = i * 1.57;
-    return b;
-  }));
+  // Grasbüschel: fünf spitze Halme, die vom Fuß aus schräg auseinanderstehen (in Roblox je Halm zwei Keile)
+  const tuft = (c) => {
+    const pts = [];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + rand() * 0.6, lean = 0.05 + rand() * 0.09, h = 0.2 + rand() * 0.2, w = 0.035;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      pts.push(-sa * w, 0, ca * w, sa * w, 0, -ca * w, ca * lean, h, sa * lean);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, M(c, { side: THREE.DoubleSide }));
+    m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.015, name: 'Gras' };
+    return m;
+  };
   const id = ctx.world.id;
   if (id === 'normal' || id === 'wald') {
     scatter(16, () => tuft(rand() < 0.5 ? '#4f9a3f' : '#6fbf4f'), 0.15);

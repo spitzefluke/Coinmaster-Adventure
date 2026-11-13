@@ -261,9 +261,14 @@ local function cloudBank(k, n, color, transparency, y0, y1)
 			local y = rnd(k, y0 or 30, y1 or 150)
 			local x, z = polar(a, r)
 			local cf = facing(k, x, y, z)
-			for j = 0, 3 do
-				local s = rnd(k, 34, 60)
-				P(k, "Ball", V(s * 1.6, s * 0.8, s), cf * CFrame.new((j - 1.5) * s * 0.7, rnd(k, -6, 8), rnd(k, -8, 8)), color, "SmoothPlastic", transparency or 0, "Wolkenbank")
+			-- Haufenwolke: flacher, breiter Sockel, darauf drei Bäusche (Mitte am höchsten), unten etwas dunkler.
+			-- Durchscheinende Wolken nur sehr zart: überlappende Kugeln wirkten sonst wie Blasen.
+			local s, t = rnd(k, 40, 62), math.min(transparency or 0, 0.12)
+			local under = color:Lerp(hex("#b8c4d8"), 0.22)
+			P(k, "Ball", V(s * 3.2, s * 0.62, s * 1.5), cf * CFrame.new(0, -s * 0.12, 0), under, "SmoothPlastic", t, "Wolkenbank")
+			for j = -1, 1 do
+				local q = s * (j == 0 and rnd(k, 1.15, 1.35) or rnd(k, 0.8, 1))
+				P(k, "Ball", V(q * 1.2, q, q), cf * CFrame.new(j * s * 0.95 + rnd(k, -6, 6), q * (j == 0 and 0.32 or 0.18), rnd(k, -6, 6)), color, "SmoothPlastic", t, "Wolkenbank")
 			end
 		end
 	end)
@@ -363,14 +368,66 @@ end
 -- ── Bausteine der Ferne (cf = Grund auf Meereshöhe, −Z zur Insel; s = Größe; c = getönte Farbe) ──
 local EL = {}
 
+-- Dreieck aus zwei Keilen (Punkte in Weltkoordinaten), wie der Boden der Inseln
+local function tri(k, a, b, c, color, material, name)
+	local ab, ac, bc = b - a, c - a, c - b
+	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+	if abd > acd and abd > bcd then
+		a, c = c, a
+	elseif acd > bcd and acd > abd then
+		a, b = b, a
+	end
+	ab, ac, bc = b - a, c - a, c - b
+	local right = ac:Cross(ab).Unit
+	local up = bc:Cross(right).Unit
+	local back = bc.Unit
+	local height = math.abs(ab:Dot(up))
+	P(k, "Wedge", V(1.5, height, math.abs(ab:Dot(back))), CFrame.fromMatrix((a + b) / 2, right, up, back), color, material, 0, name)
+	P(k, "Wedge", V(1.5, height, math.abs(ac:Dot(back))), CFrame.fromMatrix((a + c) / 2, -right, up, -back), color, material, 0, name)
+end
+
+-- Berg aus Dreiecken: Ring am Fuß, zwei verdrehte Ringe darüber, Spitze. Flächen abwechselnd hell und dunkel
+-- (Grate), mit Schnee über einer zackigen Grenze. Nur die Seite zur Insel (−Z) wird gebaut, die Rückseite sieht
+-- man nie.
+local function mountain(k, cf, r, h, c, cap, material, name)
+	local n = 7
+	local RR, YY = { 1, 0.55, 0.26 }, { 0, 0.5, 0.8 }
+	local tw, rings = rnd(k, 0, TAU), {}
+	for i = 1, 3 do
+		local ring = {}
+		for j = 0, n - 1 do
+			local a = tw + j / n * TAU + (i - 1) * 0.33 + rnd(k, -0.12, 0.12)
+			local rr = r * RR[i] * rnd(k, 0.82, 1.15)
+			ring[j] = cf * V(math.cos(a) * rr, i == 1 and -12 or h * YY[i] * rnd(k, 0.93, 1.07), math.sin(a) * rr)
+		end
+		rings[i] = ring
+	end
+	local tip = cf * V(rnd(k, -0.1, 0.1) * r, h, rnd(k, -0.1, 0.1) * r)
+	local shade = { c:Lerp(WHITE, 0.1), c, c:Lerp(DARK, 0.12) }
+	local snow = cap and { cap, cap:Lerp(hex("#c4d2e6"), 0.35) }
+	local function seen(p) return cf:PointToObjectSpace(p).Z < r * 0.35 end
+	local function face(a, b, d, j, white)
+		if not seen((a + b + d) / 3) then return end
+		if white and snow then tri(k, a, b, d, snow[j % 2 + 1], "Snow", "Schneekappe")
+		else tri(k, a, b, d, shade[j % 3 + 1], material or "Rock", name or "Berg") end
+	end
+	for i = 1, 2 do
+		local A, B = rings[i], rings[i + 1]
+		for j = 0, n - 1 do
+			local j1 = (j + 1) % n
+			-- Schnee nur oben und zackig: Dreiecke mit zwei oberen Ecken öfter weiß als die mit zwei unteren
+			face(A[j], B[j], B[j1], j, i == 2 and rnd(k, 0, 1) < 0.6)
+			face(A[j], B[j1], A[j1], j + 1, i == 2 and rnd(k, 0, 1) < 0.15)
+		end
+	end
+	for j = 0, n - 1 do face(rings[3][j], tip, rings[3][(j + 1) % n], j, true) end
+end
+
 function EL.peak(k, cf, s, c, cap, material)
 	local h, w = 330 * s, 230 * s
-	prism(k, cf * CFrame.new(0, h / 2 - 10, 0), w, h, w * 0.5, c, material or "Rock", 0, "Berg")
-	if cap then
-		local ch = h * 0.3
-		prism(k, cf * CFrame.new(0, h - 10 - ch / 2, -2), w * 0.3 + 2, ch + 1, w * 0.5 + 4, cap, "Snow", 0, "Schneekappe")
-	end
-	prism(k, cf * CFrame.new(w * 0.45, h * 0.25, -6), w * 0.6, h * 0.55, w * 0.35, c:Lerp(DARK, 0.08), material or "Rock", 0, "Vorberg")
+	mountain(k, cf, w * 0.55, h, c, cap, material)
+	-- Vorberg seitlich davor, ohne Schnee
+	mountain(k, cf * CFrame.new(w * 0.5, 0, -w * 0.15), w * 0.38, h * 0.5, c:Lerp(DARK, 0.06), nil, material, "Vorberg")
 end
 -- flacher Bergkamm (Stufen in der Ferne)
 function EL.ridge(k, cf, s, c)
@@ -748,11 +805,17 @@ end
 -- Normal: großer Wasserfallberg, der Bach fällt ins Wolkenmeer
 function HELD_BUILD.normal(k)
 	local cf = heldAt(k)
-	prism(k, cf * CFrame.new(0, 230, 0), 360, 480, 200, hex("#6d8aa3"), "Rock", 0, "Wasserfallberg")
-	prism(k, cf * CFrame.new(0, 400, -3), 120, 150, 206, WHITE, "Snow", 0, "Schneekappe")
-	local fall = P(k, "Block", V(44, 330, 3), cf * CFrame.new(-30, 160, -104), hex("#bfe8ff"), "Neon", 0.4, "Wasserfall")
+	-- Berg aus Dreiecken (Fuß 200, Höhe 480): vorn liegt die Flanke bei y = 0 etwa 200, bei y = 300 etwa 80
+	-- Studs vor der Mitte; der Wasserfall folgt dieser Schräge knapp davor
+	mountain(k, cf * CFrame.new(0, 0, 60), 200, 480, hex("#6d8aa3"), WHITE, "Rock", "Wasserfallberg")
+	mountain(k, cf * CFrame.new(-190, 0, 90), 130, 260, hex("#62809a"), nil, "Rock", "Vorberg")
+	mountain(k, cf * CFrame.new(200, 0, 70), 150, 320, hex("#6886a0"), WHITE, "Rock", "Vorberg")
+	local top, bottom = V(-30, 300, 60 - 80 - 22), V(-30, 0, 60 - 200 - 22)
+	local len = (top - bottom).Magnitude
+	local slope = math.atan2(top.Z - bottom.Z, top.Y - bottom.Y)
+	local fall = P(k, "Block", V(44, len, 3), cf * CFrame.new((top + bottom) / 2) * CFrame.Angles(slope, 0, 0), hex("#bfe8ff"), "Neon", 0.4, "Wasserfall")
 	anim(k, function(t) fall.Transparency = 0.38 + math.sin(t * 1.2) * 0.08 end)
-	local host = P(k, "Block", V(60, 2, 20), cf * CFrame.new(-30, 10, -110), WHITE, "SmoothPlastic", 1, "Gischt")
+	local host = P(k, "Block", V(60, 2, 20), cf * CFrame.new(bottom.X, 10, bottom.Z - 6), WHITE, "SmoothPlastic", 1, "Gischt")
 	smoke(k, host, { WHITE, hex("#e8f6ff") }, 22, 2, 6)
 end
 
