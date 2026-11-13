@@ -2211,10 +2211,22 @@ const BUILDERS = {
   },
 
   hoehle({ put, scatter, rand, rr, root, anims, world }) {
-    const arch = new THREE.Mesh(jitter(new THREE.TorusGeometry(4.6, 0.85, 7, 18, Math.PI), rand, 0.5), M('#3a3446'));
-    arch.position.set(0, -0.1, -0.6);
-    arch.castShadow = true;
-    root.add(arch);
+    // Felsbogen aus kantigen Blöcken entlang eines Halbkreises (in Roblox Flächen aus Keilen statt einer
+    // glatten Röhre), unten dicker, oben schmaler, in drei Steintönen
+    const archG = new THREE.Group();
+    const tones = ['#3a3446', '#443c52', '#322c3e'];
+    for (let i = 0; i <= 16; i++) {
+      const a = Math.PI * (i / 16), foot = Math.abs(Math.cos(a));
+      const r = 0.82 + foot * 0.45 + rand() * 0.2;
+      const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.35), M(tones[i % 3]));
+      b.userData.rbx = { facets: true, facetThick: 0.18, name: 'Felsbogen' };
+      b.position.set(Math.cos(a) * 4.6, Math.sin(a) * 4.6 - 0.1, (rand() - 0.5) * 0.3);
+      b.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+      b.castShadow = true;
+      archG.add(b);
+    }
+    archG.position.z = -0.6;
+    root.add(archG);
     for (let i = 0; i < 7; i++) {
       const a = Math.PI * (0.12 + (i / 6) * 0.76);
       const st = new THREE.Mesh(new THREE.ConeGeometry(rr(0.12, 0.25), rr(0.5, 1.1), 6), M('#2e2838'));
@@ -2235,6 +2247,26 @@ const BUILDERS = {
       return group(s);
     }, 0.35);
     scatter(4, () => mushroom(rr(0.35, 0.6), '#6ae8ff', rand, true), 0.3);
+    // Sinterstufen: flache, übereinanderliegende Kalkpolster (wie in Tropfsteinhöhlen)
+    scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const s = rr(0.55, 0.85) * (1 - i * 0.25);
+        const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(['#5a4e6a', '#6a5e7c', '#4e4460'][i]));
+        m.userData.rbx = { facets: true, facetThick: 0.06, name: 'Sinter' };
+        m.scale.y = 0.35;
+        m.position.set(rr(-0.15, 0.15), 0.08 + i * 0.2, rr(-0.15, 0.15));
+        g.add(m);
+      }
+      return g;
+    }, 0.8);
+    // Wasserlachen auf dem Höhlenboden, in denen das Kristalllicht schimmert
+    scatter(4, () => {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(rr(0.5, 0.9), rr(0.5, 0.9), 0.03, 14), M('#26304e', { roughness: 0.05, metalness: 0.4, emissive: '#3a2a7a', emissiveIntensity: 0.25 }));
+      w.position.y = 0.02;
+      w.scale.z = rr(0.6, 1);
+      return group(w);
+    }, 0.9);
     const light = new THREE.PointLight('#b07bff', 20, 12 * K, 2);
     light.position.set(0, 2.5, 0);
     root.add(light);

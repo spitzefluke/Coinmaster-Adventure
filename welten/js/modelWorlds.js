@@ -793,7 +793,7 @@ const HOEHLE = {
   landmark: true, // Riesenkristall
   keepBase: true, // Felsbogen, Kristalle, Tropfsteine, Leuchtpilze
   baseSpots: [[4.6, -0.6, 1.3], [-4.6, -0.6, 1.3], [0, -0.6, 1.2]],
-  build(ctx) {
+  build(ctx, kit) {
     const { R } = ctx;
     const mine = place(ctx, 'building_mine_blue@hoehle', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
     if (mine) around(ctx, [mine.position.x, mine.position.z], [['crates_stacked', 0.7], ['barrel_large', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['chest_gold', 0.8], ['box_stacked', 0.6]], 2.8, 4);
@@ -809,6 +809,23 @@ const HOEHLE = {
     scatterModels(ctx, 8, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 2.8, 4.4, { gap: 0.8 });
     scatterModels(ctx, 5, ['torch_lit'], 1.6, 1.6, { gap: 1 });
     scatterModels(ctx, 3, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
+    // nasser, dunkler Boden in Flecken, Geröllhaufen von der Decke
+    const { rand, rr } = ctx;
+    for (let i = 0; i < 14; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#2e2a3c', 'Slate'], ['#3a3448', 'Pebble'], ['#463e52', 'Slate']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), c, m);
+    }
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.6), pick(rand, ['#2e2838', '#3a3446', '#262230']), rand);
+        rock.scale.setScalar(rr(0.5, 0.85));
+        rock.position.set(rr(-0.6, 0.6), 0, rr(-0.6, 0.6));
+        g.add(rock);
+      }
+      return g;
+    }, 0.9, 2, R - 2.6);
   },
   backdrop(ctx, kit) {
     // keine Felssäulen aus planet1.js: sie standen direkt vor der Insel und verdeckten die Sicht
