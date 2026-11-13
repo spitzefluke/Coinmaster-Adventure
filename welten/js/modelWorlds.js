@@ -1412,8 +1412,37 @@ const KORALLENRIFF = {
 const MUSCHELLAND = {
   landmark: true, // Riesen-Perlmuschel
   keepBase: true, // Muschelhaus, Perlenbrunnen, Muscheln, Seesterne
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // Sandboden wie am Strand bei Ebbe: warme und kühle Sandflecken, lange Rippeln quer zur Strömung,
+    // Felsgruppen mit Seepocken (kleine helle Kegel)
+    groundPatches(ctx, 12, [['#f2dcb8', 'Sand'], ['#e0c8a0', 'Sand'], ['#d8d0c0', 'Pebble']]);
+    ctx.scatter(12, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#ead4ac', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.45, 0.14, 3.2);
+        m.position.set(i * 0.5, 0, rr(-0.15, 0.15));
+        g.add(m);
+      }
+      g.rotation.y = 0.4;
+      return g;
+    }, 1.4, 2, R - 2.6, { rot: false });
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.75), pick(rand, ['#7a8890', '#6a7680']), rand);
+        rock.position.set(rr(-0.6, 0.6), 0, rr(-0.6, 0.6));
+        g.add(rock);
+        for (let k = 0; k < 4; k++) {
+          const b = kit.coneFacets(0.07, 0.1, 5, new THREE.MeshStandardMaterial({ color: '#f2ece0', flatShading: true }), rand, { name: 'Seepocke' });
+          b.position.set(rock.position.x + rr(-0.3, 0.3), rr(0.15, 0.4), rock.position.z + rr(-0.3, 0.3));
+          g.add(b);
+        }
+      }
+      return g;
+    }, 1, 2, R - 2.6);
     // Felsentor aus Stein mit Laternen davor
     const gate = place(ctx, 'arch', 0.75, { rMin: 5, rMax: R - 3, face: [0, 0] });
     if (gate) around(ctx, [gate.position.x, gate.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.7]], 2.4, 3.2);

@@ -2493,9 +2493,10 @@ const BUILDERS = {
   muschelland({ scatter, rand, rr, root, anims, scene, put }) {
     lightRays(scene, anims, '#e0fbff', rand);
     put(scallop('#ffc8d8', 1.2), -1.2, -0.6);
-    scatter(4, (i) => scallop(['#ffd8b0', '#ffe8f0', '#e8d0ff'][i % 3], rr(0.45, 0.7)), 0.8);
-    scatter(6, (i) => conch(['#ffb08a', '#f2d0b0', '#ffc8e0'][i % 3], rand), 0.55);
-    scatter(8, (i) => starfish(['#ff7a4a', '#ff5f8a', '#ffb02e'][i % 3]), 0.4);
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: über 120 Muscheln und Seesterne)
+    scatter(10, (i) => scallop(['#ffd8b0', '#ffe8f0', '#e8d0ff'][i % 3], rr(0.45, 0.7)), 0.8, 2, R - 2.6);
+    scatter(14, (i) => conch(['#ffb08a', '#f2d0b0', '#ffc8e0'][i % 3], rand), 0.55, 2, R - 2.6);
+    scatter(16, (i) => starfish(['#ff7a4a', '#ff5f8a', '#ffb02e'][i % 3]), 0.4, 2, R - 2.6);
     scatter(3, () => seaweed('#3a9a6a', rand, anims), 0.3);
     fishSchool(root, anims, rand, ['#ffd0e8', '#bff0ff', '#ffe25f'], 6);
   },
