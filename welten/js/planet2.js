@@ -227,7 +227,7 @@ function details(ctx, kit) {
   } else if (id === 'saturn') {
     scatter(12, () => rockMesh(rr(0.08, 0.18), '#ffe2a0', rand), 0.15);
   } else if (id === 'alien') {
-    scatter(12, () => at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E(['#7aff5a', '#5affd8', '#d97aff'][Math.floor(rand() * 3)], 1.4)), 0, 0.08, 0), 0.15);
+    scatter(24, () => at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E(['#7aff5a', '#5affd8', '#d97aff'][Math.floor(rand() * 3)], 1.4)), 0, 0.08, 0), 0.15, 2, ctx.R - 2.6);
   } else if (id === 'sonne') {
     scatter(12, () => rockMesh(rr(0.1, 0.2), '#3a0e04', rand, rand() < 0.5 ? E('#ff8a1a', 0.9) : null), 0.18);
   }

@@ -1821,7 +1821,7 @@ const EXTRAS = {
   },
   alien({ scatter }) {
     const cols = ['#7aff5a', '#5affd8', '#ff7ae0'];
-    scatter(7, (i) => pod(cols[i % 3]), 0.4);
+    scatter(9, (i) => pod(cols[i % 3]), 0.4, 2, R - 2.6);
   },
   sonne({ scatter, rand, anims }) {
     scatter(3, () => steam(anims, rand), 0.3);
@@ -2429,8 +2429,9 @@ const BUILDERS = {
 
   alien({ put, scatter, rand, rr, root, anims, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#5a1a8a', bands: ['#7a2ab0', '#3a0a60', '#9a4ad0'], size: 7, pos: [22, 12, -36], glow: '#b07bff' });
-    scatter(14, (i) => alienPlant(['#3a8a4a', '#2a6a7a'][i % 2], ['#7aff5a', '#5affd8', '#ff7ae0'][i % 3], rand), 0.5);
-    scatter(6, () => mushroom(rr(0.5, 0.9), '#5affd8', rand, true), 0.4);
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: rund 100 Pflanzen, die Insel war zugewachsen)
+    scatter(36, (i) => alienPlant(['#3a8a4a', '#2a6a7a'][i % 2], ['#7aff5a', '#5affd8', '#ff7ae0'][i % 3], rand), 0.5, 2, R - 2.6);
+    scatter(10, () => mushroom(rr(0.5, 0.9), '#5affd8', rand, true), 0.4, 2, R - 2.6);
     if (!modelWorld) scatter(5, () => rockMesh(rr(0.3, 0.6), '#3a1a60', rand), 0.4);
     // UFO
     const ufo = new THREE.Group();

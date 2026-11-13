@@ -1180,8 +1180,53 @@ const SATURN = {
 const ALIEN = {
   landmark: true, // Alien-Tor
   keepBase: true, // UFO, leuchtende Pflanzen, Kapseln
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    const inner = R - 2.6;
+    // Boden: dunkles Violett mit Flecken aus türkisem Leuchtmoos (wie biolumineszente Pilzrasen)
+    groundPatches(ctx, 12, [['#2a1a52', 'Slate'], ['#1e4a5a', 'Grass'], ['#3a2470', 'Ground']]);
+    // umgestürzte Stämme, auf denen leuchtende Konsolenpilze wachsen (Panellus)
+    ctx.scatter(5, () => {
+      const g = kit.fallenLog(rr(2, 2.8), rr(0.2, 0.28), '#3a2450', rand, '#2a5a5a');
+      const glow = new THREE.MeshStandardMaterial({ color: '#b8ff7a', emissive: '#7aff5a', emissiveIntensity: 1.6 });
+      for (let i = 0; i < 7; i++) {
+        const shelf = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.04, 8, 1, false, 0, Math.PI), glow);
+        const x = rr(-0.9, 0.9), side = rand() < 0.5 ? -1 : 1;
+        shelf.position.set(x, 0.22 + rr(0, 0.2), side * 0.24);
+        shelf.rotation.y = side > 0 ? 0 : Math.PI;
+        g.add(shelf);
+      }
+      return g;
+    }, 1.4, 3, inner);
+    // Rankenbäume: gedrehter Stamm, oben hängen leuchtende Fäden mit Perlen herab
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      const h = rr(2.6, 3.6), stem = new THREE.MeshStandardMaterial({ color: '#4a2478', flatShading: true });
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(rr(-0.3, 0.3), h * 0.4, rr(-0.3, 0.3)), new THREE.Vector3(rr(-0.4, 0.4), h * 0.75, rr(-0.4, 0.4)), new THREE.Vector3(0, h, 0)]);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.12, 6), stem));
+      const top = curve.getPoint(1);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 6, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#5a2a90', emissive: '#d97aff', emissiveIntensity: 0.35 }));
+      cap.scale.y = 0.45;
+      cap.position.copy(top);
+      g.add(cap);
+      const bead = new THREE.MeshStandardMaterial({ color: '#5affd8', emissive: '#5affd8', emissiveIntensity: 1.8 });
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU, len = rr(0.6, 1.4), x = top.x + Math.cos(a) * 0.75, z = top.z + Math.sin(a) * 0.75;
+        const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 4), new THREE.MeshStandardMaterial({ color: '#7affd8', emissive: '#5affd8', emissiveIntensity: 0.8 }));
+        thread.position.set(x, top.y - len / 2, z);
+        g.add(thread);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), bead);
+        b.position.set(x, top.y - len, z);
+        g.add(b);
+      }
+      return g;
+    }, 1.3, 3, inner);
+    // Polster aus Leuchtmoos
+    ctx.scatter(12, () => {
+      const m = kit.mossMound(rr(0.4, 0.7), pick(rand, ['#2a8a7a', '#3a9a5a', '#5a3a9a']), rand);
+      m.children[0].material = new THREE.MeshStandardMaterial({ color: m.children[0].material.color, emissive: m.children[0].material.color, emissiveIntensity: 0.35, flatShading: true });
+      return m;
+    }, 0.5, 2, inner);
     // Forschungslager der Menschen, die die Aliens beobachten
     const camp = clearing(ctx, 5, 5, R - 4);
     if (camp) {
