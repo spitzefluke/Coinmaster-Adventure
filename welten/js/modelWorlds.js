@@ -1022,10 +1022,38 @@ const NEPTUN = {
   landmark: true, // Eisturm mit Ringen
   keepBase: true, // Sturmwirbel, Kristalle, Geysire
   baseSpots: [[0, 0, 1.3]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     const base = clearing(ctx, 5, 5, R - 4);
     if (base) station(ctx, base, ['basemodule_E', 'basemodule_C']);
+    // wie in einer Gletscherhöhle: blankes Tiefeneis, Reif und dunkler Schotter im Wechsel
+    groundPatches(ctx, 14, [['#1e4aa8', 'Glacier'], ['#cfe6ff', 'Snow'], ['#1a2648', 'Pebble'], ['#2f62c8', 'Ice']]);
+    // vom Sturm geschliffene Eisrippen, alle in Windrichtung (+X) ausgerichtet
+    const inner = R - 2.6;
+    ctx.scatter(12, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const s = rr(0.4, 0.7);
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), new THREE.MeshStandardMaterial({ color: pick(rand, ['#bfe0ff', '#9fd0ff', '#e2f2ff']), flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Eisrippe' };
+        m.scale.set(2.4, 0.42, 0.7);
+        m.position.set(i * 0.9 - 0.9 + rr(-0.2, 0.2), s * 0.15, rr(-0.5, 0.5));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    // Eisblöcke aus klarem, blau leuchtendem Eis mit dunklen Schlieren
+    ctx.scatter(6, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 3);
+      for (let i = 0; i < n; i++) {
+        const h = rr(1, 2.4), cone = kit.coneFacets(rr(0.3, 0.5), h, 5, new THREE.MeshStandardMaterial({ color: pick(rand, ['#4a9aff', '#6ab8ff', '#2f7ae8']), transparent: true, opacity: 0.8, roughness: 0.1, emissive: '#1a5ad8', emissiveIntensity: 0.35 }), rand, { wob: 0.4, tw: rand() * 3, name: 'Eisblock' });
+        cone.position.set(rr(-0.5, 0.5), 0, rr(-0.5, 0.5));
+        cone.rotation.set(rr(-0.25, 0.25), 0, rr(-0.25, 0.25));
+        g.add(cone);
+      }
+      return g;
+    }, 0.9, 2, inner);
     scatterModels(ctx, 3, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
     scatterModels(ctx, 2, ['structure_tall'], 2.4, 2.4, { gap: 0.9 });
     scatterModels(ctx, 3, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
