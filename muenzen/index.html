@@ -10,14 +10,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
 <link rel="stylesheet" href="../css/theme.css">
 <link rel="stylesheet" href="css/style.css">
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
 </head>
 <body>
 <!--BODY-->
@@ -26,12 +18,8 @@
     <div class="masthead-text">
       <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Sammlung</p>
       <h1>Münzkabinett</h1>
-      <p class="lede">50 Münzen in 10 Seltenheitsstufen, vom Pilzpfennig bis zur Allmächtigen Kartoffel. Klick auf eine Münze, um sie aus der Nähe zu drehen.</p>
+      <p class="lede">50 Münzen in 10 Seltenheitsstufen, vom Pilzpfennig bis zur Allmächtigen Kartoffel.</p>
     </div>
-    <button id="draw-btn" class="draw-btn" type="button">
-      <span class="draw-btn-label">Münze ziehen</span>
-      <span class="draw-btn-hint">nach Drop-Chance</span>
-    </button>
   </header>
 
   <section class="droptable" aria-labelledby="droptable-title">
@@ -53,39 +41,7 @@
   <main id="cabinet" class="cabinet"></main>
   <p id="no-results" class="no-results" hidden>Keine Münze passt zur Suche. Probier einen anderen Namen oder zeig alle Stufen.</p>
 
-  <footer class="foot">Roblox-Vorschau: Jede Münze ist genau die, die CoinBuilder und MutationFx in Roblox bauen. Das Motiv erscheint als Decal, so wie nach dem Hochladen der Motive (Seite „Nach Roblox Studio“).</footer>
-</div>
-
-<canvas id="stage" class="stage" aria-hidden="true"></canvas>
-
-<div id="detail" class="detail" hidden>
-  <div class="detail-backdrop" data-close></div>
-  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-name">
-    <button class="detail-close" type="button" data-close aria-label="Schließen">×</button>
-    <div class="detail-view"><canvas id="detail-canvas"></canvas></div>
-    <div class="detail-info">
-      <p id="detail-drawn" class="detail-drawn" hidden>Gezogen!</p>
-      <p id="detail-tier" class="tier-pill"></p>
-      <h2 id="detail-name"></h2>
-      <p id="detail-text" class="detail-text"></p>
-      <dl class="detail-facts">
-        <div><dt>Nennwert</dt><dd id="detail-value"></dd></div>
-        <div><dt>Drop-Chance</dt><dd id="detail-chance"></dd></div>
-        <div><dt>Etwa 1 aus</dt><dd id="detail-odds"></dd></div>
-      </dl>
-      <div class="mutation-picker">
-        <p class="mutation-label">Mutation ansehen</p>
-        <div id="mutation-chips" class="mutation-chips" role="group" aria-label="Mutation ansehen"></div>
-      </div>
-      <div class="detail-actions">
-        <button id="prev-btn" type="button" aria-label="Vorherige Münze">‹ Vorherige</button>
-        <button id="next-btn" type="button" aria-label="Nächste Münze">Nächste ›</button>
-        <button id="flip-btn" type="button">Umdrehen</button>
-        <button id="spin-btn" type="button" aria-pressed="true">Drehung an</button>
-      </div>
-      <p class="detail-hint">Ziehen zum Drehen, Mausrad zum Zoomen. Pfeiltasten wechseln die Münze.</p>
-    </div>
-  </div>
+  <footer class="foot">Drop-Chancen und Nennwerte sind Vorschläge. Alle Motive auf einen Blick: <a href="praegungen.html">Prägungen</a>.</footer>
 </div>
 
 <script type="module" src="js/main.js"></script>

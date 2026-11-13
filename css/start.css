@@ -12,8 +12,7 @@
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 .hero-text { min-width: 0; }
@@ -37,11 +36,6 @@ h1 {
 .stats dd { margin: 0; font: 700 var(--step-2)/1 var(--font-display); color: var(--brass); font-variant-numeric: tabular-nums; }
 @media (max-width: 420px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .area.is-locked .area-status { color: #9fd0ff; }
-
-.hero-coin { margin: 0; display: grid; gap: 8px; justify-items: center; min-width: 0; }
-.hero-stage { display: block; width: min(360px, 100%); aspect-ratio: 1; max-width: 100%; border-radius: 50%; }
-.hero-stage canvas { display: block; width: 100%; height: 100%; }
-.hero-coin figcaption { font: 400 var(--step--1)/1.3 var(--font-data); color: var(--muted); text-align: center; }
 
 .areas { display: grid; gap: 16px; }
 .areas h2 {
@@ -89,11 +83,6 @@ a.area:hover { border-color: var(--brass); transform: translateY(-2px); }
 .area-go { font-weight: 600; color: var(--brass); }
 
 .foot { color: var(--muted); font-size: var(--step--1); }
-
-@media (max-width: 720px) {
-  .hero { grid-template-columns: minmax(0, 1fr); }
-  .hero-stage { width: min(280px, 100%); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   a.area { transition: none; }

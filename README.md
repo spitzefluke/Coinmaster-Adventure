@@ -22,12 +22,12 @@ Roblox-Engine (`js/rbx/`):
   liegen. Neon leuchtet ohne Bloom. Die Vorschau rechnet mit 8 Punktlichtern gleichzeitig.
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
-(Münzkabinett, Münzindex mit Entdeckungs-Animation, Wetter-Seite, Startseite), Eier mit Schlüpfen
+(Münzindex mit Entdeckungs-Animation, Wetter-Seite), Eier mit Schlüpfen
 und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Taschen sind vorerst reine Listen.
 
 | Bereich | Ordner | Status |
 |---|---|---|
-| Münzkabinett | `muenzen/` | Vorschau |
+| Münzkabinett | `muenzen/` | Liste |
 | Münzindex | `muenzindex/` | Spielvorschau |
 | Eierhalle | `eier/` | Vorschau |
 | Münzrollen | `rollen/` | Vorschau |
@@ -56,7 +56,12 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 
 ## Münzkabinett
 
-50 3D-Münzen in 10 Seltenheitsstufen. **Roblox-Vorschau:** Jede Münze ist genau die, die `CoinBuilder` und
+`muenzen/` zeigt die 50 Münzen nur noch mit Namen, nach den 10 Seltenheitsstufen gruppiert, mit Drop-Tabelle,
+Stufen-Filter und Suche. Die 3D-Vorschau, die Detailansicht und „Münze ziehen“ gibt es dort nicht mehr; auch die
+drehende Zufallsmünze auf der Startseite ist entfernt. In 3D erscheinen die Münzen weiter im Münzindex, auf der
+Wetter-Seite und in der Spiel-Oberfläche.
+
+**Die Münzen in Roblox:** Jede Münze ist genau die, die `CoinBuilder` und
 `MutationFx` in Roblox bauen (`muenzen/js/coinRoblox.js`): gestufte Prägung aus Randscheibe, Münzkörper
 und Motivplatte, ein Perlkreis und das Motiv als Decal auf beiden Seiten (so, wie es nach dem Hochladen
 der Motive und dem Eintragen der `DecalId` aussieht). Stufen-Effekte und Mutationen kommen aus denselben
@@ -137,7 +142,7 @@ Die Mutation bleibt dauerhaft an der Münze sichtbar und multipliziert ihren Wer
 
 Im Münzindex wechselt das Wetter jede Minute (nach Häufigkeit gewichtet, Klar ist am
 häufigsten). Gefundene Mutationen erscheinen als Punkte an jedem Fach, insgesamt gibt es
-50 × 6 = 300. Im Münzkabinett lässt sich jede Mutation in der Detailansicht ansehen.
+50 × 6 = 300. Auf der Wetter-Seite lässt sich jede Mutation an einer Münze ansehen.
 
 ## Eierhalle
 
@@ -1029,7 +1034,7 @@ Dann <http://localhost:8000> öffnen.
   - `js/emblems.js` – die 50 Prägemotive als Relief-Zeichnungen
   - `js/mutations.js` – Wetter, Mutationen, Chancen, Multiplikatoren und ihre Effekte
   - `js/coinFactory.js` – baut aus einem Datensatz die 3D-Münze (Prägung, Gravurmuster, Effekte)
-  - `js/main.js` – Galerie, Filter, Detailansicht, „Münze ziehen“
+  - `js/main.js` – Namen nach Stufe, Drop-Tabelle, Filter, Suche
   - `css/style.css` – Gestaltung
 
 Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte kommen automatisch aus der Stufe.

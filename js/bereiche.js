@@ -6,10 +6,10 @@
 export const BEREICHE = [
   {
     titel: 'Münzkabinett',
-    text: '50 3D-Münzen in 10 Seltenheitsstufen, vom Pilzpfennig bis zur Allmächtigen Kartoffel. Mit Drop-Tabelle, Detailansicht und Münzziehung.',
+    text: 'Alle 50 Münzen in 10 Seltenheitsstufen, vom Pilzpfennig bis zur Allmächtigen Kartoffel. Namen nach Stufe, mit Drop-Tabelle, Filter und Suche.',
     href: 'muenzen/',
     status: 'vorschau',
-    eckdaten: ['50 Münzen', '10 Stufen', '3D'],
+    eckdaten: ['50 Münzen', '10 Stufen', 'Suche'],
   },
   {
     titel: 'Münzindex',
