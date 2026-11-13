@@ -1265,6 +1265,40 @@ const SONNE = {
     }
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'sonne');
+    // Sonnenoberfläche: Granulation in Orange und Rot, dunkle Sonnenflecken mit hellerem Hof,
+    // leuchtende Plasmaadern und Büschel aus Spikulen (dünne, glühende Plasmastrahlen)
+    const { rand, rr } = ctx, inner = R - 2.6;
+    groundPatches(ctx, 16, [['#ff9a2a', 'CrackedLava'], ['#e8641a', 'CrackedLava'], ['#ffb84a', 'Neon']]);
+    for (let i = 0; i < 3; i++) {
+      const a = rand() * TAU, r = rr(3, R - 4), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      ctx.paint(x, z, 1.1, '#5a1a08', 'Basalt');
+      ctx.paint(x, z, 2.2, '#b8400c', 'CrackedLava');
+    }
+    const glow = new THREE.MeshStandardMaterial({ color: '#fff0a0', emissive: '#ffd84a', emissiveIntensity: 1.6 });
+    for (let c = 0; c < 8; c++) {
+      const p0 = ctx.spot(0.4, 3, inner);
+      if (!p0) continue;
+      let [x, z] = p0, a = rand() * TAU;
+      for (let s = 0; s < 6; s++) {
+        const len = rr(0.5, 0.9), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > inner) break;
+        const vein = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.08), glow);
+        layOnGround(vein, ctx.height, (x + nx) / 2, (z + nz) / 2, { yaw: -a, lift: 0.01 });
+        ctx.root.add(vein);
+        x = nx; z = nz; a += rr(-0.8, 0.8);
+      }
+    }
+    ctx.scatter(7, () => {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: '#ffd84a', emissive: '#ff9a1a', emissiveIntensity: 1.4 });
+      for (let i = 0; i < 6; i++) {
+        const h = rr(0.6, 1.5), sp = new THREE.Mesh(new THREE.ConeGeometry(0.06, h, 4), mat);
+        sp.position.set(rr(-0.3, 0.3), h / 2, rr(-0.3, 0.3));
+        sp.rotation.set(rr(-0.35, 0.35), 0, rr(-0.35, 0.35));
+        g.add(sp);
+      }
+      return g;
+    }, 0.6, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'sonne');

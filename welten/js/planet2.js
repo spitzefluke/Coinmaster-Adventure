@@ -15,7 +15,7 @@ const PATHS = {
   mars: { color: '#9aa0a8', kind: 'tile', metal: true, glow: '#ff9a5a', pebble: '#6a3422', trail: ['#7a3a22', 'Ground'] },
   saturn: { color: '#d8b880', kind: 'stone', trail: ['#b8965e', 'Sand'] },
   alien: { color: '#3a1a60', kind: 'tile', glow: '#7aff5a', trail: ['#4a2a70', 'Slate'] },
-  sonne: { color: '#5a1a08', kind: 'tile', glow: '#ffd84a', pebble: '#2a0e04', trail: ['#3a1206', 'Basalt'] },
+  sonne: { color: '#5a1a08', kind: 'tile', glow: '#ffd84a', pebble: '#2a0e04', trail: ['#b8400c', 'CrackedLava'] },
 };
 
 // ── Wahrzeichen ──
