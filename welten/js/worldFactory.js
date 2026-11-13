@@ -1097,12 +1097,30 @@ function starfish(c) {
   m.position.y = 0.04;
   return group(m);
 }
+// griechische Säule: gestufter Fuß, Schaft mit Kanneluren (schmale Rillen ringsum), Kapitell mit Wulst und
+// Deckplatte. broken: oben abgebrochen (schräge Bruchkante, kein Kapitell)
 function column(h, c, broken) {
   const g = new THREE.Group();
-  const base = at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.7), M(c)), 0, 0.09, 0);
-  const shaft = at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, h, 10), M(c)), 0, h / 2 + 0.18, 0);
-  g.add(base, shaft);
-  if (!broken) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.16, 0.66), M(c)), 0, h + 0.26, 0));
+  const mat = M(c), shade = M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.1).getHexString());
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.12, 0.74), mat), 0, 0.06, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.1, 12), mat), 0, 0.17, 0));
+  const sh = broken ? h * 0.92 : h;
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, sh, 12), mat), 0, sh / 2 + 0.22, 0));
+  // Kanneluren: dunkle, schmale Leisten knapp vor dem Schaft
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const f = at(new THREE.Mesh(new THREE.BoxGeometry(0.035, sh * 0.94, 0.03), shade), Math.cos(a) * 0.253, sh / 2 + 0.22, Math.sin(a) * 0.253);
+    f.rotation.y = -a;
+    g.add(f);
+  }
+  if (broken) {
+    const cut = at(new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.12, 8), shade), 0, sh + 0.24, 0);
+    cut.rotation.z = 0.35;
+    g.add(cut);
+  } else {
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.25, 0.14, 12), mat), 0, h + 0.29, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 0.72), mat), 0, h + 0.43, 0));
+  }
   return g;
 }
 

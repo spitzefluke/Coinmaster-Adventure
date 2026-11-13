@@ -433,6 +433,33 @@ const GOETTERTHRON = {
       c.traverse((o) => o.isMesh && (o.material = gm));
       put(c, x, z, { rot: false });
     }
+    // Tempelruine wie am Olympieion: Säulenhof aus hohen Säulen mit Gebälk (Architrav) obendrauf,
+    // daneben umgestürzte Säulentrommeln; Boden aus Marmorplatten und hellem Kalkstein
+    ctx.paint(0, 0, 6.2, '#efe2c4', 'Marble');
+    const tp = ctx.spot(3.2, 9, R - 3);
+    if (tp) {
+      ctx.reserve(tp[0], tp[1], 3);
+      const temple = new THREE.Group(), H = 3.4;
+      const cols = [[-1.6, -1], [0, -1], [1.6, -1], [-1.6, 1], [0, 1], [1.6, 1]];
+      for (const [x, z] of cols) temple.add(at(kit.column(H, '#efe0c0', false), x, 0, z));
+      // Gebälk: über jedem Säulenpaar ein Balken, die äußeren Ecken ohne (Ruine)
+      for (const z of [-1, 1])
+        for (const x of [-0.8, 0.8]) if (!(z === 1 && x > 0)) temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.42, 0.62), M('#e6d6b2')), x, H + 0.71, z));
+      temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.42, 2.6), M('#e6d6b2')), -1.6, H + 0.71, 0));
+      temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.18, 3), M('#e8dcc0')), 0, 0.02, 0));
+      put(temple, tp[0], tp[1], { rot: false });
+      temple.rotation.y = -Math.atan2(tp[1], tp[0]) + Math.PI / 2;
+    }
+    ctx.scatter(6, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 3; k++) {
+        const d = at(new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.55, 12), M('#e8d8b4')), k * 0.6, 0.27, rr(-0.1, 0.1));
+        d.rotation.z = Math.PI / 2;
+        d.rotation.y = rr(-0.2, 0.2);
+        g.add(d);
+      }
+      return g;
+    }, 1, 6, R - 2.6);
     ctx.scatter(8, () => cloudPuff(kit, rand, rr(0.6, 1)), 0.9, 9, R - 1);
     scatterModels(ctx, 4, ['pillar_decorated', 'column'], 0.7, 0.85, { rMin: 9, gap: 0.9 });
     scatterModels(ctx, 3, ['chest_gold'], 0.8, 0.8, { rMin: 9, rMax: R - 2, gap: 1 });
