@@ -365,11 +365,15 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
 
   const shared = {};
-  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
+  // Boden bemalen (Webseite: flache Scheibe; Roblox: die Bodendreiecke darunter bekommen Farbe und Material)
+  // für ausgetretene Pfade, Dorfplätze, Felder. material: Roblox-Material, sonst das des Bodens.
+  shared.paint = [];
+  const paint = (x, z, r, color, material = null) => shared.paint.push({ x, z, r, color, material });
+  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, paint, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -498,6 +502,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     emitters: shared.emitters || [], // zusätzliche Partikel (Leben, Himmelseffekte), Webseiten-Einheiten
+    paint: shared.paint || [], // bemalter Boden (Pfade, Plätze): in Roblox färbt terrainSurface die Dreiecke
     sounds: shared.sounds || [], // Plätze für Klänge mit Vorschlag (SoundId setzt man in Roblox)
     update(t, dt) {
       for (const a of anims) a(t, dt);
@@ -548,14 +553,29 @@ function roundTree(h, c, rand) {
   const n = 2 + Math.floor(rand() * 2);
   for (let i = 0; i < n; i++) {
     const s = h * (0.32 - i * 0.05);
-    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(c));
+    const tone = i % 2 ? '#' + new THREE.Color(c).offsetHSL(0, 0.02, 0.05).getHexString() : c;
+    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(tone));
+    b.userData.rbx = { facets: true, facetThick: 0.06, name: 'Krone' }; // kantige Krone statt Kugel
     b.position.set((rand() - 0.5) * h * 0.25, h * (0.6 + i * 0.18), (rand() - 0.5) * h * 0.25);
     g.add(b);
   }
   return g;
 }
+// Busch: zwei bis drei kantige Blattballen in zwei Tönen (in Roblox Fläche für Fläche aus Keilen, keine Kugel)
 function bush(s, c, rand) {
-  return at(new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.3), M(c)), 0, s * 0.6, 0);
+  const dark = '#' + new THREE.Color(c).offsetHSL(0.01, 0, -0.07).getHexString();
+  const g = new THREE.Group();
+  const n = rand() < 0.5 ? 1 : 2;
+  for (let i = 0; i < n; i++) {
+    const r = s * (i ? 0.62 + rand() * 0.2 : 1);
+    const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.3), M(i % 2 ? dark : c));
+    m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Busch' };
+    const a = rand() * Math.PI * 2, d = i ? s * 0.7 : 0;
+    m.position.set(Math.cos(a) * d, r * 0.62, Math.sin(a) * d);
+    m.scale.y = 0.8;
+    g.add(m);
+  }
+  return g;
 }
 function rockMesh(s, c, rand, mat) {
   const m = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.45), mat || M(c));
@@ -578,10 +598,39 @@ function mushroom(h, cap, rand, glow) {
   }
   return g;
 }
-function flower(c) {
-  const stem = at(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 4), M('#3f8a46')), 0, 0.17, 0);
-  const head = at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.08, 0), M(c, { emissive: c, emissiveIntensity: 0.15 })), 0, 0.37, 0);
-  return group(stem, head);
+// Blume: Stiel mit Blatt, fünf spitze Blütenblätter (leicht nach oben gewölbt) um eine Mitte
+// (in Roblox je Blatt zwei Keile)
+function flower(c, h = 0.35) {
+  const stem = at(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, h, 4), M('#3f8a46')), 0, h / 2, 0);
+  const pts = [], k = h / 0.35;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2, w = 0.62;
+    pts.push(Math.cos(a - w) * 0.03 * k, h + 0.01 * k, Math.sin(a - w) * 0.03 * k, Math.cos(a) * 0.13 * k, h + 0.08 * k, Math.sin(a) * 0.13 * k, Math.cos(a + w) * 0.03 * k, h + 0.01 * k, Math.sin(a + w) * 0.03 * k);
+  }
+  // Blatt am Stiel
+  pts.push(0, h * 0.3, 0, 0.11 * k, h * 0.45, 0.03 * k, 0.04 * k, h * 0.52, 0);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.addGroup(0, 15, 0);
+  geo.addGroup(15, 3, 1);
+  geo.computeVertexNormals();
+  const petals = new THREE.Mesh(geo, [M(c, { side: THREE.DoubleSide, emissive: c, emissiveIntensity: 0.12 }), M('#4f9a3f', { side: THREE.DoubleSide })]);
+  petals.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.012, name: 'Blume' };
+  const mid = at(new THREE.Mesh(new THREE.SphereGeometry(0.04 * k, 6, 4), M('#ffd23f')), 0, h + 0.03 * k, 0);
+  return group(stem, petals, mid);
+}
+// Blumengruppe: mehrere Blumen einer Farbe dicht beieinander (so wachsen sie auf Wiesen)
+function flowerPatch(colors, rand, n = 4 + Math.floor(rand() * 4)) {
+  const c = colors[Math.floor(rand() * colors.length)];
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const f = flower(c, 0.26 + rand() * 0.14);
+    const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * 0.42;
+    f.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+    f.rotation.y = rand() * 6;
+    g.add(f);
+  }
+  return g;
 }
 function crystal(h, c, rand, intensity = 1.2) {
   const g = new THREE.Group();
@@ -2325,6 +2374,6 @@ const BUILDERS = {
 
 // Bausteine für spawnTown.js
 const KIT = {
-  M, E, at, group, canvasTex, dotTex, signBoard, column, lamp, chest, bench, roundTree, bush, flower, crystal,
+  M, E, at, group, canvasTex, dotTex, signBoard, column, lamp, chest, bench, roundTree, bush, flower, flowerPatch, crystal,
   portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, dome,
 };

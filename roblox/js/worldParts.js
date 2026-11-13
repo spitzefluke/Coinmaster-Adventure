@@ -92,7 +92,14 @@ function emit(out, mesh, shape, local, lk, extra = {}) {
 const S = (x, y, z) => new THREE.Matrix4().makeScale(x, y, z);
 
 // Facettierte Form → Keile. Jede Dreiecksfläche wird zu zwei Keilen, deren Körper nach innen zeigt.
-function facetMesh(out, mesh, lk, r) {
+function facetMesh(out, mesh, lk, r, world) {
+  // mehrere Materialien (Gruppen der Geometrie, z. B. Blüte und Blatt): Farbe je Dreieck aus seiner Gruppe
+  const multi = Array.isArray(mesh.material) && mesh.geometry.groups.length;
+  const lookAt = (i) => {
+    if (!multi) return lk;
+    const grp = mesh.geometry.groups.find((q) => i >= q.start && i < q.start + q.count);
+    return grp ? look({ material: mesh.material[grp.materialIndex] ?? mesh.material[0], userData: mesh.userData }, world) : lk;
+  };
   const g = mesh.geometry, pos = g.attributes.position, idx = g.index;
   const n = idx ? idx.count : pos.count;
   const center = new THREE.Vector3();
@@ -112,7 +119,7 @@ function facetMesh(out, mesh, lk, r) {
         shape: 'Wedge', className: 'WedgePart', name: r.name || 'Kristall',
         pos: [w.pos.x * STUDS, w.pos.y * STUDS, w.pos.z * STUDS], rot: w.rot,
         size: [w.size[0] * STUDS, w.size[1] * STUDS, w.size[2] * STUDS],
-        ...lk,
+        ...lookAt(i),
       });
     }
   }
@@ -140,7 +147,7 @@ export function convertMesh(out, mesh, world) {
   const ex = {};
   // facets: Kristalle und Edelsteine Fläche für Fläche aus Keilen (echte Kanten statt Kugel oder Stufen).
   // Nach unten zeigende Flächen fallen weg (stecken im Boden oder sind nie zu sehen).
-  if (r.facets && g.attributes.position) return facetMesh(out, mesh, lk, r);
+  if (r.facets && g.attributes.position) return facetMesh(out, mesh, lk, r, world);
   // Spawn-Bereich (für Klicks im Spiel-Hintergrund)
   for (let o = mesh; o; o = o.parent) if (o.userData.area) {
     ex.area = o.userData.area;
@@ -279,7 +286,10 @@ function terrainSurface(out, built, world) {
   const rand = seededRand(world.id + ':boden');
   const g = vivid(world.ground, 0.25);
   // fünf Töne von etwas dunkler bis etwas heller, dazu ein Hang-Ton zwischen Boden und Rand-Erde
-  const tones = [shade(g, 0.03, -0.085), shade(g, 0.015, -0.04), g, shade(g, 0.02, 0.035), shade(g, 0.04, 0.07)];
+  // Wiesen: dunkle Flecken etwas bläulicher, helle etwas gelblicher (wie trockenes und frisches Gras)
+  const grassy = material === 'Grass';
+  const hue = (hex, h, s, l) => '#' + new THREE.Color(hex).offsetHSL(grassy ? h : 0, s, l).getHexString();
+  const tones = [hue(g, 0.012, 0.03, -0.085), hue(g, 0.006, 0.015, -0.04), g, hue(g, -0.012, 0.02, 0.035), hue(g, -0.025, 0.02, 0.06)];
   const slopeTone = '#' + new THREE.Color(g).lerp(new THREE.Color(vivid(world.side, 0.15)), 0.32).getHexString();
   const rimTone = shade(g, 0.03, 0.075);
   // Gitterpunkte auf Ringen (innere Ringe leicht unregelmäßig, damit kein Muster entsteht)
@@ -315,12 +325,21 @@ function terrainSurface(out, built, world) {
     if (slope > 0.2) color = slopeTone;
     else if (slope > 0.12) color = '#' + new THREE.Color(color).lerp(new THREE.Color(slopeTone), 0.5).getHexString();
     if (Math.hypot(cx, cz) > R * 0.955) color = rimTone;
+    // bemalter Boden (ausgetretene Pfade, Plätze, Felder): Rand leicht ausgefranst, zwei Töne
+    let mat = material;
+    const fray = 0.8 + ((Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453) % 1 + 1) % 1 * 0.45;
+    for (const p of built.paint || []) {
+      if (Math.hypot(cx - p.x, cz - p.z) > p.r * fray) continue;
+      color = n > 0 ? p.color : shade(p.color, 0.02, -0.035);
+      mat = p.material || material;
+      break;
+    }
     for (const w of triangleWedges(a, b, c)) {
       out.push({
         shape: 'Wedge', className: 'WedgePart', name: 'Boden',
         pos: [w.pos.x * STUDS, w.pos.y * STUDS, w.pos.z * STUDS], rot: w.rot,
         size: [w.size[0] * STUDS, w.size[1] * STUDS, w.size[2] * STUDS],
-        color, material, transparency: 0,
+        color, material: mat, transparency: 0,
       });
     }
   }
@@ -656,6 +675,7 @@ export function worldToParts(world) {
       lifetime: e.lifetime,
       spread: e.spread,
       lightEmission: e.lightEmission,
+      ...(e.acceleration ? { acceleration: e.acceleration.map((v) => v * STUDS) } : {}), // Schwerkraft (Fontäne)
       squares: false,
     });
   // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur

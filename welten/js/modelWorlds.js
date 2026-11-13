@@ -422,6 +422,8 @@ const NORMAL = {
     }
     if (vc) {
       reserve(vc[0], vc[1], 1.2);
+      // festgetretener Dorfplatz um den Brunnen, Trampelpfade zu den Häusern
+      ctx.paint(vc[0], vc[1], 2.9, '#b09670', 'Ground');
       stand(ctx, model('building_well_blue', 3.2), vc[0], vc[1]);
       const houses = ['building_home_A_blue', 'building_home_B_red', 'building_home_A_green', 'building_home_B_yellow', 'building_home_A_red'];
       const a0 = rand() * TAU;
@@ -430,6 +432,13 @@ const NORMAL = {
         if (Math.hypot(x, z) > R - 2 || !ctx.free(x, z, 1.4)) continue;
         reserve(x, z, 1.6);
         stand(ctx, model(houses[i], 3.6), x, z, { face: vc });
+        ctx.paint((x + vc[0]) / 2, (z + vc[1]) / 2, 1.1, '#a68a62', 'Ground');
+        // Büsche und Blumen am Haus (auf der Seite weg vom Platz)
+        const ox = (x - vc[0]) / 4.2, oz = (z - vc[1]) / 4.2;
+        for (const s of [-1, 1]) {
+          const bx = x + ox * 1.1 - oz * s * 1.5, bz = z + oz * 1.1 + ox * s * 1.5;
+          if (ctx.free(bx, bz, 0.3)) ctx.put(rand() < 0.6 ? kit.bush(rr(0.28, 0.4), '#4f9a3f', rand) : kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff'], rand, 4), bx, bz);
+        }
       }
       // Marktstand und Kisten am Platz
       for (const [id, s, d] of [['building_market_red', 2.6, 2.4], ['barrel', 3.4, 1.4], ['crate_A_big', 3.4, 1.6], ['sack', 3.6, 1.2], ['crate_long_A', 3, 1.7], ['wheelbarrow', 3.2, 1.8]]) {
@@ -442,6 +451,7 @@ const NORMAL = {
     // Weizenfeld mit Holzzaun
     const field = ctx.spot(2.4, 5, R - 3);
     if (field) {
+      ctx.paint(field[0], field[1], 2.3, '#8a6a46', 'Ground'); // Ackerboden unter dem Korn
       stand(ctx, model('building_grain', 1.9), field[0], field[1], { sink: 0.16 }); // Sechseckplatte im Boden versenkt, nur das Korn schaut heraus
       for (let i = 0; i < 3; i++) {
         const a = Math.atan2(field[1], field[0]) + (i - 1) * 0.55, r = Math.hypot(...field) + 2.4;
@@ -454,8 +464,22 @@ const NORMAL = {
     scatterModels(ctx, 2, ['trees_B_small', 'trees_B_medium'], 2.2, 2.6, { rMin: R * 0.5, gap: 0.7 });
     scatterModels(ctx, 6, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'], 2.6, 4, { gap: 0.8 });
     scatterModels(ctx, 3, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.6);
-    // Blumen bleiben selbstgebaut (das Paket hat keine)
-    ctx.scatter(14, () => kit.flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2);
+    // Laubbäume zwischen den Tannen (kantige Kronen), Büsche in Gruppen, Steingruppen. Feste Anzahl:
+    // rMax unter R − 2,5, sonst vervielfacht scatter mit der Inselfläche
+    const inner = R - 2.6;
+    ctx.scatter(6, () => kit.roundTree(rr(2.2, 2.9), pick(rand, ['#4f9a3f', '#5aa84a', '#468f3a']), rand), 1, 4, inner);
+    ctx.scatter(14, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 2; i++) {
+        const b = kit.bush(rr(0.26, 0.42), pick(rand, ['#4f9a3f', '#3f8a3a', '#5aa84a']), rand);
+        b.position.set(rr(-0.45, 0.45), 0, rr(-0.45, 0.45));
+        g.add(b);
+      }
+      return g;
+    }, 0.8, 2, inner);
+    scatterModels(ctx, 4, ['rock_single_B', 'rock_single_C', 'rock_single_E'], 2.2, 3, { gap: 0.6 });
+    // Blumen wachsen in Gruppen einer Farbe (das Paket hat keine Blumen)
+    ctx.scatter(16, () => kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff', '#ff9a4a'], rand), 0.5, 2, inner);
   },
   backdrop(ctx) {
     // Umgebung: Nachbarinseln mit Schneebergen, schwebende Inselchen und Brocken am Rand (Wolken malt das Himmelsbild)

@@ -23,13 +23,14 @@ export function backdropMesh(mesh) {
 }
 
 // ── Wege: drei geschwungene Pfade von der Mitte zum Rand, mit Lichtungen für Münzen ──
+// trail: ausgetretener Boden unter den Platten (Farbe, Roblox-Material), wie ein Trampelpfad
 const PATHS = {
-  normal: { color: '#d9c9a4', kind: 'stone' },
-  wald: { color: '#8a6440', kind: 'plank' },
-  eis: { color: '#cdeeff', kind: 'stone', glass: true },
-  lava: { color: '#3a2e2a', kind: 'tile', glow: '#ff5a14' },
-  hoehle: { color: '#4a4458', kind: 'stone', glow: '#6ae8ff' },
-  candy: { color: '#7a4a2a', kind: 'tile', edge: '#ff8ac8' },
+  normal: { color: '#d9c9a4', kind: 'stone', trail: ['#a2825a', 'Ground'] },
+  wald: { color: '#8a6440', kind: 'plank', trail: ['#5e4630', 'Ground'] },
+  eis: { color: '#cdeeff', kind: 'stone', glass: true, trail: ['#cddfee', 'Snow'] },
+  lava: { color: '#3a2e2a', kind: 'tile', glow: '#ff5a14', trail: ['#4e403a', 'Slate'] },
+  hoehle: { color: '#4a4458', kind: 'stone', glow: '#6ae8ff', trail: ['#3a3448', 'Slate'] },
+  candy: { color: '#7a4a2a', kind: 'tile', edge: '#ff8ac8', trail: ['#e0aa78', 'SmoothPlastic'] },
 };
 export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
   if (!style) return;
@@ -52,6 +53,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       tile.receiveShadow = true;
       root.add(tile);
       reserve(x, z, 0.42);
+      if (style.trail) ctx.paint?.(x, z, 0.78, ...style.trail);
       // leuchtende Fugen (Lava) oder Rand (Candy) neben jeder zweiten Platte
       if ((style.glow && style.kind === 'tile') || style.edge) {
         const strip = at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.62), style.glow ? E(style.glow, 1.3) : M(style.edge)), 0, 0, 0);
@@ -71,6 +73,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       const x = Math.cos(a) * r - Math.sin(a) * side * 1.25, z = Math.sin(a) * r + Math.cos(a) * side * 1.25;
       reserve(x, z, 0.85);
       shared.coinSpots.push([x, z]);
+      if (style.trail) ctx.paint?.(x, z, 1.1, ...style.trail);
       for (let i = 0; i < 8; i++) {
         const b = (i / 8) * TAU, sx = x + Math.cos(b) * 0.7, sz = z + Math.sin(b) * 0.7;
         root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(style.edge || style.color)), sx, height(sx, sz) + 0.03, sz));
@@ -269,7 +272,7 @@ export function backdrop(ctx, kit) {
 // ── mehr Details am Boden ──
 function details(ctx, kit) {
   const { M, E, at, group, rockMesh, mushroom, flower } = kit;
-  const { scatter, rand, rr } = ctx;
+  const { scatter, rand, rr, R } = ctx;
   // Grasbüschel: fünf spitze Halme, die vom Fuß aus schräg auseinanderstehen (in Roblox je Halm zwei Keile)
   const tuft = (c) => {
     const pts = [];
@@ -288,7 +291,7 @@ function details(ctx, kit) {
   const id = ctx.world.id;
   if (id === 'normal' || id === 'wald') {
     scatter(16, () => tuft(rand() < 0.5 ? '#4f9a3f' : '#6fbf4f'), 0.15);
-    scatter(12, () => flower(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff'][Math.floor(rand() * 4)]), 0.15);
+    scatter(4, () => kit.flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff'], rand), 0.45, 2, R - 2.6);
     scatter(6, () => rockMesh(rr(0.12, 0.22), '#9a9aa6', rand), 0.2);
     if (id === 'wald') scatter(4, () => mushroom(rr(0.25, 0.45), rand() < 0.5 ? '#d84a3a' : '#e8c070', rand, false), 0.25);
   } else if (id === 'stadt') {

@@ -218,6 +218,7 @@ export function worldModel(w, offset = [0, 0, 0]) {
       prop.range('RotSpeed', [-40, 40]),
       prop.range('Rotation', [0, 360]),
       prop.content('Texture', e.squares ? 'rbxasset://textures/particles/sparkles_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
+      ...(e.acceleration ? [prop.vec3('Acceleration', e.acceleration)] : []),
     ]);
     fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
   }

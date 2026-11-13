@@ -13,7 +13,7 @@ const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
 
 export function buildSpawnTown(ctx, K) {
   const { put, reserve, root, anims, rand, rr, scatter, height, shared, scene, lights, R } = ctx;
-  const { M, E, at, group, signBoard, column, lamp, chest, bench, roundTree, bush, flower, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
+  const { M, E, at, group, signBoard, column, lamp, chest, bench, roundTree, bush, flower, flowerPatch, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
   const y0 = height(0, 0);
   const areas = (shared.areas = []);
   const lampMats = []; // leuchten nachts heller
@@ -100,12 +100,19 @@ export function buildSpawnTown(ctx, K) {
     const stone = M('#d8d0c0'), trim = M('#c8a040', { metalness: 0.6, roughness: 0.35 });
     g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.55, 40), stone), 0, 0.27, 0));
     g.add(at(new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.12, 8, 48), trim), 0, 0.56, 0)).children.at(-1).rotation.x = Math.PI / 2;
-    const water = at(new THREE.Mesh(new THREE.CylinderGeometry(2.25, 2.25, 0.06, 40), M('#4ab0e8', { roughness: 0.1, emissive: '#2a7ab8', emissiveIntensity: 0.35 })), 0, 0.5, 0);
+    // Wasser knapp über dem Steinbecken (vorher steckte es im massiven Becken und war in Roblox unsichtbar)
+    const waterM = M('#4ab0e8', { roughness: 0.1, emissive: '#2a7ab8', emissiveIntensity: 0.35 });
+    const water = at(new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.06, 40), waterM), 0, 0.58, 0);
     g.add(water);
     const statue = coinStatue(anims);
     statue.scale.setScalar(0.85);
     statue.position.y = 0.45;
     g.add(statue);
+    // obere Schale um die Säule; aus ihr fällt ein Wasservorhang ringsum ins Becken (wie eine Wasserglocke)
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.35, 0.8, 0.3, 24), stone), 0, 1.7, 0));
+    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.06, 6, 32), trim), 0, 1.86, 0)).children.at(-1).rotation.x = Math.PI / 2;
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.26, 1.26, 0.05, 32), waterM), 0, 1.84, 0));
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.38, 1.62, 1.18, 32), M('#aee4ff', { roughness: 0.1, transparent: true, opacity: 0.45, emissive: '#7ad0ff', emissiveIntensity: 0.25 })), 0, 1.15, 0));
     // Fontänen: Tropfen fliegen im Bogen ins Becken
     const drops = [], dropM = M('#bfeaff', { roughness: 0.1, emissive: '#7ad0ff', emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
     for (let j = 0; j < 8; j++)
@@ -122,6 +129,10 @@ export function buildSpawnTown(ctx, K) {
       }),
     );
     put(g, 0, 0, { rot: false, sink: -0.08 });
+    // in Roblox: Fontäne aus Wasserpartikeln (die Tropfen oben gibt es nur auf der Webseite), dazu Gischt im Becken
+    const em = (shared.emitters = shared.emitters || []);
+    em.push({ name: 'Fontaene', pos: [0, y0 + 2.75, 0], size: [0.6, 0.2, 0.6], colors: ['#d8f4ff', '#9fdcff'], particleSize: 0.22, rate: 60, speed: [2.2, 2.8], lifetime: [0.9, 1.2], spread: [28, 28], direction: 'Top', lightEmission: 0.3, acceleration: [0, -6, 0] });
+    em.push({ name: 'Gischt', pos: [0, y0 + 0.7, 0], size: [3.2, 0.1, 3.2], colors: ['#ffffff', '#d8f4ff'], particleSize: 0.3, rate: 14, speed: [0.2, 0.5], lifetime: [0.6, 1], spread: [60, 60], direction: 'Top', lightEmission: 0.2 });
   }
   // Spawn-Pad vor dem Brunnen
   {
@@ -700,11 +711,11 @@ export function buildSpawnTown(ctx, K) {
     }
   }
   // Blumenbeete zwischen Platz und Ringstraße
-  scatter(50, () => flower(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'][Math.floor(rand() * 5)]), 0.18, 5.5, 9.3);
+  scatter(10, () => flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'], rand), 0.45, 5.5, 9.3);
   scatter(14, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, 5.6, 9.2);
 
   // ── Grün ──
   if (!ctx.modelWorld) scatter(12, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 11, 13.4); // sonst Bäume als Modelle
   scatter(24, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 5.6, 13.4);
-  scatter(60, () => flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2, 5.6, 13.4);
+  scatter(12, () => flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand), 0.45, 5.6, 13.4);
 }
