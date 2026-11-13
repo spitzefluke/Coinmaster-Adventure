@@ -485,6 +485,21 @@ Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Edelstein
   praktisch unerreichbar, solange die Kosten so steigen. Bevor die Supernova im Spiel erreichbar ist, muss die
   Kostenkurve der Wiedergeburt flacher werden (`REBIRTH.cost` in `welten/js/worlds.js`).
 
+**Feinschliff aller Welten (Profi-Überarbeitung):** Nichts Neues gebaut, nur das Bestehende sauberer:
+- **Boden:** statt eines Säulenrasters eine glatte Geländefläche aus Dreiecken (in Roblox je zwei Keile, `triangleWedges`
+  in `roblox/js/worldParts.js`), 11 Ringe × 56 Stücke. Weiche Flecken in fünf Tönen, Hänge erdiger, eine helle
+  Sonnenkante am Rand; darunter eine geschlossene Erdkante. Die Erdschicht sitzt unter dem tiefsten Tal, nichts schaut durch.
+- **Auf dem Boden:** Gegenstände stehen auf dem tiefsten Punkt ihrer Grundfläche (keine schwebenden Ecken am Hang);
+  Wegplatten, Seen, Lavapfützen, Krater und der Runenkreis liegen an den Hang geneigt (`layOnGround`, `lay`).
+- **Bach (Normal):** flaches Bachbett mit dunklem Ufer und hellem Strömungsstreifen statt einer Röhre (`welten/js/detail.js`).
+- **Rand:** Graspolster in wechselnder Größe und drei Tönen, dazwischen Felsnasen aus der Kante.
+- **Kristalle, Edelsteine, große Felsen:** in Roblox Fläche für Fläche aus Keilen (`facets`), mit scharfen Kanten statt
+  Kugeln; das Wahrzeichen im Juwelnebel ist ein echter Brillant mit Krone und Pavillon.
+- **Bögen und Stangen** (Zuckerstangen, Felsbogen der Höhle, Ringe): Kugelgelenke an jedem Knick, keine Lücken mehr.
+- **Umgebung:** die grauen Wolkenklumpen direkt an Inseln ohne Himmelsbild sind weg, das Nebelmeer im All ist
+  nicht mehr durchscheinend (keine Blasen am Horizont), die neun Welten des Juwelnebels haben einen eigenen
+  Sternenhimmel mit Nebeln in Edelsteinfarben (WorldFx `gemSky`).
+
 **Umgebung je Welt:** alle 17 Welten (Spawn und Planet 1 bis 3) haben ein eigenes Himmelsbild, eine Felsunterseite aus Modellen, schwebende Inseln oder Brocken und Details am Rand.
 
 | Welt | Himmelsbild | Umgebung |

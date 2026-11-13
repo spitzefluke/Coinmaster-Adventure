@@ -1609,6 +1609,40 @@ R.goetterthron = function(k, w)
 	grade(k, hex("#ffd8a0"), 0.08, 0.06)
 end
 
+-- ── Juwelnebel (Galaxie 2): ruhiger Sternenhimmel mit Nebelschleiern in den Farben der Edelsteine ──
+-- Wenige, große Formen: Sterne, zwei bis drei Nebel, ein Komet oder Mond, feiner Glitzerstaub und eine leichte Tönung.
+local function gemSky(k, colors, opts)
+	opts = opts or {}
+	stars(k, opts.Stars or 140, { WHITE, colors[1]:Lerp(WHITE, 0.6), colors[2]:Lerp(WHITE, 0.5) }, 0.08)
+	nebula(k, colors, opts.Nebula or 3)
+	if opts.Moon then moon(k, opts.Moon[1], opts.Moon[2], opts.Moon[3], opts.Moon[4]) end
+	if opts.Comet then comet(k, colors[1], opts.Comet) end
+	motes(k, { Name = "Glitzer", Colors = { WHITE, colors[1]:Lerp(WHITE, 0.4) }, Rate = opts.Motes or 12, Size0 = 0.7, Speed = 0.3, Alpha = 0.3 })
+	grade(k, colors[1]:Lerp(WHITE, 0.55), 0.04, 0.05)
+end
+R.quarzfeld = function(k, w) gemSky(k, { hex("#d8ccff"), hex("#c98bff"), hex("#ffffff") }, { Comet = 0.55 }) end
+R.amethystgrotte = function(k, w) gemSky(k, { hex("#c98bff"), hex("#8a4ad8"), hex("#ff8ae0") }, { Nebula = 4 }) end
+R.topasduenen = function(k, w)
+	sun(k, -0.6, 0.18, hex("#ffd27a"), 70, hex("#ffb02e"))
+	gemSky(k, { hex("#ffc46a"), hex("#ff8a3a"), hex("#fff0b8") }, { Stars = 60, Nebula = 2 })
+end
+R.smaragdwald = function(k, w)
+	aurora(k, { hex("#3ee08a"), hex("#b4ffd6"), hex("#5affd8") }, HELD - 1.4, 2.2, 160)
+	gemSky(k, { hex("#7ae8b0"), hex("#1ec870"), hex("#d9ff7a") }, { Nebula = 2 })
+end
+R.jadetempel = function(k, w)
+	cloudBank(k, 8, hex("#e8f6e0"), 0.15, 20, 140)
+	gemSky(k, { hex("#d8f0c0"), hex("#8ad0a0"), hex("#ffd76a") }, { Stars = 50, Nebula = 1 })
+end
+R.saphirsee = function(k, w) gemSky(k, { hex("#4a8aff"), hex("#2a5ae8"), hex("#cfe0ff") }, { Moon = { 0.9, 0.42, hex("#cfe0ff"), 60 }, Comet = 0.6 }) end
+R.rubinvulkan = function(k, w) gemSky(k, { hex("#ff4a6a"), hex("#a8183a"), hex("#ffb07a") }, { Nebula = 3, Motes = 18 }) end
+R.opalwolken = function(k, w)
+	cloudBank(k, 10, hex("#ffe2f6"), 0.1, 10, 150)
+	rainbow(k, HELD + 1.2, 600, 240)
+	gemSky(k, { hex("#ff9ae0"), hex("#5ad8ff"), hex("#fff2a0") }, { Stars = 40, Nebula = 2 })
+end
+R.diamantkern = function(k, w) gemSky(k, { hex("#8af0ff"), hex("#e8fdff"), hex("#c84ad8") }, { Stars = 200, Nebula = 3, Comet = 0.5 }) end
+
 WorldFx.Recipes = R
 
 -- Umgebung einer Welt bauen; mitte = Mitte der Insel (Himmelskuppel), eltern = Ordner/Model

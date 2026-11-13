@@ -90,6 +90,33 @@ function emit(out, mesh, shape, local, lk, extra = {}) {
 }
 
 const S = (x, y, z) => new THREE.Matrix4().makeScale(x, y, z);
+
+// Facettierte Form → Keile. Jede Dreiecksfläche wird zu zwei Keilen, deren Körper nach innen zeigt.
+function facetMesh(out, mesh, lk, r) {
+  const g = mesh.geometry, pos = g.attributes.position, idx = g.index;
+  const n = idx ? idx.count : pos.count;
+  const center = new THREE.Vector3();
+  new THREE.Box3().setFromBufferAttribute(pos).getCenter(center);
+  center.applyMatrix4(mesh.matrixWorld);
+  const thick = r.facetThick ?? 0.06;
+  const vtx = (i) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(mesh.matrixWorld);
+  for (let i = 0; i + 2 < n; i += 3) {
+    const a = vtx(i), b = vtx(i + 1), c = vtx(i + 2);
+    const mid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+    const outward = mid.clone().sub(center);
+    const nrm = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+    if (nrm.dot(outward) < 0) nrm.negate();
+    if (nrm.y < -0.35 && !r.facetsAll) continue;
+    for (const w of triangleWedges(a, b, c, thick, outward)) {
+      out.push({
+        shape: 'Wedge', className: 'WedgePart', name: r.name || 'Kristall',
+        pos: [w.pos.x * STUDS, w.pos.y * STUDS, w.pos.z * STUDS], rot: w.rot,
+        size: [w.size[0] * STUDS, w.size[1] * STUDS, w.size[2] * STUDS],
+        ...lk,
+      });
+    }
+  }
+}
 const T = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
 const mul = (...ms) => ms.reduce((a, b) => a.multiply(b), new THREE.Matrix4());
 
@@ -111,6 +138,9 @@ export function convertMesh(out, mesh, world) {
     });
   const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const ex = {};
+  // facets: Kristalle und Edelsteine Fläche für Fläche aus Keilen (echte Kanten statt Kugel oder Stufen).
+  // Nach unten zeigende Flächen fallen weg (stecken im Boden oder sind nie zu sehen).
+  if (r.facets && g.attributes.position) return facetMesh(out, mesh, lk, r);
   // Spawn-Bereich (für Klicks im Spiel-Hintergrund)
   for (let o = mesh; o; o = o.parent) if (o.userData.area) {
     ex.area = o.userData.area;
@@ -168,10 +198,13 @@ export function convertMesh(out, mesh, world) {
     case 'TorusGeometry': {
       const R = P.radius, tube = P.tube, arc = P.arc ?? Math.PI * 2;
       const n = Math.max(5, Math.round((arc / (Math.PI * 2)) * 18));
+      const closed = arc > Math.PI * 1.99;
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * arc, a1 = ((i + 1) / n) * arc;
         const m = cylLocal(V(Math.cos(a0) * R, Math.sin(a0) * R, 0), V(Math.cos(a1) * R, Math.sin(a1) * R, 0), tube);
         if (m) emit(out, mesh, 'Cylinder', m, lk, ex);
+        // Kugelgelenk an jedem Knick: keine Lücke zwischen den Zylinderstücken (bei dicken Ringen sichtbar)
+        if ((i > 0 || closed) && tube > 0.06) emit(out, mesh, 'Ellipsoid', mul(T(Math.cos(a0) * R, Math.sin(a0) * R, 0), S(2 * tube, 2 * tube, 2 * tube)), lk, ex);
       }
       return;
     }
@@ -180,6 +213,11 @@ export function convertMesh(out, mesh, world) {
       for (let i = 0; i < n; i++) {
         const m = cylLocal(path.getPoint(i / n), path.getPoint((i + 1) / n), r);
         if (m) emit(out, mesh, 'Cylinder', m, lk, ex);
+        // Kugelgelenk an jedem Knick (Zuckerstangen, Ranken, Bögen)
+        if (i > 0 && r > 0.06) {
+          const q = path.getPoint(i / n);
+          emit(out, mesh, 'Ellipsoid', mul(T(q.x, q.y, q.z), S(2 * r, 2 * r, 2 * r)), lk, ex);
+        }
       }
       return;
     }
@@ -208,10 +246,11 @@ export function convertMesh(out, mesh, world) {
 // der Keile liegt genau auf dem Dreieck, der Körper (TERRAIN_THICK) hängt darunter. Das Gitter folgt Ringen um die
 // Mitte, so bleibt der Inselrand rund. Farbe je Dreieck: weiche Flecken in fünf Tönen, Hänge etwas dunkler und
 // erdiger, am Rand ein Hauch heller (Sonnenkante). Gegenstände stehen auf built.height und damit genau auf dem Boden.
-const TERRAIN_RINGS = 13, TERRAIN_SEGS = 72, TERRAIN_THICK = 0.16;
+// 11 Ringe × 56 Stücke: rund 1.200 Dreiecke, glatt genug und sparsam mit Teilen
+const TERRAIN_RINGS = 11, TERRAIN_SEGS = 56, TERRAIN_THICK = 0.16;
 
 // Dreieck a, b, c (THREE.Vector3 in Einheiten) → zwei Keile; Seitenfläche auf dem Dreieck, Körper unter der Fläche
-export function triangleWedges(a, b, c, thick = TERRAIN_THICK) {
+export function triangleWedges(a, b, c, thick = TERRAIN_THICK, outward = null) {
   let ab = b.clone().sub(a), ac = c.clone().sub(a), bc = c.clone().sub(b);
   const abd = ab.dot(ab), acd = ac.dot(ac), bcd = bc.dot(bc);
   if (abd > acd && abd > bcd) [c, a] = [a, c];
@@ -225,8 +264,8 @@ export function triangleWedges(a, b, c, thick = TERRAIN_THICK) {
   const up = bc.clone().cross(right).normalize();
   const back = bc.clone().normalize();
   const h = Math.abs(ab.dot(up));
-  // nach oben zeigende Normale: der Körper der Keile liegt darunter
-  const n = right.y >= 0 ? right.clone() : right.clone().negate();
+  // nach oben (bzw. nach außen) zeigende Normale: der Körper der Keile liegt darunter (bzw. innen)
+  const n = outward ? (right.dot(outward) >= 0 ? right.clone() : right.clone().negate()) : right.y >= 0 ? right.clone() : right.clone().negate();
   const sink = n.clone().multiplyScalar(-thick / 2);
   const rot = (X, Y, Z) => [X.x, Y.x, Z.x, X.y, Y.y, Z.y, X.z, Y.z, Z.z];
   return [
@@ -457,16 +496,21 @@ function waterfalls(out, emitters, built, world) {
   }
 }
 
+const CLOUD_RING = false;
 // Wolken um Inseln mit Tageshimmel
 function clouds(out, built, world) {
   const c = new THREE.Color(world.sky[0]);
   const day = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b > 0.2;
   // mit Himmelsbild malt das Bild die Wolken, der Ring direkt an der Insel fällt weg
   if (!day || world.water || world.planet === 'p2' || SKYBOXES[world.id]) return;
+  // Der Ring liegt im Eigenschatten der Lichtrichtung und wirkte als graue Klumpen. Die Welten ohne Himmelsbild
+  // haben Wolkenbänke in der Ferne (WorldFx) und das Wolkenmeer darunter; das reicht für eine ruhige Umgebung.
+  if (!CLOUD_RING) return;
   const R = built.radius, rand = seededRand(world.id + ':wolken');
   const tint = '#ffffff';
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + rand() * 0.4, r = R + 2 + rand() * 5, y = -6 + rand() * 7.5;
+    // knapp unter der Inselkante: von oben sieht man die besonnte Oberseite der Wolken
+    const a = (i / 12) * Math.PI * 2 + rand() * 0.4, r = R + 2.5 + rand() * 5, y = -2.8 + rand() * 3;
     const n = 3 + Math.floor(rand() * 3);
     for (let j = 0; j < n; j++) {
       const s = 1.6 + rand() * 1.8;
@@ -565,7 +609,8 @@ function skyShield(sky, built, world) {
         size: [w, h, w * (0.8 + rand() * 0.4)],
         color: colors[Math.floor(rand() * colors.length)],
         material: kind === 'duene' ? 'Sand' : SKYBOXES[world.id]?.seaMaterial || 'SmoothPlastic',
-        transparency: kind === 'nebel' && !SKYBOXES[world.id]?.seaOpaque ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
+        // undurchsichtig: durchscheinende, sich überlagernde Kugeln wirkten zum Horizont hin wie Blasen
+        transparency: 0, canCollide: false, castShadow: false, noShadow: true,
       });
     }
 }
