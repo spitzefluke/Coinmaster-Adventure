@@ -9,6 +9,7 @@
 // sounds (Klang-Plätze mit Vorschlag) und coinSpots (Münzplätze auf den Lichtungen an den Wegen).
 
 import * as THREE from 'three';
+import { layOnGround } from './detail.js';
 
 const TAU = Math.PI * 2;
 
@@ -43,19 +44,18 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       const a = a0 + Math.sin(r * 0.35 + ph) * wob;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (style.avoid && !ctx.free(x, z, 0.1)) continue; // nicht durch Wahrzeichen hindurch (Atlantis)
+      // Platten etwas dicker, an den Hang gelegt und zur Hälfte eingelassen: liegen satt auf, keine Kante schwebt
       const tile = style.kind === 'stone'
-        ? new THREE.Mesh(new THREE.CylinderGeometry(0.34 + rand() * 0.08, 0.38, 0.08, 10), mat)
-        : new THREE.Mesh(new THREE.BoxGeometry(style.kind === 'plank' ? 0.9 : 0.7, 0.08, style.kind === 'plank' ? 0.32 : 0.62), mat);
-      tile.position.set(x, height(x, z) + 0.03, z);
-      tile.rotation.y = -a + (style.kind === 'stone' ? rand() : 0);
+        ? new THREE.Mesh(new THREE.CylinderGeometry(0.34 + rand() * 0.08, 0.38, 0.14, 10), mat)
+        : new THREE.Mesh(new THREE.BoxGeometry(style.kind === 'plank' ? 0.9 : 0.7, 0.14, style.kind === 'plank' ? 0.32 : 0.62), mat);
+      layOnGround(tile, height, x, z, { yaw: -a + (style.kind === 'stone' ? rand() : 0), lift: 0.02 });
       tile.receiveShadow = true;
       root.add(tile);
       reserve(x, z, 0.42);
       // leuchtende Fugen (Lava) oder Rand (Candy) neben jeder zweiten Platte
       if ((style.glow && style.kind === 'tile') || style.edge) {
         const strip = at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.62), style.glow ? E(style.glow, 1.3) : M(style.edge)), 0, 0, 0);
-        strip.position.set(x + Math.cos(a) * 0.38, height(x, z) + 0.06, z + Math.sin(a) * 0.38);
-        strip.rotation.y = -a;
+        layOnGround(strip, height, x + Math.cos(a) * 0.38, z + Math.sin(a) * 0.38, { yaw: -a, lift: 0.06 });
         root.add(strip);
       }
       // in der Höhle leuchten kleine Pilze am Wegrand
@@ -73,7 +73,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       shared.coinSpots.push([x, z]);
       for (let i = 0; i < 8; i++) {
         const b = (i / 8) * TAU, sx = x + Math.cos(b) * 0.7, sz = z + Math.sin(b) * 0.7;
-        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4), M(style.edge || style.color)), sx, height(sx, sz) + 0.04, sz));
+        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(style.edge || style.color)), sx, height(sx, sz) + 0.03, sz));
       }
     }
   }

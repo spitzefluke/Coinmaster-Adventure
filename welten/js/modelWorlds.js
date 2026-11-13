@@ -8,6 +8,7 @@
 //   backdrop  ersetzt die Kulisse aus planet1.js
 
 import * as THREE from 'three';
+import { creek } from './detail.js';
 import { MODELS } from './modelCatalog.js';
 import { backdrop as planet1Backdrop } from './planet1.js';
 
@@ -299,9 +300,9 @@ function stream(ctx, kit) {
   }
   const curve = new THREE.CatmullRomCurve3(pts);
   shared.stream = curve;
-  const water = new THREE.Mesh(new THREE.TubeGeometry(curve, 60, 0.45, 6), kit.M('#4ab0e8', { roughness: 0.1, emissive: '#2a7ab8', emissiveIntensity: 0.25 }));
-  water.scale.y = 0.25;
-  root.add(water);
+  // flaches Bachbett mit Ufer statt einer Röhre (dem Gelände nach)
+  creek(ctx, kit, curve, { width: 0.9 });
+  void root;
   for (let i = 0; i <= 30; i++) {
     const p = curve.getPoint(i / 30);
     reserve(p.x, p.z, 0.45);

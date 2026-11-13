@@ -319,10 +319,33 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
   const reserve = (x, z, d) => taken.push([x, z, d]);
   const placed = []; // alles, was per put() auf der Insel steht (für die Lichtung um die Figur)
-  const put = (obj, x, z, { sink = 0.05, rot = true } = {}) => {
+  // Auf Hängen steht ein Gegenstand auf dem tiefsten Punkt unter seiner Grundfläche: so schwebt keine Ecke
+  // über dem Boden (bergauf sitzt er etwas tiefer im Hang, höchstens 0,35). exact: genau auf der Mitte.
+  const fbox = new THREE.Box3(), fsize = new THREE.Vector3();
+  const groundUnder = (obj, x, z, exact) => {
+    const h0 = height(x, z);
+    if (exact) return h0;
+    obj.updateMatrixWorld(true);
+    fbox.setFromObject(obj).getSize(fsize);
+    const r = Math.min(2.5, Math.max(fsize.x, fsize.z) * 0.35);
+    if (!(r > 0.2)) return h0;
+    let low = h0;
+    for (let i = 0; i < 8; i++) {
+      const b = (i / 8) * Math.PI * 2;
+      low = Math.min(low, height(x + Math.cos(b) * r, z + Math.sin(b) * r));
+    }
+    return Math.max(low, h0 - 0.35);
+  };
+  // lay: flaches Teil (See, Lavapfütze, Krater) an den Hang anlegen statt waagerecht hinlegen
+  const UPV = new THREE.Vector3(0, 1, 0);
+  const put = (obj, x, z, { sink = 0.05, rot = true, exact = false, lay = false } = {}) => {
     placed.push([obj, x, z]);
-    obj.position.set(x, height(x, z) - sink, z);
     if (rot) obj.rotation.y = rand() * Math.PI * 2;
+    if (lay) {
+      const e = 0.15, n = new THREE.Vector3(height(x - e, z) - height(x + e, z), 2 * e, height(x, z - e) - height(x, z + e)).normalize();
+      obj.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(UPV, n));
+      obj.position.set(x, height(x, z) - sink, z);
+    } else obj.position.set(x, groundUnder(obj, x, z, exact) - sink, z);
     obj.traverse((o) => {
       if (o.isMesh) {
         o.castShadow = true;
@@ -536,6 +559,8 @@ function bush(s, c, rand) {
 }
 function rockMesh(s, c, rand, mat) {
   const m = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.45), mat || M(c));
+  // größere Felsen in Roblox mit echten Bruchkanten (Keile), kleine bleiben runde Kiesel
+  if (s >= 0.45) m.userData.rbx = { facets: true };
   m.scale.y = 0.7;
   m.position.y = s * 0.35;
   return group(m);
@@ -565,6 +590,7 @@ function crystal(h, c, rand, intensity = 1.2) {
   for (let i = 0; i < n; i++) {
     const s = h * (i === 0 ? 1 : 0.45 + rand() * 0.35);
     const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), mat);
+    m.userData.rbx = { facets: true }; // in Roblox Fläche für Fläche aus Keilen: echte Kristallkanten
     m.scale.set(0.7, s * 1.6, 0.7);
     m.position.set(i ? (rand() - 0.5) * 0.5 : 0, s * 0.35, i ? (rand() - 0.5) * 0.5 : 0);
     m.rotation.set(i ? (rand() - 0.5) * 0.8 : 0, rand() * 3, i ? (rand() - 0.5) * 0.8 : 0);
@@ -1525,7 +1551,7 @@ const LANDMARKS = {
     const pal = spot(4.4, 6, 9);
     if (!pal) return;
     put(atlantisPalace(anims), pal[0], pal[1], { rot: false });
-    put(runeCircle(anims, 4.6), pal[0], pal[1], { rot: false, sink: -0.02 });
+    put(runeCircle(anims, 4.6), pal[0], pal[1], { rot: false, sink: -0.02, lay: true });
     // Säulenallee Richtung Inselmitte
     const dir = new THREE.Vector2(-pal[0], -pal[1]).normalize();
     for (let i = 1; i <= 4; i++)
@@ -2026,7 +2052,7 @@ const BUILDERS = {
     // gefrorener See
     const lake = new THREE.Mesh(new THREE.CircleGeometry(1.3, 20), M('#a8dcff', { roughness: 0.05, metalness: 0.3 }));
     lake.rotation.x = -Math.PI / 2;
-    put(lake, 1.6, -2, { sink: -0.04, rot: false });
+    put(lake, 1.6, -2, { sink: -0.04, rot: false, lay: true });
   },
 
   lava({ put, scatter, rand, rr, root, anims, world, modelWorld }) {
@@ -2049,7 +2075,7 @@ const BUILDERS = {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(rr(0.4, 0.8), 14), E('#ff3a00', 1));
       pool.rotation.x = -Math.PI / 2;
       const p = [[2.8, 2.2], [-3, 2.4], [1.2, -3.4], [-3.6, -1.6]][i];
-      put(pool, p[0], p[1], { sink: -0.03, rot: false });
+      put(pool, p[0], p[1], { sink: -0.03, rot: false, lay: true });
       pools.push(pool);
     }
     anims.push((t) => {
@@ -2110,7 +2136,7 @@ const BUILDERS = {
 
   mond({ put, scatter, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#2a6ad1', bands: ['#3fae5a', '#ffffff55', '#2f8a4a', '#ffffff40'], size: 6, pos: [-20, 5, -32], glow: '#4a8aff' });
-    scatter(6, () => crater(rr(0.6, 1.1), '#a0a3ac', rand), 1.1);
+    scatter(6, () => crater(rr(0.6, 1.1), '#a0a3ac', rand), 1.1, undefined, undefined, { lay: true, sink: 0.02 });
     put(flag('#ffd76a'), 0.6, 0.4);
     if (!modelWorld) scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
     // Mondlandefähre

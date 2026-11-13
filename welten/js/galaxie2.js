@@ -14,14 +14,15 @@ function gemStone(kit, s, c, glow = 0.6) {
   m.rotation.set(Math.atan(Math.SQRT1_2), 0, Math.PI / 4, 'ZXY');
   return m;
 }
-// Brillant: Krone (Kegelstumpf) über dem Pavillon (Kegel mit der Spitze nach unten)
+// Brillant im Schliff: Tafel oben, Krone, Rundiste, Pavillon mit Spitze unten (8 Facetten rundum).
+// In Roblox Fläche für Fläche aus Keilen nachgebaut (facets), so bleibt jede Facette scharf.
 function brilliant(kit, r, c, glow = 1) {
-  const { E, at, group } = kit;
+  const { E, group } = kit;
   const mat = E(c, glow, { transparent: true, opacity: 0.88, roughness: 0.1 });
-  const pav = at(new THREE.Mesh(new THREE.ConeGeometry(r, r * 1.3, 8), mat), 0, -r * 0.65, 0);
-  pav.rotation.x = Math.PI;
-  const crown = at(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.6, r, r * 0.45, 8), mat), 0, r * 0.225, 0);
-  const g = group(pav, crown);
+  const profile = [new THREE.Vector2(0.001, -r * 1.3), new THREE.Vector2(r, 0), new THREE.Vector2(r * 0.98, r * 0.08), new THREE.Vector2(r * 0.58, r * 0.5), new THREE.Vector2(0.001, r * 0.5)];
+  const m = new THREE.Mesh(new THREE.LatheGeometry(profile, 8), mat);
+  m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.1 };
+  const g = group(m);
   g.userData.mat = mat;
   return g;
 }
@@ -75,8 +76,11 @@ function landmark(ctx, kit, color, { size = 2.4, base = '#6a6488', ring = null, 
 // Säule aus Kristall (Quarz, Topas-Obelisk)
 function pillar(kit, h, c, glow = 0.4) {
   const { E, at, group } = kit;
-  const shaft = at(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, h, 6), E(c, glow, { transparent: true, opacity: 0.92, roughness: 0.2 })), 0, h / 2, 0);
-  const tip = at(new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 6), E(c, glow + 0.2, { transparent: true, opacity: 0.92 })), 0, h + 0.4, 0);
+  // sechseckige Kristallsäule mit Spitze; in Roblox aus Keilen (Kanten bleiben sechseckig)
+  const shaft = at(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, h, 6, 1, true), E(c, glow, { transparent: true, opacity: 0.92, roughness: 0.2 })), 0, h / 2, 0);
+  const tip = at(new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 6, 1, true), E(c, glow + 0.2, { transparent: true, opacity: 0.92 })), 0, h + 0.4, 0);
+  shaft.userData.rbx = { facets: true };
+  tip.userData.rbx = { facets: true };
   return group(shaft, tip);
 }
 // Baum mit Edelstein-Laub

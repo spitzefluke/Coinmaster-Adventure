@@ -90,6 +90,33 @@ function emit(out, mesh, shape, local, lk, extra = {}) {
 }
 
 const S = (x, y, z) => new THREE.Matrix4().makeScale(x, y, z);
+
+// Facettierte Form → Keile. Jede Dreiecksfläche wird zu zwei Keilen, deren Körper nach innen zeigt.
+function facetMesh(out, mesh, lk, r) {
+  const g = mesh.geometry, pos = g.attributes.position, idx = g.index;
+  const n = idx ? idx.count : pos.count;
+  const center = new THREE.Vector3();
+  new THREE.Box3().setFromBufferAttribute(pos).getCenter(center);
+  center.applyMatrix4(mesh.matrixWorld);
+  const thick = r.facetThick ?? 0.06;
+  const vtx = (i) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(mesh.matrixWorld);
+  for (let i = 0; i + 2 < n; i += 3) {
+    const a = vtx(i), b = vtx(i + 1), c = vtx(i + 2);
+    const mid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+    const outward = mid.clone().sub(center);
+    const nrm = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+    if (nrm.dot(outward) < 0) nrm.negate();
+    if (nrm.y < -0.35 && !r.facetsAll) continue;
+    for (const w of triangleWedges(a, b, c, thick, outward)) {
+      out.push({
+        shape: 'Wedge', className: 'WedgePart', name: r.name || 'Kristall',
+        pos: [w.pos.x * STUDS, w.pos.y * STUDS, w.pos.z * STUDS], rot: w.rot,
+        size: [w.size[0] * STUDS, w.size[1] * STUDS, w.size[2] * STUDS],
+        ...lk,
+      });
+    }
+  }
+}
 const T = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
 const mul = (...ms) => ms.reduce((a, b) => a.multiply(b), new THREE.Matrix4());
 
@@ -111,6 +138,9 @@ export function convertMesh(out, mesh, world) {
     });
   const g = mesh.geometry, P = g.parameters || {}, type = g.type, lk = look(mesh, world);
   const ex = {};
+  // facets: Kristalle und Edelsteine Fläche für Fläche aus Keilen (echte Kanten statt Kugel oder Stufen).
+  // Nach unten zeigende Flächen fallen weg (stecken im Boden oder sind nie zu sehen).
+  if (r.facets && g.attributes.position) return facetMesh(out, mesh, lk, r);
   // Spawn-Bereich (für Klicks im Spiel-Hintergrund)
   for (let o = mesh; o; o = o.parent) if (o.userData.area) {
     ex.area = o.userData.area;
@@ -168,10 +198,13 @@ export function convertMesh(out, mesh, world) {
     case 'TorusGeometry': {
       const R = P.radius, tube = P.tube, arc = P.arc ?? Math.PI * 2;
       const n = Math.max(5, Math.round((arc / (Math.PI * 2)) * 18));
+      const closed = arc > Math.PI * 1.99;
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * arc, a1 = ((i + 1) / n) * arc;
         const m = cylLocal(V(Math.cos(a0) * R, Math.sin(a0) * R, 0), V(Math.cos(a1) * R, Math.sin(a1) * R, 0), tube);
         if (m) emit(out, mesh, 'Cylinder', m, lk, ex);
+        // Kugelgelenk an jedem Knick: keine Lücke zwischen den Zylinderstücken (bei dicken Ringen sichtbar)
+        if ((i > 0 || closed) && tube > 0.06) emit(out, mesh, 'Ellipsoid', mul(T(Math.cos(a0) * R, Math.sin(a0) * R, 0), S(2 * tube, 2 * tube, 2 * tube)), lk, ex);
       }
       return;
     }
@@ -180,6 +213,11 @@ export function convertMesh(out, mesh, world) {
       for (let i = 0; i < n; i++) {
         const m = cylLocal(path.getPoint(i / n), path.getPoint((i + 1) / n), r);
         if (m) emit(out, mesh, 'Cylinder', m, lk, ex);
+        // Kugelgelenk an jedem Knick (Zuckerstangen, Ranken, Bögen)
+        if (i > 0 && r > 0.06) {
+          const q = path.getPoint(i / n);
+          emit(out, mesh, 'Ellipsoid', mul(T(q.x, q.y, q.z), S(2 * r, 2 * r, 2 * r)), lk, ex);
+        }
       }
       return;
     }
@@ -203,72 +241,158 @@ export function convertMesh(out, mesh, world) {
   }
 }
 
-// Boden als Säulen-Raster entlang der Hügel: oben eine Grasdecke in Flecken aus drei Tönen,
-// darunter Erde – an jedem Hang sieht man die Schicht wie in Roblox-Simulatoren
-function groundColumns(out, built, world) {
-  const R = built.radius, cell = 1.1, material = GROUND[world.id] || 'SmoothPlastic';
-  const base = -1.2; // unter dem tiefsten Tal, damit jede Säule bis zum Boden reicht
-  const cap = 0.34;
-  const g = vivid(world.ground, 0.25);
-  const tones = [g, shade(g, 0.03, 0.05), shade(g, 0.02, -0.04)];
-  const dirt = vivid(world.side, 0.15), body = BODY[material] || material;
-  const rand = seededRand(world.id + ':boden');
-  for (let x = -R + cell / 2; x < R; x += cell)
-    for (let z = -R + cell / 2; z < R; z += cell) {
-      if (Math.hypot(x, z) > R - cell * 0.3) continue;
-      const top = built.height(x, z);
-      // weiche Flecken plus ein paar einzelne Kacheln
-      const n = Math.sin(x * 0.45 + 1.3) * Math.cos(z * 0.38 - 0.7) + Math.sin((x - z) * 0.23) * 0.6 + (rand() - 0.5) * 0.5;
-      const tone = n > 0.5 ? tones[1] : n < -0.55 ? tones[2] : tones[0];
-      const capBottom = Math.max(base, top - cap);
-      out.push({
-        shape: 'Block', name: 'Boden',
-        pos: [x * STUDS, ((capBottom + top) / 2) * STUDS, z * STUDS],
-        rot: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-        size: [cell * STUDS, (top - capBottom) * STUDS, cell * STUDS],
-        color: tone, material, transparency: 0,
-      });
-      if (capBottom > base + 0.01)
-        out.push({
-          shape: 'Block', name: 'Boden',
-          pos: [x * STUDS, ((base + capBottom) / 2) * STUDS, z * STUDS],
-          rot: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-          size: [cell * STUDS, (capBottom - base) * STUDS, cell * STUDS],
-          color: dirt, material: body, transparency: 0,
-        });
-    }
+// ── Boden: glatte Geländeoberfläche aus Dreiecken ─────────────────────────────
+// Jedes Dreieck wird in Roblox aus zwei Keilen (WedgePart) gebaut, wie bei Profi-Terrain aus Parts: Die Seitenfläche
+// der Keile liegt genau auf dem Dreieck, der Körper (TERRAIN_THICK) hängt darunter. Das Gitter folgt Ringen um die
+// Mitte, so bleibt der Inselrand rund. Farbe je Dreieck: weiche Flecken in fünf Tönen, Hänge etwas dunkler und
+// erdiger, am Rand ein Hauch heller (Sonnenkante). Gegenstände stehen auf built.height und damit genau auf dem Boden.
+// 11 Ringe × 56 Stücke: rund 1.200 Dreiecke, glatt genug und sparsam mit Teilen
+const TERRAIN_RINGS = 11, TERRAIN_SEGS = 56, TERRAIN_THICK = 0.16;
+
+// Dreieck a, b, c (THREE.Vector3 in Einheiten) → zwei Keile; Seitenfläche auf dem Dreieck, Körper unter der Fläche
+export function triangleWedges(a, b, c, thick = TERRAIN_THICK, outward = null) {
+  let ab = b.clone().sub(a), ac = c.clone().sub(a), bc = c.clone().sub(b);
+  const abd = ab.dot(ab), acd = ac.dot(ac), bcd = bc.dot(bc);
+  if (abd > acd && abd > bcd) [c, a] = [a, c];
+  else if (acd > bcd && acd > abd) [a, b] = [b, a];
+  ab = b.clone().sub(a);
+  ac = c.clone().sub(a);
+  bc = c.clone().sub(b);
+  const right = ac.clone().cross(ab);
+  if (right.lengthSq() < 1e-10) return [];
+  right.normalize();
+  const up = bc.clone().cross(right).normalize();
+  const back = bc.clone().normalize();
+  const h = Math.abs(ab.dot(up));
+  // nach oben (bzw. nach außen) zeigende Normale: der Körper der Keile liegt darunter (bzw. innen)
+  const n = outward ? (right.dot(outward) >= 0 ? right.clone() : right.clone().negate()) : right.y >= 0 ? right.clone() : right.clone().negate();
+  const sink = n.clone().multiplyScalar(-thick / 2);
+  const rot = (X, Y, Z) => [X.x, Y.x, Z.x, X.y, Y.y, Z.y, X.z, Y.z, Z.z];
+  return [
+    { pos: a.clone().add(b).multiplyScalar(0.5).add(sink), rot: rot(right, up, back), size: [thick, h, Math.abs(ab.dot(back))] },
+    { pos: a.clone().add(c).multiplyScalar(0.5).add(sink), rot: rot(right.clone().negate(), up, back.clone().negate()), size: [thick, h, Math.abs(ac.dot(back))] },
+  ].filter((w) => w.size[1] > 1e-4 && w.size[2] > 1e-4);
 }
 
-// Runder Grasrand, der etwas über die Kante hängt
+function terrainSurface(out, built, world) {
+  const R = built.radius, material = GROUND[world.id] || 'SmoothPlastic';
+  const rand = seededRand(world.id + ':boden');
+  const g = vivid(world.ground, 0.25);
+  // fünf Töne von etwas dunkler bis etwas heller, dazu ein Hang-Ton zwischen Boden und Rand-Erde
+  const tones = [shade(g, 0.03, -0.085), shade(g, 0.015, -0.04), g, shade(g, 0.02, 0.035), shade(g, 0.04, 0.07)];
+  const slopeTone = '#' + new THREE.Color(g).lerp(new THREE.Color(vivid(world.side, 0.15)), 0.32).getHexString();
+  const rimTone = shade(g, 0.03, 0.075);
+  // Gitterpunkte auf Ringen (innere Ringe leicht unregelmäßig, damit kein Muster entsteht)
+  const ring = [[new THREE.Vector3(0, built.height(0, 0), 0)]];
+  for (let i = 1; i <= TERRAIN_RINGS; i++) {
+    const row = [];
+    for (let j = 0; j < TERRAIN_SEGS; j++) {
+      const wob = i === TERRAIN_RINGS ? 0 : (rand() - 0.5) * 0.35;
+      const a = ((j + (i % 2) * 0.5 + (i === TERRAIN_RINGS ? 0 : (rand() - 0.5) * 0.3)) / TERRAIN_SEGS) * Math.PI * 2;
+      const r = Math.min(R - 0.02, (i / TERRAIN_RINGS) * R + wob * (R / TERRAIN_RINGS));
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      row.push(new THREE.Vector3(x, built.height(x, z), z));
+    }
+    ring.push(row);
+  }
+  const tris = [];
+  for (let j = 0; j < TERRAIN_SEGS; j++) tris.push([ring[0][0], ring[1][j], ring[1][(j + 1) % TERRAIN_SEGS]]);
+  for (let i = 1; i < TERRAIN_RINGS; i++)
+    for (let j = 0; j < TERRAIN_SEGS; j++) {
+      const j1 = (j + 1) % TERRAIN_SEGS;
+      const a0 = ring[i][j], a1 = ring[i][j1], b0 = ring[i + 1][j], b1 = ring[i + 1][j1];
+      // Diagonale abwechselnd, so wirken die Flächen nicht gekämmt
+      if ((i + j) % 2) tris.push([a0, b0, b1], [a0, b1, a1]);
+      else tris.push([a0, b0, a1], [a1, b0, b1]);
+    }
+  for (const [a, b, c] of tris) {
+    const cx = (a.x + b.x + c.x) / 3, cz = (a.z + b.z + c.z) / 3;
+    const nrm = c.clone().sub(a).cross(b.clone().sub(a)).normalize();
+    const slope = 1 - Math.abs(nrm.y);
+    // weiche Flecken: zwei überlagerte Wellen plus wenig Zufall, auf fünf Stufen abgebildet
+    const n = Math.sin(cx * 0.31 + 1.3) * Math.cos(cz * 0.27 - 0.7) * 0.65 + Math.sin((cx - cz) * 0.15 + 0.4) * 0.45 + Math.sin(cx * 0.9 + cz * 0.7) * 0.12 + (rand() - 0.5) * 0.3;
+    let color = tones[Math.max(0, Math.min(4, Math.round((n + 1) * 2)))];
+    if (slope > 0.2) color = slopeTone;
+    else if (slope > 0.12) color = '#' + new THREE.Color(color).lerp(new THREE.Color(slopeTone), 0.5).getHexString();
+    if (Math.hypot(cx, cz) > R * 0.955) color = rimTone;
+    for (const w of triangleWedges(a, b, c)) {
+      out.push({
+        shape: 'Wedge', className: 'WedgePart', name: 'Boden',
+        pos: [w.pos.x * STUDS, w.pos.y * STUDS, w.pos.z * STUDS], rot: w.rot,
+        size: [w.size[0] * STUDS, w.size[1] * STUDS, w.size[2] * STUDS],
+        color, material, transparency: 0,
+      });
+    }
+  }
+  // Erdkante rundherum: vom Boden bis in die Felsunterseite (darüber hängt der Grasrand)
+  const dirt = vivid(world.side, 0.15), body = BODY[material] || material;
+  const n = TERRAIN_SEGS;
+  for (let j = 0; j < n; j++) {
+    const a = ((j + 0.5) / n) * Math.PI * 2, r = R - 0.2;
+    const top = Math.max(built.height(Math.cos(a) * (R - 0.05), Math.sin(a) * (R - 0.05)), 0) - 0.05, bottom = -1.15;
+    out.push({
+      shape: 'Block', name: 'Boden',
+      pos: [Math.cos(a) * r * STUDS, ((top + bottom) / 2) * STUDS, Math.sin(a) * r * STUDS],
+      rot: around(a),
+      size: [((2 * Math.PI * R) / n + 0.08) * STUDS, (top - bottom) * STUDS, 0.4 * STUDS],
+      color: dirt, material: body, transparency: 0,
+    });
+  }
+  // tiefster Punkt des Bodens: die Felsplatte darunter muss tiefer liegen
+  let low = Infinity;
+  for (const row of ring) for (const v of row) low = Math.min(low, v.y);
+  built.groundLow = low;
+}
+
+// Grasrand, der über die Kante hängt: Polster in wechselnder Größe und zwei Tönen, dazwischen ab und zu ein
+// Felsbrocken, der aus der Kante ragt. So wirkt der Rand gewachsen statt wie ein gleichmäßiger Wulst.
 function rimLip(out, built, world) {
-  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.2);
+  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.05);
   const material = GROUND[world.id] || 'SmoothPlastic';
-  const light = shade(vivid(world.ground, 0.25), 0.03, 0.06);
+  const base = vivid(world.ground, 0.25);
+  const tones = [shade(base, 0.03, 0.06), shade(base, 0.02, 0.02), shade(base, 0.03, 0.09)];
+  const rockColor = vivid(world.rock, 0.12), rockMat = ROCK[world.id] || 'Slate';
+  const rand = seededRand(world.id + ':rand');
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2, r = R - 0.15;
+    const a = ((i + (rand() - 0.5) * 0.4) / n) * Math.PI * 2, r = R - 0.12 + (rand() - 0.5) * 0.12;
     const y = Math.max(built.height(Math.cos(a) * (R - 0.5), Math.sin(a) * (R - 0.5)), 0.1);
+    const k = 0.8 + rand() * 0.45;
     out.push({
       shape: 'Ellipsoid', name: 'Rand',
-      pos: [Math.cos(a) * r * STUDS, (y - 0.06) * STUDS, Math.sin(a) * r * STUDS],
+      pos: [Math.cos(a) * r * STUDS, (y - 0.08 + (rand() - 0.5) * 0.06) * STUDS, Math.sin(a) * r * STUDS],
       rot: around(a),
-      size: [1.55 * STUDS, 0.55 * STUDS, 1.15 * STUDS],
-      color: light, material, transparency: 0,
+      size: [1.5 * k * STUDS, 0.5 * (0.85 + rand() * 0.35) * STUDS, 1.1 * k * STUDS],
+      color: tones[Math.floor(rand() * tones.length)], material, transparency: 0,
     });
+    // Felsnase in der Kante (etwa jede elfte Stelle), halb im Rand, leicht schräg
+    if (rand() < 0.09) {
+      const s = 0.5 + rand() * 0.45, rr = R + 0.05;
+      const tilt = new THREE.Matrix4().makeRotationY(-a).multiply(new THREE.Matrix4().makeRotationZ((rand() - 0.5) * 0.6)).multiply(new THREE.Matrix4().makeRotationX((rand() - 0.5) * 0.5));
+      const e = tilt.elements;
+      out.push({
+        shape: 'Block', name: 'Rand',
+        pos: [Math.cos(a) * rr * STUDS, (y - 0.45) * STUDS, Math.sin(a) * rr * STUDS],
+        rot: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
+        size: [s * 1.3 * STUDS, s * 1.1 * STUDS, s * STUDS],
+        color: rockColor, material: rockMat, transparency: 0,
+      });
+    }
   }
 }
 
 // Unterseite: gestufte Felsschichten mit Kanten, hängende Felsspitzen, an grünen Inseln Ranken
-function underside(out, world, R) {
+function underside(out, world, R, groundLow = -0.24) {
   const material = ROCK[world.id] || 'Slate', layers = 7, depth = 5.5 * (R / 6);
   const side = vivid(world.side, 0.15), rock = vivid(world.rock, 0.15), mid = '#' + new THREE.Color(side).lerp(new THREE.Color(rock), 0.5).getHexString();
   const tones = [side, mid, rock];
   const rand = seededRand(world.id + ':fels');
-  // Erdschicht direkt unter dem Boden
+  // Erdschicht direkt unter dem Boden (Oberkante unter dem tiefsten Tal, damit sie nirgends durchschaut)
+  const soilTop = Math.min(-0.24, groundLow - 0.2), soilBottom = -1.0;
   out.push({
     shape: 'Cylinder', name: 'Fels',
-    pos: [0, -0.62 * STUDS, 0],
+    pos: [0, ((soilTop + soilBottom) / 2) * STUDS, 0],
     rot: UP,
-    size: [0.76 * STUDS, 2 * R * 0.985 * STUDS, 2 * R * 0.985 * STUDS],
+    size: [Math.max(0.2, soilTop - soilBottom) * STUDS, 2 * R * 0.985 * STUDS, 2 * R * 0.985 * STUDS],
     color: side, material: 'SmoothPlastic', transparency: 0,
   });
   // Welten mit Himmelsbild: die Felsunterseite kommt aus Modellen (modelWorlds.js rockUnderside), hier nur Ranken
@@ -372,16 +496,21 @@ function waterfalls(out, emitters, built, world) {
   }
 }
 
+const CLOUD_RING = false;
 // Wolken um Inseln mit Tageshimmel
 function clouds(out, built, world) {
   const c = new THREE.Color(world.sky[0]);
   const day = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b > 0.2;
   // mit Himmelsbild malt das Bild die Wolken, der Ring direkt an der Insel fällt weg
   if (!day || world.water || world.planet === 'p2' || SKYBOXES[world.id]) return;
+  // Der Ring liegt im Eigenschatten der Lichtrichtung und wirkte als graue Klumpen. Die Welten ohne Himmelsbild
+  // haben Wolkenbänke in der Ferne (WorldFx) und das Wolkenmeer darunter; das reicht für eine ruhige Umgebung.
+  if (!CLOUD_RING) return;
   const R = built.radius, rand = seededRand(world.id + ':wolken');
   const tint = '#ffffff';
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + rand() * 0.4, r = R + 2 + rand() * 5, y = -6 + rand() * 7.5;
+    // knapp unter der Inselkante: von oben sieht man die besonnte Oberseite der Wolken
+    const a = (i / 12) * Math.PI * 2 + rand() * 0.4, r = R + 2.5 + rand() * 5, y = -2.8 + rand() * 3;
     const n = 3 + Math.floor(rand() * 3);
     for (let j = 0; j < n; j++) {
       const s = 1.6 + rand() * 1.8;
@@ -480,7 +609,8 @@ function skyShield(sky, built, world) {
         size: [w, h, w * (0.8 + rand() * 0.4)],
         color: colors[Math.floor(rand() * colors.length)],
         material: kind === 'duene' ? 'Sand' : SKYBOXES[world.id]?.seaMaterial || 'SmoothPlastic',
-        transparency: kind === 'nebel' && !SKYBOXES[world.id]?.seaOpaque ? 0.35 : 0, canCollide: false, castShadow: false, noShadow: true,
+        // undurchsichtig: durchscheinende, sich überlagernde Kugeln wirkten zum Horizont hin wie Blasen
+        transparency: 0, canCollide: false, castShadow: false, noShadow: true,
       });
     }
 }
@@ -586,9 +716,9 @@ export function worldToParts(world) {
     convertMesh(rbx.sky ? sky : parts, o, world);
   });
   pullInsideDome(sky);
-  groundColumns(parts, built, world);
+  terrainSurface(parts, built, world);
   rimLip(parts, built, world);
-  underside(parts, world, built.radius);
+  underside(parts, world, built.radius, built.groundLow);
   clouds(sky, built, world);
   skyShield(sky, built, world);
   const emitter = emitterFor(world, built.radius);
