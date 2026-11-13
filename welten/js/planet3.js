@@ -138,8 +138,8 @@ function details(ctx, kit) {
     scatter(10, () => at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), M('#fff8f0', { metalness: 0.3, roughness: 0.2, emissive: '#ffe8f0', emissiveIntensity: 0.3 })), 0, 0.07, 0), 0.12);
     scatter(8, () => rockMesh(rr(0.08, 0.16), '#e8c8b0', rand), 0.15);
   } else if (id === 'atlantis') {
-    scatter(4, () => column(rr(0.3, 0.7), '#e8eef2', true), 0.45);
-    scatter(8, () => at(new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), E('#5affd8', 1.4)), 0, 0.1, 0), 0.15);
+    scatter(6, () => column(rr(0.3, 0.7), '#e8eef2', true), 0.45, 2, ctx.R - 2.6);
+    scatter(20, () => at(new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), E('#5affd8', 1.4)), 0, 0.1, 0), 0.15, 2, ctx.R - 2.6);
   }
 }
 

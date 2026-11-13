@@ -2525,13 +2525,14 @@ const BUILDERS = {
     reserve(2.2, 1.4, 1.2);
     put(d, 2.2, 1.4, { rot: false });
     anims.push((t) => (spire.material.emissiveIntensity = 1 + Math.sin(t * 2) * 0.5));
-    scatter(6, () => {
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: ein Wald aus Säulenstümpfen)
+    scatter(8, () => {
       const c = column(rr(0.5, 1.3), '#e8eef2', true);
       c.rotation.z = (rand() - 0.5) * 0.3;
       return c;
-    }, 0.5);
-    scatter(3, () => seaweed('#2f8a6a', rand, anims), 0.3);
-    scatter(4, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5);
+    }, 0.5, 2, R - 2.6);
+    scatter(8, () => seaweed('#2f8a6a', rand, anims), 0.3, 2, R - 2.6);
+    scatter(8, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5, 2, R - 2.6);
     fishSchool(root, anims, rand, ['#ffd76a', '#9ff3f0'], 6);
   },
 };

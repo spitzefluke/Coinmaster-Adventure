@@ -1460,8 +1460,41 @@ const MUSCHELLAND = {
 const ATLANTIS = {
   landmark: true, // Dreizack-Denkmal
   keepBase: true, // Palast mit Säulenallee, Tempel
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // wie versunkene Ruinen an der Küste: Mauerreste aus Quadern (oben abgebrochen, mit Algen bewachsen),
+    // herabgestürzte Blöcke, alte Pflasterflächen im Sand
+    groundPatches(ctx, 10, [['#c8d4d8', 'Marble'], ['#d8d0b8', 'Sand'], ['#a8b8b8', 'Pebble']]);
+    const stone = ['#d8e0e2', '#c8d2d6', '#e6ecee'], algae = '#4a8a5a';
+    for (let w = 0; w < 6; w++) {
+      const len = Math.round(rr(4, 7)), p = ctx.spot(len * 0.35 + 0.5, 4, R - 3);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], len * 0.35);
+      const g = new THREE.Group();
+      const top = Array.from({ length: len }, (_, i) => Math.max(1, Math.round(3.2 * Math.sin(((i + 0.5) / len) * Math.PI) + rr(-1.4, 0.8))));
+      top.forEach((rows, i) => {
+        for (let r = 0; r < rows; r++) {
+          const b = new THREE.Mesh(new THREE.BoxGeometry(0.62 + rr(-0.05, 0.05), 0.36, 0.5), new THREE.MeshStandardMaterial({ color: pick(rand, stone), flatShading: true }));
+          b.position.set((i - len / 2) * 0.66 + (r % 2) * 0.12, 0.18 + r * 0.37, rr(-0.03, 0.03));
+          b.rotation.y = rr(-0.05, 0.05);
+          g.add(b);
+        }
+        // Algenpolster oben auf dem höchsten Block
+        if (rand() < 0.6) {
+          const m = kit.mossMound(0.32, algae, rand);
+          m.position.set((i - len / 2) * 0.66, rows * 0.37, 0);
+          g.add(m);
+        }
+      });
+      // heruntergefallene Blöcke vor der Mauer
+      for (let k = 0; k < 3; k++) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.36, 0.5), new THREE.MeshStandardMaterial({ color: pick(rand, stone), flatShading: true }));
+        b.position.set(rr(-len * 0.3, len * 0.3), 0.15, rr(0.5, 1.1) * (rand() < 0.5 ? -1 : 1));
+        b.rotation.set(rr(-0.3, 0.3), rr(0, 3), rr(-0.4, 0.4));
+        g.add(b);
+      }
+      ctx.put(g, p[0], p[1]);
+    }
     // Ruinenfeld: Säulen (manche verziert), Trümmer, ein Tor mit Gitter, ein Schrein mit Laternen
     scatterModels(ctx, 6, ['pillar', 'pillar_decorated', 'column'], 0.7, 0.85, { rMin: 4, gap: 0.9 });
     scatterModels(ctx, 4, ['rubble_half', 'rubble_large'], 0.35, 0.5, { rMin: 4, gap: 0.8 });
