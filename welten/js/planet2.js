@@ -7,13 +7,15 @@ import { backdropMesh, paths } from './planet1.js';
 
 const TAU = Math.PI * 2;
 
+// pebble: Steinchen um die Münz-Lichtungen (sonst in der Wegfarbe, auf Mars wirkten Metall-Kiesel fremd)
+// trail: ausgetretener Boden unter dem Weg
 const PATHS = {
-  mond: { color: '#9a9da6', kind: 'stone' },
-  neptun: { color: '#9fd8ff', kind: 'stone', glass: true },
-  mars: { color: '#9aa0a8', kind: 'tile', metal: true, glow: '#ff9a5a' },
-  saturn: { color: '#d8b880', kind: 'stone' },
-  alien: { color: '#3a1a60', kind: 'tile', glow: '#7aff5a' },
-  sonne: { color: '#5a1a08', kind: 'tile', glow: '#ffd84a' },
+  mond: { color: '#9a9da6', kind: 'stone', trail: ['#82858e', 'Slate'] },
+  neptun: { color: '#9fd8ff', kind: 'stone', glass: true, trail: ['#9fc8f4', 'Snow'] },
+  mars: { color: '#9aa0a8', kind: 'tile', metal: true, glow: '#ff9a5a', pebble: '#6a3422', trail: ['#7a3a22', 'Ground'] },
+  saturn: { color: '#d8b880', kind: 'stone', trail: ['#b8965e', 'Sand'] },
+  alien: { color: '#3a1a60', kind: 'tile', glow: '#7aff5a', trail: ['#4a2a70', 'Slate'] },
+  sonne: { color: '#5a1a08', kind: 'tile', glow: '#ffd84a', pebble: '#2a0e04', trail: ['#3a1206', 'Basalt'] },
 };
 
 // ── Wahrzeichen ──

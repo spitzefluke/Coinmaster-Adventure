@@ -1072,8 +1072,36 @@ const MARS = {
   landmark: true, // Radarschüssel mit Solarfeld
   keepBase: true, // Rover, Kuppeln, Flagge, Phobos am Himmel
   baseSpots: [[1.6, 1.2, 1.1], [-2.6, -1, 2.8], [0.4, -2.8, 0.6]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // wie auf den Bildern der Rover: Staub in helleren und dunkleren Flecken, ein Feld aus kantigen dunklen
+    // Steinen in allen Größen, kleine Sandrippeln, Reifenspuren
+    groundPatches(ctx, 16, [['#d07a4a', 'Sand'], ['#9a4426', 'Ground'], ['#b8603a', 'Sand'], ['#7a3a22', 'Slate']]);
+    const inner = R - 2.6;
+    ctx.scatter(16, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 4);
+      for (let i = 0; i < n; i++) {
+        const rock = kit.rockMesh(0.5, pick(rand, ['#5a2a1a', '#6a3422', '#4a241a', '#7a3e28']), rand);
+        rock.scale.setScalar(rr(0.25, 0.75));
+        rock.position.set(rr(-0.9, 0.9), 0, rr(-0.9, 0.9));
+        rock.rotation.y = rand() * TAU;
+        g.add(rock);
+      }
+      return g;
+    }, 0.9, 2, inner);
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#d8885a', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.5, 0.18, 2.6);
+        m.position.set(i * 0.42, 0, rr(-0.1, 0.1));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    tracks(ctx, '#8a3a20', { n: 2, len: 14 });
     // Abbaugrube: der Geländeblock steckt im Boden, nur der Rand mit der Grube schaut heraus
     const mine = place(ctx, 'terrain_mining', 1.8, { rMin: 5, rMax: R - 3, sink: 3.3 });
     if (mine) {

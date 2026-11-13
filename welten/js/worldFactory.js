@@ -1779,7 +1779,7 @@ const EXTRAS = {
     scatter(4, () => geyser(anims, rand), 0.5);
   },
   mars({ scatter }) {
-    scatter(4, () => solarPanel(), 0.6);
+    scatter(4, () => solarPanel(), 0.6, 2, R - 2.6); // feste Anzahl (vorher mit der Inselfläche vervielfacht: 28 Paneele)
   },
   saturn({ scatter, rand, rr }) {
     scatter(4, () => obsidian(rr(0.6, 1), rand), 0.4);

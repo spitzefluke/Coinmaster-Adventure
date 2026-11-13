@@ -76,7 +76,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       if (style.trail) ctx.paint?.(x, z, 1.1, ...style.trail);
       for (let i = 0; i < 8; i++) {
         const b = (i / 8) * TAU, sx = x + Math.cos(b) * 0.7, sz = z + Math.sin(b) * 0.7;
-        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(style.edge || style.color)), sx, height(sx, sz) + 0.03, sz));
+        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(style.edge || style.pebble || style.color)), sx, height(sx, sz) + 0.03, sz));
       }
     }
   }
