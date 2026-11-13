@@ -170,7 +170,9 @@ function undersideLights(ctx, n, { pipe = '#7a7f8a', glow = '#ffd27a' } = {}) {
 }
 
 // ── Eiszapfen unter dem Inselrand: umgedrehte, durchscheinende Kegel ──
+// (abgeschaltet wie die Wurzeln: Eiszapfen, Glut- und Leuchttropfen hängen jetzt an der Inselhülle)
 function icicles(ctx, n, { color = '#cfeeff', glow = false } = {}) {
+  if (!ctx.oldUnderside) return;
   const { rr, R, root } = ctx;
   // glow: leuchtende Lavatropfen (Neon) statt Eis
   const mat = glow
@@ -190,6 +192,7 @@ function icicles(ctx, n, { color = '#cfeeff', glow = false } = {}) {
 
 // ── Kristallspitzen unter der Insel (Höhle): leuchtende Kristallbüschel hängen aus dem Fels ──
 function hangingCrystals(ctx, kit, n, colors) {
+  if (!ctx.oldUnderside) return; // Kristalle wachsen jetzt als echte Prismen aus der Inselhülle
   const { rand, rr, R, root } = ctx;
   for (let i = 0; i < n; i++) {
     // am äußersten Rand, vor den Felsen der Unterseite
@@ -204,6 +207,7 @@ function hangingCrystals(ctx, kit, n, colors) {
 
 // ── Zuckergusstropfen am Inselrand (Candy): kurze, runde Tropfen in Pastellfarben ──
 function frostingDrips(ctx, n, colors) {
+  if (!ctx.oldUnderside) return; // Zuckerguss läuft jetzt an der Inselhülle über die Kante
   const { rr, R, root } = ctx;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + rr(-0.05, 0.05), r = R + rr(0.4, 0.9);
@@ -222,6 +226,7 @@ function frostingDrips(ctx, n, colors) {
 
 // ── Perlenschnüre unter dem Inselrand (Muschelland): Ketten aus schimmernden Perlen, unten eine große ──
 function pearlStrings(ctx, n) {
+  if (!ctx.oldUnderside) return; // Perlenschnüre hängen jetzt an der Inselhülle
   const { rr, R, root } = ctx;
   const mat = new THREE.MeshStandardMaterial({ color: '#fff4f8', metalness: 0.3, roughness: 0.2, emissive: '#ffe0f0', emissiveIntensity: 0.35 });
   for (let i = 0; i < n; i++) {
@@ -247,7 +252,8 @@ function runeStones(ctx, n, { color = '#5affd8' } = {}) {
     root.add(m);
   };
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU + rr(-0.04, 0.04), r = R + 0.75, y = -1.6 - rr(0, 1.2);
+    // an der fast senkrechten Erdwand der Inselhülle (Radius R), leicht davor
+    const a = (i / n) * TAU + rr(-0.04, 0.04), r = R + 0.22, y = -1.6 - rr(0, 1.2);
     const plate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 0.3), stone);
     plate.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
     plate.rotation.y = -a + Math.PI / 2;
@@ -276,7 +282,7 @@ function runeStones(ctx, n, { color = '#5affd8' } = {}) {
 // einzelne Bäume ersetzt, damit keine kantigen Platten in der Luft hängen.
 const HEX_TOP = /^(hills?_|hill_single|mountain_)/;
 // Kuppelhöhe einer Mini-Insel im Abstand d von der Mitte (wie islandShell.isleDomeAt)
-function domeAt(w, d) {
+export function domeAt(w, d) {
   const dome = w * 0.12, k = d / (w * 0.55);
   return k <= 1 ? dome * (1 - 0.3 * k) : dome * 0.7 * Math.max(0, 1 - (d - w * 0.55) / (w * 0.45));
 }
@@ -325,7 +331,7 @@ function floatingIsle(ctx, x, y, z, w, topId) {
   if (trees.length) isleTrees(ctx, x, y, z, half, trees, n, [Math.min(3.2, w * 0.42), Math.min(3.2, w * 0.6)]);
 }
 // ── Nachbarinseln: große schwebende Inseln mit Berg und Bäumen in der Ferne (statt der Sechseck-Berge) ──
-function neighborIsles(ctx, { n = 6, w = [5.5, 8.5], r = [50, 63], y = [-10, 2], trees = null, peak = 0.7, snow = false, treeW = [2.2, 3.2], nTrees = [4, 7] } = {}) {
+export function neighborIsles(ctx, { n = 6, w = [5.5, 8.5], r = [50, 63], y = [-10, 2], trees = null, peak = 0.7, snow = false, treeW = [2.2, 3.2], nTrees = [4, 7], onTop = null } = {}) {
   const { rand, rr } = ctx;
   const ids = trees || treesOf('');
   for (let i = 0; i < n; i++) {
@@ -342,19 +348,25 @@ function neighborIsles(ctx, { n = 6, w = [5.5, 8.5], r = [50, 63], y = [-10, 2],
       keep = [pk.dx, pk.dz, pk.r * 1.05];
     }
     ctx.root.add(mark);
-    isleTrees(ctx, x, yy, z, half, ids, Math.round(rr(nTrees[0], nTrees[1])), treeW, keep);
+    if (ids.length) isleTrees(ctx, x, yy, z, half, ids, Math.round(rr(nTrees[0], nTrees[1])), treeW, keep);
+    onTop?.(x, yy, z, half, keep);
   }
 }
 // Inselchen in mittlerer Entfernung und kleine Brocken direkt am Inselrand
-function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees', 'hills_B_trees', 'hill_single_C'], small = ['hill_single_A', 'hill_single_C'], rock = 'rock_single_D', farW = [5, 9], farR = [12, 28] } = {}) {
+// onTop(x, y, z, half): eigene Deko obendrauf (y = Inselmitte, Höhe der Kuppe über domeAt), z. B. Kristalle
+export function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees', 'hills_B_trees', 'hill_single_C'], small = ['hill_single_A', 'hill_single_C'], rock = 'rock_single_D', farW = [5, 9], farR = [12, 28], onTop = null } = {}) {
   const { rand, rr, R } = ctx;
+  const isle = (x, y, z, w, id) => {
+    floatingIsle(ctx, x, y, z, w, id);
+    onTop?.(x, y, z, w / 2);
+  };
   for (let i = 0; i < far; i++) {
     const a = (i / far) * TAU + rr(-0.25, 0.25), r = rr(R + farR[0], R + farR[1]);
-    floatingIsle(ctx, Math.cos(a) * r, rr(-4, 7), Math.sin(a) * r, rr(farW[0], farW[1]), pick(rand, tops));
+    isle(Math.cos(a) * r, rr(-4, 7), Math.sin(a) * r, rr(farW[0], farW[1]), pick(rand, tops));
   }
   for (let i = 0; i < near; i++) {
     const a = rand() * TAU, r = rr(R + 2.5, R + 6.5);
-    floatingIsle(ctx, Math.cos(a) * r, rr(-3, 1.5), Math.sin(a) * r, rr(1.2, 2.6), pick(rand, small));
+    isle(Math.cos(a) * r, rr(-3, 1.5), Math.sin(a) * r, rr(1.2, 2.6), pick(rand, small));
   }
 }
 
@@ -622,7 +634,8 @@ const LAVA = {
     scatterModels(ctx, 2, ['tree_single_A@lava'], 2.6, 3.2, { gap: 0.8 });
     scatterModels(ctx, 3, ['rubble_half'], 0.35, 0.5, { gap: 0.8 });
     scatterModels(ctx, 9, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.8, 4.4, { gap: 0.8 });
-    scatterModels(ctx, 3, ['mountain_A@lava', 'mountain_C@lava'], 1.6, 2.2, { rMin: R * 0.55, gap: 0.7 });
+    // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
+    scatterModels(ctx, 3, ['rock_single_C@lava', 'rock_single_D@lava', 'rock_single_B@lava'], 6.5, 8.5, { rMin: R * 0.55, gap: 0.7 });
   },
   backdrop(ctx, kit) {
     // keine gestuften Vulkane aus planet1.js: die Fernkulisse von WorldFx hat schon Vulkane
@@ -650,7 +663,8 @@ const HOEHLE = {
       stand(ctx, model('chest_gold', 0.85), hall[0], hall[1]);
       around(ctx, hall, [['candle_triple', 1.4], ['candle_triple', 1.4], ['rubble_half', 0.5]], 0.9, 1.4);
     }
-    scatterModels(ctx, 3, ['mountain_A@hoehle', 'mountain_C@hoehle'], 1.6, 2.2, { rMin: R * 0.55, gap: 0.7 });
+    // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
+    scatterModels(ctx, 4, ['rock_single_B@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 6, 8, { rMin: R * 0.55, gap: 0.7 });
     scatterModels(ctx, 8, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 2.8, 4.4, { gap: 0.8 });
     scatterModels(ctx, 5, ['torch_lit'], 1.6, 1.6, { gap: 1 });
     scatterModels(ctx, 3, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
@@ -888,7 +902,7 @@ function seaweedBeds(ctx, n) {
 }
 function seaRocks(ctx, n = 7) {
   scatterModels(ctx, n, ['rock_single_A@meer', 'rock_single_B@meer', 'rock_single_C@meer', 'rock_single_D@meer', 'rock_single_E@meer'], 2.8, 4.6, { gap: 0.8 });
-  scatterModels(ctx, 2, ['mountain_A@meer', 'mountain_C@meer'], 1.3, 1.8, { rMin: ctx.R * 0.6, gap: 0.7 });
+  scatterModels(ctx, 2, ['rock_single_C@meer', 'rock_single_D@meer'], 6, 8, { rMin: ctx.R * 0.6, gap: 0.7 });
 }
 
 const KORALLENRIFF = {

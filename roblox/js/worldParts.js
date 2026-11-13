@@ -23,7 +23,6 @@ const GROUND = {
   quarzfeld: 'Marble', amethystgrotte: 'Slate', topasduenen: 'Sand', smaragdwald: 'Grass', jadetempel: 'Grass',
   saphirsee: 'Marble', rubinvulkan: 'Basalt', opalwolken: 'Marble', diamantkern: 'Ice',
 };
-const ROCK = { lava: 'Basalt', eis: 'Glacier', sonne: 'CrackedLava', mond: 'Rock', hoehle: 'Slate' };
 // Material der Erdschicht unter der Grasdecke (sichtbar an Hängen)
 const BODY = { Grass: 'Ground', Snow: 'Glacier', Sand: 'Sand', Concrete: 'Concrete', Basalt: 'Basalt', Slate: 'Slate', Rock: 'Rock', Ice: 'Ice', CrackedLava: 'Basalt', Marble: 'Marble', SmoothPlastic: 'SmoothPlastic' };
 
@@ -331,107 +330,6 @@ function terrainSurface(out, built, world) {
   built.groundLow = low;
 }
 
-// Grasrand, der über die Kante hängt: Polster in wechselnder Größe und zwei Tönen, dazwischen ab und zu ein
-// Felsbrocken, der aus der Kante ragt. So wirkt der Rand gewachsen statt wie ein gleichmäßiger Wulst.
-function rimLip(out, built, world) {
-  const R = built.radius, n = Math.round((2 * Math.PI * R) / 1.05);
-  const material = GROUND[world.id] || 'SmoothPlastic';
-  const base = vivid(world.ground, 0.25);
-  const tones = [shade(base, 0.03, 0.06), shade(base, 0.02, 0.02), shade(base, 0.03, 0.09)];
-  const rockColor = vivid(world.rock, 0.12), rockMat = ROCK[world.id] || 'Slate';
-  const rand = seededRand(world.id + ':rand');
-  for (let i = 0; i < n; i++) {
-    const a = ((i + (rand() - 0.5) * 0.4) / n) * Math.PI * 2, r = R - 0.12 + (rand() - 0.5) * 0.12;
-    const y = Math.max(built.height(Math.cos(a) * (R - 0.5), Math.sin(a) * (R - 0.5)), 0.1);
-    const k = 0.8 + rand() * 0.45;
-    out.push({
-      shape: 'Ellipsoid', name: 'Rand',
-      pos: [Math.cos(a) * r * STUDS, (y - 0.08 + (rand() - 0.5) * 0.06) * STUDS, Math.sin(a) * r * STUDS],
-      rot: around(a),
-      size: [1.5 * k * STUDS, 0.5 * (0.85 + rand() * 0.35) * STUDS, 1.1 * k * STUDS],
-      color: tones[Math.floor(rand() * tones.length)], material, transparency: 0,
-    });
-    // Felsnase in der Kante (etwa jede elfte Stelle), halb im Rand, leicht schräg
-    if (rand() < 0.09) {
-      const s = 0.5 + rand() * 0.45, rr = R + 0.05;
-      const tilt = new THREE.Matrix4().makeRotationY(-a).multiply(new THREE.Matrix4().makeRotationZ((rand() - 0.5) * 0.6)).multiply(new THREE.Matrix4().makeRotationX((rand() - 0.5) * 0.5));
-      const e = tilt.elements;
-      out.push({
-        shape: 'Block', name: 'Rand',
-        pos: [Math.cos(a) * rr * STUDS, (y - 0.45) * STUDS, Math.sin(a) * rr * STUDS],
-        rot: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
-        size: [s * 1.3 * STUDS, s * 1.1 * STUDS, s * STUDS],
-        color: rockColor, material: rockMat, transparency: 0,
-      });
-    }
-  }
-}
-
-// Unterseite: gestufte Felsschichten mit Kanten, hängende Felsspitzen, an grünen Inseln Ranken
-function underside(out, world, R, groundLow = -0.24) {
-  const material = ROCK[world.id] || 'Slate', layers = 7, depth = 5.5 * (R / 6);
-  const side = vivid(world.side, 0.15), rock = vivid(world.rock, 0.15), mid = '#' + new THREE.Color(side).lerp(new THREE.Color(rock), 0.5).getHexString();
-  const tones = [side, mid, rock];
-  const rand = seededRand(world.id + ':fels');
-  // Erdschicht direkt unter dem Boden (Oberkante unter dem tiefsten Tal, damit sie nirgends durchschaut)
-  const soilTop = Math.min(-0.24, groundLow - 0.2), soilBottom = -1.0;
-  out.push({
-    shape: 'Cylinder', name: 'Fels',
-    pos: [0, ((soilTop + soilBottom) / 2) * STUDS, 0],
-    rot: UP,
-    size: [Math.max(0.2, soilTop - soilBottom) * STUDS, 2 * R * 0.985 * STUDS, 2 * R * 0.985 * STUDS],
-    color: side, material: 'SmoothPlastic', transparency: 0,
-  });
-  // Welten mit Himmelsbild: die Felsunterseite kommt aus Modellen (modelWorlds.js rockUnderside), hier nur Ranken
-  const modelRock = !!SKYBOXES[world.id];
-  for (let i = 0; i < (modelRock ? 0 : layers); i++) {
-    const k = i / layers, r = R * 0.96 * (1 - k) + 0.25, y = -1 - (i + 0.5) * (depth / layers);
-    out.push({
-      shape: 'Cylinder', name: 'Fels',
-      pos: [0, y * STUDS, 0],
-      rot: UP,
-      size: [(depth / layers) * STUDS, 2 * r * STUDS, 2 * r * STUDS],
-      color: tones[i % 3], material, transparency: 0,
-    });
-    // schmale Kante zwischen zwei Schichten
-    out.push({
-      shape: 'Cylinder', name: 'Fels',
-      pos: [0, (y + depth / layers / 2) * STUDS, 0],
-      rot: UP,
-      size: [0.14 * STUDS, 2 * (r + 0.22) * STUDS, 2 * (r + 0.22) * STUDS],
-      color: shade(tones[i % 3], 0, -0.06), material, transparency: 0,
-    });
-  }
-  // hängende Felsspitzen: je drei schmaler werdende Stücke
-  for (let i = 0; i < (modelRock ? 0 : 16); i++) {
-    const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * R * 0.72;
-    const top = -1 - depth * (1 - r / (R * 0.96)) + 0.4;
-    const len = 1.4 + rand() * 3.4, w = 0.45 + rand() * 0.5;
-    for (let j = 0; j < 3; j++) {
-      const h = len / 3, rw = w * (1 - j * 0.3);
-      out.push({
-        shape: 'Cylinder', name: 'Fels',
-        pos: [Math.cos(a) * r * STUDS, (top - h * (j + 0.5)) * STUDS, Math.sin(a) * r * STUDS],
-        rot: UP,
-        size: [h * STUDS, 2 * rw * STUDS, 2 * rw * STUDS],
-        color: tones[(i + j) % 3], material, transparency: 0,
-      });
-    }
-  }
-  // Ranken an grünen Inseln
-  if (['normal', 'wald', 'spawn'].includes(world.id)) {
-    for (let i = 0; i < 30; i++) {
-      const a = (i / 30) * Math.PI * 2 + rand() * 0.15, r = R + 0.04;
-      const len = 1 + rand() * 2.8;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      out.push({ shape: 'Cylinder', name: 'Ranke', pos: [x * STUDS, (-0.3 - len / 2) * STUDS, z * STUDS], rot: UP, size: [len * STUDS, 0.14 * STUDS, 0.14 * STUDS], color: '#3d8a37', material: 'Grass', transparency: 0 });
-      for (let j = 0; j < 2; j++) {
-        const y = -0.5 - len * (0.35 + j * 0.45);
-        out.push({ shape: 'Ellipsoid', name: 'Ranke', pos: [x * STUDS, y * STUDS, z * STUDS], rot: around(a), size: [0.5 * STUDS, 0.32 * STUDS, 0.36 * STUDS], color: j ? '#6fd04f' : '#58b843', material: 'Grass', transparency: 0 });
-      }
-    }
-  }
-}
 
 // Wasserfälle über die Inselkante: Wasser, Lava, Sirup – mit Gischt unten
 const FALLS = {
@@ -444,6 +342,14 @@ const FALLS = {
   hoehle: { color: '#3ee6ff', light: '#c8fbff', material: 'Neon', transparency: 0, count: 1 },
   alien: { color: '#86ff52', light: '#e2ffc8', material: 'Neon', transparency: 0, count: 1 },
 };
+// Wolkenmeer unter der Insel (Einheiten): Grundhöhe und Mulde unter der Insel (gleich in skyShield)
+function seaBase(R) {
+  return -1 - 5.5 * (R / 6) - 6;
+}
+function seaDip(R, d) {
+  const nr = Math.max(0, 1 - d / (R * 2.3));
+  return -(nr * nr * (3 - 2 * nr)) * 2.6;
+}
 function waterfalls(out, emitters, built, world) {
   const f = FALLS[world.id];
   if (!f) return;
@@ -453,29 +359,31 @@ function waterfalls(out, emitters, built, world) {
     const a = start + i * 2.4;
     const ca = Math.cos(a), sa = Math.sin(a);
     const top = Math.max(built.height(ca * (R - 0.6), sa * (R - 0.6)), 0.1);
-    // fällt bis etwa zur Mitte der Unterseite und zerstäubt dort
-    const bottom = -depth * 0.62, h = top - bottom, W = 2.1;
+    // fällt frei an der Felszunge vorbei bis ins Wolkenmeer: oben ein dichter Vorhang, unten breiter und
+    // durchscheinender (das Wasser zerstäubt), unten eine Gischtwolke auf dem Meer
+    const bottom = seaBase(R) + 3.4 + seaDip(R, R + 0.6) * (40 / STUDS), W = 2.1;
+    const mid = Math.min(-depth * 0.45, top - 6), h1 = top - mid, h2 = mid - bottom;
     const rot = around(a);
     const at = (r, y) => [ca * r * STUDS, y * STUDS, sa * r * STUDS];
+    const side = (p, off) => [p[0] - sa * off * STUDS, p[1], p[2] + ca * off * STUDS];
     // Rinne oben auf der Insel
     out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R - 1.3, top + 0.04), rot, size: [W * STUDS, 0.12 * STUDS, 2.6 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
-    // fallender Vorhang und heller Streifen davor
-    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R + 0.25, top - h / 2), rot, size: [W * STUDS, h * STUDS, 0.3 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
-    // zwei helle Streifen im fallenden Wasser
+    // fallender Vorhang (die Narbe ragt bis R + 0,2 hinaus) und helle Streifen davor
+    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R + 0.4, top - h1 / 2), rot, size: [W * STUDS, h1 * STUDS, 0.3 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
+    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R + 0.45, mid - h2 / 2 + 0.3), rot, size: [W * 1.35 * STUDS, (h2 + 0.6) * STUDS, 0.3 * STUDS], color: f.color, material: f.material, transparency: Math.min(0.75, f.transparency + 0.4) });
     for (const off of [-0.45, 0.4]) {
-      const p = at(R + 0.42, top - h / 2);
-      out.push({ shape: 'Block', name: 'Wasserfall', pos: [p[0] - sa * off * STUDS, p[1], p[2] + ca * off * STUDS], rot, size: [0.32 * STUDS, h * STUDS, 0.06 * STUDS], color: f.light, material: f.material, transparency: f.material === 'Neon' ? 0 : 0.2 });
+      out.push({ shape: 'Block', name: 'Wasserfall', pos: side(at(R + 0.57, top - h1 / 2), off), rot, size: [0.32 * STUDS, h1 * STUDS, 0.06 * STUDS], color: f.light, material: f.material, transparency: f.material === 'Neon' ? 0 : 0.2 });
+      out.push({ shape: 'Block', name: 'Wasserfall', pos: side(at(R + 0.62, mid - h2 / 2), off * 1.3), rot, size: [0.26 * STUDS, h2 * STUDS, 0.06 * STUDS], color: f.light, material: f.material, transparency: 0.5 });
     }
-    // Schaum an der Kante und eine Gischtwolke unten
-    out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(R + 0.15, top), rot, size: [(W + 0.6) * STUDS, 0.5 * STUDS, 0.9 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.05 });
-    for (let j = 0; j < 4; j++) {
-      const p = at(R + 0.4 + (j % 2) * 0.4, bottom - 0.2 + j * 0.25);
-      const off = (j - 1.5) * 0.7;
-      out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: [p[0] - sa * off * STUDS, p[1], p[2] + ca * off * STUDS], rot, size: [1.6 * STUDS, 1.2 * STUDS, 1.6 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.18 });
+    // Schaum an der Kante und eine Gischtwolke auf dem Meer
+    out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(R + 0.3, top), rot, size: [(W + 0.6) * STUDS, 0.5 * STUDS, 0.9 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.05 });
+    for (let j = 0; j < 5; j++) {
+      const off = (j - 2) * 0.9;
+      out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: side(at(R + 0.6 + (j % 2) * 0.5, bottom + 0.4 + (j % 3) * 0.35), off), rot, size: [(2 + (j % 2)) * STUDS, 1.4 * STUDS, 2 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.25 });
     }
     emitters.push({
       name: 'Gischt',
-      pos: at(R + 0.3, bottom + 0.2), size: [1.2 * STUDS, 1, 1.2 * STUDS], direction: 'Top',
+      pos: at(R + 0.5, bottom + 0.6), size: [1.2 * STUDS, 1, 1.2 * STUDS], direction: 'Top',
       colors: [f.light, '#ffffff'], particleSize: 0.9 * STUDS, rate: 22,
       speed: [0.4 * STUDS, 1.1 * STUDS], lifetime: [1.2, 2.4], spread: [40, 40],
       lightEmission: f.material === 'Neon' ? 1 : 0.3, squares: false,
@@ -557,6 +465,11 @@ function skyShield(sky, built, world) {
           shape: 'Ellipsoid', name: 'Wolkenwand', pos: [Math.cos(a) * r + tx * dx, y + dy, Math.sin(a) * r + tz * dx], rot: around(a),
           size: [sw, sh, sw * 0.9], color: c, material: 'SmoothPlastic', transparency: 0, canCollide: false, castShadow: false, noShadow: true,
         });
+        // im All und in der Höhle keine Haufenwolken (wirkten dort wie Blasen): eine große, ruhige Nebelwand
+        if (!box.sun) {
+          cloud(0, 0, w, h, row.c[Math.floor(wr() * row.c.length)]);
+          continue;
+        }
         cloud(0, -h * 0.14, w * 1.1, h * 0.5, row.c[Math.floor(wr() * row.c.length)]);
         const puffs = 4 + Math.floor(wr() * 2);
         for (let k = 0; k < puffs; k++) {
@@ -573,8 +486,8 @@ function skyShield(sky, built, world) {
     sky.push({ shape: 'Block', name: 'Wasseroberflaeche', pos: [0, D * 0.62, 0], rot: id, size: [2 * D * 0.8, 2, 2 * D * 0.8], color: '#9fe8ff', material: 'Glass', transparency: 0.45, canCollide: false, castShadow: false, noShadow: true });
   }
   // Meer unter der Insel: Wolken, Nebel oder Dünen
-  const R = built.radius * STUDS, floor = -1 - 5.5 * (built.radius / 6);
-  const y0 = (floor - 6) * STUDS;
+  const R = built.radius * STUDS;
+  const y0 = seaBase(built.radius) * STUDS;
   const kind = water ? 'duene' : space ? 'nebel' : 'wolke';
   const colors = water
     ? [vivid(world.side, 0.1), shade(vivid(world.side, 0.1), 0, 0.05), shade(vivid(world.side, 0.1), 0, -0.05)]
@@ -592,7 +505,7 @@ function skyShield(sky, built, world) {
       if (Math.hypot(jx, jz) > D * 0.93) continue;
       const w = step * (1.5 + rand() * 0.6), h = kind === 'duene' ? 22 + rand() * 18 : 34 + rand() * 30;
       // unter der Insel eine Mulde im Meer: die Felsspitze schwebt frei über den Wolken wie im Vorbild
-      const nr = Math.max(0, 1 - Math.hypot(jx, jz) / (R * 2.3)), near = -(nr * nr * (3 - 2 * nr)) * 2.6;
+      const near = seaDip(R, Math.hypot(jx, jz));
       // Glutmeer (Lava): zwischen der dunklen Kruste leuchten flachere Lavabecken etwas tiefer
       const glow = SKYBOXES[world.id]?.seaGlow;
       if (glow && rand() < glow.share) {

@@ -3,6 +3,7 @@
 // Einheiten der Webseite (1 Einheit = 8 Studs), Inselradius R = 16. Aufbau wie planet4.js.
 
 import * as THREE from 'three';
+import { floatingIsles, neighborIsles, domeAt } from './modelWorlds.js';
 
 const TAU = Math.PI * 2;
 
@@ -137,6 +138,25 @@ function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSi
       emitters?.(ctx, add);
     },
     sounds: sounds || [['Klingen', 'leises Klingen von Kristallen', 0.3]],
+    // Umgebung: Nachbarinseln mit Felsgipfel und schwebende Inselchen, auf allen wachsen Kristallgruppen
+    backdrop(ctx, kit) {
+      const { rand, rr, root } = ctx;
+      const crystals = (x, y, z, half, n, keep) => {
+        for (let i = 0, tries = 0; i < n && tries < n * 5; tries++) {
+          const a = rand() * TAU, d = n > 1 ? half * rr(0.1, 0.7) : 0;
+          const dx = Math.cos(a) * d, dz = Math.sin(a) * d;
+          if (keep && Math.hypot(dx - keep[0], dz - keep[1]) < keep[2]) continue;
+          const c = cluster(kit, rand, Math.min(2.6, half * rr(0.35, 0.6)), gem, gem2);
+          c.position.set(x + dx, y + domeAt(half, d) - 0.1, z + dz);
+          c.rotation.y = rand() * TAU;
+          c.traverse((o) => o.isMesh && (o.userData.rbx = { ...(o.userData.rbx || {}), sky: true }));
+          root.add(c);
+          i++;
+        }
+      };
+      neighborIsles(ctx, { n: 5, w: [5, 7.5], peak: 0.6, trees: [], onTop: (x, y, z, half, keep) => crystals(x, y, z, half, 4, keep) });
+      floatingIsles(ctx, { far: 5, near: 6, tops: ['-'], small: ['-'], onTop: (x, y, z, half) => crystals(x, y, z, half, half > 1.5 ? 2 : 1) });
+    },
   };
 }
 
@@ -287,9 +307,10 @@ export const GEM_WORLDS = {
 for (const w of Object.values(GEM_WORLDS)) w.landmark = false;
 
 // Partikel und Klänge wie bei planet4After
-export function galaxy2After(ctx) {
+export function galaxy2After(ctx, kit) {
   const def = GEM_WORLDS[ctx.world.id];
   if (!def) return;
+  def.backdrop?.(ctx, kit);
   const list = (ctx.shared.emitters = ctx.shared.emitters || []);
   const add = (name, pos, size, colors, particleSize, rate, speed, lifetime, opts = {}) =>
     list.push({ name, pos, size, colors, particleSize, rate, speed, lifetime, spread: opts.spread ?? [180, 180], direction: opts.direction ?? 'Top', lightEmission: opts.light ?? 0 });

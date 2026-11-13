@@ -533,7 +533,7 @@ Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Edelstein
   nicht mehr durchscheinend (keine Blasen am Horizont), die neun Welten des Juwelnebels haben einen eigenen
   Sternenhimmel mit Nebeln in Edelsteinfarben (WorldFx `gemSky`).
 
-**Umgebung je Welt:** alle 17 Welten (Spawn und Planet 1 bis 3) haben ein eigenes Himmelsbild, eine Felsunterseite aus Modellen, schwebende Inseln oder Brocken und Details am Rand.
+**Umgebung je Welt:** alle 17 Welten (Spawn und Planet 1 bis 3) haben ein eigenes Himmelsbild, eine modellierte Inselhülle (siehe unten), schwebende Inseln oder Brocken und Details am Rand.
 
 | Welt | Himmelsbild | Umgebung |
 | --- | --- | --- |
@@ -561,12 +561,31 @@ Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Edelstein
 - **Roblox:** Im Ordner `Licht` der Welt liegt `Himmelsbild` mit den NumberValues `Seite`, `Oben`, `Unten` (Bild-IDs,
   anfangs 0) und `Sonne`. Bilder aus dem Welten-ZIP (`welten/himmel/<welt>/`) im Asset Manager hochladen und die
   IDs eintragen; `CoinmasterWorldLighting` baut daraus ein `Sky` und blendet die Himmelskuppel aus.
-- **Wolkenwand:** Statt der einfarbigen Kuppel verdecken große weiße Wolken am Horizont (600–630 Studs) die
-  Nachbarinseln. Der Wolkenring direkt an der Insel fällt weg, die Wolken malt das Himmelsbild.
-- **Felsunterseite aus Modellen:** umgedrehte Felsen aus dem Paket in sechs Ringen, die nach unten enger werden,
-  statt gestapelter Scheiben. Die Ranken am Rand bleiben.
-- **Schwebende Inseln:** Grashügel mit Bäumen auf umgedrehten Felsen in mittlerer Entfernung, kleine Grasbrocken
-  direkt am Inselrand.
+- **Wolkenwand:** Statt der einfarbigen Kuppel verdecken Haufenwolken am Horizont (600–630 Studs) die
+  Nachbarinseln: ein flacher, breiter Sockel mit seitlich versetzten Bäuschen darauf, oben heller als unten. Im All
+  und in der Höhle bleibt es eine ruhige Nebelwand (Bäusche wirkten dort wie Blasen). Der Wolkenring direkt an der
+  Insel fällt weg, die Wolken malt das Himmelsbild.
+- **Inselhülle** (`roblox/js/islandShell.js`, Vorbild: schwebende Inseln mit überhängender Grasnarbe): eine
+  durchgehende, modellierte Fläche aus Dreiecken (in Roblox je zwei Keile, wie der Boden) statt Felsen aus Modellen.
+  Oben hängt die Narbe über die Kante (Gras, Schnee, Zuckerguss oder eine schmale Kante im Bodenton), darunter eine
+  fast senkrechte Erdwand mit zackiger Grenze zum Fels. Die Felszunge läuft nach unten spitz zu, hängt leicht
+  schief, hat scharfe senkrechte Rippen, schwache Schichtbänder, weiche senkrechte Farbstreifen mit einzelnen
+  dunklen Rissen und acht Nebenspitzen. Stil je Welt (`STYLE`): Gestein und Tönung (warmes Grau bei Normal und
+  Spawn, Gletscher bei Eis, Basalt bei Lava …), Tortenschichten bei Candy und Anhängsel: Grashalme, Wurzeln, Ranken,
+  Moos, Eiszapfen, Zuckerguss mit Streuseln, verzweigte Glutrisse und Glut-Tropfen, Kristalle (in der Höhle
+  leuchtend in drei Farben direkt unter dem Rand), Leuchtranken, Seetang, Korallenstöcke und Schwämme, Perlen,
+  Rohre mit Lampen, Wolkenbäusche.
+- **Wolkenmeer:** Unter der Insel hat das Meer eine Mulde, die Spitze der Felszunge schwebt frei darüber. Der
+  durchscheinende Horizont-Ring liegt unter der Inselspitze (vorher schnitt er als heller Streifen durch die Insel).
+  Wasserfälle stürzen frei an der Felszunge vorbei bis ins Meer, unten breiter und durchscheinender, mit Gischt.
+- **Schwebende Inseln:** dieselbe Hülle im Kleinen (Kuppel, Narbe, Erde, Felszunge; kleine Brocken gröber, große
+  feiner), obendrauf Bäume oder Modelle; statt der sechseckigen Hügel- und Bergplatten des Pakets stehen dort
+  Bäume oder ein Berg aus der Hülle (Fuß in der Wiese, Fels, zackige Schneegrenze).
+- **Nachbarinseln:** In Normal, Wald und Eis stehen in der Ferne (50–63 Einheiten) große schwebende Inseln mit Berg
+  und Baumgruppen statt der Sechseck-Berge; im Juwelnebel wachsen auf Nachbar- und Schwebeinseln Kristallgruppen.
+- **Boden:** Grasbüschel aus fünf spitzen, schräg stehenden Halmen (je Halm zwei Keile) statt zweier Plättchen;
+  Sechseck-Sockel (Weizenfeld) sind im Boden versenkt, Sechseck-Bergplatten auf Lava, Höhle und Meeresgrund durch
+  große Felsbrocken ersetzt.
 - Vorschau: Die Engine zeigt das `Sky` mit den Bildern; Keile (WedgePart) werden jetzt von außen gezeichnet (vorher
   sah man nur ihre Innenseite, z. B. bei den Bergen der Fernkulisse). Teile ohne Schatten (Himmel, Kulisse) bekommen
   auch keine Schatten mehr ab.
@@ -610,8 +629,8 @@ dazu und werden zuerst gesetzt.
   mit Größe und Mitte jedes Modells. Neu bauen: `cd tools/modelle && npm install && npm run build`.
 - `welten/js/modelWorlds.js` baut die Welten: Normal ist ein Startdorf (Windmühle, fünf Häuser um einen
   Brunnen, Kisten und Fässer, Weizenfeld mit Zaun, Steinbrücke und Wasserpflanzen am Bach, Bäume, Felsen),
-  Wald ein Nadelwald mit Sägemühle und Holzlager, Zeltlager und Baumgruppen. In der Ferne stehen Berge und
-  Hügel mit Bäumen und Wolken aus dem Paket.
+  Wald ein Nadelwald mit Sägemühle und Holzlager, Zeltlager und Baumgruppen. In der Ferne schweben
+  Nachbarinseln mit Berg und Baumgruppen.
 - Ein Modell ist im Export ein unsichtbares Teil **`ModellPlatz`** (Ordner `Modelle`) in Lage und Größe des
   Modells, mit `StringValue` „Modell“ (Name) und `BoolValue` „Fest“ (kollidiert, z. B. Häuser und Bäume).
 - In Roblox: `bibliothek.glb` (liegt im Welten-ZIP) einmal mit **Import 3D** einfügen, das Model in
@@ -682,8 +701,7 @@ Wasser mit Hall, Kristallklingen; Candy: Spieluhr-Musik; Mond: Weltraum-Summen u
 
 **Simulator-Stil (alle Inseln und der Spawn, `roblox/js/worldParts.js`):** Der Boden hat eine Grasdecke
 über einer Erdschicht (an Hängen sieht man die Schichten), das Gras liegt in Flecken aus drei Tönen statt
-im Schachbrett. Ein runder Grasrand hängt über die Kante. Die Unterseite hat Felsschichten mit Kanten und
-hängende Felsspitzen, grüne Inseln Ranken. Wasserfälle stürzen über den Rand (Wasser in Normal und Wald,
+im Schachbrett. Rand und Unterseite modelliert die Inselhülle (siehe „Umgebung je Welt“). Wasserfälle stürzen über den Rand (Wasser in Normal und Wald,
 Eis, leuchtende Lava in Lava und Sonne, Sirup in Candy, leuchtend in Höhle und Alien) und zerstäuben mit
 Gischt-Partikeln. Inseln mit Tageshimmel haben Wolken. Alle Farben sind kräftiger, und in Roblox lässt
 ein `BloomEffect` Neon und Lava weich nachleuchten (die Vorschau zeigt kein Bloom). Am Spawn leuchtet ein
@@ -740,7 +758,10 @@ Sturm, Blasen …).
   - *Fernkulisse* nach dem Kulissen-Konzept aus Claude Design: drei Tiefen statt eines Rings – **Nah**
     380–460 Studs (niedrig, satt), **Mitte** 480–560, **Fern** 600–630 (stark in die Horizontfarbe getönt) –,
     in drei bis vier Gruppen mit Tälern dazwischen, dazu ein flaches **Horizontband** in Horizontfarbe knapp über
-    dem Meer. Gegenüber der Startkamera steht je Welt ein riesiges **Wahrzeichen** mit einer ruhigen Bewegung:
+    dem Meer. Berge, Kämme, Eisspitzen, Vulkane (mit offenem Krater) und Stalagmiten sind aus Dreiecken gebaut
+    (je zwei Keile): Fußring, zwei verdrehte Ringe und Spitze, Flächen abwechselnd hell und dunkel, Schnee über
+    einer zackigen Grenze; gebaut wird nur die Seite zur Insel. Gegenüber der Startkamera steht je Welt ein
+    riesiges **Wahrzeichen** mit einer ruhigen Bewegung:
     Münzberg mit Münzfall (Spawn), Wasserfallberg (Normal), Weltenbaum (Wald), Fernsehturm mit drehendem Licht
     (Stadt), Gletscherwand (Eis), Vulkan mit Ausbruch alle 40 s (Lava), Riesenkristall in der Decke (Höhle),
     Tortenberg (Candy), die Erde (Mond), Sturmauge mit Blitzen (Neptun), Olympus Mons (Mars), Saturn mit

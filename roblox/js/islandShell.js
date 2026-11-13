@@ -38,20 +38,21 @@ const STYLE = {
   spawn: { hang: ['grass', 'roots', 'vines'], rockTint: '#a08a72' },
   normal: { hang: ['grass', 'roots', 'vines'], rockTint: '#a08a72' },
   wald: { hang: ['grass', 'roots', 'roots', 'moss'], depth: 1.15, rockTint: '#7a7462' },
-  stadt: { lip: 'plain', hang: ['pipes'], rockMat: 'Slate' },
+  stadt: { lip: 'plain', hang: ['pipes'], rockMat: 'Slate', rockTint: '#8a8c98', rockLift: 0.12 },
   eis: { lip: 'snow', hang: ['icicles'], rockMat: 'Glacier', rockTint: '#9fc4e8' },
   lava: { lip: 'plain', glow: '#ff5a14', hang: ['lavadrips'], rockMat: 'Basalt' },
-  hoehle: { lip: 'plain', crystals: '#b07bff', hang: ['crystals'], rockMat: 'Slate' },
-  candy: { lip: 'frost', lipColor: '#fff4fa', hang: ['frosting'], rockMat: 'SmoothPlastic', soilMat: 'SmoothPlastic' },
+  hoehle: { lip: 'plain', crystals: ['#b07bff', '#6ae8ff', '#ff7ae0'], hang: ['crystals'], rockMat: 'Slate', rockTint: '#5a4a78', rockLift: 0.12, rimCrystals: true },
+  // Candy: oben Tortenschichten (Schokolade, Sahne, Biskuit, Erdbeere), darunter Keks
+  candy: { lip: 'frost', lipColor: '#fff4fa', hang: ['frosting'], rockMat: 'SmoothPlastic', soilMat: 'SmoothPlastic', soilDepth: 4.2, layers: ['#6e3a22', '#fff0f6', '#e8b070', '#ff9ac4', '#7a4428', '#fff6e0'] },
   mond: { lip: 'plain', rockMat: 'Rock', depth: 0.95 },
-  neptun: { lip: 'plain', hang: ['icicles'], rockMat: 'Glacier' },
+  neptun: { lip: 'plain', crystals: '#9fe0ff', hang: ['icicles', 'crystals'], rockMat: 'Glacier', rockLift: 0.15 },
   mars: { lip: 'plain', rockMat: 'Rock' },
   saturn: { lip: 'plain', rockMat: 'Rock' },
   alien: { lip: 'plain', glow: '#86ff52', hang: ['glowvines'], rockMat: 'Slate' },
   sonne: { lip: 'plain', glow: '#ffb02e', hang: ['lavadrips'], rockMat: 'Basalt' },
-  korallenriff: { lip: 'plain', hang: ['kelp'], rockMat: 'Pebble' },
-  muschelland: { lip: 'plain', hang: ['kelp', 'pearls'], rockMat: 'Pebble' },
-  atlantis: { lip: 'plain', hang: ['kelp'], rockMat: 'Slate' },
+  korallenriff: { lip: 'plain', hang: ['kelp', 'corals'], rockMat: 'Pebble', rockTint: '#c8b48e', rockLift: 0.12 },
+  muschelland: { lip: 'plain', hang: ['kelp', 'pearls', 'corals'], rockMat: 'Pebble', rockTint: '#d8b8b0', rockLift: 0.12 },
+  atlantis: { lip: 'plain', glow: '#5affd8', hang: ['kelp', 'lavadrips'], rockMat: 'Slate' },
   tiefseegraben: { lip: 'plain', glow: '#3ee6ff', hang: ['kelp'], rockMat: 'Basalt' },
   wolkenburg: { lip: 'plain', hang: ['clouds'], rockMat: 'Marble', depth: 0.8 },
   engelsgarten: { hang: ['grass', 'vines', 'clouds'], rockMat: 'Marble' },
@@ -59,8 +60,8 @@ const STYLE = {
   quarzfeld: { lip: 'plain', crystals: '#f0ecff', hang: ['crystals'], rockMat: 'Marble' },
   amethystgrotte: { lip: 'plain', crystals: '#c08bff', hang: ['crystals'], rockMat: 'Slate' },
   topasduenen: { lip: 'plain', crystals: '#ffc04a', hang: ['crystals'], rockMat: 'Rock' },
-  smaragdwald: { hang: ['grass', 'roots', 'crystals'], crystals: '#3cff9a' },
-  jadetempel: { hang: ['grass', 'vines', 'crystals'], crystals: '#8affc0' },
+  smaragdwald: { hang: ['grass', 'roots', 'crystals'], crystals: '#3cff9a', rockTint: '#5e6a62', soilTint: '#5e4430' },
+  jadetempel: { hang: ['grass', 'vines', 'crystals'], crystals: '#8affc0', rockTint: '#7a8478', soilTint: '#6a4e34' },
   saphirsee: { lip: 'plain', crystals: '#5a8aff', hang: ['crystals', 'icicles'], rockMat: 'Marble' },
   rubinvulkan: { lip: 'plain', glow: '#ff2a4a', crystals: '#ff3a5a', hang: ['crystals', 'lavadrips'], rockMat: 'Basalt' },
   opalwolken: { lip: 'plain', crystals: '#ffd6ff', hang: ['crystals', 'clouds'], rockMat: 'Marble' },
@@ -72,7 +73,7 @@ const GROUND_MAT = {
 };
 // Farben der Hülle: Fels etwas heller und erdiger als die Grundfarbe, damit Grate und Schichten Licht fangen
 function palette(world, st) {
-  const ground = vivid(world.ground, 0.25), soil = vivid(world.side, 0.15);
+  const ground = vivid(world.ground, 0.25), soil = st.soilTint ? mix(vivid(world.side, 0.15), st.soilTint, 0.75) : vivid(world.side, 0.15);
   const rockBase = st.rockTint ? mix(vivid(world.rock, 0.12), st.rockTint, 0.55) : vivid(world.rock, 0.12);
   const rock = tone(mix(rockBase, soil, st.rockMix ?? 0.3), -0.04, st.rockLift ?? 0.09);
   return {
@@ -138,7 +139,7 @@ function spike(out, top, tip, r, n, color, material, name, rand, twist = 0) {
   }
 }
 // Kristall: sechseckiges Prisma mit Spitze (wie die Kristalle des Juwelnebels, aber frei ausgerichtet)
-function crystal(out, base, dir, len, r, color, rand) {
+function crystal(out, base, dir, len, r, color, rand, mat = 'Glass') {
   const ax = dir.clone().normalize();
   const u = Math.abs(ax.y) > 0.9 ? V(1, 0, 0) : V(0, 1, 0);
   const s1 = u.clone().cross(ax).normalize(), s2 = ax.clone().cross(s1).normalize();
@@ -151,10 +152,10 @@ function crystal(out, base, dir, len, r, color, rand) {
     const i1 = (i + 1) % n, c = i % 2 ? light : color;
     const ctr = base.clone().addScaledVector(ax, body * 0.5);
     const m1 = b0[i].clone().add(b1[i1]).multiplyScalar(0.5).sub(ctr);
-    tri(out, b0[i], b1[i], b1[i1], c, 'Glass', 'Kristall', m1, 0.06);
-    tri(out, b0[i], b1[i1], b0[i1], c, 'Glass', 'Kristall', m1, 0.06);
+    tri(out, b0[i], b1[i], b1[i1], c, mat, 'Kristall', m1, 0.06);
+    tri(out, b0[i], b1[i1], b0[i1], c, mat, 'Kristall', m1, 0.06);
     const m2 = b1[i].clone().add(b1[i1]).add(tip).multiplyScalar(1 / 3).sub(ctr);
-    tri(out, b1[i], b1[i1], tip, i % 2 ? dark : light, 'Glass', 'Kristall', m2, 0.06);
+    tri(out, b1[i], b1[i1], tip, i % 2 ? dark : light, mat, 'Kristall', m2, 0.06);
   }
 }
 
@@ -240,7 +241,10 @@ export function islandShell(out, built, world) {
     const rg = ridge(a, t);
     const strata = Math.sin(y * 1.3 + Math.sin(a * 2) * 0.8) * 0.35;
     const v = -rg * 1.1 + (streak[j] - 0.5) * 1.5 + strata + (crack[j] && t > 0.1 ? 1 : 0);
-    if (y > soilLine[j]) return [soilTones[Math.max(0, Math.min(4, Math.round(2 + v * 0.8)))], st.soilMat];
+    if (y > soilLine[j]) {
+      if (st.layers) return [st.layers[Math.floor(Math.max(0, -y - 0.2) / 0.62) % st.layers.length], st.soilMat];
+      return [soilTones[Math.max(0, Math.min(4, Math.round(2 + v * 0.8)))], st.soilMat];
+    }
     const deep = t > 0.7 ? 0.6 : 0;
     return [rockTones[Math.max(0, Math.min(4, Math.round(2 + v + deep)))], st.rockMat];
   };
@@ -363,14 +367,22 @@ function hangers(out, st, g) {
   }
   if (kinds.has('lavadrips') || st.glow) {
     const glow = st.glow || '#ff5a14';
-    // glühende Adern: schmale Neon-Dreiecke knapp vor der Felswand
-    for (let i = 0; i < 70; i++) {
-      const a = rand() * TAU, t = 0.03 + rand() * 0.7;
-      const rr = surf(a, t) + 0.06;
-      const y = yAt(t);
-      const len = 0.6 + rand() * 1.4, da = (rand() - 0.5) * 0.04;
-      tri(out, P(a, rr, y), P(a + 0.03, rr, y), P(a + da, rr * 0.98, y - len), glow, 'Neon', 'Glut', V(Math.cos(a), 0, Math.sin(a)), 0.02);
-    }
+    // glühende Adern: Risse, die im Zickzack die Felswand hinunterlaufen und sich verzweigen
+    // (schmale Neon-Bänder knapp vor der Wand, nach unten dünner)
+    const crackFrom = (a, t, w, segs) => {
+      for (let s = 0; s < segs && t < 0.92; s++) {
+        const t2 = t + 0.05 + rand() * 0.06, a2 = a + (rand() - 0.5) * 0.09;
+        const p0 = P(a, surf(a, t) + 0.05, yAt(t)), p1 = P(a2, surf(a2, t2) + 0.05, yAt(t2));
+        const side = V(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(w / 2);
+        const o = V(Math.cos(a), 0, Math.sin(a));
+        tri(out, p0.clone().add(side), p0.clone().sub(side), p1, glow, 'Neon', 'Glut', o, 0.02);
+        if (rand() < 0.22) crackFrom(a2, t2, w * 0.7, Math.floor(segs / 2));
+        a = a2;
+        t = t2;
+        w *= 0.85;
+      }
+    };
+    for (let i = 0; i < 16; i++) crackFrom(rand() * TAU, 0.04 + rand() * 0.3, 0.22 + rand() * 0.1, 5 + Math.floor(rand() * 5));
     if (kinds.has('lavadrips'))
       for (let i = 0; i < 16; i++) {
         const a = rand() * TAU, t = 0.1 + rand() * 0.5;
@@ -379,6 +391,17 @@ function hangers(out, st, g) {
       }
   }
   if (kinds.has('crystals') && st.crystals) {
+    const cc = [].concat(st.crystals);
+    // Leuchtkristalle schräg aus der Erdkante direkt unter dem Rand (Höhle)
+    if (st.rimCrystals)
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * TAU + (rand() - 0.5) * 0.15, t = 0.02 + rand() * 0.06;
+        const base = P(a, surf(a, t) - 0.1, yAt(t));
+        for (let k = 0; k < 2 + Math.floor(rand() * 2); k++) {
+          const dir = V(Math.cos(a) * (0.7 + rand() * 0.4), -0.3 - rand() * 0.7, Math.sin(a) * (0.7 + rand() * 0.4)).add(V((rand() - 0.5) * 0.5, 0, (rand() - 0.5) * 0.5));
+          crystal(out, base.clone().add(V((rand() - 0.5) * 0.4, (rand() - 0.5) * 0.3, (rand() - 0.5) * 0.4)), dir, 0.8 + rand() * 1.2, 0.16 + rand() * 0.12, cc[i % cc.length], rand, 'Neon');
+        }
+      }
     for (let i = 0; i < 18; i++) {
       const a = rand() * TAU, t = 0.12 + rand() * 0.75;
       const rr = surf(a, t) * 0.9, y = yAt(t);
@@ -386,7 +409,7 @@ function hangers(out, st, g) {
       const n = 2 + Math.floor(rand() * 3);
       for (let k = 0; k < n; k++) {
         const dir = V(Math.cos(a) * (0.4 + rand() * 0.5), -0.6 - rand() * 0.6, Math.sin(a) * (0.4 + rand() * 0.5)).add(V((rand() - 0.5) * 0.5, 0, (rand() - 0.5) * 0.5));
-        crystal(out, base.clone().add(V((rand() - 0.5) * 0.5, (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.5)), dir, 1.2 + rand() * 2, 0.22 + rand() * 0.18, st.crystals, rand);
+        crystal(out, base.clone().add(V((rand() - 0.5) * 0.5, (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.5)), dir, 1.2 + rand() * 2, 0.22 + rand() * 0.18, cc[i % cc.length], rand);
       }
     }
   }
@@ -416,6 +439,20 @@ function hangers(out, st, g) {
         tri(out, p.clone().add(side), p.clone().sub(side), next, c, 'SmoothPlastic', 'Seetang', V(Math.cos(a), 0, Math.sin(a)), 0.02);
         p = next;
       }
+    }
+  }
+  if (kinds.has('corals')) {
+    // Korallenstöcke und Schwämme wachsen schräg aus der Erdkante (Riff)
+    const cols = ['#ff7a9a', '#ffb05a', '#c87aff', '#ff5f6a', '#ffd05a'];
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * TAU + (rand() - 0.5) * 0.15, t = 0.02 + rand() * 0.14;
+      const base = P(a, surf(a, t) - 0.05, yAt(t)), c = cols[i % cols.length];
+      for (let k = 0; k < 3; k++) {
+        const tipP = base.clone().add(V(Math.cos(a) * (0.5 + rand() * 0.5) + (rand() - 0.5) * 0.5, 0.2 + rand() * 0.6, Math.sin(a) * (0.5 + rand() * 0.5) + (rand() - 0.5) * 0.5));
+        spike(out, base, tipP, 0.1 + rand() * 0.05, 4, [c, tone(c, 0, -0.08)], 'SmoothPlastic', 'Koralle', rand);
+        out.push({ shape: 'Ball', name: 'Koralle', pos: tipP.clone().multiplyScalar(STUDS).toArray(), rot: [1, 0, 0, 0, 1, 0, 0, 0, 1], size: [0.22 * STUDS, 0.22 * STUDS, 0.22 * STUDS], color: tone(c, 0, 0.1), material: 'SmoothPlastic', transparency: 0 });
+      }
+      if (rand() < 0.5) out.push({ shape: 'Ellipsoid', name: 'Schwamm', pos: P(a, surf(a, t) + 0.2, yAt(t) - 0.3).multiplyScalar(STUDS).toArray(), rot: [1, 0, 0, 0, 1, 0, 0, 0, 1], size: [0.6 * STUDS, 0.45 * STUDS, 0.6 * STUDS], color: cols[(i + 2) % cols.length], material: 'Pebble', transparency: 0 });
     }
   }
   if (kinds.has('pearls')) {
