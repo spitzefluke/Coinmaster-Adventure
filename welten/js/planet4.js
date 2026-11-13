@@ -212,8 +212,35 @@ const WOLKENBURG = {
     reserve(0, 0, 4.6);
     put(castle, 0, 0, { rot: false });
     castle.rotation.y = rand() * TAU;
-    // Wolkenbäusche auf dem Boden
-    ctx.scatter(10, () => cloudPuff(kit, rand, rr(0.6, 1.1)), 0.9, 5.5, R - 1);
+    // Burgplatz wie in einer Altstadt: gepflasterter Platz um die Burg, Pflasterwege nach außen, Beete mit
+    // Hecken und Blumen am Platzrand, Fahnenmasten; Wolkenbäusche nur noch am Inselrand
+    ctx.paint(0, 0, 6.6, '#e8dcc4', 'Cobblestone');
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.4;
+      for (let r = 6; r < R - 1.5; r += 1) ctx.paint(Math.cos(a) * r, Math.sin(a) * r, 0.9, '#dccfb4', 'Cobblestone');
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU + 0.15, x = Math.cos(a) * 7.2, z = Math.sin(a) * 7.2;
+      if (!ctx.free(x, z, 0.6)) continue;
+      reserve(x, z, 0.7);
+      const bed = new THREE.Group();
+      bed.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.22, 0.7), marble), 0, 0.11, 0));
+      const hedge = kit.bush(0.32, '#4f9a3f', rand);
+      hedge.position.set(-0.35, 0.2, 0);
+      bed.add(hedge, at(kit.flowerPatch(['#ff7a9a', '#ffe25f', '#b07bff', '#ffffff'], rand, 4), 0.35, 0.2, 0));
+      put(bed, x, z, { rot: false });
+      bed.rotation.y = -a + Math.PI / 2;
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU, x = Math.cos(a) * 5.4, z = Math.sin(a) * 5.4;
+      if (!ctx.free(x, z, 0.3)) continue;
+      const pole = new THREE.Group();
+      pole.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3.2, 6), gm), 0, 1.6, 0));
+      pole.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.03), M(['#5a7aff', '#ffd76a', '#ff7a9a'][i % 3], { side: THREE.DoubleSide })), 0.47, 2.85, 0));
+      put(pole, x, z, { rot: false });
+      pole.rotation.y = -a;
+    }
+    ctx.scatter(16, () => cloudPuff(kit, rand, rr(0.6, 1.1)), 0.9, R - 3, R - 1);
     // goldene Brücken zu kleinen Wolkeninseln außerhalb der Insel
     for (let i = 0; i < 2; i++) {
       const a = rand() * TAU * 0.4 + i * Math.PI;
