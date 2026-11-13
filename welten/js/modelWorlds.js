@@ -1326,11 +1326,72 @@ function seaRocks(ctx, n = 7) {
   scatterModels(ctx, 2, ['rock_single_C@meer', 'rock_single_D@meer'], 6, 8, { rMin: ctx.R * 0.6, gap: 0.7 });
 }
 
+// Riffstock (Bommie) wie am Great Barrier Reef: ein Felshügel voller Korallen. Tischkorallen als flache,
+// übereinander gestaffelte Platten auf kurzen Stielen, Hirnkorallen als Kuppeln, Geweihkorallen, Fächer
+function reefBommie(ctx, kit, size) {
+  const { rand, rr } = ctx;
+  const g = new THREE.Group();
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.8, ...o });
+  const base = kit.rockMesh(size, '#9a6a8a', rand);
+  base.scale.set(1.25, 1.3, 1.1);
+  g.add(base);
+  const top = size * 0.9;
+  const tables = ['#ff9a6a', '#e8706a', '#ffb07a', '#d87aa8', '#f2c08a'];
+  for (let i = 0; i < 5 + Math.floor(rand() * 3); i++) {
+    const a = rand() * TAU, d = size * rr(0.2, 0.85), h = top * rr(0.5, 1.15), r = size * rr(0.4, 0.65);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.3, 6), M('#8a6a5a'));
+    stem.position.set(x, h - 0.15, z);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.92, 0.07, 10), M(pick(rand, tables)));
+    plate.position.set(x, h, z);
+    plate.rotation.set(rr(-0.15, 0.15), rand() * 3, rr(-0.15, 0.15));
+    g.add(stem, plate);
+  }
+  for (let i = 0; i < 3; i++) {
+    const b = kit.brainCoral(pick(rand, ['#d8a0b8', '#a8c87a', '#e8b07a', '#9a8ad8']), rand);
+    const a = rand() * TAU, d = size * rr(0.5, 0.95);
+    b.position.set(Math.cos(a) * d, top * rr(0.1, 0.6), Math.sin(a) * d);
+    b.scale.setScalar(rr(0.7, 1.1));
+    g.add(b);
+  }
+  for (let i = 0; i < 3; i++) {
+    const c = kit.coral(pick(rand, ['#ff7a8a', '#ffb05a', '#e8d8c0', '#b07bff']), rand);
+    const a = rand() * TAU, d = size * rr(0.2, 0.7);
+    c.position.set(Math.cos(a) * d, top * rr(0.6, 1), Math.sin(a) * d);
+    c.scale.setScalar(rr(0.6, 0.9));
+    g.add(c);
+  }
+  // Fächerkoralle: flacher Fächer aus Dreiecken
+  const fan = new THREE.Group();
+  const fanM = M('#c85aa8', { side: THREE.DoubleSide });
+  for (let i = 0; i < 5; i++) {
+    const a0 = -0.9 + i * 0.36, a1 = a0 + 0.36, L = size * 0.9;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, Math.sin(a0) * L, Math.cos(a0) * L, 0, Math.sin(a1) * L, Math.cos(a1) * L, 0], 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, fanM);
+    m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.03, name: 'Faecherkoralle' };
+    fan.add(m);
+  }
+  const fa = rand() * TAU;
+  fan.position.set(Math.cos(fa) * size * 0.6, top * 0.7, Math.sin(fa) * size * 0.6);
+  fan.rotation.y = -fa;
+  g.add(fan);
+  return g;
+}
 const KORALLENRIFF = {
   landmark: true, // Korallenturm
   keepBase: true, // Wrack, Korallenbogen, Korallen, Fische
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rr } = ctx;
+    // Riffstöcke mit Tischkorallen, Hirnkorallen, Geweihkorallen und Fächern; dazwischen Sand mit Schutt
+    for (let i = 0; i < 7; i++) {
+      const s = rr(1.1, 1.7), p = ctx.spot(s * 1.5, 3, R - 3) || ctx.spot(s * 1.1, 3, R - 3);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], s * 1.4);
+      ctx.put(reefBommie(ctx, kit, s), p[0], p[1]);
+    }
+    groundPatches(ctx, 10, [['#f2e6c4', 'Sand'], ['#d8c8a0', 'Sand'], ['#c8b890', 'Pebble']]);
     // Schatzplatz: offene Truhe zwischen Fässern und Kisten, wie aus dem Wrack gespült
     const loot = clearing(ctx, 2.6, 4, R - 3);
     if (loot) {

@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -2482,8 +2482,9 @@ const BUILDERS = {
   korallenriff({ scatter, rand, rr, root, anims, scene }) {
     lightRays(scene, anims, '#bff8ff', rand);
     const cols = ['#ff7a8a', '#ffb05a', '#ff5fb0', '#b07bff', '#ffe25f'];
-    scatter(10, (i) => coral(cols[i % cols.length], rand), 0.6);
-    scatter(6, (i) => brainCoral(['#ff9a7a', '#d87aff', '#7ad8a0'][i % 3], rand), 0.55);
+    // feste Anzahl: die Korallen wachsen vor allem auf den Riffstöcken (modelWorlds.js), nicht gleichmäßig verstreut
+    scatter(18, (i) => coral(cols[i % cols.length], rand), 0.6, 2, R - 2.6);
+    scatter(10, (i) => brainCoral(['#ff9a7a', '#d87aff', '#7ad8a0'][i % 3], rand), 0.55, 2, R - 2.6);
     scatter(5, () => seaweed(rand() < 0.5 ? '#2f8a5a' : '#4aa86a', rand, anims), 0.3);
     scatter(4, () => rockMesh(rr(0.3, 0.55), '#8a7050', rand), 0.4);
     fishSchool(root, anims, rand, ['#ffb02e', '#5fd3ff', '#ff5fb0', '#ffe25f'], 9);
