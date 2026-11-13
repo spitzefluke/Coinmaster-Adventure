@@ -119,8 +119,13 @@ const LANDMARK = {
       parts.push(root);
     }
     const leaves = ['#2f7a3a', '#3f8f45', '#357f3c'];
-    for (const [x, y, z, r] of [[0, 8.2, 0, 2.6], [1.8, 7.4, 0.6, 1.9], [-1.7, 7.6, -0.4, 2.0], [0.4, 7.1, -1.9, 1.8], [-0.6, 7.3, 1.9, 1.8], [0, 9.6, 0, 1.7]])
-      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M(leaves[Math.abs(Math.round(x + z)) % 3])), x, y, z));
+    // kantige Blattballen (in Roblox Fläche für Fläche aus Keilen, wie die Laubbäume) statt glatter Kugeln
+    for (const [x, y, z, r] of [[0, 8.2, 0, 2.6], [1.8, 7.4, 0.6, 1.9], [-1.7, 7.6, -0.4, 2.0], [0.4, 7.1, -1.9, 1.8], [-0.6, 7.3, 1.9, 1.8], [0, 9.6, 0, 1.7]]) {
+      const ball = at(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 1.08, 0), M(leaves[Math.abs(Math.round(x + z)) % 3])), x, y, z);
+      ball.rotation.set(x * 0.7, y * 0.9, z * 0.5);
+      ball.userData.rbx = { facets: true, facetThick: 0.12, name: 'Krone' };
+      parts.push(ball);
+    }
     // Baumhaus auf halber Höhe
     parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 2.6), M('#9a7048')), 0, 4.2, 0));
     parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1.2), M('#b58654')), 0.9, 4.85, 0.9));
@@ -295,9 +300,13 @@ function details(ctx, kit) {
     scatter(6, () => rockMesh(rr(0.12, 0.22), '#9a9aa6', rand), 0.2);
     if (id === 'wald') scatter(4, () => mushroom(rr(0.25, 0.45), rand() < 0.5 ? '#d84a3a' : '#e8c070', rand, false), 0.25);
   } else if (id === 'stadt') {
-    // Hydranten und Blumenkübel
-    scatter(6, () => group(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.45, 8), M('#d83a3a')), 0, 0.22, 0), at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M('#d83a3a')), 0, 0.46, 0)), 0.2);
-    scatter(8, () => group(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.5), M('#8a8f9a')), 0, 0.15, 0), at(new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), M('#4f9a3f')), 0, 0.38, 0)), 0.3);
+    // Blumenkübel mit Busch (Hydranten stehen als Modelle an den Straßen; vorher standen hier über 40 rote Säulen)
+    scatter(2, () => {
+      const box = at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.5), M('#8a8f9a')), 0, 0.15, 0);
+      const b = kit.bush(0.24, '#4f9a3f', rand);
+      b.position.y = 0.22;
+      return group(box, b);
+    }, 0.3);
   } else if (id === 'eis') {
     scatter(16, () => rockMesh(rr(0.1, 0.22), '#e8f6ff', rand), 0.18);
     scatter(8, () => { const m = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), M('#bfe8ff', { roughness: 0.2 })), 0, 0.25, 0); m.scale.set(0.7, rr(2, 3.5), 0.7); return m; }, 0.15);

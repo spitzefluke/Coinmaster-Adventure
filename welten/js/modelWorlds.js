@@ -522,6 +522,18 @@ const WALD = {
     scatterModels(ctx, 4, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.8);
     scatterModels(ctx, 4, ['rock_single_B', 'rock_single_C', 'rock_single_E'], 2.6, 3.6);
     ctx.scatter(5, () => kit.mushroom(rr(0.35, 0.6), rand() < 0.5 ? '#e0433a' : '#c8a2ff', rand, true), 0.3);
+    // Waldboden wie im Nadelwald: Flecken aus Nadelstreu und dunklem Moos statt glattem Wiesengrün
+    for (let i = 0; i < 18; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#55603a', 'Ground'], ['#4a7a30', 'Grass'], ['#635238', 'Ground']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), c, m);
+    }
+    // Unterholz: Farne, Moospolster, umgestürzte Stämme mit Moos, junge Tannen
+    const inner = R - 2.6;
+    ctx.scatter(18, () => kit.fern(rr(0.45, 0.72), pick(rand, ['#3f8a3a', '#4f9a3f', '#5aa848']), rand), 0.45, 2, inner);
+    ctx.scatter(14, () => kit.mossMound(rr(0.4, 0.7), pick(rand, ['#5fae3a', '#4f9a32', '#6abf44']), rand), 0.5, 2, inner);
+    ctx.scatter(4, () => kit.fallenLog(rr(1.8, 2.6), rr(0.16, 0.24), '#6b4a2e', rand), 1.3, 3, inner);
+    scatterModels(ctx, 10, ['tree_single_A', 'tree_single_B'], 0.9, 1.3, { rMax: inner, gap: 0.5 }); // junge Tannen
   },
   backdrop(ctx) {
     neighborIsles(ctx, { n: 7, peak: 0.5, trees: ['trees_A_large', 'trees_A_medium', 'trees_B_large', 'tree_single_A', 'tree_single_B'], nTrees: [6, 9] });
@@ -562,7 +574,7 @@ export function clearing(ctx, d, rMin, rMax) {
 // ── Stadt: Straßenkreuz aus Straßenplatten, Häuserzeilen, Autos, Laternen, Ampeln ──
 const STADT = {
   landmark: true, // Wolkenkratzer aus planet1.js
-  build(ctx) {
+  build(ctx, kit) {
     const { rand, rr, R, reserve } = ctx;
     const T = 3.2, S = T / 2; // Straßenplatte 2 Modell-Einheiten → 3,2 Einheiten
     const k = Math.floor((R - 2.2) / T);
@@ -599,6 +611,56 @@ const STADT = {
       const x = axis ? lane : along, z = axis ? along : lane;
       const dir = axis ? (lane > 0 ? 0 : Math.PI) : lane > 0 ? Math.PI / 2 : -Math.PI / 2;
       stand(ctx, model(cars[i % cars.length], 2), x, z, { rot: dir, sink: -0.06 });
+    }
+    // Stadtpark in einer freien Ecke: Rasen, Brunnen, Laubbäume, Bänke zum Brunnen, Blumen
+    const park = ctx.spot(2.4, 4, R - 2.4) || ctx.spot(2, 4, R - 2);
+    if (park) {
+      const [px, pz] = park;
+      ctx.paint(px, pz, 2.7, '#5fae4f', 'Grass');
+      reserve(px, pz, 2.5);
+      ctx.put(kit.fountain(ctx.anims), px, pz, { rot: false });
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + 0.4, x = px + Math.cos(a) * 2, z = pz + Math.sin(a) * 2;
+        ctx.put(kit.roundTree(rr(1.8, 2.3), pick(rand, ['#4f9a3f', '#5aa84a']), rand), x, z);
+        const b = a + Math.PI / 4;
+        stand(ctx, model('city_bench', 2.6), px + Math.cos(b) * 1.35, pz + Math.sin(b) * 1.35, { face: park });
+        ctx.put(kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff'], rand, 4), px + Math.cos(b + 0.4) * 2.1, pz + Math.sin(b + 0.4) * 2.1);
+      }
+    }
+    // Uferpromenade am Inselrand: Geländer aus Pfosten und Handlauf, davor abwechselnd Baum im Kübel,
+    // Bank und Laterne (vorher ein leerer grauer Streifen)
+    {
+      const rail = new THREE.MeshStandardMaterial({ color: '#5a6270', metalness: 0.5, roughness: 0.4 });
+      const rr0 = R - 0.45, n = Math.round((TAU * rr0) / 1.3);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU, x = Math.cos(a) * rr0, z = Math.sin(a) * rr0, y = ctx.height(x, z);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 6), rail);
+        post.position.set(x, y + 0.35, z);
+        ctx.root.add(post);
+        const len = TAU * rr0 / n, bar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, len), rail);
+        const am = a + Math.PI / n;
+        bar.position.set(Math.cos(am) * rr0, y + 0.68, Math.sin(am) * rr0);
+        bar.rotation.y = -am;
+        ctx.root.add(bar);
+      }
+      const rp = R - 1.7, slots = Math.round((TAU * rp) / 3.2);
+      for (let i = 0; i < slots; i++) {
+        const a = (i / slots) * TAU + 0.15, x = Math.cos(a) * rp, z = Math.sin(a) * rp;
+        if (!ctx.free(x, z, 0.6)) continue;
+        reserve(x, z, 0.7);
+        const kind = i % 3;
+        if (kind === 0) {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 0.8), new THREE.MeshStandardMaterial({ color: '#8a8f9a' }));
+          box.position.y = 0.17;
+          const g = new THREE.Group();
+          g.add(box);
+          const t = kit.roundTree(rr(1.6, 2), pick(rand, ['#4f9a3f', '#5aa84a']), rand);
+          t.position.y = 0.3;
+          g.add(t);
+          ctx.put(g, x, z);
+        } else if (kind === 1) stand(ctx, model('city_bench', 2.6), x, z, { face: [0, 0] });
+        else stand(ctx, model('city_streetlight', 2.6), x, z, { face: [0, 0] });
+      }
     }
     // Kleinkram in freien Ecken: Hydranten, Bänke, Büsche im Topf, Container, Wasserturm, Bäume
     scatterModels(ctx, 4, ['city_firehydrant'], 2.6, 2.6, { gap: 1 });

@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -618,6 +618,49 @@ function flower(c, h = 0.35) {
   petals.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.012, name: 'Blume' };
   const mid = at(new THREE.Mesh(new THREE.SphereGeometry(0.04 * k, 6, 4), M('#ffd23f')), 0, h + 0.03 * k, 0);
   return group(stem, petals, mid);
+}
+// Farn: sieben bis neun Wedel, die vom Fuß aus bogenförmig nach außen hängen (je Wedel zwei Dreiecke)
+function fern(s, c, rand) {
+  const pts = [], n = 7 + Math.floor(rand() * 3);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand() * 0.4, len = s * (0.8 + rand() * 0.4), w = s * 0.13;
+    const ca = Math.cos(a), sa = Math.sin(a), px = -sa * w, pz = ca * w;
+    const mid = [ca * len * 0.5, s * (0.55 + rand() * 0.2), sa * len * 0.5], tip = [ca * len, s * 0.2, sa * len];
+    pts.push(0, 0.02, 0, mid[0] + px, mid[1], mid[2] + pz, mid[0] - px, mid[1], mid[2] - pz);
+    pts.push(mid[0] + px, mid[1], mid[2] + pz, ...tip, mid[0] - px, mid[1], mid[2] - pz);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, M(c, { side: THREE.DoubleSide }));
+  m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.02, name: 'Farn' };
+  return group(m);
+}
+// Moospolster: flacher, kantiger Hügel in zwei Grüntönen
+function mossMound(s, c, rand) {
+  const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(c));
+  m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Moos' };
+  m.scale.y = 0.38;
+  m.position.y = s * 0.1;
+  return group(m);
+}
+// umgestürzter Stamm mit Moos obendrauf und einer Bruchstelle
+function fallenLog(len, r, c, rand, moss = '#5fae3a') {
+  const g = new THREE.Group();
+  const log = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, r, len, 8), M(c));
+  log.rotation.z = Math.PI / 2;
+  log.position.y = r * 0.8;
+  g.add(log);
+  const cut = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.04, 8), M('#c8a070'));
+  cut.rotation.z = Math.PI / 2;
+  cut.position.set(len / 2 + 0.01, r * 0.8, 0);
+  g.add(cut);
+  for (let i = 0; i < 2; i++) {
+    const mm = mossMound(r * (0.9 + rand() * 0.4), moss, rand);
+    mm.position.set((rand() - 0.5) * len * 0.6, r * 1.45, 0);
+    g.add(mm);
+  }
+  return g;
 }
 // Blumengruppe: mehrere Blumen einer Farbe dicht beieinander (so wachsen sie auf Wiesen)
 function flowerPatch(colors, rand, n = 4 + Math.floor(rand() * 4)) {
@@ -1068,18 +1111,6 @@ function log(len = 1.4, r = 0.17) {
   const moss = at(new THREE.Mesh(new THREE.SphereGeometry(r * 0.9, 6, 4), M('#4f9a3f')), len * 0.2, r * 1.8, 0);
   moss.scale.set(1.6, 0.4, 1);
   return group(m, moss);
-}
-function fern(c, rand) {
-  const g = new THREE.Group();
-  for (let i = 0; i < 5; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 4), M(c));
-    leaf.scale.set(0.35, 0.12, 1);
-    const a = (i / 5) * Math.PI * 2 + rand();
-    leaf.position.set(Math.sin(a) * 0.18, 0.14, Math.cos(a) * 0.18);
-    leaf.rotation.set(-0.5 * Math.cos(a), a, 0.5 * Math.sin(a));
-    g.add(leaf);
-  }
-  return g;
 }
 function fountain(anims) {
   const bowl = at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1, 0.3, 20), M('#c9c4d6')), 0, 0.15, 0);
@@ -1637,7 +1668,7 @@ const EXTRAS = {
   wald({ scatter, rand, rr }) {
     scatter(3, () => log(rr(1, 1.6)), 0.8);
     scatter(4, () => stump(rr(0.18, 0.3)), 0.35);
-    scatter(10, () => fern(rand() < 0.5 ? '#3f8a46' : '#5aa850', rand), 0.25);
+    scatter(10, () => fern(0.4 + rand() * 0.2, rand() < 0.5 ? '#3f8a46' : '#5aa850', rand), 0.25);
   },
   stadt({ put, rand, anims, reserve }) {
     // Kreisverkehr mit Brunnen in der Mitte
