@@ -373,7 +373,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -828,15 +828,17 @@ function gumdrop(c) {
   m.scale.y = 1.3;
   return group(m);
 }
+// Krater: Wall aus zwei schrägen Ringen (außen flach ansteigend, innen steiler abfallend), dunklerer Boden.
+// In Roblox Flächen aus Keilen (vorher Ringe aus Zylindern, die wie Zahnräder aussahen)
 function crater(r, c, rand) {
-  const rim = new THREE.Mesh(jitter(new THREE.TorusGeometry(r, r * 0.22, 6, 18), rand, r * 0.08), M(c));
-  rim.rotation.x = Math.PI / 2;
-  rim.scale.z = 0.45;
-  rim.position.y = 0.05;
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(r, 18), M('#8a8d96'));
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0.02;
-  return group(rim, floor);
+  const wall = M(c), inner = M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.06).getHexString());
+  const out = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 1.45, r * 0.16, 10, 1, true), rand, r * 0.06), wall);
+  out.position.y = r * 0.08;
+  const ins = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 0.6, r * 0.16, 10, 1, true), rand, r * 0.05), inner);
+  ins.position.y = r * 0.08;
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.64, r * 0.64, 0.03, 14), M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.1).getHexString()));
+  floor.position.y = 0.01;
+  return group(out, ins, floor);
 }
 function flag(c) {
   const pole = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), M('#dddddd', { metalness: 0.6 })), 0, 0.9, 0);
@@ -2316,9 +2318,13 @@ const BUILDERS = {
     }, 0.8);
   },
 
-  mond({ put, scatter, rand, rr, scene, modelWorld }) {
+  mond({ put, scatter, spot, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#2a6ad1', bands: ['#3fae5a', '#ffffff55', '#2f8a4a', '#ffffff40'], size: 6, pos: [-20, 5, -32], glow: '#4a8aff' });
-    scatter(6, () => crater(rr(0.6, 1.1), '#a0a3ac', rand), 1.1, undefined, undefined, { lay: true, sink: 0.02 });
+    // wenige, dafür große Krater (feste Anzahl: nicht mit der Inselfläche vervielfachen)
+    for (let i = 0; i < 9; i++) {
+      const r = rr(0.9, 2), p = spot(r * 1.4, 2, R - 2.6);
+      if (p) put(crater(r, '#a0a3ac', rand), p[0], p[1], { lay: true, sink: 0.02 });
+    }
     put(flag('#ffd76a'), 0.6, 0.4);
     if (!modelWorld) scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
     // Mondlandefähre

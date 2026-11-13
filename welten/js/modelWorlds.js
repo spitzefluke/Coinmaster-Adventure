@@ -942,14 +942,67 @@ function rocksOf(ctx, v, n = 7) {
   scatterModels(ctx, 3, [`rocks_B${sfx}`], 1.4, 1.9, { rMin: ctx.R * 0.55, gap: 0.75 });
 }
 
+// Reifenspuren: zwei parallele, dunkle Streifen entlang einer geschwungenen Fahrt (Mond, Mars)
+function tracks(ctx, color, { n = 2, len = 14 } = {}) {
+  const { rand, rr, R } = ctx;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 1 });
+  for (let t = 0; t < n; t++) {
+    const p0 = ctx.spot(0.3, 3, R - 4);
+    if (!p0) continue;
+    let [x, z] = p0, a = rand() * TAU;
+    for (let s = 0; s < len; s++) {
+      const step = 0.7, nx = x + Math.cos(a) * step, nz = z + Math.sin(a) * step;
+      if (Math.hypot(nx, nz) > R - 2) break;
+      for (const side of [-1, 1]) {
+        const ox = -Math.sin(a) * 0.32 * side, oz = Math.cos(a) * 0.32 * side;
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(step + 0.04, 0.025, 0.13), mat);
+        layOnGround(strip, ctx.height, (x + nx) / 2 + ox, (z + nz) / 2 + oz, { yaw: -a, lift: 0.005 });
+        ctx.root.add(strip);
+      }
+      x = nx; z = nz; a += rr(-0.25, 0.25);
+    }
+  }
+}
+// große, scharfkantige Findlinge (wie „Tracy's Rock“ bei Apollo 17) und Regolith-Flecken
+function boulders(ctx, kit, colors, n = 3, size = [1.1, 1.7]) {
+  const { rand, rr, R } = ctx;
+  for (let i = 0; i < n; i++) {
+    const p = ctx.spot(size[1] * 1.2, 3, R - 3);
+    if (!p) continue;
+    ctx.reserve(p[0], p[1], size[1]);
+    const g = kit.rockMesh(rr(size[0], size[1]), pick(rand, colors), rand);
+    g.scale.y = rr(0.9, 1.3);
+    // zwei kleinere Bruchstücke daneben
+    for (let k = 0; k < 2; k++) {
+      const f = kit.rockMesh(rr(0.45, 0.6), pick(rand, colors), rand);
+      const a = rand() * TAU;
+      f.position.set(Math.cos(a) * size[0] * 1.1, 0, Math.sin(a) * size[0] * 1.1);
+      g.add(f);
+    }
+    ctx.put(g, p[0], p[1]);
+  }
+}
+function groundPatches(ctx, n, palette) {
+  const { rand, rr, R } = ctx;
+  for (let i = 0; i < n; i++) {
+    const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+    const [c, m] = pick(rand, palette);
+    ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.3, 2.6), c, m);
+  }
+}
+
 const MOND = {
   landmark: true, // Rakete auf der Startrampe
   keepBase: true, // Erde am Himmel, Krater, Flagge, Landefähre
   baseSpots: [[0.6, 0.4, 0.6], [-2, -1.6, 1.3]],
-  build(ctx) {
+  build(ctx, kit) {
     const { R } = ctx;
     const base = clearing(ctx, 6, 5, R - 4);
     if (base) station(ctx, base, ['basemodule_A', 'basemodule_E', 'basemodule_garage']);
+    // Regolith in helleren und dunkleren Flecken, Findlinge, Reifenspuren des Mondautos
+    groundPatches(ctx, 14, [['#c2c4ca', 'Slate'], ['#8e9098', 'Rock'], ['#a8aab2', 'Sand']]);
+    boulders(ctx, kit, ['#9a9da6', '#8a8d96', '#a8abb2'], 3);
+    tracks(ctx, '#7a7d86', { n: 2, len: 16 });
     const pad = place(ctx, 'landingpad_large', 2.6, { rMin: 4, rMax: R - 3 });
     if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
     const solar = clearing(ctx, 3, 4, R - 3);
