@@ -42,7 +42,10 @@ function goldTree(kit, rand, h) {
   const leaf = E('#ffd76a', 0.35, { metalness: 0.4, roughness: 0.4 });
   for (let i = 0; i < 3; i++) {
     const r = h * (0.26 - i * 0.04);
-    g.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leaf), (rand() - 0.5) * h * 0.3, h * (0.68 + i * 0.13), (rand() - 0.5) * h * 0.3));
+    const ball = at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leaf), (rand() - 0.5) * h * 0.3, h * (0.68 + i * 0.13), (rand() - 0.5) * h * 0.3);
+    ball.rotation.set(rand() * 3, rand() * 3, 0);
+    ball.userData.rbx = { facets: true, facetThick: Math.min(0.15, r * 0.15), name: 'Goldlaub' }; // kantige Krone wie die Laubbäume
+    g.add(ball);
   }
   return g;
 }
@@ -333,10 +336,44 @@ const ENGELSGARTEN = {
       root.add(stairs);
       ctx.reserve(x0, z0, 1.4);
     }
-    ctx.scatter(2, () => goldTree(kit, rand, rr(2.2, 3.2)), 1.2, 4, R - 1);
-    ctx.scatter(3, () => kit.bush(rr(0.35, 0.5), '#e8f4d8', rand), 0.5, 3, R - 1);
-    ctx.scatter(6, () => kit.flower(rand() < 0.5 ? '#ffffff' : '#ffd76a'), 0.2, 2, R - 1);
-    ctx.scatter(1, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 1.5);
+    // Lichtbrunnen in einem Rondell wie in einem englischen Garten: Kiesplatz, Beeteinfassung aus Steinen
+    if (f) {
+      ctx.paint(f[0], f[1], 3.4, '#ece4d4', 'Pebble');
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * TAU, x = f[0] + Math.cos(a) * 2.1, z = f[1] + Math.sin(a) * 2.1;
+        const st = at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.3), M(['#d8d0c0', '#c8c0b0', '#e2dacc'][i % 3])), 0, 0.05, 0);
+        put(group(st), x, z, { rot: false });
+        st.parent.rotation.y = -a;
+      }
+    }
+    // Wege aus hellem Kies, gesäumt von weißen Hecken und Lavendel-, Rosen- und Lilienbeeten
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + rand();
+      for (let r = 3; r < R - 2; r += 1.1) ctx.paint(Math.cos(a) * r, Math.sin(a) * r, 0.8, '#efe8da', 'Pebble');
+    }
+    ctx.scatter(6, () => goldTree(kit, rand, rr(2.2, 3.2)), 1.2, 4, R - 2.6);
+    ctx.scatter(14, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const b = kit.bush(rr(0.28, 0.42), ['#6aa85a', '#5a984a'][i % 2], rand); // grüne Hecken heben sich vom hellen Boden ab
+        b.position.set(i * 0.55 - 0.55, 0, rr(-0.1, 0.1));
+        g.add(b);
+      }
+      return g;
+    }, 0.9, 3, R - 2.6);
+    ctx.scatter(16, () => kit.flowerPatch(['#ffffff', '#ffd76a', '#c8a8ff', '#ffc8e0'], rand, 6), 0.5, 2, R - 2.6);
+    // Lavendel: dichte violette Büschel aus schmalen Ähren
+    ctx.scatter(10, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 9; i++) {
+        const h = rr(0.35, 0.55), a = rand() * TAU, d = rand() * 0.25;
+        const stalk = at(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, h, 4), M('#6a8a5a')), Math.cos(a) * d, h / 2, Math.sin(a) * d);
+        const head = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.16, 5), M('#9a7ad8')), Math.cos(a) * d, h + 0.06, Math.sin(a) * d);
+        g.add(stalk, head);
+      }
+      return g;
+    }, 0.4, 2, R - 2.6);
+    ctx.scatter(4, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 2.6);
   },
   emitters(ctx, add) {
     add('Lichtfunken', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#fff2a0', '#ffffff'], 0.16, 14, [0.1, 0.4], [5, 8], { light: 1 });
