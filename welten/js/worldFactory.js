@@ -365,11 +365,15 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   };
 
   const shared = {};
-  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, lights: { hemi, sun }, R };
+  // Boden bemalen (Webseite: flache Scheibe; Roblox: die Bodendreiecke darunter bekommen Farbe und Material)
+  // für ausgetretene Pfade, Dorfplätze, Felder. material: Roblox-Material, sonst das des Bodens.
+  shared.paint = [];
+  const paint = (x, z, r, color, material = null) => shared.paint.push({ x, z, r, color, material });
+  const ctx = { world, rand, rr, root, scene, anims, put, spot, reserve, free, scatter, height, M, E, shared, paint, lights: { hemi, sun }, R };
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -498,6 +502,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     emitters: shared.emitters || [], // zusätzliche Partikel (Leben, Himmelseffekte), Webseiten-Einheiten
+    paint: shared.paint || [], // bemalter Boden (Pfade, Plätze): in Roblox färbt terrainSurface die Dreiecke
     sounds: shared.sounds || [], // Plätze für Klänge mit Vorschlag (SoundId setzt man in Roblox)
     update(t, dt) {
       for (const a of anims) a(t, dt);
@@ -548,14 +553,29 @@ function roundTree(h, c, rand) {
   const n = 2 + Math.floor(rand() * 2);
   for (let i = 0; i < n; i++) {
     const s = h * (0.32 - i * 0.05);
-    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(c));
+    const tone = i % 2 ? '#' + new THREE.Color(c).offsetHSL(0, 0.02, 0.05).getHexString() : c;
+    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(tone));
+    b.userData.rbx = { facets: true, facetThick: 0.06, name: 'Krone' }; // kantige Krone statt Kugel
     b.position.set((rand() - 0.5) * h * 0.25, h * (0.6 + i * 0.18), (rand() - 0.5) * h * 0.25);
     g.add(b);
   }
   return g;
 }
+// Busch: zwei bis drei kantige Blattballen in zwei Tönen (in Roblox Fläche für Fläche aus Keilen, keine Kugel)
 function bush(s, c, rand) {
-  return at(new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.3), M(c)), 0, s * 0.6, 0);
+  const dark = '#' + new THREE.Color(c).offsetHSL(0.01, 0, -0.07).getHexString();
+  const g = new THREE.Group();
+  const n = rand() < 0.5 ? 1 : 2;
+  for (let i = 0; i < n; i++) {
+    const r = s * (i ? 0.62 + rand() * 0.2 : 1);
+    const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.3), M(i % 2 ? dark : c));
+    m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Busch' };
+    const a = rand() * Math.PI * 2, d = i ? s * 0.7 : 0;
+    m.position.set(Math.cos(a) * d, r * 0.62, Math.sin(a) * d);
+    m.scale.y = 0.8;
+    g.add(m);
+  }
+  return g;
 }
 function rockMesh(s, c, rand, mat) {
   const m = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.45), mat || M(c));
@@ -578,10 +598,117 @@ function mushroom(h, cap, rand, glow) {
   }
   return g;
 }
-function flower(c) {
-  const stem = at(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 4), M('#3f8a46')), 0, 0.17, 0);
-  const head = at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.08, 0), M(c, { emissive: c, emissiveIntensity: 0.15 })), 0, 0.37, 0);
-  return group(stem, head);
+// Blume: Stiel mit Blatt, fünf spitze Blütenblätter (leicht nach oben gewölbt) um eine Mitte
+// (in Roblox je Blatt zwei Keile)
+function flower(c, h = 0.35) {
+  const stem = at(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, h, 4), M('#3f8a46')), 0, h / 2, 0);
+  const pts = [], k = h / 0.35;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2, w = 0.62;
+    pts.push(Math.cos(a - w) * 0.03 * k, h + 0.01 * k, Math.sin(a - w) * 0.03 * k, Math.cos(a) * 0.13 * k, h + 0.08 * k, Math.sin(a) * 0.13 * k, Math.cos(a + w) * 0.03 * k, h + 0.01 * k, Math.sin(a + w) * 0.03 * k);
+  }
+  // Blatt am Stiel
+  pts.push(0, h * 0.3, 0, 0.11 * k, h * 0.45, 0.03 * k, 0.04 * k, h * 0.52, 0);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.addGroup(0, 15, 0);
+  geo.addGroup(15, 3, 1);
+  geo.computeVertexNormals();
+  const petals = new THREE.Mesh(geo, [M(c, { side: THREE.DoubleSide, emissive: c, emissiveIntensity: 0.12 }), M('#4f9a3f', { side: THREE.DoubleSide })]);
+  petals.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.012, name: 'Blume' };
+  const mid = at(new THREE.Mesh(new THREE.SphereGeometry(0.04 * k, 6, 4), M('#ffd23f')), 0, h + 0.03 * k, 0);
+  return group(stem, petals, mid);
+}
+// Farn: sieben bis neun Wedel, die vom Fuß aus bogenförmig nach außen hängen (je Wedel zwei Dreiecke)
+function fern(s, c, rand) {
+  const pts = [], n = 7 + Math.floor(rand() * 3);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand() * 0.4, len = s * (0.8 + rand() * 0.4), w = s * 0.13;
+    const ca = Math.cos(a), sa = Math.sin(a), px = -sa * w, pz = ca * w;
+    const mid = [ca * len * 0.5, s * (0.55 + rand() * 0.2), sa * len * 0.5], tip = [ca * len, s * 0.2, sa * len];
+    pts.push(0, 0.02, 0, mid[0] + px, mid[1], mid[2] + pz, mid[0] - px, mid[1], mid[2] - pz);
+    pts.push(mid[0] + px, mid[1], mid[2] + pz, ...tip, mid[0] - px, mid[1], mid[2] - pz);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, M(c, { side: THREE.DoubleSide }));
+  m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.02, name: 'Farn' };
+  return group(m);
+}
+// Moospolster: flacher, kantiger Hügel in zwei Grüntönen
+function mossMound(s, c, rand) {
+  const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(c));
+  m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Moos' };
+  m.scale.y = 0.38;
+  m.position.y = s * 0.1;
+  return group(m);
+}
+// umgestürzter Stamm mit Moos obendrauf und einer Bruchstelle
+function fallenLog(len, r, c, rand, moss = '#5fae3a') {
+  const g = new THREE.Group();
+  const log = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, r, len, 8), M(c));
+  log.rotation.z = Math.PI / 2;
+  log.position.y = r * 0.8;
+  g.add(log);
+  const cut = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.04, 8), M('#c8a070'));
+  cut.rotation.z = Math.PI / 2;
+  cut.position.set(len / 2 + 0.01, r * 0.8, 0);
+  g.add(cut);
+  for (let i = 0; i < 2; i++) {
+    const mm = mossMound(r * (0.9 + rand() * 0.4), moss, rand);
+    mm.position.set((rand() - 0.5) * len * 0.6, r * 1.45, 0);
+    g.add(mm);
+  }
+  return g;
+}
+// Felsbogen aus kantigen Blöcken entlang eines Halbkreises (in Roblox Flächen aus Keilen statt einer glatten
+// Röhre), an den Füßen dicker, oben schmaler, in mehreren Steintönen. span: Radius, w: Blockgröße
+function rockArch(span, w, tones, rand) {
+  const g = new THREE.Group();
+  const n = Math.max(8, Math.round(span * 3.5));
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI * (i / n), foot = Math.abs(Math.cos(a));
+    const r = w * (1 + foot * 0.55 + rand() * 0.25);
+    const b = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(r, 0), rand, r * 0.35), M(tones[i % tones.length]));
+    b.userData.rbx = { facets: true, facetThick: Math.min(0.18, r * 0.2), name: 'Felsbogen' };
+    b.position.set(Math.cos(a) * span, Math.sin(a) * span - w * 0.15, (rand() - 0.5) * w * 0.35);
+    b.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+    b.castShadow = true;
+    g.add(b);
+  }
+  return g;
+}
+// geschichteter Tafelfelsen (Hoodoo, Butte): Scheiben in Bänderfarben, nach oben schmaler, mit Deckplatte
+function butte(h, w, bands, rand) {
+  const g = new THREE.Group();
+  const n = 4 + Math.floor(rand() * 3);
+  let y = 0;
+  for (let i = 0; i < n; i++) {
+    const th = (h / n) * (0.8 + rand() * 0.4), k = 1 - (i / n) * 0.35;
+    const seg = new THREE.Mesh(jitter(new THREE.CylinderGeometry(w * k * 0.92, w * k, th, 8), rand, w * 0.08), M(bands[i % bands.length]));
+    seg.position.y = y + th / 2;
+    seg.rotation.y = rand() * 3;
+    g.add(seg);
+    y += th;
+  }
+  const cap = new THREE.Mesh(jitter(new THREE.CylinderGeometry(w * 0.78, w * 0.7, h * 0.08, 8), rand, w * 0.06), M(bands[0]));
+  cap.position.y = y + h * 0.04;
+  g.add(cap);
+  return g;
+}
+// Blumengruppe: mehrere Blumen einer Farbe dicht beieinander (so wachsen sie auf Wiesen)
+function flowerPatch(colors, rand, n = 4 + Math.floor(rand() * 4)) {
+  const c = colors[Math.floor(rand() * colors.length)];
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const f = flower(c, 0.26 + rand() * 0.14);
+    const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * 0.42;
+    f.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+    f.rotation.y = rand() * 6;
+    g.add(f);
+  }
+  return g;
 }
 function crystal(h, c, rand, intensity = 1.2) {
   const g = new THREE.Group();
@@ -675,7 +802,38 @@ function lollipop(c, rand) {
   disc.position.y = 2;
   disc.userData.rbx = { color: c };
   const g = group(stick, disc);
+  // in Roblox gibt es die Spiral-Textur nicht: dort zeigen Ringe in Weiß und Farbe die Spirale
+  // (auf der Webseite unsichtbar, die Textur malt sie schon)
+  const ringW = M('#ffffff'), ringC = M(c);
+  ringW.visible = ringC.visible = false;
+  [[0.47, ringW], [0.34, ringC], [0.21, ringW], [0.1, ringC]].forEach(([r, m], i) => {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.17 + i * 0.006, 20), m);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 2;
+    g.add(ring);
+  });
   g.rotation.z = (rand() - 0.5) * 0.2;
+  return g;
+}
+// Gummibär: durchscheinend, Kopf mit Ohren und Schnauze, Arme und Beine
+function gummyBear(h, c) {
+  const m = M(c, { transparent: true, opacity: 0.78, roughness: 0.15, emissive: c, emissiveIntensity: 0.12 });
+  const g = new THREE.Group();
+  const ball = (r, x, y, z, sx = 1, sy = 1, sz = 1) => {
+    const b = at(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), m), x, y, z);
+    b.scale.set(sx, sy, sz);
+    g.add(b);
+  };
+  ball(0.32, 0, 0.42, 0, 1, 1.25, 0.9); // Bauch
+  ball(0.26, 0, 0.92, 0); // Kopf
+  ball(0.09, -0.18, 1.12, 0); // Ohren
+  ball(0.09, 0.18, 1.12, 0);
+  ball(0.1, 0, 0.88, 0.22, 1.2, 0.9, 1); // Schnauze
+  ball(0.11, -0.3, 0.6, 0.06, 1, 1.5, 1); // Arme
+  ball(0.11, 0.3, 0.6, 0.06, 1, 1.5, 1);
+  ball(0.13, -0.16, 0.1, 0.08, 1, 1, 1.4); // Füße
+  ball(0.13, 0.16, 0.1, 0.08, 1, 1, 1.4);
+  g.scale.setScalar(h);
   return g;
 }
 function candyCane() {
@@ -705,15 +863,17 @@ function gumdrop(c) {
   m.scale.y = 1.3;
   return group(m);
 }
+// Krater: Wall aus zwei schrägen Ringen (außen flach ansteigend, innen steiler abfallend), dunklerer Boden.
+// In Roblox Flächen aus Keilen (vorher Ringe aus Zylindern, die wie Zahnräder aussahen)
 function crater(r, c, rand) {
-  const rim = new THREE.Mesh(jitter(new THREE.TorusGeometry(r, r * 0.22, 6, 18), rand, r * 0.08), M(c));
-  rim.rotation.x = Math.PI / 2;
-  rim.scale.z = 0.45;
-  rim.position.y = 0.05;
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(r, 18), M('#8a8d96'));
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0.02;
-  return group(rim, floor);
+  const wall = M(c), inner = M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.06).getHexString());
+  const out = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 1.45, r * 0.16, 10, 1, true), rand, r * 0.06), wall);
+  out.position.y = r * 0.08;
+  const ins = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 0.6, r * 0.16, 10, 1, true), rand, r * 0.05), inner);
+  ins.position.y = r * 0.08;
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.64, r * 0.64, 0.03, 14), M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.1).getHexString()));
+  floor.position.y = 0.01;
+  return group(out, ins, floor);
 }
 function flag(c) {
   const pole = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), M('#dddddd', { metalness: 0.6 })), 0, 0.9, 0);
@@ -937,12 +1097,30 @@ function starfish(c) {
   m.position.y = 0.04;
   return group(m);
 }
+// griechische Säule: gestufter Fuß, Schaft mit Kanneluren (schmale Rillen ringsum), Kapitell mit Wulst und
+// Deckplatte. broken: oben abgebrochen (schräge Bruchkante, kein Kapitell)
 function column(h, c, broken) {
   const g = new THREE.Group();
-  const base = at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.7), M(c)), 0, 0.09, 0);
-  const shaft = at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, h, 10), M(c)), 0, h / 2 + 0.18, 0);
-  g.add(base, shaft);
-  if (!broken) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.16, 0.66), M(c)), 0, h + 0.26, 0));
+  const mat = M(c), shade = M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.1).getHexString());
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.12, 0.74), mat), 0, 0.06, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.1, 12), mat), 0, 0.17, 0));
+  const sh = broken ? h * 0.92 : h;
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, sh, 12), mat), 0, sh / 2 + 0.22, 0));
+  // Kanneluren: dunkle, schmale Leisten knapp vor dem Schaft
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const f = at(new THREE.Mesh(new THREE.BoxGeometry(0.035, sh * 0.94, 0.03), shade), Math.cos(a) * 0.253, sh / 2 + 0.22, Math.sin(a) * 0.253);
+    f.rotation.y = -a;
+    g.add(f);
+  }
+  if (broken) {
+    const cut = at(new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.12, 8), shade), 0, sh + 0.24, 0);
+    cut.rotation.z = 0.35;
+    g.add(cut);
+  } else {
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.25, 0.14, 12), mat), 0, h + 0.29, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 0.72), mat), 0, h + 0.43, 0));
+  }
   return g;
 }
 
@@ -1020,18 +1198,6 @@ function log(len = 1.4, r = 0.17) {
   moss.scale.set(1.6, 0.4, 1);
   return group(m, moss);
 }
-function fern(c, rand) {
-  const g = new THREE.Group();
-  for (let i = 0; i < 5; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 4), M(c));
-    leaf.scale.set(0.35, 0.12, 1);
-    const a = (i / 5) * Math.PI * 2 + rand();
-    leaf.position.set(Math.sin(a) * 0.18, 0.14, Math.cos(a) * 0.18);
-    leaf.rotation.set(-0.5 * Math.cos(a), a, 0.5 * Math.sin(a));
-    g.add(leaf);
-  }
-  return g;
-}
 function fountain(anims) {
   const bowl = at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1, 0.3, 20), M('#c9c4d6')), 0, 0.15, 0);
   const water = at(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.04, 20), M('#4ab0e8', { roughness: 0.1, emissive: '#2a7ab8', emissiveIntensity: 0.3 })), 0, 0.29, 0);
@@ -1049,10 +1215,49 @@ function bench() {
   for (const x of [-0.38, 0.38]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.28), M('#2a2830')), x, 0.15, 0));
   return g;
 }
+// Kegel aus n Dreiecken (ohne Boden), Fuß bei y = 0: in Roblox Fläche für Fläche aus Keilen statt gestufter
+// Zylinder. tw: Drehung, wob: Unruhe im Fußring
+function coneFacets(r, h, n, mat, rand = null, { wob = 0, tw = 0, name = null } = {}) {
+  const pts = [];
+  const ring = Array.from({ length: n }, (_, i) => {
+    const a = tw + (i / n) * Math.PI * 2, rr = r * (1 + (rand ? (rand() - 0.5) * wob : 0));
+    return [Math.cos(a) * rr, 0, Math.sin(a) * rr];
+  });
+  for (let i = 0; i < n; i++) pts.push(...ring[i], 0, h, 0, ...ring[(i + 1) % n]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat);
+  m.userData.rbx = { facets: true, facetThick: Math.min(0.08, r * 0.3), ...(name ? { name } : {}) };
+  return m;
+}
 function iceSpike(h, rand) {
-  const m = new THREE.Mesh(new THREE.ConeGeometry(0.22, h, 6), E('#bfe8ff', 0.25, { transparent: true, opacity: 0.85, roughness: 0.1 }));
-  m.position.y = h / 2;
+  const m = coneFacets(0.22, h, 6, E('#bfe8ff', 0.25, { transparent: true, opacity: 0.85, roughness: 0.1 }), rand, { wob: 0.3, tw: rand() * 3, name: 'Eisspitze' });
   m.rotation.set((rand() - 0.5) * 0.3, 0, (rand() - 0.5) * 0.3);
+  return group(m);
+}
+// verschneite Tanne: dunkelgrüne Kegel-Etagen, auf jeder liegt oben eine Schneehaube
+function snowPine(h, c, rand) {
+  const g = group(trunk(h * 0.22, '#5a3e28', h * 0.05));
+  const green = M(c), snow = M('#f4f9ff');
+  for (let i = 0; i < 3; i++) {
+    const r = (0.78 - i * 0.2) * h * 0.36, th = h * 0.4, y = h * (0.18 + i * 0.22), tw = rand() * 3;
+    const tier = coneFacets(r, th, 7, green, rand, { wob: 0.25, tw, name: 'Tanne' });
+    tier.position.y = y;
+    const cap = coneFacets(r * 0.62, th * 0.62, 7, snow, rand, { wob: 0.2, tw, name: 'Schnee' });
+    cap.position.y = y + th * 0.4;
+    cap.scale.setScalar(1.04);
+    g.add(tier, cap);
+  }
+  return g;
+}
+// Schneewehe: flacher, langgezogener Hügel
+function snowDrift(s, rand) {
+  const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.2), M('#f6faff'));
+  m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Schneewehe' };
+  m.scale.set(1.6, 0.32, 0.9);
+  m.rotation.y = rand() * 3;
+  m.position.y = s * 0.05;
   return group(m);
 }
 function sled() {
@@ -1588,7 +1793,7 @@ const EXTRAS = {
   wald({ scatter, rand, rr }) {
     scatter(3, () => log(rr(1, 1.6)), 0.8);
     scatter(4, () => stump(rr(0.18, 0.3)), 0.35);
-    scatter(10, () => fern(rand() < 0.5 ? '#3f8a46' : '#5aa850', rand), 0.25);
+    scatter(10, () => fern(0.4 + rand() * 0.2, rand() < 0.5 ? '#3f8a46' : '#5aa850', rand), 0.25);
   },
   stadt({ put, rand, anims, reserve }) {
     // Kreisverkehr mit Brunnen in der Mitte
@@ -1627,14 +1832,14 @@ const EXTRAS = {
     scatter(4, () => geyser(anims, rand), 0.5);
   },
   mars({ scatter }) {
-    scatter(4, () => solarPanel(), 0.6);
+    scatter(4, () => solarPanel(), 0.6, 2, R - 2.6); // feste Anzahl (vorher mit der Inselfläche vervielfacht: 28 Paneele)
   },
   saturn({ scatter, rand, rr }) {
-    scatter(4, () => obsidian(rr(0.6, 1), rand), 0.4);
+    scatter(4, () => obsidian(rr(0.6, 1), rand), 0.4, 2, R - 2.6); // feste Anzahl (vorher 28)
   },
   alien({ scatter }) {
     const cols = ['#7aff5a', '#5affd8', '#ff7ae0'];
-    scatter(7, (i) => pod(cols[i % 3]), 0.4);
+    scatter(9, (i) => pod(cols[i % 3]), 0.4, 2, R - 2.6);
   },
   sonne({ scatter, rand, anims }) {
     scatter(3, () => steam(anims, rand), 0.3);
@@ -2092,10 +2297,9 @@ const BUILDERS = {
   },
 
   hoehle({ put, scatter, rand, rr, root, anims, world }) {
-    const arch = new THREE.Mesh(jitter(new THREE.TorusGeometry(4.6, 0.85, 7, 18, Math.PI), rand, 0.5), M('#3a3446'));
-    arch.position.set(0, -0.1, -0.6);
-    arch.castShadow = true;
-    root.add(arch);
+    const archG = rockArch(4.6, 0.82, ['#3a3446', '#443c52', '#322c3e'], rand);
+    archG.position.z = -0.6;
+    root.add(archG);
     for (let i = 0; i < 7; i++) {
       const a = Math.PI * (0.12 + (i / 6) * 0.76);
       const st = new THREE.Mesh(new THREE.ConeGeometry(rr(0.12, 0.25), rr(0.5, 1.1), 6), M('#2e2838'));
@@ -2116,6 +2320,26 @@ const BUILDERS = {
       return group(s);
     }, 0.35);
     scatter(4, () => mushroom(rr(0.35, 0.6), '#6ae8ff', rand, true), 0.3);
+    // Sinterstufen: flache, übereinanderliegende Kalkpolster (wie in Tropfsteinhöhlen)
+    scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const s = rr(0.55, 0.85) * (1 - i * 0.25);
+        const m = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 0), rand, s * 0.25), M(['#5a4e6a', '#6a5e7c', '#4e4460'][i]));
+        m.userData.rbx = { facets: true, facetThick: 0.06, name: 'Sinter' };
+        m.scale.y = 0.35;
+        m.position.set(rr(-0.15, 0.15), 0.08 + i * 0.2, rr(-0.15, 0.15));
+        g.add(m);
+      }
+      return g;
+    }, 0.8);
+    // Wasserlachen auf dem Höhlenboden, in denen das Kristalllicht schimmert
+    scatter(4, () => {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(rr(0.5, 0.9), rr(0.5, 0.9), 0.03, 14), M('#26304e', { roughness: 0.05, metalness: 0.4, emissive: '#3a2a7a', emissiveIntensity: 0.25 }));
+      w.position.y = 0.02;
+      w.scale.z = rr(0.6, 1);
+      return group(w);
+    }, 0.9);
     const light = new THREE.PointLight('#b07bff', 20, 12 * K, 2);
     light.position.set(0, 2.5, 0);
     root.add(light);
@@ -2134,9 +2358,13 @@ const BUILDERS = {
     }, 0.8);
   },
 
-  mond({ put, scatter, rand, rr, scene, modelWorld }) {
+  mond({ put, scatter, spot, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#2a6ad1', bands: ['#3fae5a', '#ffffff55', '#2f8a4a', '#ffffff40'], size: 6, pos: [-20, 5, -32], glow: '#4a8aff' });
-    scatter(6, () => crater(rr(0.6, 1.1), '#a0a3ac', rand), 1.1, undefined, undefined, { lay: true, sink: 0.02 });
+    // wenige, dafür große Krater (feste Anzahl: nicht mit der Inselfläche vervielfachen)
+    for (let i = 0; i < 9; i++) {
+      const r = rr(0.9, 2), p = spot(r * 1.4, 2, R - 2.6);
+      if (p) put(crater(r, '#a0a3ac', rand), p[0], p[1], { lay: true, sink: 0.02 });
+    }
     put(flag('#ffd76a'), 0.6, 0.4);
     if (!modelWorld) scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
     // Mondlandefähre
@@ -2219,8 +2447,9 @@ const BUILDERS = {
 
   alien({ put, scatter, rand, rr, root, anims, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#5a1a8a', bands: ['#7a2ab0', '#3a0a60', '#9a4ad0'], size: 7, pos: [22, 12, -36], glow: '#b07bff' });
-    scatter(14, (i) => alienPlant(['#3a8a4a', '#2a6a7a'][i % 2], ['#7aff5a', '#5affd8', '#ff7ae0'][i % 3], rand), 0.5);
-    scatter(6, () => mushroom(rr(0.5, 0.9), '#5affd8', rand, true), 0.4);
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: rund 100 Pflanzen, die Insel war zugewachsen)
+    scatter(36, (i) => alienPlant(['#3a8a4a', '#2a6a7a'][i % 2], ['#7aff5a', '#5affd8', '#ff7ae0'][i % 3], rand), 0.5, 2, R - 2.6);
+    scatter(10, () => mushroom(rr(0.5, 0.9), '#5affd8', rand, true), 0.4, 2, R - 2.6);
     if (!modelWorld) scatter(5, () => rockMesh(rr(0.3, 0.6), '#3a1a60', rand), 0.4);
     // UFO
     const ufo = new THREE.Group();
@@ -2271,8 +2500,9 @@ const BUILDERS = {
   korallenriff({ scatter, rand, rr, root, anims, scene }) {
     lightRays(scene, anims, '#bff8ff', rand);
     const cols = ['#ff7a8a', '#ffb05a', '#ff5fb0', '#b07bff', '#ffe25f'];
-    scatter(10, (i) => coral(cols[i % cols.length], rand), 0.6);
-    scatter(6, (i) => brainCoral(['#ff9a7a', '#d87aff', '#7ad8a0'][i % 3], rand), 0.55);
+    // feste Anzahl: die Korallen wachsen vor allem auf den Riffstöcken (modelWorlds.js), nicht gleichmäßig verstreut
+    scatter(18, (i) => coral(cols[i % cols.length], rand), 0.6, 2, R - 2.6);
+    scatter(10, (i) => brainCoral(['#ff9a7a', '#d87aff', '#7ad8a0'][i % 3], rand), 0.55, 2, R - 2.6);
     scatter(5, () => seaweed(rand() < 0.5 ? '#2f8a5a' : '#4aa86a', rand, anims), 0.3);
     scatter(4, () => rockMesh(rr(0.3, 0.55), '#8a7050', rand), 0.4);
     fishSchool(root, anims, rand, ['#ffb02e', '#5fd3ff', '#ff5fb0', '#ffe25f'], 9);
@@ -2281,9 +2511,10 @@ const BUILDERS = {
   muschelland({ scatter, rand, rr, root, anims, scene, put }) {
     lightRays(scene, anims, '#e0fbff', rand);
     put(scallop('#ffc8d8', 1.2), -1.2, -0.6);
-    scatter(4, (i) => scallop(['#ffd8b0', '#ffe8f0', '#e8d0ff'][i % 3], rr(0.45, 0.7)), 0.8);
-    scatter(6, (i) => conch(['#ffb08a', '#f2d0b0', '#ffc8e0'][i % 3], rand), 0.55);
-    scatter(8, (i) => starfish(['#ff7a4a', '#ff5f8a', '#ffb02e'][i % 3]), 0.4);
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: über 120 Muscheln und Seesterne)
+    scatter(10, (i) => scallop(['#ffd8b0', '#ffe8f0', '#e8d0ff'][i % 3], rr(0.45, 0.7)), 0.8, 2, R - 2.6);
+    scatter(14, (i) => conch(['#ffb08a', '#f2d0b0', '#ffc8e0'][i % 3], rand), 0.55, 2, R - 2.6);
+    scatter(16, (i) => starfish(['#ff7a4a', '#ff5f8a', '#ffb02e'][i % 3]), 0.4, 2, R - 2.6);
     scatter(3, () => seaweed('#3a9a6a', rand, anims), 0.3);
     fishSchool(root, anims, rand, ['#ffd0e8', '#bff0ff', '#ffe25f'], 6);
   },
@@ -2312,19 +2543,20 @@ const BUILDERS = {
     reserve(2.2, 1.4, 1.2);
     put(d, 2.2, 1.4, { rot: false });
     anims.push((t) => (spire.material.emissiveIntensity = 1 + Math.sin(t * 2) * 0.5));
-    scatter(6, () => {
+    // feste Anzahl (vorher mit der Inselfläche vervielfacht: ein Wald aus Säulenstümpfen)
+    scatter(8, () => {
       const c = column(rr(0.5, 1.3), '#e8eef2', true);
       c.rotation.z = (rand() - 0.5) * 0.3;
       return c;
-    }, 0.5);
-    scatter(3, () => seaweed('#2f8a6a', rand, anims), 0.3);
-    scatter(4, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5);
+    }, 0.5, 2, R - 2.6);
+    scatter(8, () => seaweed('#2f8a6a', rand, anims), 0.3, 2, R - 2.6);
+    scatter(8, (i) => coral(['#ff7a8a', '#ffb05a'][i % 2], rand), 0.5, 2, R - 2.6);
     fishSchool(root, anims, rand, ['#ffd76a', '#9ff3f0'], 6);
   },
 };
 
 // Bausteine für spawnTown.js
 const KIT = {
-  M, E, at, group, canvasTex, dotTex, signBoard, column, lamp, chest, bench, roundTree, bush, flower, crystal,
+  M, E, at, group, canvasTex, dotTex, signBoard, column, lamp, chest, bench, roundTree, bush, flower, flowerPatch, crystal,
   portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, dome,
 };

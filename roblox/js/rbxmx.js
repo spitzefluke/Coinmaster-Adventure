@@ -6,7 +6,7 @@
 // Enum-Werte aus der Roblox-API
 const MATERIAL = {
   Plastic: 256, SmoothPlastic: 272, Neon: 288, Wood: 512, Marble: 784, Basalt: 788, Slate: 800, CrackedLava: 804,
-  Concrete: 816, Granite: 832, Pebble: 864, Rock: 896, Metal: 1088, Grass: 1280, Ground: 1376, Sand: 1296, Snow: 1328,
+  Concrete: 816, Granite: 832, Brick: 848, Pebble: 864, Cobblestone: 880, Rock: 896, Metal: 1088, Grass: 1280, Ground: 1376, Sand: 1296, Snow: 1328,
   Ice: 1536, Glacier: 1552, Glass: 1568,
 };
 const SHAPE = { Ball: 0, Block: 1, Cylinder: 2 };
@@ -218,6 +218,7 @@ export function worldModel(w, offset = [0, 0, 0]) {
       prop.range('RotSpeed', [-40, 40]),
       prop.range('Rotation', [0, 360]),
       prop.content('Texture', e.squares ? 'rbxasset://textures/particles/sparkles_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
+      ...(e.acceleration ? [prop.vec3('Acceleration', e.acceleration)] : []),
     ]);
     fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
   }

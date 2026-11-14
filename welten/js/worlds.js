@@ -152,7 +152,7 @@ export const WORLDS = [
     sky: ['#8a9ae8', '#fff3e0'], ground: '#f4f0ff', side: '#d8d4ec', rock: '#b8b4d0', accent: '#ffd76a', fx: 'pollen' },
   { id: 'engelsgarten', neu: true, planet: 'p4', name: 'Engelsgarten', price: 300000000000, luck: 10, value: 190,
     text: 'Weiße Bäume mit goldenem Laub, Springbrunnen aus Licht und Treppen, die ins Nichts führen.',
-    sky: ['#c8a8ff', '#fff6e8'], ground: '#e8f4d8', side: '#c8d4b8', rock: '#a8b098', accent: '#fff2a0', fx: 'pollen' },
+    sky: ['#c8a8ff', '#fff6e8'], ground: '#cfe6b4', side: '#c8d4b8', rock: '#a8b098', accent: '#fff2a0', fx: 'pollen' },
   { id: 'goetterthron', neu: true, planet: 'p4', name: 'Götterthron', price: 1000000000000, luck: 12, value: 260,
     text: 'Ein Thron auf dem höchsten Gipfel über allen Wolken. Hier sind die Münzen am meisten wert.',
     sky: ['#1a1040', '#ffcf7a'], ground: '#fff0c8', side: '#d8c090', rock: '#a08858', accent: '#ffe7a8', fx: 'flares' },

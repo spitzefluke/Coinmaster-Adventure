@@ -10,7 +10,7 @@
 // Eiszapfen, Lava-Adern, Kristalle, Seetang …). Farben kommen aus der Welt (ground, side, rock).
 
 import * as THREE from 'three';
-import { triangleWedges, STUDS, vivid } from './worldParts.js';
+import { triangleWedges, STUDS, vivid, relL } from './worldParts.js';
 
 const TAU = Math.PI * 2;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -28,7 +28,7 @@ function seeded(str) {
 const col = (c) => new THREE.Color(c);
 const hex = (c) => '#' + c.getHexString();
 const mix = (a, b, k) => hex(col(a).lerp(col(b), Math.max(0, Math.min(1, k))));
-const tone = (c, s, l) => hex(col(c).offsetHSL(0, s, l));
+const tone = (c, s, l) => hex(col(c).offsetHSL(0, s, relL(c, l))); // bei dunklen Farben anteilig, nie schwarz
 
 // ── Stil je Welt ──
 // lip: grass | snow | frost (Zuckerguss) | plain (Kante im Bodenton) · hang: Anhängsel unter dem Rand

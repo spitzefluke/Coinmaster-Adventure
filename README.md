@@ -586,6 +586,42 @@ Glück steigt von +1.300 % (Quarzfeld) bis +3.200 % (Diamantkern), der Edelstein
 - **Boden:** Grasbüschel aus fünf spitzen, schräg stehenden Halmen (je Halm zwei Keile) statt zweier Plättchen;
   Sechseck-Sockel (Weizenfeld) sind im Boden versenkt, Sechseck-Bergplatten auf Lava, Höhle und Meeresgrund durch
   große Felsbrocken ersetzt.
+- **Bodenbemalung** (`ctx.paint(x, z, r, Farbe, Material)` in `welten/js/worldFactory.js`): Die Bodendreiecke unter
+  einer Stelle bekommen Farbe und Roblox-Material, mit leicht ausgefranstem Rand. So entstehen Trampelpfade unter
+  den Wegplatten, Dorfplätze, Ackerboden, Pflaster (Wolkenburg), Kies (Engelsgarten), Asche (Lava), Regolith
+  (Mond), Staub (Mars), Granulation (Sonne) und Flecken im Ton der Welt (Juwelnebel). Farbtöne dunkler Böden
+  werden anteilig verdunkelt; vorher wurden Boden, Rand und Erde sehr dunkler Welten zu reinem Schwarz.
+- **Bausteine aus Keilen:** Kegel mit wenigen Ecken (Tannen, Dächer, Spitzen) und stark verjüngte Zylinder
+  (Vulkankegel, Schalen) werden in Roblox Fläche für Fläche aus Keilen gebaut statt aus gestuften Zylindern
+  („Torte“). Büsche, Laubbaumkronen, Moospolster, Blumen (fünf Blütenblätter und Blatt), Farne und Kristalle
+  ebenso. Gestreute Deko wird nicht mehr mit der Inselfläche vervielfacht, wenn die Anzahl fest gewählt ist.
+
+**Deko je Welt (nach Vorbildern aus 4K-Fotos von Wikimedia Commons):**
+
+| Welt | Deko |
+| --- | --- |
+| Spawn | Brunnen mit sichtbarem Wasser, oberer Schale, Wasservorhang und Fontäne (Partikel mit Schwerkraft), Blumengruppen |
+| Normal | Dorfplatz und Trampelpfade aus Erde, Ackerboden, Laubbäume, Buschgruppen, Steingruppen, Blumen am Haus |
+| Wald | Nadelstreu- und Moosflecken, Farne, Moospolster, umgestürzte Stämme mit Moos, junge Tannen |
+| Stadt | Stadtpark mit Brunnen, Bäumen, Bänken und Blumen; Uferpromenade mit Geländer, Bäumen in Kübeln, Laternen |
+| Eis | dunkle Tannen mit Schneehauben, Felsen mit Schneekappe, Schneewehen; Gletscher aus Eistürmen in der Ferne |
+| Lava | Asche- und Krustenflecken, Geröllfelder, verzweigte Glutrisse, Schlackenkegel, Sträucher; Vulkan in 3D |
+| Höhle | Felsbogen aus Blöcken, Sinterstufen, Wasserlachen, Geröll, nasser Boden |
+| Candy | Gummibären, Gummidrops, Marshmallow-Türme, Lakritzschnecken, Zuckergussflecken; Lolli-Spiralen als Ringe |
+| Mond | große Krater mit Wall, Findlinge, Regolith-Flecken, Reifenspuren |
+| Neptun | Tiefeneis, Reif und Schotter, sturmgeschliffene Eisrippen, leuchtende Eisblöcke |
+| Mars | Staubflecken, Steinfelder, Sandrippeln, Reifenspuren |
+| Saturn | Sandsteinwüste: Felsbogen, geschichtete Tafelfelsen, Slickrock, Sandrippeln, Wüstensträucher |
+| Alien | Leuchtmoos, umgestürzte Stämme mit Leuchtpilzen, Rankenbäume mit leuchtenden Fäden |
+| Sonne | Granulation, Sonnenflecken, leuchtende Plasmaadern, Spikulen |
+| Korallenriff | Riffstöcke mit Tisch-, Hirn-, Geweih- und Fächerkorallen, Sandflecken |
+| Muschelland | Sandrippeln, Felsgruppen mit Seepocken, Sandflecken |
+| Atlantis | Mauerreste aus Quadern mit Algen, herabgestürzte Blöcke, Pflasterflächen |
+| Tiefseegraben | Röhrenwürmer an den Schloten, Bakterienmatten, Kissenlava |
+| Wolkenburg | gepflasterter Burgplatz, Pflasterwege, Beete mit Hecken und Blumen, Fahnen |
+| Engelsgarten | Kieswege, Brunnenrondell, grüne Hecken, Lavendel, Blumenbeete, kantige goldene Kronen |
+| Götterthron | Säulenhof mit Gebälk, umgestürzte Säulentrommeln, Marmorplatz; Säulen mit Kanneluren und Kapitell |
+| Juwelnebel | Drusen (Kristallfächer auf dunklem Muttergestein), Bodenflecken, je Welt Sandrippeln, Farne, Glutrisse, Kiesufer |
 - Vorschau: Die Engine zeigt das `Sky` mit den Bildern; Keile (WedgePart) werden jetzt von außen gezeichnet (vorher
   sah man nur ihre Innenseite, z. B. bei den Bergen der Fernkulisse). Teile ohne Schatten (Himmel, Kulisse) bekommen
   auch keine Schatten mehr ab.

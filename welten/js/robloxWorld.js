@@ -91,6 +91,7 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
       Transparency: [[0, 0.1], [0.8, 0.3], [1, 1]],
       Lifetime: e.lifetime, Rate: e.rate, Speed: e.speed, SpreadAngle: e.spread, EmissionDirection: e.direction,
       LightEmission: e.lightEmission, RotSpeed: [-40, 40], Rotation: [0, 360], Texture: 'rbxasset://textures/particles/sparkles_main.dds',
+      ...(e.acceleration ? { Acceleration: v3(e.acceleration) } : {}),
     }, holder);
   }
   applyLighting(rw, data.lighting);

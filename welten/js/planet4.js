@@ -42,7 +42,10 @@ function goldTree(kit, rand, h) {
   const leaf = E('#ffd76a', 0.35, { metalness: 0.4, roughness: 0.4 });
   for (let i = 0; i < 3; i++) {
     const r = h * (0.26 - i * 0.04);
-    g.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leaf), (rand() - 0.5) * h * 0.3, h * (0.68 + i * 0.13), (rand() - 0.5) * h * 0.3));
+    const ball = at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leaf), (rand() - 0.5) * h * 0.3, h * (0.68 + i * 0.13), (rand() - 0.5) * h * 0.3);
+    ball.rotation.set(rand() * 3, rand() * 3, 0);
+    ball.userData.rbx = { facets: true, facetThick: Math.min(0.15, r * 0.15), name: 'Goldlaub' }; // kantige Krone wie die Laubbäume
+    g.add(ball);
   }
   return g;
 }
@@ -109,15 +112,37 @@ const TIEFSEEGRABEN = {
         parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, h / 4 + 0.05, 8), M(j % 2 ? '#1e242c' : '#2a323c')), (rand() - 0.5) * 0.12, (j + 0.5) * (h / 4), (rand() - 0.5) * 0.12));
       }
       parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.12, 8), E('#ff8a3a', 1.6)), 0, h + 0.04, 0));
+      // Röhrenwürmer wie an echten Schloten: weiße Röhren mit roten Kiemenbüscheln, dicht am Fuß
+      const tube = M('#ece8dc'), plume = E('#e8302a', 0.5);
+      for (let k = 0; k < 14; k++) {
+        const a = rand() * TAU, d = rr(0.55, 1.1), th = rr(0.35, 0.8);
+        const t = at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, th, 5), tube), Math.cos(a) * d, th / 2, Math.sin(a) * d);
+        t.rotation.set(rr(-0.2, 0.2), 0, rr(-0.2, 0.2));
+        parts.push(t, at(new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 4), plume), Math.cos(a) * d, th + 0.04, Math.sin(a) * d));
+      }
       put(group(...parts), v[0], v[1]);
       ctx.shared.vents.push([v[0], ctx.height(v[0], v[1]) + h, v[1]]);
+      // Bakterienmatten und Muschelbänke rund um den Schlot (bemalter Boden)
+      ctx.paint?.(v[0], v[1], 1.8, '#d8d0a0', 'Sand');
+      ctx.paint?.(v[0] + rr(-0.8, 0.8), v[1] + rr(-0.8, 0.8), 1.1, '#e8e4c8', 'SmoothPlastic');
     }
-    // Felsen mit leuchtenden Adern
-    scatter(7, () => {
+    // Kissenlava: gerundete, dunkle Wülste in Gruppen (erstarrt unter Wasser)
+    scatter(8, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 5; k++) {
+        const m = at(new THREE.Mesh(new THREE.SphereGeometry(rr(0.25, 0.45), 8, 6), M(rand() < 0.5 ? '#141a22' : '#1e2630')), rr(-0.5, 0.5), 0.12, rr(-0.5, 0.5));
+        m.scale.set(1.4, 0.6, 1);
+        m.rotation.y = rand() * 3;
+        g.add(m);
+      }
+      return g;
+    }, 0.8, 2, R - 2.6);
+    // Felsen mit leuchtenden Adern (feste Anzahl, sonst mit der Inselfläche vervielfacht)
+    scatter(14, () => {
       const g = kit.rockMesh(rr(0.5, 0.9), '#1a222c', rand);
       for (let k = 0; k < 3; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, rr(0.3, 0.6), 0.05), E('#5affd8', 1.4)), rr(-0.3, 0.3), rr(0.2, 0.5), rr(-0.3, 0.3)));
       return g;
-    }, 1);
+    }, 1, 2, R - 2.6);
     // Leuchtquallen schweben über dem Boden
     for (let i = 0; i < 6; i++) {
       const q = spot(0.6, 2, R - 1.5);
@@ -190,8 +215,35 @@ const WOLKENBURG = {
     reserve(0, 0, 4.6);
     put(castle, 0, 0, { rot: false });
     castle.rotation.y = rand() * TAU;
-    // Wolkenbäusche auf dem Boden
-    ctx.scatter(10, () => cloudPuff(kit, rand, rr(0.6, 1.1)), 0.9, 5.5, R - 1);
+    // Burgplatz wie in einer Altstadt: gepflasterter Platz um die Burg, Pflasterwege nach außen, Beete mit
+    // Hecken und Blumen am Platzrand, Fahnenmasten; Wolkenbäusche nur noch am Inselrand
+    ctx.paint(0, 0, 6.6, '#e8dcc4', 'Cobblestone');
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.4;
+      for (let r = 6; r < R - 1.5; r += 1) ctx.paint(Math.cos(a) * r, Math.sin(a) * r, 0.9, '#dccfb4', 'Cobblestone');
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU + 0.15, x = Math.cos(a) * 7.2, z = Math.sin(a) * 7.2;
+      if (!ctx.free(x, z, 0.6)) continue;
+      reserve(x, z, 0.7);
+      const bed = new THREE.Group();
+      bed.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.22, 0.7), marble), 0, 0.11, 0));
+      const hedge = kit.bush(0.32, '#4f9a3f', rand);
+      hedge.position.set(-0.35, 0.2, 0);
+      bed.add(hedge, at(kit.flowerPatch(['#ff7a9a', '#ffe25f', '#b07bff', '#ffffff'], rand, 4), 0.35, 0.2, 0));
+      put(bed, x, z, { rot: false });
+      bed.rotation.y = -a + Math.PI / 2;
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU, x = Math.cos(a) * 5.4, z = Math.sin(a) * 5.4;
+      if (!ctx.free(x, z, 0.3)) continue;
+      const pole = new THREE.Group();
+      pole.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3.2, 6), gm), 0, 1.6, 0));
+      pole.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.03), M(['#5a7aff', '#ffd76a', '#ff7a9a'][i % 3], { side: THREE.DoubleSide })), 0.47, 2.85, 0));
+      put(pole, x, z, { rot: false });
+      pole.rotation.y = -a;
+    }
+    ctx.scatter(16, () => cloudPuff(kit, rand, rr(0.6, 1.1)), 0.9, R - 3, R - 1);
     // goldene Brücken zu kleinen Wolkeninseln außerhalb der Insel
     for (let i = 0; i < 2; i++) {
       const a = rand() * TAU * 0.4 + i * Math.PI;
@@ -284,10 +336,44 @@ const ENGELSGARTEN = {
       root.add(stairs);
       ctx.reserve(x0, z0, 1.4);
     }
-    ctx.scatter(2, () => goldTree(kit, rand, rr(2.2, 3.2)), 1.2, 4, R - 1);
-    ctx.scatter(3, () => kit.bush(rr(0.35, 0.5), '#e8f4d8', rand), 0.5, 3, R - 1);
-    ctx.scatter(6, () => kit.flower(rand() < 0.5 ? '#ffffff' : '#ffd76a'), 0.2, 2, R - 1);
-    ctx.scatter(1, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 1.5);
+    // Lichtbrunnen in einem Rondell wie in einem englischen Garten: Kiesplatz, Beeteinfassung aus Steinen
+    if (f) {
+      ctx.paint(f[0], f[1], 3.4, '#ece4d4', 'Pebble');
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * TAU, x = f[0] + Math.cos(a) * 2.1, z = f[1] + Math.sin(a) * 2.1;
+        const st = at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.3), M(['#d8d0c0', '#c8c0b0', '#e2dacc'][i % 3])), 0, 0.05, 0);
+        put(group(st), x, z, { rot: false });
+        st.parent.rotation.y = -a;
+      }
+    }
+    // Wege aus hellem Kies, gesäumt von weißen Hecken und Lavendel-, Rosen- und Lilienbeeten
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + rand();
+      for (let r = 3; r < R - 2; r += 1.1) ctx.paint(Math.cos(a) * r, Math.sin(a) * r, 0.8, '#efe8da', 'Pebble');
+    }
+    ctx.scatter(6, () => goldTree(kit, rand, rr(2.2, 3.2)), 1.2, 4, R - 2.6);
+    ctx.scatter(14, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const b = kit.bush(rr(0.28, 0.42), ['#6aa85a', '#5a984a'][i % 2], rand); // grüne Hecken heben sich vom hellen Boden ab
+        b.position.set(i * 0.55 - 0.55, 0, rr(-0.1, 0.1));
+        g.add(b);
+      }
+      return g;
+    }, 0.9, 3, R - 2.6);
+    ctx.scatter(16, () => kit.flowerPatch(['#ffffff', '#ffd76a', '#c8a8ff', '#ffc8e0'], rand, 6), 0.5, 2, R - 2.6);
+    // Lavendel: dichte violette Büschel aus schmalen Ähren
+    ctx.scatter(10, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 9; i++) {
+        const h = rr(0.35, 0.55), a = rand() * TAU, d = rand() * 0.25;
+        const stalk = at(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, h, 4), M('#6a8a5a')), Math.cos(a) * d, h / 2, Math.sin(a) * d);
+        const head = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.16, 5), M('#9a7ad8')), Math.cos(a) * d, h + 0.06, Math.sin(a) * d);
+        g.add(stalk, head);
+      }
+      return g;
+    }, 0.4, 2, R - 2.6);
+    ctx.scatter(4, () => kit.column(rr(1.2, 2), '#f8f6f0', rand() < 0.4), 0.5, 5, R - 2.6);
   },
   emitters(ctx, add) {
     add('Lichtfunken', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#fff2a0', '#ffffff'], 0.16, 14, [0.1, 0.4], [5, 8], { light: 1 });
@@ -347,6 +433,33 @@ const GOETTERTHRON = {
       c.traverse((o) => o.isMesh && (o.material = gm));
       put(c, x, z, { rot: false });
     }
+    // Tempelruine wie am Olympieion: Säulenhof aus hohen Säulen mit Gebälk (Architrav) obendrauf,
+    // daneben umgestürzte Säulentrommeln; Boden aus Marmorplatten und hellem Kalkstein
+    ctx.paint(0, 0, 6.2, '#efe2c4', 'Marble');
+    const tp = ctx.spot(3.2, 9, R - 3);
+    if (tp) {
+      ctx.reserve(tp[0], tp[1], 3);
+      const temple = new THREE.Group(), H = 3.4;
+      const cols = [[-1.6, -1], [0, -1], [1.6, -1], [-1.6, 1], [0, 1], [1.6, 1]];
+      for (const [x, z] of cols) temple.add(at(kit.column(H, '#efe0c0', false), x, 0, z));
+      // Gebälk: über jedem Säulenpaar ein Balken, die äußeren Ecken ohne (Ruine)
+      for (const z of [-1, 1])
+        for (const x of [-0.8, 0.8]) if (!(z === 1 && x > 0)) temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.42, 0.62), M('#e6d6b2')), x, H + 0.71, z));
+      temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.42, 2.6), M('#e6d6b2')), -1.6, H + 0.71, 0));
+      temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.18, 3), M('#e8dcc0')), 0, 0.02, 0));
+      put(temple, tp[0], tp[1], { rot: false });
+      temple.rotation.y = -Math.atan2(tp[1], tp[0]) + Math.PI / 2;
+    }
+    ctx.scatter(6, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 3; k++) {
+        const d = at(new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.55, 12), M('#e8d8b4')), k * 0.6, 0.27, rr(-0.1, 0.1));
+        d.rotation.z = Math.PI / 2;
+        d.rotation.y = rr(-0.2, 0.2);
+        g.add(d);
+      }
+      return g;
+    }, 1, 6, R - 2.6);
     ctx.scatter(8, () => cloudPuff(kit, rand, rr(0.6, 1)), 0.9, 9, R - 1);
     scatterModels(ctx, 4, ['pillar_decorated', 'column'], 0.7, 0.85, { rMin: 9, gap: 0.9 });
     scatterModels(ctx, 3, ['chest_gold'], 0.8, 0.8, { rMin: 9, rMax: R - 2, gap: 1 });

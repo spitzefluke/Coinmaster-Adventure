@@ -8,7 +8,7 @@
 //   backdrop  ersetzt die Kulisse aus planet1.js
 
 import * as THREE from 'three';
-import { creek } from './detail.js';
+import { creek, layOnGround } from './detail.js';
 import { MODELS } from './modelCatalog.js';
 import { backdrop as planet1Backdrop } from './planet1.js';
 
@@ -422,6 +422,8 @@ const NORMAL = {
     }
     if (vc) {
       reserve(vc[0], vc[1], 1.2);
+      // festgetretener Dorfplatz um den Brunnen, Trampelpfade zu den Häusern
+      ctx.paint(vc[0], vc[1], 2.9, '#b09670', 'Ground');
       stand(ctx, model('building_well_blue', 3.2), vc[0], vc[1]);
       const houses = ['building_home_A_blue', 'building_home_B_red', 'building_home_A_green', 'building_home_B_yellow', 'building_home_A_red'];
       const a0 = rand() * TAU;
@@ -430,6 +432,13 @@ const NORMAL = {
         if (Math.hypot(x, z) > R - 2 || !ctx.free(x, z, 1.4)) continue;
         reserve(x, z, 1.6);
         stand(ctx, model(houses[i], 3.6), x, z, { face: vc });
+        ctx.paint((x + vc[0]) / 2, (z + vc[1]) / 2, 1.1, '#a68a62', 'Ground');
+        // Büsche und Blumen am Haus (auf der Seite weg vom Platz)
+        const ox = (x - vc[0]) / 4.2, oz = (z - vc[1]) / 4.2;
+        for (const s of [-1, 1]) {
+          const bx = x + ox * 1.1 - oz * s * 1.5, bz = z + oz * 1.1 + ox * s * 1.5;
+          if (ctx.free(bx, bz, 0.3)) ctx.put(rand() < 0.6 ? kit.bush(rr(0.28, 0.4), '#4f9a3f', rand) : kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff'], rand, 4), bx, bz);
+        }
       }
       // Marktstand und Kisten am Platz
       for (const [id, s, d] of [['building_market_red', 2.6, 2.4], ['barrel', 3.4, 1.4], ['crate_A_big', 3.4, 1.6], ['sack', 3.6, 1.2], ['crate_long_A', 3, 1.7], ['wheelbarrow', 3.2, 1.8]]) {
@@ -442,6 +451,7 @@ const NORMAL = {
     // Weizenfeld mit Holzzaun
     const field = ctx.spot(2.4, 5, R - 3);
     if (field) {
+      ctx.paint(field[0], field[1], 2.3, '#8a6a46', 'Ground'); // Ackerboden unter dem Korn
       stand(ctx, model('building_grain', 1.9), field[0], field[1], { sink: 0.16 }); // Sechseckplatte im Boden versenkt, nur das Korn schaut heraus
       for (let i = 0; i < 3; i++) {
         const a = Math.atan2(field[1], field[0]) + (i - 1) * 0.55, r = Math.hypot(...field) + 2.4;
@@ -454,8 +464,22 @@ const NORMAL = {
     scatterModels(ctx, 2, ['trees_B_small', 'trees_B_medium'], 2.2, 2.6, { rMin: R * 0.5, gap: 0.7 });
     scatterModels(ctx, 6, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'], 2.6, 4, { gap: 0.8 });
     scatterModels(ctx, 3, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.6);
-    // Blumen bleiben selbstgebaut (das Paket hat keine)
-    ctx.scatter(14, () => kit.flower(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][Math.floor(rand() * 4)]), 0.2);
+    // Laubbäume zwischen den Tannen (kantige Kronen), Büsche in Gruppen, Steingruppen. Feste Anzahl:
+    // rMax unter R − 2,5, sonst vervielfacht scatter mit der Inselfläche
+    const inner = R - 2.6;
+    ctx.scatter(6, () => kit.roundTree(rr(2.2, 2.9), pick(rand, ['#4f9a3f', '#5aa84a', '#468f3a']), rand), 1, 4, inner);
+    ctx.scatter(14, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 2; i++) {
+        const b = kit.bush(rr(0.26, 0.42), pick(rand, ['#4f9a3f', '#3f8a3a', '#5aa84a']), rand);
+        b.position.set(rr(-0.45, 0.45), 0, rr(-0.45, 0.45));
+        g.add(b);
+      }
+      return g;
+    }, 0.8, 2, inner);
+    scatterModels(ctx, 4, ['rock_single_B', 'rock_single_C', 'rock_single_E'], 2.2, 3, { gap: 0.6 });
+    // Blumen wachsen in Gruppen einer Farbe (das Paket hat keine Blumen)
+    ctx.scatter(16, () => kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff', '#ff9a4a'], rand), 0.5, 2, inner);
   },
   backdrop(ctx) {
     // Umgebung: Nachbarinseln mit Schneebergen, schwebende Inselchen und Brocken am Rand (Wolken malt das Himmelsbild)
@@ -498,6 +522,18 @@ const WALD = {
     scatterModels(ctx, 4, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.8);
     scatterModels(ctx, 4, ['rock_single_B', 'rock_single_C', 'rock_single_E'], 2.6, 3.6);
     ctx.scatter(5, () => kit.mushroom(rr(0.35, 0.6), rand() < 0.5 ? '#e0433a' : '#c8a2ff', rand, true), 0.3);
+    // Waldboden wie im Nadelwald: Flecken aus Nadelstreu und dunklem Moos statt glattem Wiesengrün
+    for (let i = 0; i < 18; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#55603a', 'Ground'], ['#4a7a30', 'Grass'], ['#635238', 'Ground']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), c, m);
+    }
+    // Unterholz: Farne, Moospolster, umgestürzte Stämme mit Moos, junge Tannen
+    const inner = R - 2.6;
+    ctx.scatter(18, () => kit.fern(rr(0.45, 0.72), pick(rand, ['#3f8a3a', '#4f9a3f', '#5aa848']), rand), 0.45, 2, inner);
+    ctx.scatter(14, () => kit.mossMound(rr(0.4, 0.7), pick(rand, ['#5fae3a', '#4f9a32', '#6abf44']), rand), 0.5, 2, inner);
+    ctx.scatter(4, () => kit.fallenLog(rr(1.8, 2.6), rr(0.16, 0.24), '#6b4a2e', rand), 1.3, 3, inner);
+    scatterModels(ctx, 10, ['tree_single_A', 'tree_single_B'], 0.9, 1.3, { rMax: inner, gap: 0.5 }); // junge Tannen
   },
   backdrop(ctx) {
     neighborIsles(ctx, { n: 7, peak: 0.5, trees: ['trees_A_large', 'trees_A_medium', 'trees_B_large', 'tree_single_A', 'tree_single_B'], nTrees: [6, 9] });
@@ -538,7 +574,7 @@ export function clearing(ctx, d, rMin, rMax) {
 // ── Stadt: Straßenkreuz aus Straßenplatten, Häuserzeilen, Autos, Laternen, Ampeln ──
 const STADT = {
   landmark: true, // Wolkenkratzer aus planet1.js
-  build(ctx) {
+  build(ctx, kit) {
     const { rand, rr, R, reserve } = ctx;
     const T = 3.2, S = T / 2; // Straßenplatte 2 Modell-Einheiten → 3,2 Einheiten
     const k = Math.floor((R - 2.2) / T);
@@ -576,6 +612,56 @@ const STADT = {
       const dir = axis ? (lane > 0 ? 0 : Math.PI) : lane > 0 ? Math.PI / 2 : -Math.PI / 2;
       stand(ctx, model(cars[i % cars.length], 2), x, z, { rot: dir, sink: -0.06 });
     }
+    // Stadtpark in einer freien Ecke: Rasen, Brunnen, Laubbäume, Bänke zum Brunnen, Blumen
+    const park = ctx.spot(2.4, 4, R - 2.4) || ctx.spot(2, 4, R - 2);
+    if (park) {
+      const [px, pz] = park;
+      ctx.paint(px, pz, 2.7, '#5fae4f', 'Grass');
+      reserve(px, pz, 2.5);
+      ctx.put(kit.fountain(ctx.anims), px, pz, { rot: false });
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + 0.4, x = px + Math.cos(a) * 2, z = pz + Math.sin(a) * 2;
+        ctx.put(kit.roundTree(rr(1.8, 2.3), pick(rand, ['#4f9a3f', '#5aa84a']), rand), x, z);
+        const b = a + Math.PI / 4;
+        stand(ctx, model('city_bench', 2.6), px + Math.cos(b) * 1.35, pz + Math.sin(b) * 1.35, { face: park });
+        ctx.put(kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff'], rand, 4), px + Math.cos(b + 0.4) * 2.1, pz + Math.sin(b + 0.4) * 2.1);
+      }
+    }
+    // Uferpromenade am Inselrand: Geländer aus Pfosten und Handlauf, davor abwechselnd Baum im Kübel,
+    // Bank und Laterne (vorher ein leerer grauer Streifen)
+    {
+      const rail = new THREE.MeshStandardMaterial({ color: '#5a6270', metalness: 0.5, roughness: 0.4 });
+      const rr0 = R - 0.45, n = Math.round((TAU * rr0) / 1.3);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU, x = Math.cos(a) * rr0, z = Math.sin(a) * rr0, y = ctx.height(x, z);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 6), rail);
+        post.position.set(x, y + 0.35, z);
+        ctx.root.add(post);
+        const len = TAU * rr0 / n, bar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, len), rail);
+        const am = a + Math.PI / n;
+        bar.position.set(Math.cos(am) * rr0, y + 0.68, Math.sin(am) * rr0);
+        bar.rotation.y = -am;
+        ctx.root.add(bar);
+      }
+      const rp = R - 1.7, slots = Math.round((TAU * rp) / 3.2);
+      for (let i = 0; i < slots; i++) {
+        const a = (i / slots) * TAU + 0.15, x = Math.cos(a) * rp, z = Math.sin(a) * rp;
+        if (!ctx.free(x, z, 0.6)) continue;
+        reserve(x, z, 0.7);
+        const kind = i % 3;
+        if (kind === 0) {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 0.8), new THREE.MeshStandardMaterial({ color: '#8a8f9a' }));
+          box.position.y = 0.17;
+          const g = new THREE.Group();
+          g.add(box);
+          const t = kit.roundTree(rr(1.6, 2), pick(rand, ['#4f9a3f', '#5aa84a']), rand);
+          t.position.y = 0.3;
+          g.add(t);
+          ctx.put(g, x, z);
+        } else if (kind === 1) stand(ctx, model('city_bench', 2.6), x, z, { face: [0, 0] });
+        else stand(ctx, model('city_streetlight', 2.6), x, z, { face: [0, 0] });
+      }
+    }
     // Kleinkram in freien Ecken: Hydranten, Bänke, Büsche im Topf, Container, Wasserturm, Bäume
     scatterModels(ctx, 4, ['city_firehydrant'], 2.6, 2.6, { gap: 1 });
     scatterModels(ctx, 4, ['city_bench'], 2.6, 2.6, { gap: 1 });
@@ -598,8 +684,8 @@ const EIS = {
   landmark: true, // Eispalast
   keepBase: true, // Iglu, Kristalle, Schneemann, gefrorener See
   baseSpots: [[-1.5, -1, 1.5], [1.8, 1.4, 0.7], [1.6, -2, 1.4]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rr } = ctx;
     place(ctx, 'building_tower_A_blue@eis', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
     const camp = clearing(ctx, 3.2, 4, R - 3);
     if (camp) {
@@ -609,6 +695,18 @@ const EIS = {
     scatterModels(ctx, 6, ['trees_A_large@eis', 'trees_A_medium@eis', 'trees_A_small@eis'], 2.3, 2.8, { gap: 0.6 });
     scatterModels(ctx, 10, ['tree_single_A@eis', 'tree_single_B@eis'], 2.6, 3.4, { gap: 0.75 });
     scatterModels(ctx, 6, ['rock_single_A@eis', 'rock_single_B@eis', 'rock_single_C@eis', 'rock_single_E@eis'], 2.6, 4, { gap: 0.8 });
+    // Kontrast wie im Gebirge: dunkle Tannen mit Schneehauben, dunkler Fels ragt aus dem Schnee, Schneewehen
+    const inner = R - 2.6;
+    ctx.scatter(9, () => kit.snowPine(rr(1.8, 2.8), pick(ctx.rand, ['#2f5a3a', '#355f40', '#2a5236']), ctx.rand), 0.8, 3, inner);
+    ctx.scatter(7, () => {
+      const g = kit.rockMesh(rr(0.45, 0.8), pick(ctx.rand, ['#5a6270', '#4e5562']), ctx.rand);
+      const cap = kit.snowDrift(0.4, ctx.rand);
+      cap.position.y = 0.32;
+      cap.scale.setScalar(0.9);
+      g.add(cap);
+      return g;
+    }, 0.6, 2, inner);
+    ctx.scatter(10, () => kit.snowDrift(rr(0.6, 1.1), ctx.rand), 0.7, 2, inner);
   },
   backdrop(ctx) {
     neighborIsles(ctx, { n: 6, snow: true, peak: 0.8, trees: ['tree_single_A@eis', 'tree_single_B@eis', 'trees_A_medium@eis', 'trees_A_small@eis'] });
@@ -624,8 +722,8 @@ const LAVA = {
   landmark: true, // Lavatempel
   keepBase: true, // Vulkan mit Lavastrom und Lavaseen
   baseSpots: [[-0.8, -0.6, 3], [2.8, 2.2, 0.9], [-3, 2.4, 0.9], [1.2, -3.4, 0.9], [-3.6, -1.6, 0.9], [2.2, -0.4, 1.2]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     const forge = place(ctx, 'building_blacksmith_red', 3.6, { rMin: 5, rMax: R - 3, face: [0, 0] });
     if (forge) around(ctx, [forge.position.x, forge.position.z], [['barrel_large', 0.7], ['keg', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['crates_stacked', 0.7]], 2.6, 3.6);
     const ruin = place(ctx, 'building_destroyed@lava', 3.4, { rMin: 5, rMax: R - 3 });
@@ -636,6 +734,49 @@ const LAVA = {
     scatterModels(ctx, 9, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.8, 4.4, { gap: 0.8 });
     // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
     scatterModels(ctx, 3, ['rock_single_C@lava', 'rock_single_D@lava', 'rock_single_B@lava'], 6.5, 8.5, { rMin: R * 0.55, gap: 0.7 });
+    // wie auf einem echten Lavafeld: Flecken aus Asche und erkalteter Kruste, Felder aus scharfkantigem
+    // Lavageröll, glühende Risse im Boden, kleine Schlackenkegel und zähe, dunkelgrüne Sträucher
+    const inner = R - 2.6;
+    for (let i = 0; i < 16; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#3e3632', 'Slate'], ['#5a4e48', 'Ground'], ['#2a2422', 'Basalt']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.6), c, m);
+    }
+    ctx.scatter(7, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.7), pick(rand, ['#1e1a18', '#2a2422', '#161210']), rand);
+        rock.scale.setScalar(rr(0.45, 0.8));
+        rock.position.set(rr(-0.7, 0.7), 0, rr(-0.7, 0.7));
+        rock.rotation.y = rand() * TAU;
+        g.add(rock);
+      }
+      return g;
+    }, 1, 2, inner);
+    const glow = new THREE.MeshStandardMaterial({ color: '#ff5a14', emissive: '#ff5a14', emissiveIntensity: 1.4 });
+    for (let c = 0; c < 6; c++) {
+      const p0 = ctx.spot(0.4, 3, inner);
+      if (!p0) continue;
+      let [x, z] = p0, a = rand() * TAU;
+      for (let s = 0; s < 5; s++) {
+        const len = rr(0.5, 0.9), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > inner) break;
+        const crack = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.07), glow);
+        layOnGround(crack, ctx.height, (x + nx) / 2, (z + nz) / 2, { yaw: -a, lift: 0.01 });
+        ctx.root.add(crack);
+        x = nx; z = nz; a += rr(-0.9, 0.9);
+      }
+    }
+    ctx.scatter(2, () => {
+      const g = new THREE.Group();
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.2, 1.1, 9, 1, true), new THREE.MeshStandardMaterial({ color: '#4a2a22', flatShading: true }));
+      cone.position.y = 0.5;
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.05, 9), glow);
+      top.position.y = 1.0;
+      g.add(cone, top);
+      return g;
+    }, 1.3, 3, inner);
+    ctx.scatter(8, () => kit.bush(rr(0.22, 0.34), pick(rand, ['#3f6a3a', '#4a7240', '#365e34']), rand), 0.4, 2, inner);
   },
   backdrop(ctx, kit) {
     // keine gestuften Vulkane aus planet1.js: die Fernkulisse von WorldFx hat schon Vulkane
@@ -652,7 +793,7 @@ const HOEHLE = {
   landmark: true, // Riesenkristall
   keepBase: true, // Felsbogen, Kristalle, Tropfsteine, Leuchtpilze
   baseSpots: [[4.6, -0.6, 1.3], [-4.6, -0.6, 1.3], [0, -0.6, 1.2]],
-  build(ctx) {
+  build(ctx, kit) {
     const { R } = ctx;
     const mine = place(ctx, 'building_mine_blue@hoehle', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
     if (mine) around(ctx, [mine.position.x, mine.position.z], [['crates_stacked', 0.7], ['barrel_large', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['chest_gold', 0.8], ['box_stacked', 0.6]], 2.8, 4);
@@ -668,6 +809,23 @@ const HOEHLE = {
     scatterModels(ctx, 8, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 2.8, 4.4, { gap: 0.8 });
     scatterModels(ctx, 5, ['torch_lit'], 1.6, 1.6, { gap: 1 });
     scatterModels(ctx, 3, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
+    // nasser, dunkler Boden in Flecken, Geröllhaufen von der Decke
+    const { rand, rr } = ctx;
+    for (let i = 0; i < 14; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      const [c, m] = pick(rand, [['#2e2a3c', 'Slate'], ['#3a3448', 'Pebble'], ['#463e52', 'Slate']]);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), c, m);
+    }
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.6), pick(rand, ['#2e2838', '#3a3446', '#262230']), rand);
+        rock.scale.setScalar(rr(0.5, 0.85));
+        rock.position.set(rr(-0.6, 0.6), 0, rr(-0.6, 0.6));
+        g.add(rock);
+      }
+      return g;
+    }, 0.9, 2, R - 2.6);
   },
   backdrop(ctx, kit) {
     // keine Felssäulen aus planet1.js: sie standen direkt vor der Insel und verdeckten die Sicht
@@ -700,7 +858,51 @@ const CANDY = {
     scatterModels(ctx, 4, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
     scatterModels(ctx, 9, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { gap: 0.75 });
     scatterModels(ctx, 4, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
-    void kit;
+    // wie in einem Süßwarenladen: Zuckergussflecken in Minze, Zitrone und Himbeere, Gummibären,
+    // Gummidrops in Gruppen, Marshmallow-Türme, Lakritzschnecken
+    const { rr } = ctx, inner = R - 2.6;
+    for (let i = 0; i < 12; i++) {
+      const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+      ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.2), pick(rand, ['#c8f4e0', '#fff2b8', '#ffc0dc', '#d8e4ff']), 'SmoothPlastic');
+    }
+    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 4).forEach((c) => {
+      const p = ctx.spot(0.8, 4, inner);
+      if (!p) return;
+      ctx.reserve(p[0], p[1], 0.8);
+      ctx.put(kit.gummyBear(rr(1.1, 1.6), c), p[0], p[1]);
+    });
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const d = kit.gumdrop(pick(rand, ['#ff4a7a', '#ffb02e', '#5ad84a', '#7ac8ff', '#c87aff', '#ffe23a']));
+        d.position.set(rr(-0.5, 0.5), 0, rr(-0.5, 0.5));
+        d.scale.setScalar(rr(0.6, 1));
+        g.add(d);
+      }
+      return g;
+    }, 0.6, 2, inner);
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 3);
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.34, 16), new THREE.MeshStandardMaterial({ color: i % 2 ? '#ffd0e4' : '#fffaf4', roughness: 0.6 }));
+        m.position.set(rr(-0.04, 0.04), 0.17 + i * 0.36, rr(-0.04, 0.04));
+        m.rotation.y = rand();
+        g.add(m);
+      }
+      return g;
+    }, 0.4, 2, inner);
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 20), new THREE.MeshStandardMaterial({ color: '#1e1a20', roughness: 0.4 }));
+      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.2, 12), new THREE.MeshStandardMaterial({ color: '#ff5fb0' }));
+      for (const m of [wheel, mid]) {
+        m.rotation.x = Math.PI / 2;
+        m.position.y = 0.4;
+        g.add(m);
+      }
+      return g;
+    }, 0.5, 2, inner);
   },
   backdrop(ctx, kit) {
     planet1Backdrop(ctx, kit); // Eisberge (Waffel und Kugeln) in der Ferne
@@ -740,14 +942,67 @@ function rocksOf(ctx, v, n = 7) {
   scatterModels(ctx, 3, [`rocks_B${sfx}`], 1.4, 1.9, { rMin: ctx.R * 0.55, gap: 0.75 });
 }
 
+// Reifenspuren: zwei parallele, dunkle Streifen entlang einer geschwungenen Fahrt (Mond, Mars)
+function tracks(ctx, color, { n = 2, len = 14 } = {}) {
+  const { rand, rr, R } = ctx;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 1 });
+  for (let t = 0; t < n; t++) {
+    const p0 = ctx.spot(0.3, 3, R - 4);
+    if (!p0) continue;
+    let [x, z] = p0, a = rand() * TAU;
+    for (let s = 0; s < len; s++) {
+      const step = 0.7, nx = x + Math.cos(a) * step, nz = z + Math.sin(a) * step;
+      if (Math.hypot(nx, nz) > R - 2) break;
+      for (const side of [-1, 1]) {
+        const ox = -Math.sin(a) * 0.32 * side, oz = Math.cos(a) * 0.32 * side;
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(step + 0.04, 0.025, 0.13), mat);
+        layOnGround(strip, ctx.height, (x + nx) / 2 + ox, (z + nz) / 2 + oz, { yaw: -a, lift: 0.005 });
+        ctx.root.add(strip);
+      }
+      x = nx; z = nz; a += rr(-0.25, 0.25);
+    }
+  }
+}
+// große, scharfkantige Findlinge (wie „Tracy's Rock“ bei Apollo 17) und Regolith-Flecken
+function boulders(ctx, kit, colors, n = 3, size = [1.1, 1.7]) {
+  const { rand, rr, R } = ctx;
+  for (let i = 0; i < n; i++) {
+    const p = ctx.spot(size[1] * 1.2, 3, R - 3);
+    if (!p) continue;
+    ctx.reserve(p[0], p[1], size[1]);
+    const g = kit.rockMesh(rr(size[0], size[1]), pick(rand, colors), rand);
+    g.scale.y = rr(0.9, 1.3);
+    // zwei kleinere Bruchstücke daneben
+    for (let k = 0; k < 2; k++) {
+      const f = kit.rockMesh(rr(0.45, 0.6), pick(rand, colors), rand);
+      const a = rand() * TAU;
+      f.position.set(Math.cos(a) * size[0] * 1.1, 0, Math.sin(a) * size[0] * 1.1);
+      g.add(f);
+    }
+    ctx.put(g, p[0], p[1]);
+  }
+}
+function groundPatches(ctx, n, palette) {
+  const { rand, rr, R } = ctx;
+  for (let i = 0; i < n; i++) {
+    const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+    const [c, m] = pick(rand, palette);
+    ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.3, 2.6), c, m);
+  }
+}
+
 const MOND = {
   landmark: true, // Rakete auf der Startrampe
   keepBase: true, // Erde am Himmel, Krater, Flagge, Landefähre
   baseSpots: [[0.6, 0.4, 0.6], [-2, -1.6, 1.3]],
-  build(ctx) {
+  build(ctx, kit) {
     const { R } = ctx;
     const base = clearing(ctx, 6, 5, R - 4);
     if (base) station(ctx, base, ['basemodule_A', 'basemodule_E', 'basemodule_garage']);
+    // Regolith in helleren und dunkleren Flecken, Findlinge, Reifenspuren des Mondautos
+    groundPatches(ctx, 14, [['#c2c4ca', 'Slate'], ['#8e9098', 'Rock'], ['#a8aab2', 'Sand']]);
+    boulders(ctx, kit, ['#9a9da6', '#8a8d96', '#a8abb2'], 3);
+    tracks(ctx, '#7a7d86', { n: 2, len: 16 });
     const pad = place(ctx, 'landingpad_large', 2.6, { rMin: 4, rMax: R - 3 });
     if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
     const solar = clearing(ctx, 3, 4, R - 3);
@@ -767,10 +1022,38 @@ const NEPTUN = {
   landmark: true, // Eisturm mit Ringen
   keepBase: true, // Sturmwirbel, Kristalle, Geysire
   baseSpots: [[0, 0, 1.3]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     const base = clearing(ctx, 5, 5, R - 4);
     if (base) station(ctx, base, ['basemodule_E', 'basemodule_C']);
+    // wie in einer Gletscherhöhle: blankes Tiefeneis, Reif und dunkler Schotter im Wechsel
+    groundPatches(ctx, 14, [['#1e4aa8', 'Glacier'], ['#cfe6ff', 'Snow'], ['#1a2648', 'Pebble'], ['#2f62c8', 'Ice']]);
+    // vom Sturm geschliffene Eisrippen, alle in Windrichtung (+X) ausgerichtet
+    const inner = R - 2.6;
+    ctx.scatter(12, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const s = rr(0.4, 0.7);
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), new THREE.MeshStandardMaterial({ color: pick(rand, ['#bfe0ff', '#9fd0ff', '#e2f2ff']), flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.05, name: 'Eisrippe' };
+        m.scale.set(2.4, 0.42, 0.7);
+        m.position.set(i * 0.9 - 0.9 + rr(-0.2, 0.2), s * 0.15, rr(-0.5, 0.5));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    // Eisblöcke aus klarem, blau leuchtendem Eis mit dunklen Schlieren
+    ctx.scatter(6, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 3);
+      for (let i = 0; i < n; i++) {
+        const h = rr(1, 2.4), cone = kit.coneFacets(rr(0.3, 0.5), h, 5, new THREE.MeshStandardMaterial({ color: pick(rand, ['#4a9aff', '#6ab8ff', '#2f7ae8']), transparent: true, opacity: 0.8, roughness: 0.1, emissive: '#1a5ad8', emissiveIntensity: 0.35 }), rand, { wob: 0.4, tw: rand() * 3, name: 'Eisblock' });
+        cone.position.set(rr(-0.5, 0.5), 0, rr(-0.5, 0.5));
+        cone.rotation.set(rr(-0.25, 0.25), 0, rr(-0.25, 0.25));
+        g.add(cone);
+      }
+      return g;
+    }, 0.9, 2, inner);
     scatterModels(ctx, 3, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
     scatterModels(ctx, 2, ['structure_tall'], 2.4, 2.4, { gap: 0.9 });
     scatterModels(ctx, 3, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
@@ -789,8 +1072,36 @@ const MARS = {
   landmark: true, // Radarschüssel mit Solarfeld
   keepBase: true, // Rover, Kuppeln, Flagge, Phobos am Himmel
   baseSpots: [[1.6, 1.2, 1.1], [-2.6, -1, 2.8], [0.4, -2.8, 0.6]],
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // wie auf den Bildern der Rover: Staub in helleren und dunkleren Flecken, ein Feld aus kantigen dunklen
+    // Steinen in allen Größen, kleine Sandrippeln, Reifenspuren
+    groundPatches(ctx, 16, [['#d07a4a', 'Sand'], ['#9a4426', 'Ground'], ['#b8603a', 'Sand'], ['#7a3a22', 'Slate']]);
+    const inner = R - 2.6;
+    ctx.scatter(16, () => {
+      const g = new THREE.Group();
+      const n = 2 + Math.floor(rand() * 4);
+      for (let i = 0; i < n; i++) {
+        const rock = kit.rockMesh(0.5, pick(rand, ['#5a2a1a', '#6a3422', '#4a241a', '#7a3e28']), rand);
+        rock.scale.setScalar(rr(0.25, 0.75));
+        rock.position.set(rr(-0.9, 0.9), 0, rr(-0.9, 0.9));
+        rock.rotation.y = rand() * TAU;
+        g.add(rock);
+      }
+      return g;
+    }, 0.9, 2, inner);
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#d8885a', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.5, 0.18, 2.6);
+        m.position.set(i * 0.42, 0, rr(-0.1, 0.1));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    tracks(ctx, '#8a3a20', { n: 2, len: 14 });
     // Abbaugrube: der Geländeblock steckt im Boden, nur der Rand mit der Grube schaut heraus
     const mine = place(ctx, 'terrain_mining', 1.8, { rMin: 5, rMax: R - 3, sink: 3.3 });
     if (mine) {
@@ -815,8 +1126,8 @@ const MARS = {
 const SATURN = {
   landmark: true, // Sternwarte
   keepBase: true, // Ring um die Insel, Obsidian, Kristalle
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
     // Handelsposten: drei Frachtlager um einen Landeplatz
     const hub = clearing(ctx, 6, 4, R - 5);
     if (hub) {
@@ -826,6 +1137,37 @@ const SATURN = {
     }
     scatterModels(ctx, 2, ['structure_low', 'space_lights'], 2.4, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'saturn');
+    // erst nach Handelsposten und Sternwarte (die brauchen Platz)
+    // Sandsteinwüste wie im Colorado-Plateau: ein großer Felsbogen, geschichtete Tafelfelsen in Ocker- und
+    // Rosttönen, glatte Sandsteinplatten (Slickrock), Sandrippeln und zähe Wüstensträucher
+    const inner = R - 2.6, bands = ['#c88a52', '#e0b07a', '#b8703e', '#d89a62', '#a8643a'];
+    groundPatches(ctx, 14, [['#d8a868', 'Sand'], ['#c88a52', 'Rock'], ['#e6c08a', 'Sand'], ['#b07a48', 'Ground']]);
+    const archAt = ctx.spot(2.8, 4, inner) || ctx.spot(2.2, 3, inner);
+    if (archAt) {
+      ctx.reserve(archAt[0], archAt[1], 2.6);
+      // quer zur Insel gestellt: von der Mitte aus blickt man durch den Bogen
+      const arch = kit.rockArch(2.3, 0.4, bands, rand);
+      ctx.put(arch, archAt[0], archAt[1], { rot: false });
+      arch.rotation.y = -Math.atan2(archAt[1], archAt[0]) - Math.PI / 2;
+    }
+    ctx.scatter(5, () => kit.butte(rr(1.6, 3.2), rr(0.6, 1), bands, rand), 1.2, 3, inner);
+    ctx.scatter(9, () => {
+      const m = kit.rockMesh(rr(0.6, 1), pick(rand, ['#d8a868', '#c88a52']), rand);
+      m.scale.set(rr(1.6, 2.4), 0.35, rr(1.2, 1.8));
+      return m;
+    }, 1.2, 2, inner);
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#e6c08a', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.5, 0.18, 2.6);
+        m.position.set(i * 0.42, 0, rr(-0.1, 0.1));
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 2, inner, { rot: false });
+    ctx.scatter(10, () => kit.bush(rr(0.18, 0.3), pick(rand, ['#6a7a3a', '#7a8a48', '#5a6a32']), rand), 0.35, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'saturn');
@@ -838,8 +1180,53 @@ const SATURN = {
 const ALIEN = {
   landmark: true, // Alien-Tor
   keepBase: true, // UFO, leuchtende Pflanzen, Kapseln
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    const inner = R - 2.6;
+    // Boden: dunkles Violett mit Flecken aus türkisem Leuchtmoos (wie biolumineszente Pilzrasen)
+    groundPatches(ctx, 12, [['#2a1a52', 'Slate'], ['#1e4a5a', 'Grass'], ['#3a2470', 'Ground']]);
+    // umgestürzte Stämme, auf denen leuchtende Konsolenpilze wachsen (Panellus)
+    ctx.scatter(5, () => {
+      const g = kit.fallenLog(rr(2, 2.8), rr(0.2, 0.28), '#3a2450', rand, '#2a5a5a');
+      const glow = new THREE.MeshStandardMaterial({ color: '#b8ff7a', emissive: '#7aff5a', emissiveIntensity: 1.6 });
+      for (let i = 0; i < 7; i++) {
+        const shelf = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.04, 8, 1, false, 0, Math.PI), glow);
+        const x = rr(-0.9, 0.9), side = rand() < 0.5 ? -1 : 1;
+        shelf.position.set(x, 0.22 + rr(0, 0.2), side * 0.24);
+        shelf.rotation.y = side > 0 ? 0 : Math.PI;
+        g.add(shelf);
+      }
+      return g;
+    }, 1.4, 3, inner);
+    // Rankenbäume: gedrehter Stamm, oben hängen leuchtende Fäden mit Perlen herab
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      const h = rr(2.6, 3.6), stem = new THREE.MeshStandardMaterial({ color: '#4a2478', flatShading: true });
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(rr(-0.3, 0.3), h * 0.4, rr(-0.3, 0.3)), new THREE.Vector3(rr(-0.4, 0.4), h * 0.75, rr(-0.4, 0.4)), new THREE.Vector3(0, h, 0)]);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.12, 6), stem));
+      const top = curve.getPoint(1);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 6, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#5a2a90', emissive: '#d97aff', emissiveIntensity: 0.35 }));
+      cap.scale.y = 0.45;
+      cap.position.copy(top);
+      g.add(cap);
+      const bead = new THREE.MeshStandardMaterial({ color: '#5affd8', emissive: '#5affd8', emissiveIntensity: 1.8 });
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU, len = rr(0.6, 1.4), x = top.x + Math.cos(a) * 0.75, z = top.z + Math.sin(a) * 0.75;
+        const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 4), new THREE.MeshStandardMaterial({ color: '#7affd8', emissive: '#5affd8', emissiveIntensity: 0.8 }));
+        thread.position.set(x, top.y - len / 2, z);
+        g.add(thread);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), bead);
+        b.position.set(x, top.y - len, z);
+        g.add(b);
+      }
+      return g;
+    }, 1.3, 3, inner);
+    // Polster aus Leuchtmoos
+    ctx.scatter(12, () => {
+      const m = kit.mossMound(rr(0.4, 0.7), pick(rand, ['#2a8a7a', '#3a9a5a', '#5a3a9a']), rand);
+      m.children[0].material = new THREE.MeshStandardMaterial({ color: m.children[0].material.color, emissive: m.children[0].material.color, emissiveIntensity: 0.35, flatShading: true });
+      return m;
+    }, 0.5, 2, inner);
     // Forschungslager der Menschen, die die Aliens beobachten
     const camp = clearing(ctx, 5, 5, R - 4);
     if (camp) {
@@ -878,6 +1265,40 @@ const SONNE = {
     }
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'sonne');
+    // Sonnenoberfläche: Granulation in Orange und Rot, dunkle Sonnenflecken mit hellerem Hof,
+    // leuchtende Plasmaadern und Büschel aus Spikulen (dünne, glühende Plasmastrahlen)
+    const { rand, rr } = ctx, inner = R - 2.6;
+    groundPatches(ctx, 16, [['#ff9a2a', 'CrackedLava'], ['#e8641a', 'CrackedLava'], ['#ffb84a', 'Neon']]);
+    for (let i = 0; i < 3; i++) {
+      const a = rand() * TAU, r = rr(3, R - 4), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      ctx.paint(x, z, 1.1, '#5a1a08', 'Basalt');
+      ctx.paint(x, z, 2.2, '#b8400c', 'CrackedLava');
+    }
+    const glow = new THREE.MeshStandardMaterial({ color: '#fff0a0', emissive: '#ffd84a', emissiveIntensity: 1.6 });
+    for (let c = 0; c < 8; c++) {
+      const p0 = ctx.spot(0.4, 3, inner);
+      if (!p0) continue;
+      let [x, z] = p0, a = rand() * TAU;
+      for (let s = 0; s < 6; s++) {
+        const len = rr(0.5, 0.9), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > inner) break;
+        const vein = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.08), glow);
+        layOnGround(vein, ctx.height, (x + nx) / 2, (z + nz) / 2, { yaw: -a, lift: 0.01 });
+        ctx.root.add(vein);
+        x = nx; z = nz; a += rr(-0.8, 0.8);
+      }
+    }
+    ctx.scatter(7, () => {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: '#ffd84a', emissive: '#ff9a1a', emissiveIntensity: 1.4 });
+      for (let i = 0; i < 6; i++) {
+        const h = rr(0.6, 1.5), sp = new THREE.Mesh(new THREE.ConeGeometry(0.06, h, 4), mat);
+        sp.position.set(rr(-0.3, 0.3), h / 2, rr(-0.3, 0.3));
+        sp.rotation.set(rr(-0.35, 0.35), 0, rr(-0.35, 0.35));
+        g.add(sp);
+      }
+      return g;
+    }, 0.6, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'sonne');
@@ -905,11 +1326,72 @@ function seaRocks(ctx, n = 7) {
   scatterModels(ctx, 2, ['rock_single_C@meer', 'rock_single_D@meer'], 6, 8, { rMin: ctx.R * 0.6, gap: 0.7 });
 }
 
+// Riffstock (Bommie) wie am Great Barrier Reef: ein Felshügel voller Korallen. Tischkorallen als flache,
+// übereinander gestaffelte Platten auf kurzen Stielen, Hirnkorallen als Kuppeln, Geweihkorallen, Fächer
+function reefBommie(ctx, kit, size) {
+  const { rand, rr } = ctx;
+  const g = new THREE.Group();
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.8, ...o });
+  const base = kit.rockMesh(size, '#9a6a8a', rand);
+  base.scale.set(1.25, 1.3, 1.1);
+  g.add(base);
+  const top = size * 0.9;
+  const tables = ['#ff9a6a', '#e8706a', '#ffb07a', '#d87aa8', '#f2c08a'];
+  for (let i = 0; i < 5 + Math.floor(rand() * 3); i++) {
+    const a = rand() * TAU, d = size * rr(0.2, 0.85), h = top * rr(0.5, 1.15), r = size * rr(0.4, 0.65);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.3, 6), M('#8a6a5a'));
+    stem.position.set(x, h - 0.15, z);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.92, 0.07, 10), M(pick(rand, tables)));
+    plate.position.set(x, h, z);
+    plate.rotation.set(rr(-0.15, 0.15), rand() * 3, rr(-0.15, 0.15));
+    g.add(stem, plate);
+  }
+  for (let i = 0; i < 3; i++) {
+    const b = kit.brainCoral(pick(rand, ['#d8a0b8', '#a8c87a', '#e8b07a', '#9a8ad8']), rand);
+    const a = rand() * TAU, d = size * rr(0.5, 0.95);
+    b.position.set(Math.cos(a) * d, top * rr(0.1, 0.6), Math.sin(a) * d);
+    b.scale.setScalar(rr(0.7, 1.1));
+    g.add(b);
+  }
+  for (let i = 0; i < 3; i++) {
+    const c = kit.coral(pick(rand, ['#ff7a8a', '#ffb05a', '#e8d8c0', '#b07bff']), rand);
+    const a = rand() * TAU, d = size * rr(0.2, 0.7);
+    c.position.set(Math.cos(a) * d, top * rr(0.6, 1), Math.sin(a) * d);
+    c.scale.setScalar(rr(0.6, 0.9));
+    g.add(c);
+  }
+  // Fächerkoralle: flacher Fächer aus Dreiecken
+  const fan = new THREE.Group();
+  const fanM = M('#c85aa8', { side: THREE.DoubleSide });
+  for (let i = 0; i < 5; i++) {
+    const a0 = -0.9 + i * 0.36, a1 = a0 + 0.36, L = size * 0.9;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, Math.sin(a0) * L, Math.cos(a0) * L, 0, Math.sin(a1) * L, Math.cos(a1) * L, 0], 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, fanM);
+    m.userData.rbx = { facets: true, facetsAll: true, facetThick: 0.03, name: 'Faecherkoralle' };
+    fan.add(m);
+  }
+  const fa = rand() * TAU;
+  fan.position.set(Math.cos(fa) * size * 0.6, top * 0.7, Math.sin(fa) * size * 0.6);
+  fan.rotation.y = -fa;
+  g.add(fan);
+  return g;
+}
 const KORALLENRIFF = {
   landmark: true, // Korallenturm
   keepBase: true, // Wrack, Korallenbogen, Korallen, Fische
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rr } = ctx;
+    // Riffstöcke mit Tischkorallen, Hirnkorallen, Geweihkorallen und Fächern; dazwischen Sand mit Schutt
+    for (let i = 0; i < 7; i++) {
+      const s = rr(1.1, 1.7), p = ctx.spot(s * 1.5, 3, R - 3) || ctx.spot(s * 1.1, 3, R - 3);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], s * 1.4);
+      ctx.put(reefBommie(ctx, kit, s), p[0], p[1]);
+    }
+    groundPatches(ctx, 10, [['#f2e6c4', 'Sand'], ['#d8c8a0', 'Sand'], ['#c8b890', 'Pebble']]);
     // Schatzplatz: offene Truhe zwischen Fässern und Kisten, wie aus dem Wrack gespült
     const loot = clearing(ctx, 2.6, 4, R - 3);
     if (loot) {
@@ -930,8 +1412,37 @@ const KORALLENRIFF = {
 const MUSCHELLAND = {
   landmark: true, // Riesen-Perlmuschel
   keepBase: true, // Muschelhaus, Perlenbrunnen, Muscheln, Seesterne
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // Sandboden wie am Strand bei Ebbe: warme und kühle Sandflecken, lange Rippeln quer zur Strömung,
+    // Felsgruppen mit Seepocken (kleine helle Kegel)
+    groundPatches(ctx, 12, [['#f2dcb8', 'Sand'], ['#e0c8a0', 'Sand'], ['#d8d0c0', 'Pebble']]);
+    ctx.scatter(12, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#ead4ac', flatShading: true }));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.45, 0.14, 3.2);
+        m.position.set(i * 0.5, 0, rr(-0.15, 0.15));
+        g.add(m);
+      }
+      g.rotation.y = 0.4;
+      return g;
+    }, 1.4, 2, R - 2.6, { rot: false });
+    ctx.scatter(5, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const rock = kit.rockMesh(rr(0.45, 0.75), pick(rand, ['#7a8890', '#6a7680']), rand);
+        rock.position.set(rr(-0.6, 0.6), 0, rr(-0.6, 0.6));
+        g.add(rock);
+        for (let k = 0; k < 4; k++) {
+          const b = kit.coneFacets(0.07, 0.1, 5, new THREE.MeshStandardMaterial({ color: '#f2ece0', flatShading: true }), rand, { name: 'Seepocke' });
+          b.position.set(rock.position.x + rr(-0.3, 0.3), rr(0.15, 0.4), rock.position.z + rr(-0.3, 0.3));
+          g.add(b);
+        }
+      }
+      return g;
+    }, 1, 2, R - 2.6);
     // Felsentor aus Stein mit Laternen davor
     const gate = place(ctx, 'arch', 0.75, { rMin: 5, rMax: R - 3, face: [0, 0] });
     if (gate) around(ctx, [gate.position.x, gate.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.7]], 2.4, 3.2);
@@ -949,8 +1460,41 @@ const MUSCHELLAND = {
 const ATLANTIS = {
   landmark: true, // Dreizack-Denkmal
   keepBase: true, // Palast mit Säulenallee, Tempel
-  build(ctx) {
-    const { R } = ctx;
+  build(ctx, kit) {
+    const { R, rand, rr } = ctx;
+    // wie versunkene Ruinen an der Küste: Mauerreste aus Quadern (oben abgebrochen, mit Algen bewachsen),
+    // herabgestürzte Blöcke, alte Pflasterflächen im Sand
+    groundPatches(ctx, 10, [['#c8d4d8', 'Marble'], ['#d8d0b8', 'Sand'], ['#a8b8b8', 'Pebble']]);
+    const stone = ['#d8e0e2', '#c8d2d6', '#e6ecee'], algae = '#4a8a5a';
+    for (let w = 0; w < 6; w++) {
+      const len = Math.round(rr(4, 7)), p = ctx.spot(len * 0.35 + 0.5, 4, R - 3);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], len * 0.35);
+      const g = new THREE.Group();
+      const top = Array.from({ length: len }, (_, i) => Math.max(1, Math.round(3.2 * Math.sin(((i + 0.5) / len) * Math.PI) + rr(-1.4, 0.8))));
+      top.forEach((rows, i) => {
+        for (let r = 0; r < rows; r++) {
+          const b = new THREE.Mesh(new THREE.BoxGeometry(0.62 + rr(-0.05, 0.05), 0.36, 0.5), new THREE.MeshStandardMaterial({ color: pick(rand, stone), flatShading: true }));
+          b.position.set((i - len / 2) * 0.66 + (r % 2) * 0.12, 0.18 + r * 0.37, rr(-0.03, 0.03));
+          b.rotation.y = rr(-0.05, 0.05);
+          g.add(b);
+        }
+        // Algenpolster oben auf dem höchsten Block
+        if (rand() < 0.6) {
+          const m = kit.mossMound(0.32, algae, rand);
+          m.position.set((i - len / 2) * 0.66, rows * 0.37, 0);
+          g.add(m);
+        }
+      });
+      // heruntergefallene Blöcke vor der Mauer
+      for (let k = 0; k < 3; k++) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.36, 0.5), new THREE.MeshStandardMaterial({ color: pick(rand, stone), flatShading: true }));
+        b.position.set(rr(-len * 0.3, len * 0.3), 0.15, rr(0.5, 1.1) * (rand() < 0.5 ? -1 : 1));
+        b.rotation.set(rr(-0.3, 0.3), rr(0, 3), rr(-0.4, 0.4));
+        g.add(b);
+      }
+      ctx.put(g, p[0], p[1]);
+    }
     // Ruinenfeld: Säulen (manche verziert), Trümmer, ein Tor mit Gitter, ein Schrein mit Laternen
     scatterModels(ctx, 6, ['pillar', 'pillar_decorated', 'column'], 0.7, 0.85, { rMin: 4, gap: 0.9 });
     scatterModels(ctx, 4, ['rubble_half', 'rubble_large'], 0.35, 0.5, { rMin: 4, gap: 0.8 });

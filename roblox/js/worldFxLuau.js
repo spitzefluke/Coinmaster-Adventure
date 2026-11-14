@@ -888,11 +888,18 @@ end
 -- Eis: Gletscherwand mit blauen Spalten
 function HELD_BUILD.eis(k)
 	local cf = heldAt(k, 540)
-	P(k, "Block", V(520, 360, 60), cf * CFrame.new(0, 180, 0), hex("#e8f6ff"), "Glacier", 0, "Gletscherwand")
-	for j = 0, 3 do prism(k, cf * CFrame.new(-210 + j * 140, 380 + (j % 2) * 30, 0), 140, 70 + (j % 2) * 40, 62, WHITE, "Snow", 0, "Gletscherkamm") end
-	local cracks = collect(k, function()
-		for j = 1, 7 do P(k, "Block", V(6, rnd(k, 120, 260), 2), cf * CFrame.new(-220 + j * 55, rnd(k, 120, 220), -31) * CFrame.Angles(0, 0, rnd(k, -0.2, 0.2)), hex("#5ab8ff"), "Neon", 0.25, "Spalte") end
-	end)
+	-- Gletscher aus Eistürmen (Séracs) nebeneinander, verschneite Kuppen, dazwischen leuchtende Spalten.
+	-- Jeder Turm ist ein Berg aus Dreiecken; die Spalten liegen vorn auf seiner Flanke.
+	local cracks = {}
+	for j = -3, 3 do
+		local h, r = rnd(k, 280, 400) - math.abs(j) * 25, rnd(k, 62, 78)
+		local x, z = j * 72 + rnd(k, -8, 8), math.abs(j) * 14 + rnd(k, -6, 6)
+		mountain(k, cf * CFrame.new(x, 0, z), r, h, hex("#d8f0ff"):Lerp(hex("#a8d8f4"), (j + 3) % 2 * 0.4), WHITE, "Glacier", "Gletscherwand", { n = 5, RR = { 1, 0.62, 0.3 }, YY = { 0, 0.55, 0.85 } })
+		-- Spalte auf der Vorderflanke: bei Höhe y liegt die Flanke etwa r · (1 − 0,8 · y / h) vor der Mitte
+		local y = h * rnd(k, 0.25, 0.4)
+		local slope = math.atan2(r * 0.8, h)
+		table.insert(cracks, P(k, "Block", V(5, h * 0.35, 2), cf * CFrame.new(x + rnd(k, -12, 12), y, z - r * (1 - 0.8 * y / h) - 1) * CFrame.Angles(-slope, 0, rnd(k, -0.15, 0.15)), hex("#5ab8ff"), "Neon", 0.25, "Spalte"))
+	end
 	pulse(k, cracks, 0.35, 0.15, 0.3)
 end
 
@@ -900,16 +907,21 @@ end
 function HELD_BUILD.lava(k)
 	local cf = heldAt(k)
 	local rock = hex("#2a1e1a")
-	prism(k, cf * CFrame.new(0, 230, 0), 460, 460, 260, rock, "Basalt", 0, "Grosser Vulkan")
-	local crater = P(k, "Cyl", V(90, 10, 110), cf * CFrame.new(0, 410, -20), hex("#ff6a1a"), "Neon", 0, "Krater")
-	-- Lavaströme laufen innen an den Flanken vom Krater herab (Flanke: Breite 460, Höhe 460)
-	local slope = math.atan2(230, 460)
-	for s = -1, 1, 2 do
-		local top, L = V(s * 18, 400, -131), 300
-		local mid = top + V(s * math.sin(slope), -math.cos(slope), 0) * (L / 2)
-		P(k, "Block", V(8, L, 2), cf * CFrame.new(mid) * CFrame.Angles(0, 0, s * slope), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
+	-- Kegel aus Dreiecken mit offenem Krater (Fuß 240, Höhe 460, Kraterrand bei 0,9 · Höhe)
+	local R0, H = 240, 460
+	local rimY, rimR = mountain(k, cf, R0, H, rock, nil, "Basalt", "Grosser Vulkan", { n = 10, open = true, RR = { 1, 0.5, 0.2 }, YY = { 0, 0.55, 0.9 } })
+	local crater = P(k, "Cyl", V(rimR * 2, 10, rimR * 2), cf * CFrame.new(0, rimY - 8, 0), hex("#ff6a1a"), "Neon", 0, "Krater")
+	-- Lavaströme laufen vom Kraterrand die Vorderflanke hinab (Rand → mittlerer Ring → Fuß), leicht davor
+	for _, a in ipairs({ -0.35, 0.3 }) do
+		local pts = { { 0.2, 0.9 }, { 0.5, 0.55 }, { 1, 0 } }
+		for i = 1, 2 do
+			local p0 = V(math.sin(a) * R0 * pts[i][1], H * pts[i][2], -math.cos(a) * R0 * pts[i][1] * 0.98 - 4)
+			local p1 = V(math.sin(a) * R0 * pts[i + 1][1], H * pts[i + 1][2], -math.cos(a) * R0 * pts[i + 1][1] * 0.98 - 4)
+			local mid, len = (p0 + p1) / 2, (p1 - p0).Magnitude
+			P(k, "Block", V(10 - i * 2, len, 2), CFrame.lookAt(cf * mid, cf * p1) * CFrame.Angles(-math.pi / 2, 0, 0), hex("#ff6a1a"), "Neon", 0.1, "Lavastrom")
+		end
 	end
-	local host = P(k, "Block", V(40, 2, 40), cf * CFrame.new(0, 416, -20), WHITE, "SmoothPlastic", 1, "Ausbruch")
+	local host = P(k, "Block", V(40, 2, 40), cf * CFrame.new(0, rimY, 0), WHITE, "SmoothPlastic", 1, "Ausbruch")
 	local e = Instance.new("ParticleEmitter")
 	e.Color = ColorSequence.new(hex("#ffd27a"), hex("#ff3a0a"))
 	e.LightEmission = 1
