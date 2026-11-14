@@ -34,7 +34,13 @@ export function vivid(hex, k = 0.2) {
   c.setHSL(hsl.h, Math.min(1, hsl.s * (1 + k) + 0.02), hsl.l);
   return '#' + c.getHexString();
 }
-const shade = (hex, s, l) => '#' + new THREE.Color(hex).offsetHSL(0, s, l).getHexString();
+// Ton heller oder dunkler: bei dunklen Farben im Verhältnis zur Helligkeit (three.js rechnet HSL linear, ein
+// dunkles Rot hat dort nur l ≈ 0,03; ein fester Abzug ergab reines Schwarz)
+export function relL(hex, l) {
+  const L = new THREE.Color(hex).getHSL({}).l;
+  return L < 0.25 ? l * Math.max(0.12, L / 0.25) : l;
+}
+const shade = (hex, s, l) => '#' + new THREE.Color(hex).offsetHSL(0, s, relL(hex, l)).getHexString();
 
 // fester Zufall je Welt (gleiche Welt, gleiche Deko)
 function seededRand(str) {
@@ -297,7 +303,7 @@ function terrainSurface(out, built, world) {
   // fünf Töne von etwas dunkler bis etwas heller, dazu ein Hang-Ton zwischen Boden und Rand-Erde
   // Wiesen: dunkle Flecken etwas bläulicher, helle etwas gelblicher (wie trockenes und frisches Gras)
   const grassy = material === 'Grass';
-  const hue = (hex, h, s, l) => '#' + new THREE.Color(hex).offsetHSL(grassy ? h : 0, s, l).getHexString();
+  const hue = (hex, h, s, l) => '#' + new THREE.Color(hex).offsetHSL(grassy ? h : 0, s, relL(hex, l)).getHexString();
   const tones = [hue(g, 0.012, 0.03, -0.085), hue(g, 0.006, 0.015, -0.04), g, hue(g, -0.012, 0.02, 0.035), hue(g, -0.025, 0.02, 0.06)];
   const slopeTone = '#' + new THREE.Color(g).lerp(new THREE.Color(vivid(world.side, 0.15)), 0.32).getHexString();
   const rimTone = shade(g, 0.03, 0.075);
@@ -662,6 +668,9 @@ export function worldToParts(world) {
     convertMesh(rbx.sky ? sky : parts, o, world);
   });
   pullInsideDome(sky);
+  // Kulisse (Schwebeinseln, Nachbarinseln, ferne Modelle) wirft keine Schatten: sonst lagen große, schwarze
+  // Schattenflecken der Nachbarinseln auf der Hauptinsel
+  for (const p of sky) if (p.castShadow === undefined) Object.assign(p, { castShadow: false, noShadow: true });
   terrainSurface(parts, built, world);
   // Grasnarbe, Erdschicht und Felszunge als eine modellierte Hülle (roblox/js/islandShell.js)
   islandShell(parts, built, world);

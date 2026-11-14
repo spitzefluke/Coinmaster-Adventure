@@ -122,6 +122,45 @@ function temple(kit, tiers, w, stone, roof) {
   return group(...parts);
 }
 
+// Kristall wie in der Natur: sechseckiges Prisma mit Pyramidenspitze, Fuß bei (0, 0, 0), entlang +Y.
+// In Roblox Fläche für Fläche aus Keilen (echte Kanten). Zwei Töne: Seiten abwechselnd heller.
+function prismCrystal(kit, len, r, c, glow = 0.5) {
+  const { E } = kit;
+  const body = len * 0.74, pts = [], n = 6;
+  const ring = (y, rr) => Array.from({ length: n }, (_, i) => [Math.cos((i / n) * TAU) * rr, y, Math.sin((i / n) * TAU) * rr]);
+  const b0 = ring(-0.05, r * 0.92), b1 = ring(body, r);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    pts.push(...b0[i], ...b1[i], ...b1[j], ...b0[i], ...b1[j], ...b0[j]);
+    pts.push(...b1[i], 0, len, 0, ...b1[j]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  geo.computeVertexNormals();
+  const light = '#' + new THREE.Color(c).offsetHSL(0, 0, 0.1).getHexString();
+  // Gruppen: Seiten in zwei Tönen, Spitze im hellen Ton
+  for (let i = 0; i < n; i++) geo.addGroup(i * 9, 6, i % 2), geo.addGroup(i * 9 + 6, 3, 1);
+  const mats = [E(c, glow, { transparent: true, opacity: 0.88, roughness: 0.1 }), E(light, glow, { transparent: true, opacity: 0.88, roughness: 0.1 })];
+  const m = new THREE.Mesh(geo, mats);
+  m.userData.rbx = { facets: true, facetsAll: true, facetThick: Math.min(0.06, r * 0.3), name: 'Kristall' };
+  return m;
+}
+// Druse: dunkles Muttergestein, aus dem eine Gruppe Kristalle fächerförmig herauswächst (wie Bergkristall
+// auf Matrix). size: Größe des Gesteins
+function druse(kit, rand, size, rock, gem, gem2) {
+  const g = kit.rockMesh(size, rock, rand);
+  const n = 4 + Math.floor(rand() * 3), ox = (rand() - 0.5) * size * 0.4, oz = (rand() - 0.5) * size * 0.4;
+  for (let i = 0; i < n; i++) {
+    const len = size * (0.9 + rand() * 1.3) * (i === 0 ? 1.3 : 1), r = len * (0.09 + rand() * 0.04);
+    const cr = prismCrystal(kit, len, r, i % 3 === 2 && gem2 ? gem2 : gem, 0.5);
+    const a = rand() * TAU, tilt = i === 0 ? rand() * 0.25 : 0.3 + rand() * 0.6;
+    cr.position.set(ox + Math.cos(a) * size * 0.15, size * 0.45, oz + Math.sin(a) * size * 0.15);
+    cr.rotation.set(Math.sin(a) * tilt, rand() * TAU, -Math.cos(a) * tilt, 'YXZ');
+    g.add(cr);
+  }
+  return g;
+}
+
 // Welt-Rezept: Farben und was gestreut wird
 function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSize }) {
   return {
@@ -129,9 +168,27 @@ function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSi
       const { rand, rr, R, scatter } = ctx;
       landmark(ctx, kit, gem, { size: landmarkSize ?? 2.4, base, ring });
       extra?.(ctx, kit);
-      scatter(6, () => cluster(kit, rand, rr(0.8, 1.8), gem, gem2), 0.8, 3, R - 1);
-      scatter(5, () => kit.rockMesh(rr(0.4, 0.8), rock, rand), 0.7, 3, R - 1);
-      scatter(8, () => gemStone(kit, rr(0.14, 0.22), rand() < 0.5 ? gem : gem2 || gem, 0.9), 0.3, 2, R - 1);
+      // Boden: Flecken aus Gestein und Kristallsand, leicht dunkler und heller als der Bodenton der Welt
+      // (fest dunkle Flecken wirkten auf dunklen Welten wie Löcher)
+      const g0 = ctx.world.ground, gl = new THREE.Color(g0).getHSL({}).l;
+      // auf sehr dunklem Boden beide Töne heller (dunkler als der Boden wäre fast schwarz)
+      const dark = '#' + new THREE.Color(g0).offsetHSL(0, -0.04, gl < 0.25 ? 0.035 : -0.07).getHexString();
+      const pale = '#' + new THREE.Color(g0).offsetHSL(0, -0.02, gl < 0.25 ? 0.085 : 0.07).getHexString();
+      for (let i = 0; i < 14; i++) {
+        const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
+        // Material des Bodens behalten (Schiefer und Kies färbten dunkle Böden fast schwarz)
+        ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), i % 2 ? dark : pale, null);
+      }
+      // Drusen aus dunklem Gestein mit Kristallfächern; dazu wenige lose Kristallgruppen und Steine.
+      // Feste Anzahl (rMax unter R − 2,5), vorher vervielfachte scatter alles mit der Inselfläche
+      const inner = R - 2.6;
+      // Muttergestein deutlich dunkler als der Boden, damit die Kristalle davor leuchten
+      const hsl = new THREE.Color(rock).getHSL({});
+      const matrix = '#' + new THREE.Color().setHSL(hsl.h, hsl.s * 0.5, Math.min(hsl.l, 0.2)).getHexString();
+      scatter(10, () => druse(kit, rand, rr(0.6, 1), matrix, gem, gem2), 1.3, 3, inner);
+      scatter(10, () => cluster(kit, rand, rr(0.8, 1.6), gem, gem2), 0.8, 3, inner);
+      scatter(8, () => kit.rockMesh(rr(0.4, 0.8), rock, rand), 0.7, 3, inner);
+      scatter(14, () => gemStone(kit, rr(0.14, 0.22), rand() < 0.5 ? gem : gem2 || gem, 0.9), 0.3, 2, inner);
     },
     emitters(ctx, add) {
       add('Funkeln', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], [gem, '#ffffff'], 0.14, 16, [0.1, 0.4], [3, 6], { light: 1 });
@@ -163,7 +220,7 @@ function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSi
 const QUARZFELD = make({
   gem: '#f4f0ff', gem2: '#d8ccff', base: '#a8a0c4', rock: '#c8c2dc', ring: '#c98bff',
   extra(ctx, kit) {
-    ctx.scatter(4, () => pillar(kit, ctx.rr(1.4, 3.2), '#f4f0ff', 0.35), 0.9, 4, ctx.R - 1.5);
+    ctx.scatter(8, () => pillar(kit, ctx.rr(1.4, 3.2), '#f4f0ff', 0.35), 0.9, 4, ctx.R - 2.6);
   },
 });
 const AMETHYSTGROTTE = make({
@@ -199,7 +256,19 @@ const TOPASDUENEN = make({
       const d = kit.at(new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#f2c46a')), 0, 0, 0);
       d.scale.set(1.6, 0.45, 0.8);
       return kit.group(d);
-    }, 1.4, 5, ctx.R - 1.5);
+    }, 1.4, 5, ctx.R - 2.6);
+    // Sandrippeln quer zum Wind
+    ctx.scatter(10, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 4; i++) {
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), kit.M('#f2c46a'));
+        m.userData.rbx = { facets: true, facetThick: 0.04, name: 'Sandrippel' };
+        m.scale.set(0.5, 0.18, 2.6);
+        m.position.set(i * 0.42, 0, 0);
+        g.add(m);
+      }
+      return g;
+    }, 1.2, 3, ctx.R - 2.6, { rot: false });
   },
   emitters(ctx, add) {
     add('Goldstaub', [0, 1, 0], [ctx.R * 2.2, 1, ctx.R * 2.2], ['#ffd76a', '#fff0b8'], 0.12, 10, [0.6, 1.2], [4, 6], { spread: [10, 80] });
@@ -209,8 +278,11 @@ const TOPASDUENEN = make({
 const SMARAGDWALD = make({
   gem: '#1ec870', gem2: '#b4ffd6', base: '#1e6a44', rock: '#2a5a40', ring: '#b4ffd6',
   extra(ctx, kit) {
-    ctx.scatter(7, () => gemTree(kit, ctx.rand, ctx.rr(2.4, 3.8), '#5a4430', ctx.rand() < 0.7 ? '#1ec870' : '#3ee08a'), 1.1, 4, ctx.R - 1);
-    ctx.scatter(5, () => kit.bush(ctx.rr(0.3, 0.5), '#2fa86a', ctx.rand), 0.5, 3, ctx.R - 1);
+    ctx.scatter(18, () => gemTree(kit, ctx.rand, ctx.rr(2.4, 3.8), '#5a4430', ctx.rand() < 0.7 ? '#1ec870' : '#3ee08a'), 1.1, 4, ctx.R - 2.6);
+    ctx.scatter(16, () => kit.bush(ctx.rr(0.3, 0.5), '#2fa86a', ctx.rand), 0.5, 3, ctx.R - 2.6);
+    // Unterholz wie im Regenwald: Farne und Moospolster
+    ctx.scatter(16, () => kit.fern(ctx.rr(0.5, 0.8), ctx.rand() < 0.5 ? '#2f9a5a' : '#3fb06a', ctx.rand), 0.5, 2, ctx.R - 2.6);
+    ctx.scatter(10, () => kit.mossMound(ctx.rr(0.4, 0.7), '#2a8a4a', ctx.rand), 0.5, 2, ctx.R - 2.6);
   },
   emitters(ctx, add) {
     add('Glühwürmchen', [0, 1.5, 0], [ctx.R * 2, 3, ctx.R * 2], ['#b4ffd6', '#d9ff7a'], 0.12, 10, [0.1, 0.3], [4, 7], { light: 1 });
@@ -222,8 +294,8 @@ const JADETEMPEL = make({
   extra(ctx, kit) {
     const p = ctx.spot(3.6, 7, ctx.R - 4);
     if (p) ctx.put(temple(kit, 4, 5, '#8ad0a0', '#e8b84a'), p[0], p[1]);
-    ctx.scatter(4, () => temple(kit, 2, 1.8, '#8ad0a0', '#e8b84a'), 1.4, 6, ctx.R - 1.5);
-    ctx.scatter(3, () => kit.roundTree(ctx.rr(1.6, 2.4), '#4aa86a', ctx.rand), 0.9, 4, ctx.R - 1);
+    ctx.scatter(4, () => temple(kit, 2, 1.8, '#8ad0a0', '#e8b84a'), 1.4, 6, ctx.R - 2.6);
+    ctx.scatter(10, () => kit.roundTree(ctx.rr(1.6, 2.4), '#4aa86a', ctx.rand), 0.9, 4, ctx.R - 2.6);
   },
   sounds: [['Gong', 'ferner Tempelgong', 0.25], ['Wind', 'sanfter Bergwind', 0.3]],
 });
@@ -231,7 +303,8 @@ const SAPHIRSEE = make({
   gem: '#2a5ae8', gem2: '#cfe0ff', base: '#3a5aa0', rock: '#6a8ad0', ring: '#cfe0ff',
   extra(ctx, kit) {
     // See mit Saphiren auf dem Grund
-    const p = ctx.spot(3.4, 6, ctx.R - 4);
+    const p = ctx.spot(3.4, 6, ctx.R - 4) || ctx.spot(3.2, 4, ctx.R - 3.3);
+    if (p) ctx.reserve(p[0], p[1], 3.4);
     if (p) {
       const water = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.12, 24), kit.E('#2a5ae8', 0.25, { transparent: true, opacity: 0.75, roughness: 0.05 })), 0, 0.12, 0);
       const g = kit.group(water);
@@ -242,6 +315,15 @@ const SAPHIRSEE = make({
         g.add(st);
       }
       ctx.put(g, p[0], p[1], { sink: 0.02 });
+      // Kiesufer wie an einem Gletschersee, Eisschollen auf dem Wasser
+      ctx.paint(p[0], p[1], 4.1, '#9ab0d8', 'Pebble');
+      for (let i = 0; i < 5; i++) {
+        const a = ctx.rand() * TAU, r = ctx.rr(0.6, 2.2);
+        const floe = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(ctx.rr(0.3, 0.55), ctx.rr(0.3, 0.55), 0.12, 6), kit.M('#eaf4ff')), p[0] + Math.cos(a) * r, 0, p[1] + Math.sin(a) * r);
+        floe.position.y = ctx.height(floe.position.x, floe.position.z) + 0.16;
+        floe.rotation.y = ctx.rand() * 3;
+        ctx.root.add(floe);
+      }
     }
   },
   emitters(ctx, add) {
@@ -266,6 +348,22 @@ const RUBINVULKAN = make({
       ctx.put(g, p[0], p[1], { rot: false });
       ctx.anims.push((t) => (crater.material.emissiveIntensity = 1.6 + Math.sin(t * 1.8) * 0.6));
     }
+    // glühende Risse im dunklen Boden, verzweigt wie auf einem Lavafeld
+    const glow = kit.E('#ff3a5a', 1.4);
+    for (let c = 0; c < 7; c++) {
+      const p0 = ctx.spot(0.4, 3, ctx.R - 2.6);
+      if (!p0) continue;
+      let [x, z] = p0, a = ctx.rand() * TAU;
+      for (let k = 0; k < 5; k++) {
+        const len = ctx.rr(0.5, 0.9), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > ctx.R - 2.6) break;
+        const crack = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.07), glow);
+        crack.position.set((x + nx) / 2, ctx.height((x + nx) / 2, (z + nz) / 2) + 0.02, (z + nz) / 2);
+        crack.rotation.y = -a;
+        ctx.root.add(crack);
+        x = nx; z = nz; a += ctx.rr(-0.9, 0.9);
+      }
+    }
   },
   emitters(ctx, add) {
     add('Glut', [0, 0.5, 0], [ctx.R * 2, 1, ctx.R * 2], ['#ff3a5a', '#ffb07a'], 0.12, 12, [0.6, 1.4], [3, 5], { spread: [12, 12], light: 1 });
@@ -276,7 +374,7 @@ const OPALWOLKEN = make({
   gem: '#ff9ae0', gem2: '#5ad8ff', base: '#d0c8f0', rock: '#e8e2fa', ring: '#5ad8ff',
   extra(ctx, kit) {
     const colors = ['#ffe2f6', '#e2f0ff', '#f0ffe8', '#fff2d8'];
-    ctx.scatter(5, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 1);
+    ctx.scatter(12, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 2.6);
   },
   emitters(ctx, add) {
     add('Schimmer', [0, 3, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#ff9ae0', '#5ad8ff', '#fff2a0'], 0.14, 14, [0.1, 0.3], [5, 8], { light: 1 });
@@ -290,8 +388,8 @@ const DIAMANTKERN = make({
     ctx.scatter(2, () => {
       const arc = kit.at(new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 6, 16, Math.PI), kit.E('#8af0ff', 0.6, { transparent: true, opacity: 0.85 })), 0, 0, 0);
       return kit.group(arc);
-    }, 1.6, 6, ctx.R - 1.5);
-    ctx.scatter(3, () => pillar(kit, ctx.rr(1.2, 2.4), '#e8fdff', 0.5), 0.8, 4, ctx.R - 1.5);
+    }, 1.6, 6, ctx.R - 2.6);
+    ctx.scatter(8, () => pillar(kit, ctx.rr(1.2, 2.4), '#e8fdff', 0.5), 0.8, 4, ctx.R - 2.6);
   },
   emitters(ctx, add) {
     add('Lichtstrahlen', [0, 0.5, 0], [ctx.R * 1.6, 1, ctx.R * 1.6], ['#e8fdff', '#8af0ff'], 0.18, 8, [1, 2], [3, 5], { spread: [6, 6], light: 1 });
