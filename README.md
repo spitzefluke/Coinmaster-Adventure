@@ -52,7 +52,7 @@ GitHub Pages braucht ein öffentliches Repo oder GitHub Pro. Die Seite selbst is
 ## Neuen Bereich hinzufügen
 
 1. Ordner anlegen, z. B. `karte/index.html`. Gemeinsame Farben und Schriften kommen aus `../css/theme.css`.
-2. In `js/bereiche.js` einen Eintrag mit `status: 'vorschau'` ergänzen (oder den Platzhalter ersetzen).
+2. In `js/bereiche.js` einen Eintrag mit `gruppe`, `titel`, `href`, `status: 'vorschau'`, `kurz`, `eckdaten` (und optional `alias` für die Suche) ergänzen.
 
 ## Münzkabinett
 
@@ -1113,7 +1113,7 @@ Dann <http://localhost:8000> öffnen.
 
 ## Aufbau
 
-- `index.html`, `css/start.css`, `js/start.js` – Startseite
+- `index.html`, `css/start.css`, `js/start.js` – Startseite (aus Claude Design „Startseite v3“: Himmelsbild hinter dem Kopf, schimmernder Titel, hochzählende Zahlen, Goldfunken, Suche über alle Bereiche mit Taste „/“, Kacheln mit Lichtfleck)
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: `js/pets.js` (Seltenheiten, Eier, 99 Pets, `rollPet`), `js/main.js` (Liste)
 - `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste)

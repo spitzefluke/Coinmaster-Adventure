@@ -12,33 +12,55 @@
 <link rel="stylesheet" href="css/start.css">
 </head>
 <body>
-<div class="page">
+<!-- Himmel hinter dem Kopf: Himmelsbild der Welt Saturn, nach unten ausgeblendet -->
+<div class="sky" aria-hidden="true">
+  <div class="sky-img" id="sky"></div>
+  <div class="sky-shade"></div>
+</div>
+
+<main class="page">
   <header class="hero">
-    <div class="hero-text">
-      <p class="eyebrow">In Entwicklung</p>
-      <h1>Coinmaster Adventure</h1>
-      <p class="lede">Hier sammeln wir alles, was wir für das Spiel bauen. Jeder Bereich ist eine eigene Vorschau, die du direkt im Browser ausprobieren kannst.</p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="muenzindex/">Münze ziehen</a>
-        <a class="btn" href="eier/">Ei schlüpfen lassen</a>
-        <a class="btn" href="muenzen/">Alle Münzen ansehen</a>
+    <div class="hero-text" id="hero">
+      <p class="eyebrow"><span class="live-dot" id="live-dot" aria-hidden="true"></span>In Entwicklung</p>
+      <div class="hero-title">
+        <h1 id="title">Coinmaster Adventure</h1>
+        <p class="lede">Alles, was wir für das Spiel bauen. Jeder Bereich ist eine eigene Vorschau im Browser.</p>
       </div>
-      <dl class="stats">
-        <div><dt>Münzen</dt><dd>60</dd></div>
-        <div><dt>Seltenheiten</dt><dd>11</dd></div>
-        <div><dt>Mutationen</dt><dd>11</dd></div>
-        <div><dt>Eier</dt><dd>11</dd></div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" id="primary" href="spiel/">Spiel öffnen <span aria-hidden="true">→</span></a>
+        <a class="btn" href="muenzindex/">Münze ziehen</a>
+        <a class="btn" href="eier/">Ei schlüpfen lassen</a>
+      </div>
+      <dl class="stats" id="stats">
+        <div><dd data-to="60">60</dd><dt>Münzen</dt></div>
+        <div><dd data-to="11">11</dd><dt>Seltenheiten</dt></div>
+        <div><dd data-to="11">11</dd><dt>Mutationen</dt></div>
+        <div><dd data-to="11">11</dd><dt>Eier</dt></div>
       </dl>
     </div>
   </header>
 
   <section class="areas" aria-labelledby="areas-title">
-    <h2 id="areas-title">Bereiche</h2>
+    <div class="areas-head">
+      <div class="areas-title">
+        <h2 id="areas-title">Bereiche</h2>
+        <span class="areas-count" id="area-count"></span>
+      </div>
+      <label class="search">
+        <span class="visually-hidden">Bereich suchen</span>
+        <input id="area-search" type="search" placeholder="Bereich suchen …" autocomplete="off">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+    </div>
     <div id="area-grid" class="area-grid"></div>
+    <div id="area-empty" class="area-empty" hidden>
+      <p>Kein Bereich passt zu „<span id="area-query"></span>“.</p>
+      <button class="btn" type="button" id="area-clear">Suche leeren</button>
+    </div>
   </section>
 
   <footer class="foot">Coinmaster Adventure · Vorschauen wie in Roblox</footer>
-</div>
+</main>
 
 <script type="module" src="js/start.js"></script>
 <script type="module" src="js/nav.js"></script>
