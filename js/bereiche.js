@@ -1,7 +1,8 @@
 // Alle Bereiche, die auf der Startseite als Kachel erscheinen.
 // Neuer Bereich: Ordner anlegen (z. B. `karte/index.html`) und hier einen Eintrag ergänzen.
 //
-// status: 'vorschau' = anklickbar, 'code' = anklickbar, aber nur mit Code nutzbar, 'geplant' = Platzhalter ohne Link
+// status: 'vorschau' = anklickbar, 'code' = anklickbar, aber nur mit Code nutzbar, 'admin' = anklickbar, bearbeiten nur
+// für Admins, 'geplant' = Platzhalter ohne Link
 
 export const BEREICHE = [
   {
@@ -94,6 +95,13 @@ export const BEREICHE = [
     href: 'roblox/',
     status: 'code',
     eckdaten: ['Installer-Skript', 'ModuleScripts', 'Motive als PNG'],
+  },
+  {
+    titel: 'Checkliste',
+    text: 'Für die Admins: was schon überarbeitet ist, was noch überarbeitet werden muss und wer was macht. Beide sehen dieselbe Liste, jede Änderung landet im Repo.',
+    href: 'checkliste/',
+    status: 'admin',
+    eckdaten: ['70 Punkte', 'Zuständigkeit', 'Notizen'],
   },
 
 ];

@@ -1101,6 +1101,30 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
 
 Ändern sich Münzen, Mutationen, Eier oder Welten auf der Webseite, einfach neu exportieren.
 
+## Checkliste (für Admins)
+
+`checkliste/` ist eine gemeinsame Arbeitsliste für die beiden Admins (spitzefluke und Axseleins): was schon
+überarbeitet ist, was noch überarbeitet werden muss und wer was macht.
+
+- **Punkte:** 70 vorausgefüllte Punkte in acht Gruppen: Bereiche der Webseite, alle Welten nach Planeten, die
+  Systeme des Roblox-Spiels und Handgriffe in Roblox Studio (Installer, Welten einfügen, Modelle importieren,
+  Decal-, Bild- und SoundIds eintragen, Admins, API-Zugriff, Veröffentlichen). Eigene Punkte lassen sich in jeder
+  Gruppe anlegen, umbenennen und entfernen.
+- **Je Punkt:** Status in drei Stufen (muss überarbeitet werden, in Arbeit, überarbeitet), wer zuständig ist
+  (spitzefluke, Axseleins, beide oder niemand), eine Notiz und wer ihn zuletzt wann geändert hat.
+- **Übersicht und Filter:** Fortschritt gesamt, je Admin und je Gruppe; Filter nach Status, „Meine Aufgaben“,
+  Admin oder „niemand zuständig“, dazu eine Suche.
+- **Speichern:** Die Liste liegt in `checkliste/daten.json` (ein Punkt pro Zeile). Ohne Anmeldung zeigt die Seite
+  sie nur an. Zum Bearbeiten hinterlegt jeder Admin einmal einen GitHub-Token (bleibt nur im eigenen Browser,
+  `localStorage`); die Seite schreibt jede Änderung über die GitHub-API als Commit in `main` zurück, mehrere
+  schnelle Änderungen zusammen. Hat der andere Admin dazwischen gespeichert, holt sie den neuesten Stand und wendet
+  die eigenen Änderungen darauf an, so geht nichts verloren. Alle 45 Sekunden lädt sie Änderungen des anderen nach.
+- **Token:** Der Besitzer des Repos nimmt einen fein abgestuften Token nur für dieses Repo mit „Contents: Read and
+  write“. Ein Mitarbeiter (Collaborator) braucht einen klassischen Token mit `public_repo` (privates Repo: `repo`),
+  weil fein abgestufte Tokens nicht in Repos anderer Personen schreiben dürfen. Vorher muss der Besitzer ihn unter
+  Settings → Collaborators einladen. Die Anleitung steht auch im Anmeldefenster.
+- Die Liste ist wie die ganze Seite öffentlich lesbar. Admin-Namen stehen oben in `daten.json` (`admins`).
+
 ## Lokal starten
 
 ES-Module brauchen einen lokalen Server:
