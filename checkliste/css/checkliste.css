@@ -4,6 +4,8 @@
   --st-arbeit: #f2b84b;
   --st-fertig: #6fd391;
 }
+html { min-height: 100%; } /* kurze Seite (nicht angemeldet): Hintergrund nicht wiederholen */
+.cl-sync:empty { display: none; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 code { font: 500 0.875em/1 var(--font-data); color: var(--brass); }
 

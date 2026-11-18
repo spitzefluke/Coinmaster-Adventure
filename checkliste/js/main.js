@@ -1,6 +1,6 @@
 // Checkliste: Oberfläche. Daten und Speichern in store.js.
 
-import { Store, STATUS, BEIDE, newId } from './store.js';
+import { Store, STATUS, BEIDE } from './store.js';
 
 const store = new Store();
 const $ = (id) => document.getElementById(id);
@@ -184,7 +184,7 @@ function makeGroup(g) {
       e.preventDefault();
       const t = input.value.trim();
       if (!t) return;
-      store.change({ type: 'add', punkt: { id: newId(), gruppe: g.id, titel: t, status: 'offen', wer: '', notiz: '' } });
+      store.change({ type: 'add', gruppe: g.id, titel: t });
       input.value = '';
     },
   }, input, h('button', { class: 'cl-btn', type: 'submit', text: 'Hinzufügen' }));
@@ -195,14 +195,20 @@ function makeGroup(g) {
 
 function render() {
   const d = store.data;
-  if (!d) return;
   const root = $('groups');
-  // Hinweis, solange nicht angemeldet
-  let ro = document.querySelector('.cl-readonly');
-  if (!store.canEdit && !ro) {
-    ro = h('p', { class: 'cl-readonly' }, 'Nur ansehen. Zum Abhaken und Zuteilen einmalig ', h('button', { class: 'cl-btn', type: 'button', text: 'anmelden', onclick: openLogin }), ' (GitHub-Token).');
-    root.before(ro);
-  } else if (store.canEdit && ro) ro.remove();
+  // ohne Anmeldung: nichts von der Liste zeigen, nur den Weg zur Anmeldung
+  document.querySelector('.cl-readonly')?.remove();
+  for (const el of [$('summary'), document.querySelector('.cl-tools')]) el.hidden = !d;
+  if (!d) {
+    root.replaceChildren();
+    items.clear();
+    groups.clear();
+    const msg = store.configured
+      ? h('p', { class: 'cl-readonly' }, 'Die Liste ist nur für die Admins. Mit deinem Code ', h('button', { class: 'cl-btn', type: 'button', text: 'anmelden', onclick: openLogin }), '.')
+      : h('p', { class: 'cl-readonly' }, 'Noch nicht eingerichtet. Einmalig checkliste/supabase.sql in Supabase ausführen und in checkliste/js/config.js die Project URL und den Publishable Key eintragen.');
+    root.before(msg);
+    return;
+  }
 
   const seen = new Set();
   for (const g of d.gruppen) {
@@ -235,56 +241,48 @@ function render() {
 // ── Kopfzeile ──
 function renderAccount() {
   const who = $('who');
-  if (store.canEdit) who.replaceChildren('Angemeldet als ', h('b', { style: `--c:${colorOf(store.login.name)}`, text: store.login.name }));
+  if (store.login.code && store.login.name) who.replaceChildren('Angemeldet als ', h('b', { style: `--c:${colorOf(store.login.name)}`, text: store.login.name }));
   else who.textContent = 'Nicht angemeldet';
-  $('login-open').textContent = store.canEdit ? 'Konto' : 'Anmelden';
+  $('login-open').textContent = store.login.code ? 'Abmelden' : 'Anmelden';
+  $('login-open').hidden = !store.configured;
 }
 function renderState() {
   const s = $('sync');
   s.dataset.s = store.state.status;
   s.textContent = store.state.text;
-  $('retry').hidden = !(store.state.status === 'fehler' && store.pending.length);
 }
 
 // ── Anmelden ──
 const dlg = $('login');
 function openLogin() {
-  const names = admins().length ? admins() : ['spitzefluke', 'Axseleins'];
-  $('login-names').replaceChildren(...names.map((n, i) =>
-    h('label', {}, h('input', { type: 'radio', name: 'name', value: n, checked: store.login.name ? store.login.name === n : i === 0 }), n)));
-  $('login-token').value = store.login.token || '';
+  $('login-code').value = '';
   $('login-msg').textContent = '';
-  $('login-out').hidden = !store.login.token;
   dlg.showModal();
+  $('login-code').focus();
 }
-$('login-open').addEventListener('click', openLogin);
-$('login-cancel').addEventListener('click', () => dlg.close());
-$('login-out').addEventListener('click', () => {
-  store.setLogin({ name: store.login.name });
-  dlg.close();
-  store.load();
+$('login-open').addEventListener('click', () => {
+  if (!store.login.code) return openLogin();
+  if (store.pending.length && !confirm('Es wird gerade noch gespeichert. Trotzdem abmelden?')) return;
+  store.signOut();
 });
+$('login-cancel').addEventListener('click', () => dlg.close());
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = dlg.querySelector('input[name="name"]:checked')?.value;
-  const token = $('login-token').value.trim();
+  const code = $('login-code').value.trim();
   const msg = $('login-msg');
-  if (!name || !token) {
+  if (!code) {
     msg.dataset.s = 'fehler';
-    msg.textContent = 'Bitte Namen wählen und Token einfügen.';
+    msg.textContent = 'Bitte deinen Code eingeben.';
     return;
   }
   msg.dataset.s = '';
-  msg.textContent = 'Prüfe den Token …';
+  msg.textContent = 'Prüfe den Code …';
   $('login-ok').disabled = true;
   try {
-    const r = await store.checkLogin(name, token);
-    if (!r.push) throw new Error(`Das Konto ${r.login || ''} hat kein Schreibrecht am Repo. Als Mitarbeiter einladen lassen und die Einladung annehmen.`);
-    store.setLogin({ name, token });
+    await store.signIn(code);
     msg.dataset.s = 'ok';
-    msg.textContent = `Angemeldet${r.login ? ' (GitHub: ' + r.login + ')' : ''}.`;
-    setTimeout(() => dlg.close(), 600);
-    await store.load();
+    msg.textContent = `Hallo ${store.login.name}!`;
+    setTimeout(() => dlg.close(), 500);
   } catch (err) {
     msg.dataset.s = 'fehler';
     msg.textContent = err.message;
@@ -295,7 +293,10 @@ $('login-form').addEventListener('submit', async (e) => {
 
 // ── Ereignisse ──
 store.on((kind) => {
-  if (kind === 'data') render();
+  if (kind === 'data') {
+    render();
+    renderAccount(); // Farbe des Namens hängt an der Admin-Liste aus den Daten
+  }
   if (kind === 'state') renderState();
   if (kind === 'login') {
     renderAccount();
@@ -307,18 +308,19 @@ $('search').addEventListener('input', (e) => {
   filter.text = e.target.value.trim().toLowerCase();
   if (store.data) applyFilter();
 });
-$('reload').addEventListener('click', () => (store.pending.length ? store.save() : store.load()));
-$('retry').addEventListener('click', () => store.save());
+$('reload').addEventListener('click', () => store.load());
 // Warnung beim Schließen, solange noch etwas nicht gespeichert ist
 addEventListener('beforeunload', (e) => {
   if (!store.pending.length) return;
   e.preventDefault();
   e.returnValue = '';
 });
-// alle 45 Sekunden nachsehen, ob der andere Admin etwas geändert hat
-setInterval(() => {
-  if (document.visibilityState === 'visible' && !store.pending.length && !store.saving) store.load();
-}, 45000);
+// alle 20 Sekunden nachsehen, ob der andere Admin etwas geändert hat (und beim Zurückkehren auf den Tab)
+const refresh = () => {
+  if (document.visibilityState === 'visible' && store.login.code && !store.pending.length) store.load();
+};
+setInterval(refresh, 20000);
+document.addEventListener('visibilitychange', refresh);
 
 renderAccount();
 renderState();
