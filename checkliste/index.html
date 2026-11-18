@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkliste · Coinmaster Adventure</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="../css/liste.css">
+<link rel="stylesheet" href="css/checkliste.css">
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Für Admins</p>
+    <h1>Checkliste</h1>
+    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste; jede Änderung landet als Commit im Repo.</p>
+  </header>
+
+  <section class="cl-account" aria-label="Anmeldung und Speichern">
+    <p id="who" class="cl-who"></p>
+    <p id="sync" class="cl-sync" role="status" aria-live="polite"></p>
+    <div class="cl-account-actions">
+      <button id="retry" class="cl-btn" type="button" hidden>Erneut speichern</button>
+      <button id="reload" class="cl-btn" type="button">Neu laden</button>
+      <button id="login-open" class="cl-btn cl-btn-primary" type="button">Anmelden</button>
+    </div>
+  </section>
+
+  <section id="summary" class="cl-summary" aria-label="Fortschritt"></section>
+
+  <section class="cl-tools" aria-label="Filter">
+    <div class="filters" id="status-filter" role="group" aria-label="Nach Status filtern"></div>
+    <div class="filters" id="person-filter" role="group" aria-label="Nach Zuständigkeit filtern"></div>
+    <label class="cl-search"><span class="visually-hidden">Suchen</span><input id="search" type="search" placeholder="Suchen …" autocomplete="off"></label>
+  </section>
+
+  <main id="groups" class="cl-groups" aria-live="off"></main>
+
+  <footer class="foot">Gespeichert in <code>checkliste/daten.json</code> im Repo. Die Liste ist wie die ganze Webseite öffentlich lesbar; bearbeiten kann nur, wer einen GitHub-Token mit Schreibrecht hinterlegt.</footer>
+</div>
+
+<dialog id="login" class="cl-dialog" aria-labelledby="login-title">
+  <form id="login-form" method="dialog">
+    <h2 id="login-title">Anmelden</h2>
+    <p class="cl-muted">Zum Abhaken braucht die Seite einen GitHub-Token mit Schreibrecht am Repo. Er bleibt nur in diesem Browser gespeichert, darum nur auf eigenen Geräten anmelden.</p>
+    <fieldset class="cl-names">
+      <legend>Wer bist du?</legend>
+      <div id="login-names"></div>
+    </fieldset>
+    <label class="cl-field">GitHub-Token
+      <input id="login-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… oder ghp_…">
+    </label>
+    <details class="cl-help">
+      <summary>So bekommst du einen Token</summary>
+      <ol>
+        <li><b>Besitzer des Repos (spitzefluke):</b> <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fein abgestuften Token anlegen</a>.
+          Unter „Repository access“ nur <code>Coinmaster-Adventure</code> wählen, unter „Permissions“ bei <b>Contents</b> „Read and write“. Ein Ablaufdatum setzen.</li>
+        <li><b>Zweiter Admin (Axseleins):</b> Zuerst lädt der Besitzer dich ein (Repo → Settings → Collaborators → Add people), du nimmst die Einladung an.
+          Dann einen <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Coinmaster%20Checkliste" target="_blank" rel="noopener">klassischen Token</a> mit Häkchen bei <code>public_repo</code> anlegen (bei einem privaten Repo <code>repo</code>).
+          Fein abgestufte Tokens dürfen nicht in Repos anderer Personen schreiben.</li>
+        <li>Den Token hier einfügen und „Anmelden“ drücken. Abmelden löscht ihn wieder aus diesem Browser.</li>
+      </ol>
+    </details>
+    <p id="login-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <button id="login-out" class="cl-btn" type="button">Abmelden</button>
+      <span class="cl-spacer"></span>
+      <button class="cl-btn" type="button" id="login-cancel">Abbrechen</button>
+      <button class="cl-btn cl-btn-primary" type="submit" id="login-ok">Anmelden</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>
