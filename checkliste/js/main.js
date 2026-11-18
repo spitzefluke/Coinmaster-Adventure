@@ -204,7 +204,7 @@ function render() {
     items.clear();
     groups.clear();
     const msg = store.configured
-      ? h('p', { class: 'cl-readonly' }, 'Die Liste ist nur für die Admins. Mit deinem Code ', h('button', { class: 'cl-btn', type: 'button', text: 'anmelden', onclick: openLogin }), '.')
+      ? h('p', { class: 'cl-readonly' }, 'Die Liste ist nur für die Admins. Mit deinem Code ', h('button', { class: 'cl-btn', type: 'button', text: 'anmelden', onclick: openLogin }), '. Beim ersten Mal legst du deinen Code dort selbst fest.')
       : h('p', { class: 'cl-readonly' }, 'Noch nicht eingerichtet. Einmalig checkliste/supabase.sql in Supabase ausführen und in checkliste/js/config.js die Project URL und den Publishable Key eintragen.');
     root.before(msg);
     return;
@@ -243,7 +243,7 @@ function renderAccount() {
   const who = $('who');
   if (store.login.code && store.login.name) who.replaceChildren('Angemeldet als ', h('b', { style: `--c:${colorOf(store.login.name)}`, text: store.login.name }));
   else who.textContent = 'Nicht angemeldet';
-  $('login-open').textContent = store.login.code ? 'Abmelden' : 'Anmelden';
+  $('login-open').textContent = store.login.code ? 'Konto' : 'Anmelden';
   $('login-open').hidden = !store.configured;
 }
 function renderState() {
@@ -252,42 +252,93 @@ function renderState() {
   s.textContent = store.state.text;
 }
 
-// ── Anmelden ──
+// ── Anmelden und Code festlegen ──
 const dlg = $('login');
-function openLogin() {
-  $('login-code').value = '';
-  $('login-msg').textContent = '';
+const say = (el, text, kind = '') => {
+  el.dataset.s = kind;
+  el.textContent = text;
+};
+async function openLogin() {
+  for (const id of ['login-code', 'setup-code', 'setup-code2']) $(id).value = '';
+  say($('login-msg'), '');
+  say($('setup-msg'), '');
+  $('setup-form').hidden = true;
   dlg.showModal();
   $('login-code').focus();
+  // Bereich „Zum ersten Mal hier?“ nur, wenn jemand noch keinen Code hat
+  try {
+    const free = (await store.status()).filter((a) => !a.hat_code).map((a) => a.name);
+    $('setup-names').replaceChildren(...free.map((n, i) => h('label', {}, h('input', { type: 'radio', name: 'setup-name', value: n, checked: i === 0 }), n)));
+    $('setup-form').hidden = !free.length;
+  } catch {}
 }
-$('login-open').addEventListener('click', () => {
-  if (!store.login.code) return openLogin();
-  if (store.pending.length && !confirm('Es wird gerade noch gespeichert. Trotzdem abmelden?')) return;
-  store.signOut();
-});
 $('login-cancel').addEventListener('click', () => dlg.close());
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const code = $('login-code').value.trim();
-  const msg = $('login-msg');
-  if (!code) {
-    msg.dataset.s = 'fehler';
-    msg.textContent = 'Bitte deinen Code eingeben.';
-    return;
-  }
-  msg.dataset.s = '';
-  msg.textContent = 'Prüfe den Code …';
+  const code = $('login-code').value.trim(), msg = $('login-msg');
+  if (!code) return say(msg, 'Bitte deinen Code eingeben.', 'fehler');
+  say(msg, 'Prüfe den Code …');
   $('login-ok').disabled = true;
   try {
     await store.signIn(code);
-    msg.dataset.s = 'ok';
-    msg.textContent = `Hallo ${store.login.name}!`;
+    say(msg, `Hallo ${store.login.name}!`, 'ok');
     setTimeout(() => dlg.close(), 500);
   } catch (err) {
-    msg.dataset.s = 'fehler';
-    msg.textContent = err.message;
+    say(msg, err.message, 'fehler');
   } finally {
     $('login-ok').disabled = false;
+  }
+});
+$('setup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('setup-msg');
+  const name = dlg.querySelector('input[name="setup-name"]:checked')?.value;
+  const code = $('setup-code').value.trim();
+  if (!name) return say(msg, 'Bitte deinen Namen wählen.', 'fehler');
+  if (code.length < 8) return say(msg, 'Der Code muss mindestens 8 Zeichen lang sein.', 'fehler');
+  if (code !== $('setup-code2').value.trim()) return say(msg, 'Die beiden Eingaben sind nicht gleich.', 'fehler');
+  say(msg, 'Lege den Code fest …');
+  $('setup-ok').disabled = true;
+  try {
+    await store.setup(name, code);
+    say(msg, `Fertig, ${name}! Ab jetzt meldest du dich mit diesem Code an.`, 'ok');
+    setTimeout(() => dlg.close(), 1200);
+  } catch (err) {
+    say(msg, err.message, 'fehler');
+  } finally {
+    $('setup-ok').disabled = false;
+  }
+});
+
+// ── Konto: Code ändern, abmelden ──
+const konto = $('konto');
+$('login-open').addEventListener('click', () => {
+  if (!store.login.code) return openLogin();
+  $('konto-who').textContent = `Angemeldet als ${store.login.name}. Hier kannst du deinen Code ändern oder dich in diesem Browser abmelden.`;
+  for (const id of ['konto-code', 'konto-code2']) $(id).value = '';
+  say($('konto-msg'), '');
+  konto.showModal();
+});
+$('konto-close').addEventListener('click', () => konto.close());
+$('konto-out').addEventListener('click', () => {
+  if (store.pending.length && !confirm('Es wird gerade noch gespeichert. Trotzdem abmelden?')) return;
+  konto.close();
+  store.signOut();
+});
+$('konto-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('konto-msg'), code = $('konto-code').value.trim();
+  if (code.length < 8) return say(msg, 'Der Code muss mindestens 8 Zeichen lang sein.', 'fehler');
+  if (code !== $('konto-code2').value.trim()) return say(msg, 'Die beiden Eingaben sind nicht gleich.', 'fehler');
+  $('konto-ok').disabled = true;
+  try {
+    await store.changeCode(code);
+    say(msg, 'Code geändert. Ab jetzt gilt der neue.', 'ok');
+    setTimeout(() => konto.close(), 1200);
+  } catch (err) {
+    say(msg, err.message, 'fehler');
+  } finally {
+    $('konto-ok').disabled = false;
   }
 });
 

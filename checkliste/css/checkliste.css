@@ -147,6 +147,9 @@ code { font: 500 0.875em/1 var(--font-data); color: var(--brass); }
 .cl-msg[data-s="fehler"] { color: var(--st-offen); }
 .cl-msg[data-s="ok"] { color: var(--st-fertig); }
 .cl-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-setup { display: grid; gap: 14px; padding: 22px; border-top: 1px solid var(--seam); background: var(--velvet-2); }
+.cl-setup h3 { margin: 0; font: 700 1.5rem/1 var(--font-display); }
+#setup-names { display: flex; flex-wrap: wrap; gap: 8px; }
 .cl-spacer { flex: 1; }
 
 .cl-readonly { margin: 0; padding: 12px 14px; border: 1px dashed var(--seam); border-radius: 12px; color: var(--muted); font-size: 0.9375rem; }
