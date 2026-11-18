@@ -1104,7 +1104,8 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
 ## Checkliste (für Admins)
 
 `checkliste/` ist eine gemeinsame Arbeitsliste für die beiden Admins (spitzefluke und Axseleins): was schon
-überarbeitet ist, was noch überarbeitet werden muss und wer was macht.
+überarbeitet ist, was noch überarbeitet werden muss und wer was macht. Sie liegt in Supabase, jeder Admin meldet
+sich mit seinem eigenen Code an.
 
 - **Punkte:** 70 vorausgefüllte Punkte in acht Gruppen: Bereiche der Webseite, alle Welten nach Planeten, die
   Systeme des Roblox-Spiels und Handgriffe in Roblox Studio (Installer, Welten einfügen, Modelle importieren,
@@ -1114,16 +1115,26 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
   (spitzefluke, Axseleins, beide oder niemand), eine Notiz und wer ihn zuletzt wann geändert hat.
 - **Übersicht und Filter:** Fortschritt gesamt, je Admin und je Gruppe; Filter nach Status, „Meine Aufgaben“,
   Admin oder „niemand zuständig“, dazu eine Suche.
-- **Speichern:** Die Liste liegt in `checkliste/daten.json` (ein Punkt pro Zeile). Ohne Anmeldung zeigt die Seite
-  sie nur an. Zum Bearbeiten hinterlegt jeder Admin einmal einen GitHub-Token (bleibt nur im eigenen Browser,
-  `localStorage`); die Seite schreibt jede Änderung über die GitHub-API als Commit in `main` zurück, mehrere
-  schnelle Änderungen zusammen. Hat der andere Admin dazwischen gespeichert, holt sie den neuesten Stand und wendet
-  die eigenen Änderungen darauf an, so geht nichts verloren. Alle 45 Sekunden lädt sie Änderungen des anderen nach.
-- **Token:** Der Besitzer des Repos nimmt einen fein abgestuften Token nur für dieses Repo mit „Contents: Read and
-  write“. Ein Mitarbeiter (Collaborator) braucht einen klassischen Token mit `public_repo` (privates Repo: `repo`),
-  weil fein abgestufte Tokens nicht in Repos anderer Personen schreiben dürfen. Vorher muss der Besitzer ihn unter
-  Settings → Collaborators einladen. Die Anleitung steht auch im Anmeldefenster.
-- Die Liste ist wie die ganze Seite öffentlich lesbar. Admin-Namen stehen oben in `daten.json` (`admins`).
+- **Anmelden:** nur mit Code. Am Code erkennt die Liste, wer man ist; er bleibt im Browser gespeichert, bis man
+  sich abmeldet. Ohne Code zeigt die Seite nichts von der Liste.
+- **Speichern:** Jede Änderung ist ein einzelnes Feld eines Punkts und geht sofort an Supabase; beide Admins können
+  gleichzeitig arbeiten, ohne sich etwas zu überschreiben. Alle 20 Sekunden (und beim Zurückkehren auf den Tab)
+  lädt die Seite Änderungen des anderen nach.
+
+**Einrichten (einmalig):**
+
+1. In `checkliste/supabase.sql` ganz unten zwei eigene Codes eintragen (je mindestens 8 Zeichen, verschieden).
+   Die Datei mit den echten Codes nicht ins Repo zurückspeichern.
+2. In Supabase: SQL Editor → New query → den ganzen Inhalt einfügen → Run. Das legt die Tabellen, die Funktionen
+   und die 70 Startpunkte an. Mehrfach ausführen ist ungefährlich; erneut ausführen mit anderen Codes ändert die Codes.
+3. Unter Project Settings → API die „Project URL“ und den „Publishable key“ (oder den alten „anon public“-Key) in
+   `checkliste/js/config.js` eintragen. Nie den Secret- bzw. service_role-Key.
+
+**Sicherheit:** Die Tabellen haben Row Level Security ohne Regeln; mit dem öffentlichen Schlüssel kann niemand
+direkt lesen oder schreiben. Die Seite ruft nur die Funktionen `checkliste_laden`, `checkliste_setzen`,
+`checkliste_neu` und `checkliste_loeschen` auf, und jede prüft zuerst den Code (in der Datenbank nur als
+bcrypt-Hash). Nach 30 falschen Codes in 15 Minuten nehmen die Funktionen für 15 Minuten gar keinen Code an.
+Getestet ist das SQL in Postgres 16 mit nachgebauten Supabase-Rollen (`anon`, `authenticated`).
 
 ## Lokal starten
 

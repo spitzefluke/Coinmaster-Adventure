@@ -1,12 +1,12 @@
-// Checkliste: Daten und Speichern.
+// Checkliste: Daten und Speichern in Supabase.
 //
-// Die Liste liegt als checkliste/daten.json im Repo. Ohne Anmeldung liest die Seite die Datei so, wie GitHub
-// Pages sie ausliefert (nur ansehen). Mit einem GitHub-Token liest und schreibt sie über die GitHub-API:
-// jede Änderung (Status, wer, Notiz, Titel, neuer oder gelöschter Punkt) ist eine Operation. Beim Speichern
-// holt die Seite den neuesten Stand, wendet die eigenen Operationen darauf an und schreibt ihn als Commit
-// zurück. Hat der andere Admin dazwischen gespeichert (anderer sha), beginnt sie von vorn. So gehen keine
-// Häkchen verloren, auch wenn beide gleichzeitig arbeiten; nur dasselbe Feld desselben Punkts gewinnt der,
-// der zuletzt speichert.
+// Die Liste liegt in Supabase (Tabellen und Funktionen: checkliste/supabase.sql). Die Seite ruft nur Funktionen
+// auf, und jede prüft zuerst den Code des Admins: laden, ein Feld setzen, Punkt anlegen, Punkt entfernen. Jede
+// Änderung ist ein einzelnes Feld eines Punkts, darum können beide Admins gleichzeitig arbeiten, ohne sich
+// gegenseitig etwas zu überschreiben. Die Seite zeigt eine Änderung sofort an und schickt sie im Hintergrund;
+// alle 20 Sekunden lädt sie den Stand des anderen nach.
+
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
 export const STATUS = [
   { id: 'offen', label: 'Muss überarbeitet werden', kurz: 'Offen' },
@@ -14,115 +14,56 @@ export const STATUS = [
   { id: 'fertig', label: 'Überarbeitet', kurz: 'Überarbeitet' },
 ];
 export const BEIDE = 'Beide';
-const PATH = 'checkliste/daten.json';
-const BRANCH = 'main';
 
-// Repo aus der Adresse (owner.github.io/repo/…), sonst das Coinmaster-Repo
-export function repoFromLocation(loc = globalThis.location) {
-  const host = loc?.hostname || '';
-  if (host.endsWith('.github.io')) {
-    const repo = loc.pathname.split('/').filter(Boolean)[0];
-    if (repo) return { owner: host.split('.')[0], repo };
-  }
-  return { owner: 'spitzefluke', repo: 'Coinmaster-Adventure' };
-}
-
-// ── Operationen ──
+// ── Operationen (sofort in der Anzeige, dann an Supabase) ──
 // set: { type: 'set', id, field: 'status' | 'wer' | 'notiz' | 'titel', value }
-// add: { type: 'add', punkt }   del: { type: 'del', id }
+// add: { type: 'add', gruppe, titel }   del: { type: 'del', id }
 export function applyOp(data, op, who, now = new Date().toISOString()) {
-  if (op.type === 'add') {
-    if (!data.punkte.some((p) => p.id === op.punkt.id)) data.punkte.push({ ...op.punkt, geaendert: now, von: who });
-  } else if (op.type === 'del') {
-    data.punkte = data.punkte.filter((p) => p.id !== op.id);
-  } else if (op.type === 'set') {
+  if (op.type === 'del') data.punkte = data.punkte.filter((p) => p.id !== op.id);
+  else if (op.type === 'set') {
     const p = data.punkte.find((q) => q.id === op.id);
     if (p) Object.assign(p, { [op.field]: op.value, geaendert: now, von: who });
   }
   return data;
 }
 
-export function newId() {
-  return 'p-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-// Kurzer Text für die Commit-Nachricht
-export function describe(ops, data) {
-  const name = (id) => data.punkte.find((p) => p.id === id)?.titel || id;
-  const one = (op) => {
-    if (op.type === 'add') return `neu: ${op.punkt.titel}`;
-    if (op.type === 'del') return `entfernt: ${name(op.id)}`;
-    if (op.field === 'status') return `${name(op.id)} → ${STATUS.find((s) => s.id === op.value)?.kurz || op.value}`;
-    if (op.field === 'wer') return `${name(op.id)}: ${op.value || 'niemand'} zuständig`;
-    if (op.field === 'notiz') return `${name(op.id)}: Notiz`;
-    return `${name(op.id)}: umbenannt`;
-  };
-  const first = one(ops[0]);
-  return ops.length > 1 ? `${first} (+${ops.length - 1} weitere)` : first;
-}
-
-// Lesbares JSON: ein Punkt pro Zeile (kleine Diffs im Repo)
-export function formatData(d) {
-  const line = (o) => '    ' + JSON.stringify(o);
-  return [
-    '{',
-    `  "admins": ${JSON.stringify(d.admins)},`,
-    '  "gruppen": [',
-    d.gruppen.map(line).join(',\n'),
-    '  ],',
-    '  "punkte": [',
-    d.punkte.map(line).join(',\n'),
-    '  ]',
-    '}',
-    '',
-  ].join('\n');
-}
-
-// Base64 mit UTF-8 (Umlaute)
-export function encodeB64(str) {
-  const bytes = new TextEncoder().encode(str);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
-export function decodeB64(b64) {
-  const bin = atob(b64.replace(/\s/g, ''));
-  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
-}
-
-// ── Anmeldung (nur in diesem Browser) ──
+// ── Anmeldung (Code bleibt nur in diesem Browser) ──
 const KEY = 'coinmaster.checkliste';
 export function loadLogin() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '{}');
+    const v = JSON.parse(localStorage.getItem(KEY) || '{}');
+    return v.code ? { code: v.code, name: v.name || '' } : {};
   } catch {
     return {};
   }
 }
 export function saveLogin(v) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(v));
+    if (v.code) localStorage.setItem(KEY, JSON.stringify({ code: v.code, name: v.name }));
+    else localStorage.removeItem(KEY);
   } catch {}
 }
 
-// ── Speicher ──
 export class Store {
-  constructor({ fetchImpl = (...a) => fetch(...a), repo = repoFromLocation(), localUrl = 'daten.json', delay = 1200 } = {}) {
+  constructor({ fetchImpl = (...a) => fetch(...a), url = SUPABASE_URL, key = SUPABASE_KEY } = {}) {
     this.fetch = fetchImpl;
-    this.repo = repo;
-    this.localUrl = localUrl;
-    this.delay = delay;
+    this.url = (url || '').replace(/\/+$/, '');
+    this.key = key || '';
     this.data = null;
-    this.sha = null;
-    this.pending = [];
-    this.saving = false;
-    this.timer = null;
-    this.login = loadLogin(); // { name, token }
+    this.pending = []; // noch nicht bestätigte Änderungen
+    this.queue = Promise.resolve();
+    this.login = loadLogin(); // { code, name }
     this.listeners = new Set();
-    this.state = { status: 'laden', text: 'Lade die Liste …' };
+    this.state = { status: 'laden', text: 'Lade …' };
+  }
+  get configured() {
+    return !!(this.url && this.key);
   }
   get canEdit() {
-    return !!(this.login.token && this.login.name);
+    return !!(this.login.code && this.login.name && this.data);
+  }
+  get saving() {
+    return this.pending.length > 0;
   }
   on(fn) {
     this.listeners.add(fn);
@@ -134,132 +75,124 @@ export class Store {
     this.state = { status, text };
     this.emit('state');
   }
-  api(path) {
-    return `https://api.github.com/repos/${this.repo.owner}/${this.repo.repo}${path}`;
-  }
-  headers() {
-    return { Accept: 'application/vnd.github+json', Authorization: `Bearer ${this.login.token}`, 'X-GitHub-Api-Version': '2022-11-28' };
+
+  // Funktion in Supabase aufrufen (PostgREST: POST /rest/v1/rpc/<name>)
+  async rpc(name, args) {
+    const headers = { apikey: this.key, 'Content-Type': 'application/json', Accept: 'application/json' };
+    // alter anon-Key ist ein JWT und gehört auch in Authorization; der neue Publishable Key nur in apikey
+    if (this.key.startsWith('eyJ')) headers.Authorization = `Bearer ${this.key}`;
+    let r;
+    try {
+      r = await this.fetch(`${this.url}/rest/v1/rpc/${name}`, { method: 'POST', headers, body: JSON.stringify(args), cache: 'no-store' });
+    } catch {
+      throw new Error('Keine Verbindung zu Supabase.');
+    }
+    let j = null;
+    try {
+      j = await r.json();
+    } catch {}
+    if (!r.ok) {
+      if (r.status === 404 || j?.code === 'PGRST202') throw new Error('Die Funktionen fehlen in Supabase. Bitte checkliste/supabase.sql ausführen.');
+      if (r.status === 401) throw new Error('Supabase-Schlüssel ungültig. checkliste/js/config.js prüfen.');
+      throw new Error(j?.message || `Supabase-Fehler ${r.status}`);
+    }
+    if (j?.fehler) {
+      const e = new Error(j.fehler);
+      e.code = j.fehler === 'Falscher Code.' ? 'code' : 'fehler';
+      throw e;
+    }
+    return j;
   }
 
-  // neuesten Stand holen: mit Token über die API (aktuell, mit sha), sonst die Datei der Webseite
-  async fetchLatest() {
-    if (this.login.token) {
-      const r = await this.fetch(this.api(`/contents/${PATH}?ref=${BRANCH}`), { headers: this.headers(), cache: 'no-store' });
-      if (!r.ok) throw await apiError(r);
-      const j = await r.json();
-      return { data: JSON.parse(decodeB64(j.content)), sha: j.sha };
-    }
-    const r = await this.fetch(this.localUrl, { cache: 'no-store' });
-    if (!r.ok) throw new Error(`Liste nicht gefunden (${r.status})`);
-    return { data: await r.json(), sha: null };
+  take(j) {
+    this.data = { admins: j.admins || [], gruppen: j.gruppen || [], punkte: j.punkte || [] };
+    // eigene, noch unterwegs befindliche Änderungen bleiben sichtbar
+    for (const op of this.pending) applyOp(this.data, op, this.login.name);
   }
 
   async load() {
-    try {
-      const { data, sha } = await this.fetchLatest();
-      this.sha = sha;
-      // noch nicht gespeicherte eigene Änderungen bleiben sichtbar
-      for (const op of this.pending) applyOp(data, op, this.login.name);
-      this.data = data;
+    if (!this.configured) {
+      this.data = null;
       this.emit('data');
-      this.setState(this.pending.length ? 'offen' : 'ok', this.pending.length ? 'Ungespeicherte Änderungen …' : this.canEdit ? 'Alles gespeichert' : 'Nur ansehen');
-    } catch (e) {
-      this.setState('fehler', `Laden fehlgeschlagen: ${e.message}`);
-      if (!this.data && this.login.token) {
-        // Token kaputt? Dann wenigstens die Datei der Webseite zeigen
-        try {
-          const r = await this.fetch(this.localUrl, { cache: 'no-store' });
-          if (r.ok) {
-            this.data = await r.json();
-            this.emit('data');
-          }
-        } catch {}
-      }
+      return this.setState('fehler', 'Noch nicht eingerichtet: Supabase-Adresse und Schlüssel fehlen in checkliste/js/config.js.');
     }
-  }
-
-  change(op) {
-    if (!this.canEdit) return;
-    applyOp(this.data, op, this.login.name);
-    this.pending.push(op);
-    this.emit('data');
-    this.setState('offen', 'Ungespeicherte Änderungen …');
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.save(), this.delay);
-  }
-
-  async save() {
-    if (this.saving) {
-      this.again = true;
-      return;
+    if (!this.login.code) {
+      this.data = null;
+      this.emit('data');
+      return this.setState('aus', '');
     }
-    if (!this.pending.length || !this.canEdit) return;
-    this.saving = true;
-    this.setState('speichert', 'Speichert …');
-    const ops = this.pending.slice();
     try {
-      for (let attempt = 0; ; attempt++) {
-        const { data, sha } = await this.fetchLatest();
-        for (const op of ops) applyOp(data, op, this.login.name);
-        const r = await this.fetch(this.api(`/contents/${PATH}`), {
-          method: 'PUT',
-          headers: { ...this.headers(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: `Checkliste: ${describe(ops, data)} (${this.login.name})`, content: encodeB64(formatData(data)), sha, branch: BRANCH }),
-        });
-        if (r.ok) {
-          const j = await r.json();
-          this.sha = j.content?.sha || null;
-          this.pending.splice(0, ops.length);
-          for (const op of this.pending) applyOp(data, op, this.login.name);
-          this.data = data;
-          this.emit('data');
-          this.setState(this.pending.length ? 'offen' : 'ok', this.pending.length ? 'Ungespeicherte Änderungen …' : 'Alles gespeichert');
-          break;
-        }
-        // der andere Admin hat dazwischen gespeichert: neu holen und noch einmal
-        if ((r.status === 409 || r.status === 422) && attempt < 4) {
-          await new Promise((res) => setTimeout(res, 400 * 2 ** attempt));
-          continue;
-        }
-        throw await apiError(r);
-      }
+      const j = await this.rpc('checkliste_laden', { p_code: this.login.code });
+      if (j.ich && j.ich !== this.login.name) this.setLogin({ ...this.login, name: j.ich });
+      this.take(j);
+      this.emit('data');
+      this.setState(this.pending.length ? 'speichert' : 'ok', this.pending.length ? 'Speichert …' : 'Alles gespeichert');
     } catch (e) {
-      this.setState('fehler', `Nicht gespeichert: ${e.message}`);
-    } finally {
-      this.saving = false;
-      if (this.again || (this.pending.length && this.state.status === 'offen')) {
-        this.again = false;
-        this.save();
+      if (e.code === 'code') {
+        // Code wurde geändert: abmelden
+        this.setLogin({});
+        this.data = null;
+        this.emit('data');
+        return this.setState('fehler', 'Dein Code gilt nicht mehr. Bitte neu anmelden.');
       }
+      this.setState('fehler', `Laden fehlgeschlagen: ${e.message}`);
     }
   }
 
-  // Anmelden: Token prüfen (Lesen der Liste und Schreibrecht laut Konto)
-  async checkLogin(name, token) {
-    const h = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
-    const [u, repo] = await Promise.all([
-      this.fetch('https://api.github.com/user', { headers: h, cache: 'no-store' }),
-      this.fetch(this.api(''), { headers: h, cache: 'no-store' }),
-    ]);
-    if (u.status === 401) throw new Error('Der Token ist ungültig oder abgelaufen.');
-    if (!repo.ok) throw new Error(`Kein Zugriff auf ${this.repo.owner}/${this.repo.repo} (${repo.status}).`);
-    const user = u.ok ? await u.json() : {};
-    const rj = await repo.json();
-    return { login: user.login || '', push: !!rj.permissions?.push, name, token };
+  async signIn(code) {
+    if (!this.configured) throw new Error('Noch nicht eingerichtet: Supabase-Adresse und Schlüssel fehlen in checkliste/js/config.js.');
+    const j = await this.rpc('checkliste_laden', { p_code: code });
+    this.setLogin({ code, name: j.ich });
+    this.take(j);
+    this.emit('data');
+    this.setState('ok', 'Alles gespeichert');
+  }
+  signOut() {
+    this.setLogin({});
+    this.data = null;
+    this.pending = [];
+    this.emit('data');
+    this.setState('aus', '');
   }
   setLogin(v) {
     this.login = v;
     saveLogin(v);
     this.emit('login');
   }
-}
 
-async function apiError(r) {
-  let msg = '';
-  try {
-    msg = (await r.json()).message || '';
-  } catch {}
-  if (r.status === 401) return new Error('Token ungültig oder abgelaufen (401)');
-  if (r.status === 403 || r.status === 404) return new Error(`keine Berechtigung (${r.status}${msg ? ': ' + msg : ''})`);
-  return new Error(`${r.status}${msg ? ': ' + msg : ''}`);
+  change(op) {
+    if (!this.canEdit) return;
+    if (op.type !== 'add') applyOp(this.data, op, this.login.name);
+    this.pending.push(op);
+    this.emit('data');
+    this.setState('speichert', 'Speichert …');
+    // nacheinander schicken, damit die Reihenfolge stimmt
+    this.queue = this.queue.then(() => this.send(op));
+  }
+
+  async send(op) {
+    const code = this.login.code;
+    try {
+      let j;
+      if (op.type === 'set') j = await this.rpc('checkliste_setzen', { p_code: code, p_id: op.id, p_feld: op.field, p_wert: op.value });
+      else if (op.type === 'add') j = await this.rpc('checkliste_neu', { p_code: code, p_gruppe: op.gruppe, p_titel: op.titel });
+      else j = await this.rpc('checkliste_loeschen', { p_code: code, p_id: op.id });
+      this.pending.splice(this.pending.indexOf(op), 1);
+      if (j?.punkt && this.data) {
+        // Stand aus der Datenbank übernehmen (Zeit und Name von dort)
+        const i = this.data.punkte.findIndex((p) => p.id === j.punkt.id);
+        if (i >= 0) this.data.punkte[i] = { ...j.punkt };
+        else this.data.punkte.push({ ...j.punkt });
+        for (const o of this.pending) if (o.type === 'set' && o.id === j.punkt.id) applyOp(this.data, o, this.login.name);
+        this.emit('data');
+      }
+      if (!this.pending.length) this.setState('ok', 'Alles gespeichert');
+    } catch (e) {
+      this.pending.splice(this.pending.indexOf(op), 1);
+      this.setState('fehler', `Nicht gespeichert: ${e.message}`);
+      // Anzeige wieder auf den Stand der Datenbank bringen
+      if (e.code === 'code') return this.load();
+      if (!this.pending.length) await this.load().then(() => this.setState('fehler', `Nicht gespeichert: ${e.message}`));
+    }
+  }
 }

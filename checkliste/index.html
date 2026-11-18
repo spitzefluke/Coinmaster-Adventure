@@ -17,14 +17,13 @@
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Für Admins</p>
     <h1>Checkliste</h1>
-    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste; jede Änderung landet als Commit im Repo.</p>
+    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste und melden sich mit ihrem eigenen Code an.</p>
   </header>
 
   <section class="cl-account" aria-label="Anmeldung und Speichern">
     <p id="who" class="cl-who"></p>
     <p id="sync" class="cl-sync" role="status" aria-live="polite"></p>
     <div class="cl-account-actions">
-      <button id="retry" class="cl-btn" type="button" hidden>Erneut speichern</button>
       <button id="reload" class="cl-btn" type="button">Neu laden</button>
       <button id="login-open" class="cl-btn cl-btn-primary" type="button">Anmelden</button>
     </div>
@@ -40,34 +39,18 @@
 
   <main id="groups" class="cl-groups" aria-live="off"></main>
 
-  <footer class="foot">Gespeichert in <code>checkliste/daten.json</code> im Repo. Die Liste ist wie die ganze Webseite öffentlich lesbar; bearbeiten kann nur, wer einen GitHub-Token mit Schreibrecht hinterlegt.</footer>
+  <footer class="foot">Gespeichert in Supabase. Ansehen und bearbeiten nur mit Code; die Tabellen und Funktionen stehen in <code>checkliste/supabase.sql</code>.</footer>
 </div>
 
 <dialog id="login" class="cl-dialog" aria-labelledby="login-title">
   <form id="login-form" method="dialog">
     <h2 id="login-title">Anmelden</h2>
-    <p class="cl-muted">Zum Abhaken braucht die Seite einen GitHub-Token mit Schreibrecht am Repo. Er bleibt nur in diesem Browser gespeichert, darum nur auf eigenen Geräten anmelden.</p>
-    <fieldset class="cl-names">
-      <legend>Wer bist du?</legend>
-      <div id="login-names"></div>
-    </fieldset>
-    <label class="cl-field">GitHub-Token
-      <input id="login-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… oder ghp_…">
+    <p class="cl-muted">Jeder Admin hat einen eigenen Code. Am Code erkennt die Liste, wer du bist. Er bleibt in diesem Browser gespeichert, bis du dich abmeldest, darum nur auf eigenen Geräten anmelden.</p>
+    <label class="cl-field">Dein Code
+      <input id="login-code" type="password" autocomplete="current-password" spellcheck="false" maxlength="200">
     </label>
-    <details class="cl-help">
-      <summary>So bekommst du einen Token</summary>
-      <ol>
-        <li><b>Besitzer des Repos (spitzefluke):</b> <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fein abgestuften Token anlegen</a>.
-          Unter „Repository access“ nur <code>Coinmaster-Adventure</code> wählen, unter „Permissions“ bei <b>Contents</b> „Read and write“. Ein Ablaufdatum setzen.</li>
-        <li><b>Zweiter Admin (Axseleins):</b> Zuerst lädt der Besitzer dich ein (Repo → Settings → Collaborators → Add people), du nimmst die Einladung an.
-          Dann einen <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Coinmaster%20Checkliste" target="_blank" rel="noopener">klassischen Token</a> mit Häkchen bei <code>public_repo</code> anlegen (bei einem privaten Repo <code>repo</code>).
-          Fein abgestufte Tokens dürfen nicht in Repos anderer Personen schreiben.</li>
-        <li>Den Token hier einfügen und „Anmelden“ drücken. Abmelden löscht ihn wieder aus diesem Browser.</li>
-      </ol>
-    </details>
     <p id="login-msg" class="cl-msg" role="alert"></p>
     <div class="cl-dialog-actions">
-      <button id="login-out" class="cl-btn" type="button">Abmelden</button>
       <span class="cl-spacer"></span>
       <button class="cl-btn" type="button" id="login-cancel">Abbrechen</button>
       <button class="cl-btn cl-btn-primary" type="submit" id="login-ok">Anmelden</button>
