@@ -1129,7 +1129,8 @@ sich mit seinem eigenen Code an.
    die Tabellen, die Funktionen, die beiden Admins (noch ohne Code) und die 70 Startpunkte an. Im SQL steht kein
    Code. Mehrfach ausführen ist ungefährlich; festgelegte Codes und Häkchen bleiben.
 2. Unter Project Settings → API die „Project URL“ und den „Publishable key“ (oder den alten „anon public“-Key) in
-   `checkliste/js/config.js` eintragen. Nie den Secret- bzw. service_role-Key.
+   `checkliste/js/config.js` eintragen. Nie den Secret- bzw. service_role-Key. Die Seite holt diese Datei bei jedem
+   Aufruf frisch vom Server, eine Änderung gilt also gleich nach dem Neuladen.
 3. Beide Admins öffnen die Checkliste und legen gleich ihren Code fest. Bis dahin könnte jemand, der die Seite
    findet, einen noch freien Namen belegen.
 

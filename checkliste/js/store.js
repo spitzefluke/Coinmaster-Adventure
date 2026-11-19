@@ -7,7 +7,17 @@
 // gegenseitig etwas zu überschreiben. Die Seite zeigt eine Änderung sofort an und schickt sie im Hintergrund;
 // alle 20 Sekunden lädt sie den Stand des anderen nach.
 
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+// Die Supabase-Adresse und den Schlüssel (config.js) immer frisch vom Server holen. GitHub Pages lässt den
+// Browser Dateien bis zu 10 Minuten zwischenspeichern; mit festem Import sähe man nach einer Änderung an
+// config.js so lange noch die alte Datei.
+export async function loadConfig() {
+  try {
+    const m = await import(`./config.js?v=${Date.now()}`);
+    return { url: m.SUPABASE_URL || '', key: m.SUPABASE_KEY || '' };
+  } catch {
+    throw new Error('Keine Verbindung: Die Einstellungen (config.js) ließen sich nicht laden.');
+  }
+}
 
 export const STATUS = [
   { id: 'offen', label: 'Muss überarbeitet werden', kurz: 'Offen' },
@@ -46,10 +56,12 @@ export function saveLogin(v) {
 }
 
 export class Store {
-  constructor({ fetchImpl = (...a) => fetch(...a), url = SUPABASE_URL, key = SUPABASE_KEY } = {}) {
+  constructor({ fetchImpl = (...a) => fetch(...a), config = loadConfig } = {}) {
     this.fetch = fetchImpl;
-    this.url = (url || '').replace(/\/+$/, '');
-    this.key = key || '';
+    this.loadConfig = config;
+    this.ready = null; // Einstellungen geladen
+    this.url = '';
+    this.key = '';
     this.data = null;
     this.pending = []; // noch nicht bestätigte Änderungen
     this.queue = Promise.resolve();
@@ -76,9 +88,24 @@ export class Store {
     this.state = { status, text };
     this.emit('state');
   }
+  // Einstellungen einmal laden; ohne Verbindung beim nächsten Mal neu versuchen
+  config() {
+    this.ready ??= this.loadConfig().then(
+      (c) => {
+        this.url = (c.url || '').replace(/\/+$/, '');
+        this.key = c.key || '';
+      },
+      (e) => {
+        this.ready = null;
+        throw e;
+      },
+    );
+    return this.ready;
+  }
 
   // Funktion in Supabase aufrufen (PostgREST: POST /rest/v1/rpc/<name>)
   async rpc(name, args) {
+    await this.config();
     const headers = { apikey: this.key, 'Content-Type': 'application/json', Accept: 'application/json' };
     // alter anon-Key ist ein JWT und gehört auch in Authorization; der neue Publishable Key nur in apikey
     if (this.key.startsWith('eyJ')) headers.Authorization = `Bearer ${this.key}`;
@@ -112,6 +139,13 @@ export class Store {
   }
 
   async load() {
+    try {
+      await this.config();
+    } catch (e) {
+      this.data = null;
+      this.emit('data');
+      return this.setState('fehler', e.message);
+    }
     if (!this.configured) {
       this.data = null;
       this.emit('data');
@@ -141,6 +175,7 @@ export class Store {
   }
 
   async signIn(code) {
+    await this.config();
     if (!this.configured) throw new Error('Noch nicht eingerichtet: Supabase-Adresse und Schlüssel fehlen in checkliste/js/config.js.');
     const j = await this.rpc('checkliste_laden', { p_code: code });
     this.setLogin({ code, name: j.ich });
@@ -150,11 +185,13 @@ export class Store {
   }
   // Wer hat schon einen Code? [{ name, hat_code }]
   async status() {
+    await this.config();
     if (!this.configured) return [];
     return (await this.rpc('checkliste_status', {})) || [];
   }
   // Eigenen Code beim ersten Mal festlegen; danach ist man angemeldet
   async setup(name, code) {
+    await this.config();
     if (!this.configured) throw new Error('Noch nicht eingerichtet: Supabase-Adresse und Schlüssel fehlen in checkliste/js/config.js.');
     const j = await this.rpc('checkliste_festlegen', { p_name: name, p_code: code });
     this.setLogin({ code, name: j.ich });
