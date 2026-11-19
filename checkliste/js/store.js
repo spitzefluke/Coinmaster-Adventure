@@ -1,7 +1,8 @@
 // Checkliste: Daten und Speichern in Supabase.
 //
 // Die Liste liegt in Supabase (Tabellen und Funktionen: checkliste/supabase.sql). Die Seite ruft nur Funktionen
-// auf, und jede prüft zuerst den Code des Admins: laden, ein Feld setzen, Punkt anlegen, Punkt entfernen. Jede
+// auf, und jede prüft zuerst den Code des Admins: laden, ein Feld setzen, Punkt anlegen, Punkt entfernen. Den Code
+// legt jeder Admin beim ersten Mal selbst fest (checkliste_festlegen) und kann ihn später ändern. Jede
 // Änderung ist ein einzelnes Feld eines Punkts, darum können beide Admins gleichzeitig arbeiten, ohne sich
 // gegenseitig etwas zu überschreiben. Die Seite zeigt eine Änderung sofort an und schickt sie im Hintergrund;
 // alle 20 Sekunden lädt sie den Stand des anderen nach.
@@ -146,6 +147,25 @@ export class Store {
     this.take(j);
     this.emit('data');
     this.setState('ok', 'Alles gespeichert');
+  }
+  // Wer hat schon einen Code? [{ name, hat_code }]
+  async status() {
+    if (!this.configured) return [];
+    return (await this.rpc('checkliste_status', {})) || [];
+  }
+  // Eigenen Code beim ersten Mal festlegen; danach ist man angemeldet
+  async setup(name, code) {
+    if (!this.configured) throw new Error('Noch nicht eingerichtet: Supabase-Adresse und Schlüssel fehlen in checkliste/js/config.js.');
+    const j = await this.rpc('checkliste_festlegen', { p_name: name, p_code: code });
+    this.setLogin({ code, name: j.ich });
+    this.take(j);
+    this.emit('data');
+    this.setState('ok', 'Alles gespeichert');
+  }
+  // Eigenen Code ändern (mit dem gespeicherten bisherigen Code)
+  async changeCode(neu) {
+    await this.rpc('checkliste_code_aendern', { p_code: this.login.code, p_neu: neu });
+    this.setLogin({ ...this.login, code: neu });
   }
   signOut() {
     this.setLogin({});

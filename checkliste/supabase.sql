@@ -2,19 +2,23 @@
 -- Coinmaster Adventure · Checkliste für Admins · Supabase
 --
 -- So geht's:
---   1. Ganz unten im letzten Block zwei eigene Codes eintragen (je mindestens 8 Zeichen, verschieden).
---      Die Codes stehen danach nur als Hash in der Datenbank. Diese Datei mit den echten Codes NICHT ins Repo
---      zurückspeichern.
---   2. In Supabase: SQL Editor → New query → alles einfügen → Run.
---   3. Project Settings → API: „Project URL“ und den „Publishable key“ (oder „anon public“) in
+--   1. In Supabase: SQL Editor → New query → diese ganze Datei einfügen → Run. Hier steht kein Code drin.
+--   2. Project Settings → API: „Project URL“ und den „Publishable key“ (oder „anon public“) in
 --      checkliste/js/config.js eintragen.
+--   3. Jeder Admin öffnet die Checkliste und legt beim ersten Mal unter „Zum ersten Mal hier?“ seinen eigenen
+--      Code fest (mindestens 8 Zeichen). Das geht je Name nur einmal; danach meldet man sich damit an und kann
+--      ihn unter „Konto“ ändern. Am besten legen beide ihren Code gleich nach dem Einrichten fest.
 --
--- Mehrfach ausführen ist ungefährlich: Tabellen und Startpunkte werden nur angelegt, wenn sie fehlen; der letzte
--- Block setzt die Codes neu (so ändert man später einen Code).
+-- Code vergessen (oder hat jemand Fremdes einen Namen belegt)? Im SQL Editor zurücksetzen, dann legt der Admin
+-- auf der Seite einen neuen fest:
+--   update public.checkliste_admins set code_hash = null where name = 'Axseleins';
+--
+-- Mehrfach ausführen ist ungefährlich: Tabellen, Admins und Startpunkte werden nur angelegt, wenn sie fehlen;
+-- schon festgelegte Codes und gesetzte Häkchen bleiben.
 --
 -- Sicherheit: Die Tabellen haben Row Level Security ohne Regeln, mit dem öffentlichen Schlüssel kann niemand
--- direkt lesen oder schreiben. Alles geht über die Funktionen unten, und jede prüft zuerst den Code.
--- Nach 30 falschen Codes in 15 Minuten nehmen sie für 15 Minuten gar keinen Code mehr an.
+-- direkt lesen oder schreiben. Alles geht über die Funktionen unten, und jede prüft zuerst den Code (gespeichert
+-- nur als bcrypt-Hash). Nach 30 falschen Codes in 15 Minuten nehmen sie für 15 Minuten gar keinen Code mehr an.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════
 
 create extension if not exists pgcrypto with schema extensions;
@@ -22,9 +26,10 @@ create extension if not exists pgcrypto with schema extensions;
 -- ── Tabellen ──
 create table if not exists public.checkliste_admins (
   name text primary key,
-  code_hash text not null,
+  code_hash text, -- leer: Code noch nicht festgelegt
   reihenfolge int not null default 0
 );
+alter table public.checkliste_admins alter column code_hash drop not null;
 create table if not exists public.checkliste_gruppen (
   id text primary key,
   titel text not null,
@@ -61,7 +66,7 @@ begin
   if (select count(*) from checkliste_fehlversuche where zeit > now() - interval '15 minutes') >= 30 then
     return '!gesperrt';
   end if;
-  select name into n from checkliste_admins where code_hash = crypt(coalesce(p_code, ''), code_hash);
+  select name into n from checkliste_admins where code_hash is not null and code_hash = crypt(coalesce(p_code, ''), code_hash);
   if n is null then
     insert into checkliste_fehlversuche default values;
     delete from checkliste_fehlversuche where zeit < now() - interval '1 day';
@@ -148,17 +153,75 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
--- Rechte: nur die vier Funktionen sind von außen aufrufbar
+-- ── Welche Admins haben schon einen Code? (für „Zum ersten Mal hier?“, ohne Code aufrufbar) ──
+create or replace function public.checkliste_status()
+returns jsonb language sql security definer set search_path = public, extensions as $$
+  select coalesce(jsonb_agg(jsonb_build_object('name', name, 'hat_code', code_hash is not null) order by reihenfolge, name), '[]')
+  from checkliste_admins
+$$;
+
+-- ── Eigenen Code festlegen: nur einmal je Name, solange noch keiner festgelegt ist ──
+-- Gibt bei Erfolg dasselbe zurück wie checkliste_laden (man ist danach angemeldet).
+create or replace function public.checkliste_festlegen(p_name text, p_code text)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare
+  c text := coalesce(p_code, '');
+begin
+  if (select count(*) from checkliste_fehlversuche where zeit > now() - interval '15 minutes') >= 30 then
+    return checkliste_fehler('!gesperrt');
+  end if;
+  if not exists (select 1 from checkliste_admins where name = p_name) then
+    return jsonb_build_object('fehler', 'Diesen Namen gibt es nicht.');
+  end if;
+  if exists (select 1 from checkliste_admins where name = p_name and code_hash is not null) then
+    return jsonb_build_object('fehler', 'Für ' || p_name || ' ist schon ein Code festgelegt. Bitte anmelden.');
+  end if;
+  if length(c) < 8 then return jsonb_build_object('fehler', 'Der Code muss mindestens 8 Zeichen lang sein.'); end if;
+  -- zwei gleiche Codes gehen nicht (am Code erkennt die Liste, wer man ist); zählt als Fehlversuch
+  if exists (select 1 from checkliste_admins where code_hash is not null and code_hash = crypt(c, code_hash)) then
+    insert into checkliste_fehlversuche default values;
+    return jsonb_build_object('fehler', 'Bitte einen anderen Code wählen.');
+  end if;
+  update checkliste_admins set code_hash = crypt(c, gen_salt('bf')) where name = p_name and code_hash is null;
+  if not found then -- jemand war im selben Moment schneller
+    return jsonb_build_object('fehler', 'Für ' || p_name || ' ist schon ein Code festgelegt. Bitte anmelden.');
+  end if;
+  return checkliste_laden(c);
+end $$;
+
+-- ── Eigenen Code ändern (mit dem bisherigen Code) ──
+create or replace function public.checkliste_code_aendern(p_code text, p_neu text)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare
+  n text := checkliste_admin(p_code);
+  c text := coalesce(p_neu, '');
+begin
+  if n is null or n = '!gesperrt' then return checkliste_fehler(n); end if;
+  if length(c) < 8 then return jsonb_build_object('fehler', 'Der Code muss mindestens 8 Zeichen lang sein.'); end if;
+  if exists (select 1 from checkliste_admins where name <> n and code_hash is not null and code_hash = crypt(c, code_hash)) then
+    return jsonb_build_object('fehler', 'Bitte einen anderen Code wählen.');
+  end if;
+  update checkliste_admins set code_hash = crypt(c, gen_salt('bf')) where name = n;
+  return jsonb_build_object('ok', true, 'ich', n);
+end $$;
+
+-- Rechte: nur diese Funktionen sind von außen aufrufbar
 revoke execute on function public.checkliste_admin(text) from public, anon, authenticated;
 revoke execute on function public.checkliste_fehler(text) from public, anon, authenticated;
 revoke execute on function public.checkliste_laden(text) from public;
 revoke execute on function public.checkliste_setzen(text, text, text, text) from public;
 revoke execute on function public.checkliste_neu(text, text, text) from public;
 revoke execute on function public.checkliste_loeschen(text, text) from public;
+revoke execute on function public.checkliste_status() from public;
+revoke execute on function public.checkliste_festlegen(text, text) from public;
+revoke execute on function public.checkliste_code_aendern(text, text) from public;
 grant execute on function public.checkliste_laden(text) to anon, authenticated;
 grant execute on function public.checkliste_setzen(text, text, text, text) to anon, authenticated;
 grant execute on function public.checkliste_neu(text, text, text) to anon, authenticated;
 grant execute on function public.checkliste_loeschen(text, text) to anon, authenticated;
+grant execute on function public.checkliste_status() to anon, authenticated;
+grant execute on function public.checkliste_festlegen(text, text) to anon, authenticated;
+grant execute on function public.checkliste_code_aendern(text, text) to anon, authenticated;
 
 -- ── Startdaten (nur was fehlt) ──
 insert into public.checkliste_gruppen (id, titel, reihenfolge) values
@@ -245,25 +308,9 @@ insert into public.checkliste_punkte (id, gruppe, titel, status, wer, notiz, rei
   ('studio-veroeffentlichen', 'studio', 'Spiel veröffentlichen', 'offen', '', '', 70)
 on conflict (id) do nothing;
 
--- ── Codes der Admins: HIER EINTRAGEN ──
--- Zwischen die Hochkommas je einen eigenen Code schreiben, mindestens 8 Zeichen, z. B. drei Wörter und eine Zahl.
--- Nochmal ausführen ändert die Codes.
-do $$
-declare
-  code_spitzefluke text := 'HIER-CODE-EINTRAGEN';
-  code_axseleins text := 'HIER-CODE-EINTRAGEN';
-begin
-  if code_spitzefluke like 'HIER%' or code_axseleins like 'HIER%' then
-    raise exception 'Bitte zuerst im letzten Block zwei eigene Codes eintragen.';
-  end if;
-  if length(code_spitzefluke) < 8 or length(code_axseleins) < 8 then
-    raise exception 'Die Codes müssen mindestens 8 Zeichen lang sein.';
-  end if;
-  if code_spitzefluke = code_axseleins then
-    raise exception 'Die beiden Codes müssen verschieden sein.';
-  end if;
-  insert into public.checkliste_admins (name, code_hash, reihenfolge) values
-    ('spitzefluke', extensions.crypt(code_spitzefluke, extensions.gen_salt('bf')), 1),
-    ('Axseleins', extensions.crypt(code_axseleins, extensions.gen_salt('bf')), 2)
-  on conflict (name) do update set code_hash = excluded.code_hash, reihenfolge = excluded.reihenfolge;
-end $$;
+-- ── Admins (ohne Code; den legt jeder auf der Seite selbst fest) ──
+-- Weiterer Admin: Zeile ergänzen und nochmal ausführen. Schon festgelegte Codes bleiben.
+insert into public.checkliste_admins (name, code_hash, reihenfolge) values
+  ('spitzefluke', null, 1),
+  ('Axseleins', null, 2)
+on conflict (name) do nothing;

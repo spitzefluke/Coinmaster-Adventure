@@ -17,7 +17,7 @@
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Für Admins</p>
     <h1>Checkliste</h1>
-    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste und melden sich mit ihrem eigenen Code an.</p>
+    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste und melden sich mit ihrem eigenen Code an, den jeder beim ersten Mal selbst festlegt.</p>
   </header>
 
   <section class="cl-account" aria-label="Anmeldung und Speichern">
@@ -45,7 +45,7 @@
 <dialog id="login" class="cl-dialog" aria-labelledby="login-title">
   <form id="login-form" method="dialog">
     <h2 id="login-title">Anmelden</h2>
-    <p class="cl-muted">Jeder Admin hat einen eigenen Code. Am Code erkennt die Liste, wer du bist. Er bleibt in diesem Browser gespeichert, bis du dich abmeldest, darum nur auf eigenen Geräten anmelden.</p>
+    <p class="cl-muted">Jeder Admin hat seinen eigenen Code. Am Code erkennt die Liste, wer du bist. Er bleibt in diesem Browser gespeichert, bis du dich abmeldest, darum nur auf eigenen Geräten anmelden.</p>
     <label class="cl-field">Dein Code
       <input id="login-code" type="password" autocomplete="current-password" spellcheck="false" maxlength="200">
     </label>
@@ -54,6 +54,45 @@
       <span class="cl-spacer"></span>
       <button class="cl-btn" type="button" id="login-cancel">Abbrechen</button>
       <button class="cl-btn cl-btn-primary" type="submit" id="login-ok">Anmelden</button>
+    </div>
+  </form>
+  <form id="setup-form" class="cl-setup" hidden>
+    <h3>Zum ersten Mal hier?</h3>
+    <p class="cl-muted">Dann leg jetzt deinen eigenen Code fest (mindestens 8 Zeichen, z. B. drei Wörter und eine Zahl). Das geht je Name nur einmal; danach meldest du dich damit an.</p>
+    <fieldset class="cl-names">
+      <legend>Wer bist du?</legend>
+      <div id="setup-names"></div>
+    </fieldset>
+    <label class="cl-field">Neuer Code
+      <input id="setup-code" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <label class="cl-field">Code wiederholen
+      <input id="setup-code2" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <p id="setup-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <span class="cl-spacer"></span>
+      <button class="cl-btn cl-btn-primary" type="submit" id="setup-ok">Code festlegen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="konto" class="cl-dialog" aria-labelledby="konto-title">
+  <form id="konto-form" method="dialog">
+    <h2 id="konto-title">Konto</h2>
+    <p id="konto-who" class="cl-muted"></p>
+    <label class="cl-field">Neuer Code
+      <input id="konto-code" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <label class="cl-field">Code wiederholen
+      <input id="konto-code2" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <p id="konto-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <button class="cl-btn" type="button" id="konto-out">Abmelden</button>
+      <span class="cl-spacer"></span>
+      <button class="cl-btn" type="button" id="konto-close">Schließen</button>
+      <button class="cl-btn cl-btn-primary" type="submit" id="konto-ok">Code ändern</button>
     </div>
   </form>
 </dialog>

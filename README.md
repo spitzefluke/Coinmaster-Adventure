@@ -1115,25 +1115,35 @@ sich mit seinem eigenen Code an.
   (spitzefluke, Axseleins, beide oder niemand), eine Notiz und wer ihn zuletzt wann geändert hat.
 - **Übersicht und Filter:** Fortschritt gesamt, je Admin und je Gruppe; Filter nach Status, „Meine Aufgaben“,
   Admin oder „niemand zuständig“, dazu eine Suche.
-- **Anmelden:** nur mit Code. Am Code erkennt die Liste, wer man ist; er bleibt im Browser gespeichert, bis man
-  sich abmeldet. Ohne Code zeigt die Seite nichts von der Liste.
+- **Anmelden:** nur mit Code. Den Code legt jeder Admin beim ersten Besuch selbst fest (Anmeldefenster →
+  „Zum ersten Mal hier?“, Name wählen, Code zweimal eingeben, mindestens 8 Zeichen). Das geht je Name nur einmal,
+  zwei gleiche Codes gehen nicht. Am Code erkennt die Liste, wer man ist; er bleibt im Browser gespeichert, bis man
+  sich abmeldet. Unter „Konto“ lässt er sich ändern. Ohne Code zeigt die Seite nichts von der Liste.
 - **Speichern:** Jede Änderung ist ein einzelnes Feld eines Punkts und geht sofort an Supabase; beide Admins können
   gleichzeitig arbeiten, ohne sich etwas zu überschreiben. Alle 20 Sekunden (und beim Zurückkehren auf den Tab)
   lädt die Seite Änderungen des anderen nach.
 
 **Einrichten (einmalig):**
 
-1. In `checkliste/supabase.sql` ganz unten zwei eigene Codes eintragen (je mindestens 8 Zeichen, verschieden).
-   Die Datei mit den echten Codes nicht ins Repo zurückspeichern.
-2. In Supabase: SQL Editor → New query → den ganzen Inhalt einfügen → Run. Das legt die Tabellen, die Funktionen
-   und die 70 Startpunkte an. Mehrfach ausführen ist ungefährlich; erneut ausführen mit anderen Codes ändert die Codes.
-3. Unter Project Settings → API die „Project URL“ und den „Publishable key“ (oder den alten „anon public“-Key) in
+1. In Supabase: SQL Editor → New query → den ganzen Inhalt von `checkliste/supabase.sql` einfügen → Run. Das legt
+   die Tabellen, die Funktionen, die beiden Admins (noch ohne Code) und die 70 Startpunkte an. Im SQL steht kein
+   Code. Mehrfach ausführen ist ungefährlich; festgelegte Codes und Häkchen bleiben.
+2. Unter Project Settings → API die „Project URL“ und den „Publishable key“ (oder den alten „anon public“-Key) in
    `checkliste/js/config.js` eintragen. Nie den Secret- bzw. service_role-Key.
+3. Beide Admins öffnen die Checkliste und legen gleich ihren Code fest. Bis dahin könnte jemand, der die Seite
+   findet, einen noch freien Namen belegen.
+
+**Code vergessen** (oder ein Name von jemand Fremdem belegt): im SQL Editor
+`update public.checkliste_admins set code_hash = null where name = 'Axseleins';` ausführen, dann legt der Admin
+auf der Seite einen neuen Code fest. Weiterer Admin: in der letzten Anweisung der SQL-Datei eine Zeile ergänzen
+und erneut ausführen.
 
 **Sicherheit:** Die Tabellen haben Row Level Security ohne Regeln; mit dem öffentlichen Schlüssel kann niemand
-direkt lesen oder schreiben. Die Seite ruft nur die Funktionen `checkliste_laden`, `checkliste_setzen`,
-`checkliste_neu` und `checkliste_loeschen` auf, und jede prüft zuerst den Code (in der Datenbank nur als
-bcrypt-Hash). Nach 30 falschen Codes in 15 Minuten nehmen die Funktionen für 15 Minuten gar keinen Code an.
+direkt lesen oder schreiben. Die Seite ruft nur Funktionen auf: `checkliste_laden`, `checkliste_setzen`,
+`checkliste_neu`, `checkliste_loeschen` und `checkliste_code_aendern` prüfen zuerst den Code (in der Datenbank nur
+als bcrypt-Hash); `checkliste_festlegen` nimmt einen Code nur für einen Namen ohne Code an, `checkliste_status`
+sagt nur, wer schon einen hat. Nach 30 falschen Codes in 15 Minuten nehmen die Funktionen für 15 Minuten gar
+keinen Code an.
 Getestet ist das SQL in Postgres 16 mit nachgebauten Supabase-Rollen (`anon`, `authenticated`).
 
 ## Lokal starten
