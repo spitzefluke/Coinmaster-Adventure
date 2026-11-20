@@ -14,7 +14,8 @@
 --   update public.checkliste_admins set code_hash = null where name = 'Axseleins';
 --
 -- Mehrfach ausführen ist ungefährlich: Tabellen, Admins und Startpunkte werden nur angelegt, wenn sie fehlen;
--- schon festgelegte Codes und gesetzte Häkchen bleiben.
+-- schon festgelegte Codes, gesetzte Häkchen und eigene Punkte bleiben. So kommen auch neue Startpunkte (z. B. die
+-- Gruppe Mutationen) in eine schon eingerichtete Liste. Auf der Seite entfernte Startpunkte kommen dabei wieder.
 --
 -- Sicherheit: Die Tabellen haben Row Level Security ohne Regeln, mit dem öffentlichen Schlüssel kann niemand
 -- direkt lesen oder schreiben. Alles geht über die Funktionen unten, und jede prüft zuerst den Code (gespeichert
@@ -224,6 +225,8 @@ grant execute on function public.checkliste_festlegen(text, text) to anon, authe
 grant execute on function public.checkliste_code_aendern(text, text) to anon, authenticated;
 
 -- ── Startdaten (nur was fehlt) ──
+-- Die Reihenfolge der Gruppen wird auch bei schon angelegten Gruppen nachgezogen (auf der Seite lässt sie sich
+-- nicht ändern), damit neu hinzugekommene Gruppen an ihrer Stelle stehen.
 insert into public.checkliste_gruppen (id, titel, reihenfolge) values
   ('webseite', 'Webseite', 1),
   ('welten-p1', 'Welten · Spawn und Planet 1', 2),
@@ -231,9 +234,10 @@ insert into public.checkliste_gruppen (id, titel, reihenfolge) values
   ('welten-p3', 'Welten · Planet 3', 4),
   ('welten-p4', 'Welten · Planet 4', 5),
   ('welten-juwel', 'Welten · Juwelnebel', 6),
-  ('spiel', 'Roblox-Spiel', 7),
-  ('studio', 'In Roblox Studio erledigen', 8)
-on conflict (id) do nothing;
+  ('mutationen', 'Mutationen', 7),
+  ('spiel', 'Roblox-Spiel', 8),
+  ('studio', 'In Roblox Studio erledigen', 9)
+on conflict (id) do update set reihenfolge = excluded.reihenfolge;
 
 insert into public.checkliste_punkte (id, gruppe, titel, status, wer, notiz, reihenfolge) values
   ('seite-start', 'webseite', 'Startseite', 'offen', '', '', 1),
@@ -305,7 +309,19 @@ insert into public.checkliste_punkte (id, gruppe, titel, status, wer, notiz, rei
   ('studio-sounds', 'studio', 'Klänge hochladen, SoundIds eintragen', 'offen', '', '', 67),
   ('studio-admins', 'studio', 'Admin-UserIds eintragen', 'offen', '', '', 68),
   ('studio-api', 'studio', 'API-Zugriff für das Speichern einschalten', 'offen', '', '', 69),
-  ('studio-veroeffentlichen', 'studio', 'Spiel veröffentlichen', 'offen', '', '', 70)
+  ('studio-veroeffentlichen', 'studio', 'Spiel veröffentlichen', 'offen', '', '', 70),
+  ('mut-allgemein', 'mutationen', 'Mutationen allgemein (Chancen, Stapeln, Anzeige)', 'offen', '', '', 71),
+  ('mut-nass', 'mutationen', 'Sturzflut (Regen)', 'offen', '', '', 72),
+  ('mut-gestein', 'mutationen', 'Felsenhaut (Erdbeben)', 'offen', '', '', 73),
+  ('mut-gefroren', 'mutationen', 'Permafrost (Schneesturm)', 'offen', '', '', 74),
+  ('mut-disco', 'mutationen', 'Discofieber (Disconacht)', 'offen', '', '', 75),
+  ('mut-elektrisch', 'mutationen', 'Hochspannung (Gewitter)', 'offen', '', '', 76),
+  ('mut-daemonisch', 'mutationen', 'Höllenglut (Blutmond)', 'offen', '', '', 77),
+  ('mut-augenkrebs', 'mutationen', 'Neonrausch (Neonsturm)', 'offen', '', '', 78),
+  ('mut-hacked', 'mutationen', 'Systemfehler (Datensturm)', 'offen', '', '', 79),
+  ('mut-golden', 'mutationen', 'Midas-Gold (Goldregen)', 'offen', '', '', 80),
+  ('mut-kosmisch', 'mutationen', 'Sternenstaub (Sternschnuppen)', 'offen', '', '', 81),
+  ('mut-big', 'mutationen', 'GIGANT (Riesenmond)', 'offen', '', '', 82)
 on conflict (id) do nothing;
 
 -- ── Admins (ohne Code; den legt jeder auf der Seite selbst fest) ──
