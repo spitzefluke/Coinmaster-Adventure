@@ -23,6 +23,13 @@ function h(tag, props = {}, ...kids) {
   el.append(...kids.filter((x) => x != null));
   return el;
 }
+// Element an die Stelle i im Elternelement bringen, aber nur verschieben, wenn es nicht schon dort steht.
+// Jedes Verschieben lässt den Browser die Scrollposition nachführen; wurden bei jeder Änderung alle Gruppen
+// neu angehängt, sprang die Seite beim Klicken weiter unten nach oben.
+function place(parent, el, i) {
+  const at = parent.children[i];
+  if (at !== el) parent.insertBefore(el, at || null);
+}
 const admins = () => store.data?.admins || [];
 const colorOf = (name) => (name === BEIDE ? 'var(--brass)' : COLORS[Math.max(0, admins().indexOf(name)) % COLORS.length]);
 const when = (iso) => {
@@ -210,29 +217,32 @@ function render() {
     return;
   }
 
-  const seen = new Set();
-  for (const g of d.gruppen) {
+  // Weggefallene Punkte und Gruppen zuerst entfernen, dann alles an seine Stelle bringen
+  const ids = new Set(d.punkte.map((p) => p.id));
+  for (const [id, it] of items) if (!ids.has(id)) {
+    it.el.remove();
+    items.delete(id);
+  }
+  for (const [gid, G] of groups) if (!d.gruppen.some((g) => g.id === gid)) {
+    G.el.remove();
+    groups.delete(gid);
+  }
+  d.gruppen.forEach((g, gi) => {
     if (!groups.has(g.id)) groups.set(g.id, makeGroup(g));
     const G = groups.get(g.id);
-    root.append(G.el); // Reihenfolge wie in den Daten
+    place(root, G.el, gi); // Reihenfolge wie in den Daten
     const list = d.punkte.filter((p) => p.gruppe === g.id);
     const c = counts(list);
     G.meta.textContent = `${c.fertig} / ${list.length} überarbeitet` + (c.arbeit ? ` · ${c.arbeit} in Arbeit` : '');
     G.barWrap.replaceChildren(bar(c, list.length));
     G.add.hidden = !store.canEdit;
-    for (const p of list) {
-      seen.add(p.id);
+    list.forEach((p, i) => {
       let it = items.get(p.id);
       if (!it) items.set(p.id, (it = makeItem(p)));
       else it.update(p);
-      G.list.append(it.el); // verschiebt nur, wenn nötig
-    }
-  }
-  for (const [id, it] of items) if (!seen.has(id)) {
-    it.el.remove();
-    items.delete(id);
-  }
-  for (const [gid, G] of groups) if (!d.gruppen.some((g) => g.id === gid)) G.el.remove();
+      place(G.list, it.el, i);
+    });
+  });
   renderSummary();
   renderFilters();
   applyFilter();
