@@ -33,5 +33,5 @@ export const BEREICHE = [
   { gruppe: 'Export', titel: 'Roblox Studio', href: 'roblox/', status: 'code', alias: 'export luau installer',
     kurz: 'Alles als Paket für Roblox Studio: Daten, Logik, Modelle und Motive.', eckdaten: ['Installer-Skript', 'ModuleScripts'] },
   { gruppe: 'Admins', titel: 'Checkliste', href: 'checkliste/', status: 'admin', alias: 'aufgaben todo ueberarbeiten zustaendig axseleins',
-    kurz: 'Was überarbeitet ist, was noch fehlt und wer was macht. Anmelden mit dem eigenen Code.', eckdaten: ['70 Punkte', 'Zuständigkeit'] },
+    kurz: 'Was überarbeitet ist, was noch fehlt und wer was macht. Anmelden mit dem eigenen Code.', eckdaten: ['82 Punkte', 'Zuständigkeit'] },
 ];
