@@ -45,7 +45,7 @@
   .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; transition: width .5s ease; }
 
   /* Abläufe: Welten, Deko, Umgebung */
-  .tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tracks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .track { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
   .track b { font-size: 15px; }
   .track span { font-size: 12.5px; color: var(--ink-faint); }
@@ -126,7 +126,7 @@
     .w .n { display: none; }
     .review { grid-template-columns: minmax(0, 1fr); }
     .viewer { aspect-ratio: 4 / 3.4; }
-    .tracks { grid-template-columns: minmax(0, 1fr); }
+    .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .track span { display: none; }
   }
 </style>
@@ -144,7 +144,8 @@
   </header>
 
   <div class="tracks" role="tablist" aria-label="Ablauf wählen">
-    <button class="track" role="tab" type="button" data-track="welt"><b>Welten</b><span>Insel, Wege, Gebäude und alles Feste</span><em id="tp-welt"></em></button>
+    <button class="track" role="tab" type="button" data-track="welt"><b>Insel</b><span>Boden, Wege, Plätze, Wasser, Fels darunter</span><em id="tp-welt"></em></button>
+    <button class="track" role="tab" type="button" data-track="gebaeude"><b>Gebäude</b><span>Häuser, Läden, Portale, Türme, Mauern</span><em id="tp-gebaeude"></em></button>
     <button class="track" role="tab" type="button" data-track="deko"><b>Deko</b><span>Bäume, Büsche, Blumen, Felsen, Kisten …</span><em id="tp-deko"></em></button>
     <button class="track" role="tab" type="button" data-track="umgebung"><b>Umgebung</b><span>Schwebeinseln, Berge, Wolken, Wahrzeichen am Horizont</span><em id="tp-umgebung"></em></button>
   </div>
@@ -163,6 +164,7 @@
           <button class="tool" id="t-rot" type="button" aria-pressed="true">Drehen</button>
           <button class="tool" id="t-fig" type="button" aria-pressed="false">Figur zum Vergleich</button>
           <span class="sep" aria-hidden="true"></span>
+          <button class="tool layer" id="l-geb" type="button" aria-pressed="true">Gebäude</button>
           <button class="tool layer" id="l-deko" type="button" aria-pressed="true">Deko</button>
           <button class="tool layer" id="l-umg" type="button" aria-pressed="true">Umgebung</button>
         </div>
@@ -247,9 +249,10 @@ function writeDoc(id, patch) {
 
 // Drei Abläufe, jeder mit eigener Reihenfolge, eigenen Wünschen und eigenem Absegnen
 const TRACKS = {
-  welt: { name: 'Welten', what: 'dieser Welt', short: '', label: 'Was soll sich an der Welt selbst ändern (Insel, Wege, Gebäude)?', placeholder: 'Zum Beispiel: Der Brunnen soll größer werden, die Läden bunter, ein breiterer Weg zum Portal …', layers: { deko: true, umgebung: true } },
-  deko: { name: 'Deko', what: 'der Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { deko: true, umgebung: false } },
-  umgebung: { name: 'Umgebung', what: 'der Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { deko: true, umgebung: true } },
+  welt: { name: 'Insel', short: 'Insel von ', label: 'Was soll sich an der Insel ändern (Boden, Wege, Plätze, Wasser, Form)?', placeholder: 'Zum Beispiel: Die Insel größer, breitere Wege, ein See in der Mitte, mehr Hügel …', layers: { gebaeude: true, deko: true, umgebung: true } },
+  gebaeude: { name: 'Gebäude', short: 'Gebäude von ', label: 'Was soll sich an den Gebäuden ändern?', placeholder: 'Zum Beispiel: Der Brunnen größer, die Läden bunter, ein zweiter Turm am Tor …', layers: { gebaeude: true, deko: false, umgebung: false } },
+  deko: { name: 'Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { gebaeude: true, deko: true, umgebung: false } },
+  umgebung: { name: 'Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { gebaeude: true, deko: true, umgebung: true } },
 };
 let track = 'welt';
 const docId = (id, t = track) => (t === 'welt' ? id : `${t}-${id}`);
@@ -322,8 +325,7 @@ function setTrack(t, id) {
   const T = TRACKS[t];
   $('wish-label').textContent = T.label;
   $('wish').placeholder = T.placeholder;
-  layerOn.deko = T.layers.deko;
-  layerOn.umgebung = T.layers.umgebung;
+  Object.assign(layerOn, T.layers);
   // in jedem Ablauf weiter bei der Welt, die gerade dran ist (oder der gewünschten, wenn sie offen ist)
   const i = id ? ORDER.findIndex((w) => w.id === id) : -1;
   const target = i >= 0 && unlocked(i) ? id : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
@@ -346,9 +348,9 @@ function renderJudge() {
   $('reply-text').textContent = d.reply || '';
   const next = ORDER[i + 1];
   if (approved(selected)) {
-    $('verdict').innerHTML = `<div class="done">✓ ${track === 'welt' ? 'Diese Welt' : T.name + ' von ' + esc(w.name)} gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
+    $('verdict').innerHTML = `<div class="done">✓ ${T.name} von ${esc(w.name)} gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
   } else {
-    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">${track === 'welt' ? 'Gefällt mir' : T.name + ' gefällt mir'}${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird im Ablauf „${T.name}“ ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
+    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">${T.name} gefällt mir${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird im Ablauf „${T.name}“ ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
   }
 }
 $('verdict').addEventListener('click', async (e) => {
@@ -428,14 +430,14 @@ function setFigure(on) {
 }
 
 // ── Ebenen: Deko und Umgebung ein- und ausblenden ──
-const layerOn = { deko: true, umgebung: true };
+const layerOn = { gebaeude: true, deko: true, umgebung: true };
 let fxShown = false;
 function applyLayers() {
+  $('l-geb').setAttribute('aria-pressed', String(layerOn.gebaeude));
   $('l-deko').setAttribute('aria-pressed', String(layerOn.deko));
   $('l-umg').setAttribute('aria-pressed', String(layerOn.umgebung));
   if (!built) return;
-  built.layers.deko.visible = layerOn.deko;
-  built.layers.umgebung.visible = layerOn.umgebung;
+  for (const k of ['gebaeude', 'deko', 'umgebung']) built.setLayer(k, layerOn[k]);
   // Umgebungseffekte aus Luau (Wahrzeichen am Horizont, Himmelseffekte) mit der Umgebung
   if (layerOn.umgebung && !fxShown) {
     fxShown = true;
@@ -445,6 +447,7 @@ function applyLayers() {
     lua?.call('__worldFxReset');
   }
 }
+$('l-geb').onclick = () => { layerOn.gebaeude = !layerOn.gebaeude; applyLayers(); };
 $('l-deko').onclick = () => { layerOn.deko = !layerOn.deko; applyLayers(); };
 $('l-umg').onclick = () => { layerOn.umgebung = !layerOn.umgebung; applyLayers(); };
 
@@ -493,8 +496,8 @@ function show(id) {
     const count = built.data.parts.length + built.data.sky.length;
     $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     const wide = Math.round(built.data.meta.radius * 2);
-    const nDeko = built.data.parts.filter((p) => p.deko).length, nUmg = built.data.sky.length;
-    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    const nDeko = built.data.parts.filter((p) => p.deko).length, nBau = built.data.parts.filter((p) => p.bau).length, nUmg = built.data.sky.length;
+    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
     applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
     $('loading').hidden = true;
@@ -545,7 +548,7 @@ controls.target.set(0, 0.6 * STUDS, 0);
 loadLocal();
 function parseHash() {
   const h = location.hash.slice(1);
-  for (const t of ['deko', 'umgebung']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
+  for (const t of ['gebaeude', 'deko', 'umgebung']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
   return { t: 'welt', id: h };
 }
 const startId = () => {

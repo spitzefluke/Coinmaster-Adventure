@@ -62,13 +62,17 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
   // Teile mit Schrift (SurfaceGui) einzeln, alle anderen gebündelt
   // Ebenen: Welt (Insel und Bauten), Deko (Streu-Deko auf der Insel), Umgebung (Kulisse, Wolken, Schwebeinseln)
   // Die Werkstatt blendet Deko und Umgebung einzeln aus; die Himmelskuppel bleibt immer (sie ist der Himmel selbst).
-  const plain = [], deko = [], around = [], signs = [];
+  // Ebenen: Insel (Boden, Wege, Fels), Gebäude (alles Feste auf der Insel), Deko (Streu-Deko), Umgebung (Kulisse,
+  // Wolken, Schwebeinseln). Die Werkstatt blendet sie einzeln aus; die Himmelskuppel bleibt (sie ist der Himmel selbst).
+  const plain = [], bau = [], deko = [], around = [], signs = [];
   // mit Himmelsbild ist die Kuppel ausgeblendet (in Roblox macht das das Licht-Skript)
   const hideDome = !!data.lighting?.himmel;
-  for (const p of data.parts) (p.text ? signs : p.deko ? deko : plain).push(p);
+  for (const p of data.parts) (p.text ? signs : p.deko ? deko : p.bau ? bau : plain).push(p);
   for (const p of data.sky) if (p.name === 'Himmelskuppel') { if (!hideDome) plain.push(p); } else (p.text ? signs : around).push(p);
   rw.addStaticParts(plain);
-  const layers = { deko: rw.addStaticParts(deko), umgebung: rw.addStaticParts(around) };
+  const layers = { gebaeude: rw.addStaticParts(bau), deko: rw.addStaticParts(deko), umgebung: rw.addStaticParts(around) };
+  // Schilder sind einzelne Teile (Schrift): je Ebene merken, die Werkstatt hängt sie zum Ausblenden ab
+  const signParts = { gebaeude: [], deko: [], umgebung: [] };
   for (const p of signs) {
     const part = inst(p.className || 'Part', {
       Name: p.name || 'Schild', Size: v3(p.size), CFrame: cframe(p.pos, p.rot), Color: hexColor(p.color), Material: p.material, Transparency: p.transparency || 0,
@@ -78,6 +82,8 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     const gui = inst('SurfaceGui', { Name: 'Schild', Face: 'Back', LightInfluence: 0.2 }, part);
     const c = new THREE.Color(p.textColor).convertLinearToSRGB();
     inst('TextLabel', { Name: 'Text', Size: [1, 0, 1, 0], BackgroundTransparency: 1, Text: p.text, TextScaled: true, TextColor3: hexColor(p.textColor), TextStrokeTransparency: 0.6, Font: 'Legacy' }, gui);
+    const lay = data.sky.includes(p) ? 'umgebung' : p.deko ? 'deko' : p.bau ? 'gebaeude' : null;
+    if (lay) signParts[lay].push(part);
     void c;
   }
   // Lichter und Weltpartikel wie im Ordner „Effekte“
@@ -99,7 +105,12 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     }, holder);
   }
   applyLighting(rw, data.lighting);
-  return { rw, data, model, layers };
+  // Ebene zeigen oder verstecken (Teile gebündelt, Schilder abhängen)
+  const setLayer = (name, on) => {
+    layers[name].visible = on;
+    for (const s of signParts[name]) if ((s.parent === model) !== on) s.setParent(on ? model : null);
+  };
+  return { rw, data, model, layers, setLayer };
 }
 
 // ── Luau für Wetter (WeatherFx) und Figuren (AuraFx.BuildDummy) ──

@@ -1196,7 +1196,7 @@ Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte ko
 
 `tools/werkstatt/` baut eine Seite, auf der man alle 30 Welten der Reihe nach in der Roblox-Vorschau absegnet:
 erst wenn eine Welt gefällt, wird die nächste freigeschaltet. Je Welt kann man Änderungswünsche notieren; sie liegen
-in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt mit `status`, `wish`, `reply`).
+in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt und Ablauf mit `status`, `wish`, `reply`; Ids: `<welt>` für die Insel, `gebaeude-<welt>`, `deko-<welt>`, `umgebung-<welt>`). Die Vorschau trennt dafür vier Ebenen: Insel (Boden, flache Wege und Plätze), Gebäude, Deko (alles Gestreute) und Umgebung (Kulisse).
 
 ```
 npm i three@0.160.0   # irgendwo, nur für OrbitControls und GLTFLoader

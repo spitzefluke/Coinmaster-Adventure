@@ -641,6 +641,25 @@ function compareSpot(built) {
   return V(x, built.height(x, z), z);
 }
 
+// flach und auf dem Boden (Weg, Platz, Bach, Pad): gehört zur Insel, nicht zu den Gebäuden.
+// Geprüft wird das ganze Objekt, das auf der Insel steht (direkt unter root), damit z. B. der flache
+// Fußboden eines Ladens beim Laden bleibt. Ergebnis je Objekt merken.
+const flatBox = new THREE.Box3(), flatC = new THREE.Vector3(), flatCache = new WeakMap();
+function flatOnGround(mesh, built) {
+  let top = mesh;
+  while (top.parent && top.parent !== built.root) top = top.parent;
+  if (!top.parent) top = mesh; // hängt nicht an der Insel (z. B. direkt in der Szene)
+  if (flatCache.has(top)) return flatCache.get(top);
+  flatBox.setFromObject(top);
+  let flat = false;
+  if (!flatBox.isEmpty() && flatBox.max.y - flatBox.min.y <= 0.3) {
+    flatBox.getCenter(flatC);
+    flat = flatBox.min.y < built.height(flatC.x, flatC.z) + 0.25;
+  }
+  flatCache.set(top, flat);
+  return flat;
+}
+
 export function worldToParts(world) {
   const built = buildWorld(world, { particles: 0 });
   built.update(1, 0.016); // Grundhaltung der Animationen
@@ -668,10 +687,16 @@ export function worldToParts(world) {
     if (o.material.blending === THREE.AdditiveBlending) return; // Lichtstrahlen, Strahl unter dem UFO
     const out = rbx.sky ? sky : parts, n0 = out.length;
     convertMesh(out, o, world);
-    // Streu-Deko (Bäume, Büsche, Felsen, Kisten …): eigene Ebene, die die Vorschau ausblenden kann
-    let deko = false;
-    for (let q = o; q && !deko; q = q.parent) deko = !!q.userData.deko;
-    if (deko && !rbx.sky) for (let i = n0; i < out.length; i++) out[i].deko = true;
+    // Ebenen für die Vorschau (die Werkstatt blendet sie einzeln aus):
+    //   deko  Streu-Deko (Bäume, Büsche, Felsen, Kisten …)
+    //   bau   feste Gebäude und alles andere, was auf der Insel steht
+    //   (ohne Kennzeichen) Boden: flache Teile auf dem Boden wie Wege, Plätze, Bäche, Pads
+    if (!rbx.sky) {
+      let deko = false;
+      for (let q = o; q && !deko; q = q.parent) deko = !!q.userData.deko;
+      const layer = deko ? 'deko' : flatOnGround(o, built) ? null : 'bau';
+      if (layer) for (let i = n0; i < out.length; i++) out[i][layer] = true;
+    }
   });
   pullInsideDome(sky);
   // Kulisse (Schwebeinseln, Nachbarinseln, ferne Modelle) wirft keine Schatten: sonst lagen große, schwarze
