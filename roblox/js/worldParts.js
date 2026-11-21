@@ -9,7 +9,7 @@
 
 import { SKYBOXES } from '../../welten/js/skyboxes.js';
 import * as THREE from 'three';
-import { buildWorld, FX } from '../../welten/js/worldFactory.js';
+import { buildWorld, FX, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
 import { islandShell, miniIsland } from './islandShell.js';
 
 export const STUDS = 8; // 1 Einheit der Webseite = 8 Studs
@@ -377,8 +377,9 @@ const FALLS = {
   alien: { color: '#86ff52', light: '#e2ffc8', material: 'Neon', transparency: 0, count: 1 },
 };
 // Wolkenmeer unter der Insel (Einheiten): Grundhöhe und Mulde unter der Insel (gleich in skyShield)
-function seaBase(R) {
-  return -1 - 5.5 * (R / 6) - 6;
+// Die Höhe hängt an der Inseltiefe, die für alle Inseln gleich ist (auch für den größeren Spawn)
+function seaBase() {
+  return -1 - 5.5 * (ISLAND_RADIUS / 6) - 6;
 }
 function seaDip(R, d) {
   const nr = Math.max(0, 1 - d / (R * 2.3));
@@ -387,7 +388,7 @@ function seaDip(R, d) {
 function waterfalls(out, emitters, built, world) {
   const f = FALLS[world.id];
   if (!f) return;
-  const R = built.radius, depth = 5.5 * (R / 6), rand = seededRand(world.id + ':fall');
+  const R = built.radius, depth = 5.5 * (ISLAND_RADIUS / 6), rand = seededRand(world.id + ':fall');
   const start = rand() * Math.PI * 2;
   for (let i = 0; i < f.count; i++) {
     const a = start + i * 2.4;
@@ -395,7 +396,7 @@ function waterfalls(out, emitters, built, world) {
     const top = Math.max(built.height(ca * (R - 0.6), sa * (R - 0.6)), 0.1);
     // fällt frei an der Felszunge vorbei bis ins Wolkenmeer: oben ein dichter Vorhang, unten breiter und
     // durchscheinender (das Wasser zerstäubt), unten eine Gischtwolke auf dem Meer
-    const bottom = seaBase(R) + 3.4 + seaDip(R, R + 0.6) * (40 / STUDS), W = 2.1;
+    const bottom = seaBase() + 3.4 + seaDip(R, R + 0.6) * (40 / STUDS), W = 2.1;
     const mid = Math.min(-depth * 0.45, top - 6), h1 = top - mid, h2 = mid - bottom;
     const rot = around(a);
     const at = (r, y) => [ca * r * STUDS, y * STUDS, sa * r * STUDS];
@@ -521,7 +522,7 @@ function skyShield(sky, built, world) {
   }
   // Meer unter der Insel: Wolken, Nebel oder Dünen
   const R = built.radius * STUDS;
-  const y0 = seaBase(built.radius) * STUDS;
+  const y0 = seaBase() * STUDS;
   const kind = water ? 'duene' : space ? 'nebel' : 'wolke';
   const colors = water
     ? [vivid(world.side, 0.1), shade(vivid(world.side, 0.1), 0, 0.05), shade(vivid(world.side, 0.1), 0, -0.05)]

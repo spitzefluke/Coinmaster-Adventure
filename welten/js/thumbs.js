@@ -3,7 +3,7 @@
 // zwischengespeichert.
 
 import * as THREE from 'three';
-import { ISLAND_RADIUS } from './worldFactory.js';
+import { islandRadius } from './worldFactory.js';
 import { buildRobloxWorld } from './robloxWorld.js';
 
 let renderer = null;
@@ -34,7 +34,7 @@ export function worldThumb(world, w = 360, h = 240) {
             await rw.modelsReady; // Modelle aus der Bibliothek abwarten
             rw.update(0.5);
             const cam = new THREE.PerspectiveCamera(36, w / h, 0.5, 6000);
-            const k = (ISLAND_RADIUS / 10) * 8;
+            const k = (islandRadius(world) / 10) * 8; // der Spawn ist größer
             cam.position.set(17.5 * k, 12 * k, 21 * k);
             cam.lookAt(0, 1.6, 0);
             cam.updateMatrixWorld();

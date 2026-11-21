@@ -18,8 +18,12 @@ import { GEM_WORLDS, galaxy2After } from './galaxie2.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
+// Der Spawn ist größer: dort treffen sich alle Spieler und brauchen Platz (Fläche gut doppelt so groß)
+export const SPAWN_RADIUS = 24;
+export const islandRadius = (world) => (world?.hub ? SPAWN_RADIUS : R);
 const K = R / 6; // Vergrößerung gegenüber der ersten Fassung (Radius 6)
 const AREA = K * K; // so viel mehr Fläche: Streu-Gegenstände, Münzen und Partikel wachsen mit
+const DEPTH = 5.5 * K; // Tiefe der Felsunterseite: für alle Inseln gleich (das Wolkenmeer liegt darunter)
 
 // ── Zufall mit festem Startwert, damit jede Welt immer gleich aussieht ──
 function seeded(str) {
@@ -200,6 +204,8 @@ export const FX = {
 // ── Welt bauen ──────────────────────────────────────────────────────────────
 
 export function buildWorld(world, { particles: pScale = 1, shadows = false } = {}) {
+  // Inselradius dieser Welt (der Spawn ist größer); die Bausteine außerhalb rechnen weiter mit 16
+  const R = islandRadius(world), K = R / 6, AREA = K * K;
   const rand = seeded(world.id);
   const rr = (a, b) => a + rand() * (b - a);
   const scene = new THREE.Scene();
@@ -281,7 +287,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   const skirt = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.96, 1, 56, 1, true), M(world.side, { side: THREE.DoubleSide }));
   skirt.position.y = -0.5 + 0.0;
   root.add(skirt);
-  const depth = 5.5 * K;
+  const depth = DEPTH;
   const under = jitter(new THREE.ConeGeometry(R * 0.96, depth, 24, 5), rand, 0.9, (x, y) => y > depth / 2 - 0.05);
   under.rotateX(Math.PI);
   const rock = new THREE.Mesh(under, M(world.rock));
@@ -470,7 +476,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // ── Partikel ──
   const fxs = [];
   if (pScale > 0 && FX[world.fx]) {
-    const cfg = { ...FX[world.fx] };
+    const cfg = { area: R + 1, ...FX[world.fx] };
     cfg.count = Math.max(8, Math.round(cfg.count * pScale * AREA));
     const p = particles(cfg, rand);
     scene.add(p.object);

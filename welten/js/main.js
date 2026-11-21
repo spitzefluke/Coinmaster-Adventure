@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { HUB, PLANETS, WORLDS, planetById, worldById, worldsOf, REBIRTH, rebirthMultiplier, fmtLuck, fmtValue, fmtPrice, KULISSE, SUPERNOVA, GALAXIES, galaxyById } from './worlds.js';
-import { ISLAND_RADIUS } from './worldFactory.js';
+import { ISLAND_RADIUS, islandRadius } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 import { STUDS, FIGURE_STUDS } from './character.js';
@@ -14,6 +14,9 @@ import { WEATHER, weatherAt } from '../../muenzen/js/mutations.js';
 
 // Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10, mal 8 für Studs)
 const CS = (ISLAND_RADIUS / 10) * STUDS;
+// der Spawn ist größer als die anderen Inseln: Kamera entsprechend weiter weg (höchstens bis zur Himmelskuppel)
+const sizeOf = (w) => islandRadius(w) / ISLAND_RADIUS;
+let lastSize = null;
 
 const $ = (id) => document.getElementById(id);
 let planet = 'hub'; // Start im Spawn
@@ -98,7 +101,7 @@ let focused = false; // Kamera steht gerade bei einem Spawn-Bereich
 function showWorld(w) {
   if (focused && w !== current) {
     focused = false;
-    if (!compare) flyTo(HOME.target, HOME.dist, 12 * CS);
+    if (!compare) flyTo(HOME.target, HOME.dist * sizeOf(w), 12 * CS);
   }
   current = w;
   $('soon-cover').hidden = !w.soon;
@@ -110,6 +113,11 @@ function showWorld(w) {
   }
   figure = null;
   if (!w.soon) {
+    const s = sizeOf(w);
+    controls.maxDistance = Math.min(48, 44 * s) * CS;
+    if (lastSize === null) camera.position.sub(controls.target).multiplyScalar(s).add(controls.target);
+    else if (s !== lastSize && !compare && !focused) flyTo(HOME.target, HOME.dist * s, 12 * CS);
+    lastSize = s;
     built = buildRobloxWorld(w, { shadows: renderer.shadowMap.enabled });
     const count = built.data.parts.length + built.data.sky.length;
     $('rbx-count').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
@@ -144,7 +152,8 @@ function resize() {
     // Abstand so wählen, dass die ganze Insel auch in schmale Ansichten passt
     const fit = (12.4 * CS) / (Math.tan(THREE.MathUtils.degToRad(19)) * Math.min(camera.aspect, 1.6));
     const off = camera.position.clone().sub(controls.target);
-    off.setLength(Math.min(48 * CS, Math.max(27 * CS, fit)));
+    const s = sizeOf(current);
+    off.setLength(Math.min(48 * CS, Math.max(27 * CS * s, fit * s)));
     camera.position.copy(controls.target).add(off);
   }
 }
@@ -204,7 +213,7 @@ setInterval(() => weatherMode === 'live' && built && wantedWeather() !== wfxId &
 $('size-toggle').addEventListener('click', (e) => {
   compare = !compare;
   e.currentTarget.setAttribute('aria-pressed', String(compare));
-  if (!compare) flyTo(HOME.target, HOME.dist, 12 * CS);
+  if (!compare) flyTo(HOME.target, HOME.dist * sizeOf(current), 12 * CS);
   showWorld(current);
 });
 

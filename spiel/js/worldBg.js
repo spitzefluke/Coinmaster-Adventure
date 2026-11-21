@@ -65,8 +65,10 @@ export function createWorldBg(host) {
     }
     if (!skipAnimations()) angle += dt * 0.05;
     // schmale Bildschirme: weiter weg, damit die Insel ganz zu sehen ist
-    const dist = CS * Math.min(56, Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
-    camera.position.set(Math.cos(angle) * dist, 10.5 * CS, Math.sin(angle) * dist);
+    // größere Insel (Spawn): Kamera weiter weg
+    const big = built.data.meta.radius / (ISLAND_RADIUS * 8);
+    const dist = CS * Math.min(56 * Math.max(1, big * 0.9), big * Math.max(25, 11.8 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect)));
+    camera.position.set(Math.cos(angle) * dist, 10.5 * CS * big, Math.sin(angle) * dist);
     camera.lookAt(0, (camera.aspect < 1 ? -1.2 : 0.4) * 8, 0);
     camera.updateMatrixWorld();
     if (lua) {

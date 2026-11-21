@@ -652,7 +652,7 @@ frei).
 | Wolkenburg (neu) | Marmorburg mit vier Ecktürmen und Wehrgang, goldene Brücken zu Wolkeninseln mit Pavillon, Wolkenbäusche, Brunnen, Laternen |
 | Engelsgarten (neu) | Lichtbaum mit Heiligenschein, weiße Bäume mit Goldlaub, Lichtbrunnen, Treppen ins Nichts |
 | Götterthron (neu) | Stufengipfel mit goldenem Thron, Sonnenscheibe und Feuerschalen, Ring aus Goldsäulen, Schatztruhen |
-| Spawn | Münzstadt bleibt; Bäume im äußeren Ring, Fässer, Kisten und Säcke, Felsen auf freien Plätzen (`after`) |
+| Spawn | Münzstadt bleibt; Bäume und Felsen vor der Stadtmauer, Fässer, Kisten und Säcke zwischen den Läden; Platz und Straßen bleiben frei (`after`) |
 
 Farbvarianten: `tools/modelle/atlanten.py` färbt den Farbatlas des Medieval-Pakets um (Schnee, Asche und Glut,
 Höhlenviolett, Zuckerguss und Schokolade) und beim Space-Paket die Felsen je Planet (grau, eisblau, golden,
@@ -743,13 +743,16 @@ Gischt-Partikeln. Inseln mit Tageshimmel haben Wolken. Alle Farben sind kräftig
 ein `BloomEffect` Neon und Lava weich nachleuchten (die Vorschau zeigt kein Bloom). Am Spawn leuchtet ein
 Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumenbeete.
 
-**Spawn (Münzstadt, `welten/js/spawnTown.js`):** Hier starten neue Spieler.
-- **Marktplatz** mit Pflaster, Springbrunnen mit Fontänen und Münzstatue, Spawn-Pad
-- **Stadtmauer** mit acht Türmen, Fahnen und vier Torbögen; vier Hauptstraßen mit Laternen und Lichterketten, dazu eine Ringstraße
-- **Läden mit Innenraum:** Eier-Laden, Boost-Labor, Robux-Palast (goldene Kuppel), Haustier-Hof, Verkaufs-Kontor; jeweils mit Schaufenstern, Leuchtschrift, Theke, Regalen und Verkäufer
-- **Portal-Hallen:** Heimat-Tor (Planet 1), Raketenstartplatz mit Rakete (Planet 2), Tiefsee-Strudel (Planet 3 und 4)
-- **Spielbereiche:** Ei-Schlüpfplatz mit allen 11 Eiern, Glücksrad, VIP-Lounge, Quest-Brett, Obby-Turm, Ranglisten, Münzindex-Rotunde, tägliche Belohnung, Code-Terminal, Gruppen-Belohnung
-- **Leben:** Spaziergänger mit Haustieren, Münzregen, Feuerwerk, ein Tag-Nacht-Wechsel (90 Sekunden), bei dem nachts die Laternen heller leuchten
+**Spawn (Münzstadt, `welten/js/spawnTown.js`):** Hier starten neue Spieler. Die Spawn-Insel ist größer als die
+anderen Welten (Radius 24 statt 16, also 384 statt 256 Studs breit, gut doppelt so viel Fläche), damit viele Spieler Platz haben.
+Die Inseltiefe und das Wolkenmeer darunter sind gleich wie bei den anderen Inseln. Aufbau von innen nach außen:
+- **Marktplatz** (Radius 8,5) als freie Fläche: Springbrunnen mit Fontänen und Münzstatue, **vier Spawn-Pads** rund um den Brunnen (neue Spieler verteilen sich), acht Doppelbänke am Rand. Auf dem Platz steht sonst nichts.
+- **Vier Boulevards** (3 Einheiten breit) mit Laternen und Lichterketten zu den drei Portal-Hallen und zum Obby-Turm
+- **Läden-Ring** mit breiten Gassen: Eier-Laden, Boost-Labor, Robux-Palast (goldene Kuppel), Haustier-Hof, Verkaufs-Kontor (etwas größer, mit Schaufenstern, Leuchtschrift, Theke, Regalen und Verkäufer), Münzindex-Rotunde und drei Ranglisten
+- **Ringstraße** (1,6 Einheiten breit) um die Innenstadt
+- **Äußerer Ring:** Portal-Hallen (Heimat-Tor für Planet 1, Raketenstartplatz für Planet 2, Tiefsee-Strudel und Himmelsleiter für Planet 3 und 4), Obby-Turm, Ei-Schlüpfplatz mit allen 11 Eiern, tägliche Belohnung, Gruppen-Belohnung, Glücksrad, VIP-Lounge, Code-Terminal, Quest-Brett und ein Pavillon mit Bänken
+- **Stadtmauer** ringsum mit acht Türmen und Fahnen, davor ein Gürtel aus Bäumen und Felsen
+- **Leben:** Spaziergänger mit Haustieren am Platzrand und auf der Ringstraße, Münzregen, Feuerwerk, ein Tag-Nacht-Wechsel (90 Sekunden), bei dem nachts die Laternen heller leuchten
 
 In der Weltkarte lassen sich alle Bereiche anklicken. In der Spiel-Oberfläche kann man sie im 3D-Hintergrund
 antippen, und die Spawn-Leiste öffnet **Belohnungen** (sieben Tage Serie, Glücksrad einmal am Tag, Gruppe),

@@ -1,5 +1,12 @@
-// Der Spawn als prachtvolle Münzstadt: Marktplatz mit Springbrunnen, Stadtmauer mit Türmen,
-// große Läden mit Innenraum, Portal-Hallen je Planet, Spielbereiche und viel Leben.
+// Der Spawn als große Münzstadt mit viel Platz für die Spieler.
+//
+// Aufbau von innen nach außen (Einheiten, 1 Einheit = 8 Studs; die Spawn-Insel hat Radius 24):
+//   Marktplatz (bis 8,5)   weite, freie Fläche: Brunnen in der Mitte, vier Spawn-Pads, Bänke am Rand
+//   Läden-Ring (um 12)     Läden, Münzindex und Ranglisten mit breiten Gassen dazwischen
+//   Ringstraße (14,8–16,4) breiter Rundweg um die Innenstadt
+//   Äußerer Ring (um 19)   Portal-Hallen, Obby-Turm, Spielbereiche und ein Pavillon
+//   Stadtmauer (23,1)      mit acht Türmen
+// Vier Boulevards (3 Einheiten breit) führen vom Platz zu den Portal-Hallen und zum Obby-Turm.
 //
 // Wird von worldFactory.js aufgerufen; die Bausteine (Materialien, Schilder, Portale …) kommen
 // über K herein, damit es keine Kreis-Importe gibt. Alles, was man im Spiel antippen kann, trägt
@@ -11,16 +18,23 @@ const TAU = Math.PI * 2;
 const deg = (d) => (d * Math.PI) / 180;
 const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
 
+// Maße der Stadt
+const PLAZA = 8.5; // Radius des Marktplatzes
+const ROAD_W = 3.0; // Breite der Boulevards
+const SHOP_R = 12; // Mitte der Läden
+const RING_IN = 14.8, RING_OUT = 16.4, RING_MID = (RING_IN + RING_OUT) / 2; // Ringstraße
+const OUTER_R = 19; // Spielbereiche im äußeren Ring
+const HALL_R = 18.6; // Portal-Hallen
+const WALK_PLAZA = 7.1; // Rundweg der Spaziergänger am Platzrand
+
 export function buildSpawnTown(ctx, K) {
   const { put, reserve, root, anims, rand, rr, scatter, height, shared, scene, lights, R } = ctx;
-  const { M, E, at, group, signBoard, column, lamp, chest, bench, roundTree, bush, flower, flowerPatch, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
+  const { M, E, at, signBoard, column, lamp, chest, bench, roundTree, bush, flowerPatch, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
   const y0 = height(0, 0);
+  const WR = R - 0.9; // Stadtmauer
   const areas = (shared.areas = []);
   const lampMats = []; // leuchten nachts heller
-  const addArea = (id, name, x, z, obj) => {
-    areas.push({ id, name, pos: new THREE.Vector3(x, y0, z) });
-    if (obj) obj.userData.area = id;
-  };
+  const addArea = (id, name, x, z) => areas.push({ id, name, pos: new THREE.Vector3(x, y0, z) });
   // Objekt bei Winkel/Radius aufstellen, Vorderseite (+z) zur Stadtmitte
   const placeAt = (obj, a, r, d = 1.6, face = true) => {
     const [x, z] = polar(a, r);
@@ -45,28 +59,38 @@ export function buildSpawnTown(ctx, K) {
         g.roundRect(x * 32 + off - 14 + 2, y * 32 + 2, 28, 28, 7);
         g.fill();
       }
-  }, { repeat: [14, 14] });
+  }, { repeat: [22, 22] });
   const cobbleM = new THREE.MeshStandardMaterial({ map: cobble, color: '#ffffff', roughness: 0.85 });
-  const plaza = at(new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.2, 0.08, 56), cobbleM), 0, y0 + 0.04, 0);
+  const plaza = at(new THREE.Mesh(new THREE.CylinderGeometry(PLAZA, PLAZA, 0.08, 72), cobbleM), 0, y0 + 0.04, 0);
   plaza.userData.rbx = { color: '#d2c8b4' };
   plaza.receiveShadow = true;
   root.add(plaza);
-  reserve(0, 0, 5.4);
+  reserve(0, 0, PLAZA + 0.3); // der Platz bleibt frei: keine Streu-Deko, keine Modelle
+  // Schmuckringe im Pflaster: innen um den Brunnen und außen vor den Bänken
+  for (const [r0, r1, c] of [[3.1, 3.35, '#c8a86a'], [6.3, 6.6, '#b89a5e']]) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 96), M(c, { roughness: 0.6 }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = y0 + 0.085;
+    m.userData.rbx = { color: c };
+    root.add(m);
+  }
   const streetM = new THREE.MeshStandardMaterial({ map: cobble, color: '#e8e0d0', roughness: 0.85 });
-  // vier Hauptstraßen zu den Portal-Hallen und dem Obby-Turm
+  // vier Boulevards: zu den drei Portal-Hallen und zum Obby-Turm
+  const roadEnd = HALL_R - 2.2;
   for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * TAU, len = 8.6, mid = 5 + len / 2;
-    const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.07, 2.0), streetM);
+    const a = (k / 4) * TAU, r0 = PLAZA - 0.3, len = roadEnd - r0, mid = r0 + len / 2;
+    const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.07, ROAD_W), streetM);
     road.position.set(Math.cos(a) * mid, y0 + 0.035, Math.sin(a) * mid);
     road.rotation.y = -a;
     road.userData.rbx = { color: '#d8cfbc' };
     root.add(road);
-    for (let d = 5; d < 13.8; d += 0.6) reserve(Math.cos(a) * d, Math.sin(a) * d, 1.0);
-    // Laternen mit Lichterketten
+    for (let d = PLAZA; d < roadEnd; d += 0.7) reserve(Math.cos(a) * d, Math.sin(a) * d, ROAD_W / 2 + 0.2);
+    // Laternen am Rand mit Lichterketten
     let prev = null;
-    for (let d = 6.2; d < 13; d += 2.2)
+    for (let d = PLAZA + 1.0; d < roadEnd - 0.5; d += 2.6)
       for (const side of [-1, 1]) {
-        const x = Math.cos(a) * d - Math.sin(a) * side * 1.35, z = Math.sin(a) * d + Math.cos(a) * side * 1.35;
+        const off = ROAD_W / 2 + 0.35;
+        const x = Math.cos(a) * d - Math.sin(a) * side * off, z = Math.sin(a) * d + Math.cos(a) * side * off;
         const l = put(lamp(), x, z, { rot: false });
         l.traverse((o) => o.isMesh && o.material.emissiveIntensity > 1 && lampMats.push(o.material));
         if (side === 1) {
@@ -76,12 +100,12 @@ export function buildSpawnTown(ctx, K) {
       }
   }
   // Ringstraße
-  const ring = new THREE.Mesh(new THREE.RingGeometry(9.6, 10.8, 96), streetM);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(RING_IN, RING_OUT, 128), streetM);
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = y0 + 0.03;
   ring.userData.rbx = { color: '#d8cfbc' };
   root.add(ring);
-  for (let i = 0; i < 96; i++) reserve(...polar((i / 96) * TAU, 10.2), 0.7);
+  for (let i = 0; i < 140; i++) reserve(...polar((i / 140) * TAU, RING_MID), (RING_OUT - RING_IN) / 2 + 0.15);
 
   function stringLights(a, b) {
     const n = 9, cols = ['#ffd76a', '#ff8ac8', '#7ad0ff', '#8cff7a'];
@@ -134,26 +158,37 @@ export function buildSpawnTown(ctx, K) {
     em.push({ name: 'Fontaene', pos: [0, y0 + 2.75, 0], size: [0.6, 0.2, 0.6], colors: ['#d8f4ff', '#9fdcff'], particleSize: 0.22, rate: 60, speed: [2.2, 2.8], lifetime: [0.9, 1.2], spread: [28, 28], direction: 'Top', lightEmission: 0.3, acceleration: [0, -6, 0] });
     em.push({ name: 'Gischt', pos: [0, y0 + 0.7, 0], size: [3.2, 0.1, 3.2], colors: ['#ffffff', '#d8f4ff'], particleSize: 0.3, rate: 14, speed: [0.2, 0.5], lifetime: [0.6, 1], spread: [60, 60], direction: 'Top', lightEmission: 0.2 });
   }
-  // Spawn-Pad vor dem Brunnen
+  // ── Vier Spawn-Pads rund um den Brunnen: neue Spieler verteilen sich auf den ganzen Platz ──
   {
-    const pad = at(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.14, 32), M('#3a3046')), 0, y0 + 0.11, 3.7);
-    pad.userData.rbx = { name: 'SpawnLocation', className: 'SpawnLocation' };
-    root.add(pad);
-    const pr = at(new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.07, 6, 32), E('#ffd76a', 1.3)), 0, y0 + 0.19, 3.7);
-    pr.rotation.x = Math.PI / 2;
-    root.add(pr);
-    shared.figureSpot = new THREE.Vector3(1.6, y0 + 0.08, 3.9);
-    addArea('spawn', 'Marktplatz', 0, 2.5);
+    const padM = M('#3a3046'), ringM = E('#ffd76a', 1.3);
+    lampMats.push(ringM);
+    for (const d of [45, 135, 225, 315]) {
+      const [x, z] = polar(deg(d), 4.8);
+      const pad = at(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.14, 32), padM), x, y0 + 0.11, z);
+      pad.userData.rbx = { name: 'SpawnLocation', className: 'SpawnLocation' };
+      root.add(pad);
+      const pr = at(new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.07, 6, 32), ringM), x, y0 + 0.19, z);
+      pr.rotation.x = Math.PI / 2;
+      root.add(pr);
+    }
+    // Platz für die Vergleichsfigur neben dem vorderen Pad
+    const [fx, fz] = polar(deg(64), 5.0);
+    shared.figureSpot = new THREE.Vector3(fx, y0 + 0.08, fz);
+    addArea('spawn', 'Marktplatz', 0, 4);
+  }
+  // Bänke am Platzrand zum Ausruhen und Treffen
+  for (let i = 0; i < 8; i++) {
+    const g = new THREE.Group();
+    for (const x of [-0.55, 0.55]) g.add(at(bench(), x, 0, 0));
+    placeAt(g, deg(22.5 + i * 45), 7.75, 0.8);
   }
 
   // ── Stadtmauer mit Türmen und Fahnen ──
   {
-    const WR = R - 0.9, stone = M('#b8ae9c'), dark = M('#9a907e'), roofM = M('#b0402e');
-    const segs = 48;
+    const stone = M('#b8ae9c'), dark = M('#9a907e'), roofM = M('#b0402e');
+    const segs = 72;
     for (let i = 0; i < segs; i++) {
-      const a0 = (i / segs) * TAU, a1 = ((i + 1) / segs) * TAU, am = (a0 + a1) / 2;
-      // Lücken für die vier Tore
-      if ([0, 90, 180, 270].some((d) => Math.abs(((am - deg(d) + Math.PI * 3) % TAU) - Math.PI) < deg(5))) continue;
+      const am = ((i + 0.5) / segs) * TAU;
       const len = 2 * WR * Math.sin(Math.PI / segs) + 0.05;
       const [x, z] = polar(am, WR);
       const w = new THREE.Mesh(new THREE.BoxGeometry(len, 1.7, 0.55), i % 2 ? stone : dark);
@@ -166,7 +201,7 @@ export function buildSpawnTown(ctx, K) {
       root.add(cr);
     }
     for (let i = 0; i < 8; i++) {
-      const a = deg(22.5 + i * 45), [x, z] = polar(a, WR);
+      const a = deg(i * 45), [x, z] = polar(a, WR);
       const t = new THREE.Group();
       t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 3.4, 12), stone), 0, 1.7, 0));
       t.add(at(new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.5, 12), roofM), 0, 4.15, 0));
@@ -174,18 +209,6 @@ export function buildSpawnTown(ctx, K) {
       t.add(flag(i % 2 ? '#d9b26a' : '#b0402e', 4.9));
       reserve(x, z, 1.2);
       const o = put(t, x, z, { rot: false });
-      o.lookAt(0, o.position.y, 0);
-    }
-    // Torbögen über den vier Straßen
-    for (const d of [0, 90, 180, 270]) {
-      const a = deg(d), [x, z] = polar(a, WR);
-      const gate = new THREE.Group();
-      for (const s of [-1, 1]) gate.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 3, 0.9), stone), s * 1.6, 1.5, 0));
-      const arc = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.35, 6, 16, Math.PI), stone);
-      arc.position.y = 3;
-      gate.add(arc);
-      gate.add(flag('#d9b26a', 4.4));
-      const o = put(gate, x, z, { rot: false });
       o.lookAt(0, o.position.y, 0);
     }
   }
@@ -200,8 +223,7 @@ export function buildSpawnTown(ctx, K) {
     anims.push((t) => (pivot.rotation.y = Math.sin(t * 2 + ph) * 0.35));
     return g;
   }
-
-  // ── Große Läden ──
+  // ── Große Läden (Läden-Ring) ──
   function shopHouse({ name, sub, wall, roof, accent, items, keeper }) {
     const g = new THREE.Group();
     const W = 3.6, D = 3.0, H = 2.6, wallM = M(wall), roofM = M(roof), trimM = M(accent, { metalness: 0.4, roughness: 0.4 });
@@ -265,25 +287,24 @@ export function buildSpawnTown(ctx, K) {
     return g;
   }
 
-  const shopRing = 7.9;
   const shops = [
-    { a: 25, id: 'eier', name: 'Eier-Laden', sub: 'Eier für Haustiere', wall: '#fbf3e4', roof: '#e0a030', accent: '#c8801a',
+    { a: 30, id: 'eier', name: 'Eier-Laden', sub: 'Eier für Haustiere', wall: '#fbf3e4', roof: '#e0a030', accent: '#c8801a',
       items: (g, D) => ['#ffd89a', '#b6ff6a', '#9ff0ff', '#fff4cf', '#b49cff', '#ff4058', '#ffe07a'].forEach((c, i) => {
         const e = eggIcon(c);
         e.scale.setScalar(0.42);
         e.position.set(-1.2 + (i % 4) * 0.8, i < 4 ? 0.95 : 1.65, -D / 2 + 0.32);
         g.add(e);
       }) },
-    { a: 65, id: 'boosts', name: 'Boost-Labor', sub: 'Glück, EP, Wetter', wall: '#eef0ff', roof: '#5a3ab0', accent: '#7a5ad8',
+    { a: 60, id: 'boosts', name: 'Boost-Labor', sub: 'Glück, EP, Wetter', wall: '#eef0ff', roof: '#5a3ab0', accent: '#7a5ad8',
       items: (g, D) => ['#b07bff', '#7ad0ff', '#7aff8a', '#ffd76a', '#ff8ac8'].forEach((c, i) => {
         const p = potionIcon(c);
         p.scale.setScalar(0.38);
         p.position.set(-1.2 + i * 0.6, 0.94, -D / 2 + 0.32);
         g.add(p);
       }) },
-    { a: 115, id: 'robux', name: 'Robux-Palast', sub: 'Angebote & VIP-Pass', wall: '#f2fff6', roof: '#e8c060', accent: '#2aa860', palace: true },
-    { a: 155, id: 'haustiere', name: 'Haustier-Hof', sub: 'Ausrüsten & pflegen', wall: '#fff0f6', roof: '#d84a8a', accent: '#d84a8a' },
-    { a: 205, id: 'verkaufen', name: 'Verkaufs-Kontor', sub: 'Münzen gegen Moneten', wall: '#fff4e0', roof: '#8a5a3a', accent: '#c8701a',
+    { a: 120, id: 'robux', name: 'Robux-Palast', sub: 'Angebote & VIP-Pass', wall: '#f2fff6', roof: '#e8c060', accent: '#2aa860', palace: true },
+    { a: 150, id: 'haustiere', name: 'Haustier-Hof', sub: 'Ausrüsten & pflegen', wall: '#fff0f6', roof: '#d84a8a', accent: '#d84a8a' },
+    { a: 210, id: 'verkaufen', name: 'Verkaufs-Kontor', sub: 'Münzen gegen Moneten', wall: '#fff4e0', roof: '#8a5a3a', accent: '#c8701a',
       items: (g, D) => [[-1, 0.95], [0, 0.95], [1, 0.95], [-0.5, 1.65], [0.5, 1.65]].forEach(([x, y]) => {
         for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), M('#ffcf4a', { metalness: 0.7, roughness: 0.3 })), x, y + k * 0.055, -D / 2 + 0.32));
       }) },
@@ -308,11 +329,11 @@ export function buildSpawnTown(ctx, K) {
         house.add(p);
       }
     }
-    placeAt(house, deg(s.a), shopRing, 2.3);
+    house.scale.setScalar(1.15); // größere Läden: drinnen ist Platz für mehrere Spieler
+    placeAt(house, deg(s.a), SHOP_R, 2.7);
     house.userData.area = s.id;
-    addArea(s.id, s.name, ...polar(deg(s.a), shopRing - 1.6));
+    addArea(s.id, s.name, ...polar(deg(s.a), SHOP_R - 2.6));
   }
-
   // Kleines Block-Haustier, hüpft
   function pet(c) {
     const g = new THREE.Group();
@@ -330,10 +351,10 @@ export function buildSpawnTown(ctx, K) {
   {
     const boards = [['Meiste Moneten', '#ffd76a', 'taler'], ['Münzen gesammelt', '#7ad0ff', 'coins'], ['Wiedergeburten', '#ff8ac8', 'rebirths']];
     boards.forEach(([t, c, k], i) => {
-      const o = placeAt(leaderboard(t, c, rankRows(k, rand)), deg(292 + i * 25), 7.8, 1.6);
+      const o = placeAt(leaderboard(t, c, rankRows(k, rand)), deg(297 + i * 18), SHOP_R + 0.6, 1.8);
       o.userData.area = 'ranglisten';
     });
-    addArea('ranglisten', 'Ranglisten', ...polar(deg(317), 6.2));
+    addArea('ranglisten', 'Ranglisten', ...polar(deg(315), SHOP_R - 2.4));
     const lib = new THREE.Group();
     // Rotunde um das Index-Buch
     for (let i = 0; i < 8; i++) {
@@ -346,12 +367,13 @@ export function buildSpawnTown(ctx, K) {
     lib.add(rd);
     const book = indexBook();
     lib.add(book);
-    const o = placeAt(lib, deg(245), 7.8, 2.2);
+    lib.scale.setScalar(1.15);
+    const o = placeAt(lib, deg(240), SHOP_R, 2.4);
     o.userData.area = 'index';
-    addArea('index', 'Münzindex', ...polar(deg(245), 6.4));
+    addArea('index', 'Münzindex', ...polar(deg(240), SHOP_R - 2.4));
   }
 
-  // ── Belohnung, Codes, Gruppen-Belohnung ──
+  // ── Belohnung, Codes, Gruppen-Belohnung (äußerer Ring) ──
   {
     const ch = new THREE.Group();
     ch.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.4, 8), M('#4a4458')), 0, 0.2, 0));
@@ -362,25 +384,25 @@ export function buildSpawnTown(ctx, K) {
     const s1 = signBoard('Tägliche Belohnung', { w: 2.6, h: 0.6, bg: '#e0a030', fg: '#ffffff', sub: 'Jeden Tag ein Geschenk' });
     s1.position.set(0, 2.2, 0);
     ch.add(s1);
-    placeAt(ch, deg(20), 12.6, 1.5).userData.area = 'belohnung';
-    addArea('belohnung', 'Tägliche Belohnung', ...polar(deg(20), 11.2));
-    placeAt(codesTerminal(anims), deg(150), 12.8, 0.8).userData.area = 'codes';
-    addArea('codes', 'Codes', ...polar(deg(150), 11.6));
+    placeAt(ch, deg(60), OUTER_R, 1.6).userData.area = 'belohnung';
+    addArea('belohnung', 'Tägliche Belohnung', ...polar(deg(60), OUTER_R - 1.5));
+    placeAt(codesTerminal(anims), deg(240), OUTER_R, 1.0).userData.area = 'codes';
+    addArea('codes', 'Codes', ...polar(deg(240), OUTER_R - 1.2));
     const grp = new THREE.Group();
     grp.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.9), M('#3a7be0')), 0, 0.45, 0));
     grp.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 1.0), M('#ffd76a', { metalness: 0.6 })), 0, 0.95, 0));
     const s2 = signBoard('Gruppe', { w: 1.8, h: 0.55, bg: '#3a7be0', fg: '#ffffff', sub: 'Beitreten = Bonus' });
     s2.position.set(0, 1.7, 0);
     grp.add(s2);
-    placeAt(grp, deg(112), 12.8, 1.0).userData.area = 'gruppe';
-    addArea('gruppe', 'Gruppen-Belohnung', ...polar(deg(112), 11.5));
+    placeAt(grp, deg(120), OUTER_R, 1.2).userData.area = 'gruppe';
+    addArea('gruppe', 'Gruppen-Belohnung', ...polar(deg(120), OUTER_R - 1.3));
   }
 
-  // ── Portal-Hallen je Planet ──
+  // ── Portal-Hallen je Planet (äußerer Ring, am Ende der Boulevards) ──
   const byPlanet = {};
   for (const p of ctx.portals || []) (byPlanet[p.world.planet] ??= []).push(p);
   const hall = (planetId, d, build) => {
-    const a = deg(d), [cx, cz] = polar(a, 12.0);
+    const a = deg(d), [cx, cz] = polar(a, HALL_R);
     const g = new THREE.Group();
     build(g);
     // Portale im Halbkreis hinter der Mitte, Blick zur Hallenmitte
@@ -396,13 +418,13 @@ export function buildSpawnTown(ctx, K) {
       pa.lookAt(0, 0, 0.6);
       g.add(pa);
     });
-    reserve(cx, cz, 3.4);
+    g.scale.setScalar(1.15);
+    reserve(cx, cz, 4.0);
     const o = put(g, cx, cz, { rot: false });
     o.lookAt(0, o.position.y, 0);
     o.userData.area = `portale-${planetId}`;
     return o;
-  };
-  // Heimat-Tor (Planet 1)
+  };  // Heimat-Tor (Planet 1)
   hall('p1', 90, (g) => {
     const stone = M('#c8bea8');
     for (const s of [-1, 1]) {
@@ -420,7 +442,7 @@ export function buildSpawnTown(ctx, K) {
     }
     for (const [x, z] of [[-2.2, 0.8], [2.2, 0.8]]) g.add(at(roundTree(1.6, '#4f9a3f', rand), x, 0, z));
   });
-  addArea('portale-p1', 'Heimat-Tor (Planet 1)', ...polar(deg(90), 9.4));
+  addArea('portale-p1', 'Heimat-Tor (Planet 1)', ...polar(deg(90), HALL_R - 3.4));
   // Raketenstartplatz (Planet 2)
   hall('p2', 180, (g) => {
     const metal = M('#8a8f9a', { metalness: 0.6, roughness: 0.35 });
@@ -459,7 +481,7 @@ export function buildSpawnTown(ctx, K) {
     for (const x of [-1.5, 1.5]) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), blink), x, 0.35, 0.9));
     anims.push((t) => (blink.emissiveIntensity = Math.sin(t * 5) > 0 ? 2.4 : 0.2));
   });
-  addArea('portale-p2', 'Raketenstartplatz (Planet 2)', ...polar(deg(180), 9.4));
+  addArea('portale-p2', 'Raketenstartplatz (Planet 2)', ...polar(deg(180), HALL_R - 3.4));
   // Tiefsee-Strudel (Planet 3)
   hall('p3', 270, (g) => {
     g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 0.4, 32), M('#8aa4b0')), 0, 0.2, -0.3));
@@ -488,7 +510,7 @@ export function buildSpawnTown(ctx, K) {
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), M('#4a4458')), 0, 0.45, 1.95));
     g.add(sg);
   });
-  addArea('portale-p3', (byPlanet.p4 || []).length ? 'Tiefsee-Strudel und Himmelsleiter (Planet 3 und 4)' : 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), 9.4));
+  addArea('portale-p3', (byPlanet.p4 || []).length ? 'Tiefsee-Strudel und Himmelsleiter (Planet 3 und 4)' : 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), HALL_R - 3.4));
 
   // ── Spielbereiche im äußeren Ring ──
   // Ei-Schlüpfplatz: alle elf Eier auf Podesten im Halbkreis
@@ -509,8 +531,8 @@ export function buildSpawnTown(ctx, K) {
     const sg = signBoard('Ei-Schlüpfplatz', { w: 2.8, h: 0.65, bg: '#c8801a', fg: '#ffffff', sub: 'Ei antippen & schlüpfen' });
     sg.position.set(0, 2.6, -0.4);
     g.add(sg);
-    placeAt(g, deg(45), 12.6, 2.6).userData.area = 'schluepfen';
-    addArea('schluepfen', 'Ei-Schlüpfplatz', ...polar(deg(45), 11.4));
+    placeAt(g, deg(30), OUTER_R, 2.8).userData.area = 'schluepfen';
+    addArea('schluepfen', 'Ei-Schlüpfplatz', ...polar(deg(30), OUTER_R - 1.6));
   }
   // Glücksrad
   {
@@ -540,8 +562,8 @@ export function buildSpawnTown(ctx, K) {
     const sg = signBoard('Glücksrad', { w: 2.0, h: 0.55, bg: '#c8306a', fg: '#ffffff', sub: '1× täglich gratis' });
     sg.position.set(0, 0.8, 0.4);
     g.add(sg);
-    placeAt(g, deg(135), 12.8, 1.8).userData.area = 'gluecksrad';
-    addArea('gluecksrad', 'Glücksrad', ...polar(deg(135), 11.4));
+    placeAt(g, deg(150), OUTER_R, 1.9).userData.area = 'gluecksrad';
+    addArea('gluecksrad', 'Glücksrad', ...polar(deg(150), OUTER_R - 1.6));
   }
   // VIP-Lounge
   {
@@ -558,8 +580,8 @@ export function buildSpawnTown(ctx, K) {
     sg.position.set(0, 2.0, -1.4);
     g.add(sg);
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), E('#ffd76a', 0.9)), 0, 1.1, -1.0));
-    placeAt(g, deg(225), 12.7, 2.3).userData.area = 'vip';
-    addArea('vip', 'VIP-Lounge', ...polar(deg(225), 11.2));
+    placeAt(g, deg(210), OUTER_R, 2.6).userData.area = 'vip';
+    addArea('vip', 'VIP-Lounge', ...polar(deg(210), OUTER_R - 1.8));
   }
   // Quest-Brett
   {
@@ -571,8 +593,8 @@ export function buildSpawnTown(ctx, K) {
     const sg = signBoard('Quests', { w: 1.6, h: 0.45, bg: '#6b4a2e', fg: '#ffe7a8', sub: 'Tagesaufgaben' });
     sg.position.set(0, 2.5, 0.05);
     g.add(sg);
-    placeAt(g, deg(315), 12.9, 1.4).userData.area = 'quests';
-    addArea('quests', 'Quest-Brett', ...polar(deg(315), 11.6));
+    placeAt(g, deg(300), OUTER_R, 1.5).userData.area = 'quests';
+    addArea('quests', 'Quest-Brett', ...polar(deg(300), OUTER_R - 1.4));
   }
   // Obby-Turm mit Sprungstrecke
   {
@@ -591,19 +613,39 @@ export function buildSpawnTown(ctx, K) {
     const sg = signBoard('Obby', { w: 1.6, h: 0.5, bg: '#2a2232', fg: '#8cff7a', sub: 'Oben wartet eine Truhe' });
     sg.position.set(0, 1.1, 1.6);
     g.add(sg);
-    placeAt(g, 0, 12.4, 2.4).userData.area = 'obby';
-    addArea('obby', 'Obby-Turm', ...polar(0, 10.6));
+    g.scale.setScalar(1.25); // höher als früher: vom ganzen Platz aus zu sehen
+    placeAt(g, 0, OUTER_R + 0.6, 3.0).userData.area = 'obby';
+    addArea('obby', 'Obby-Turm', ...polar(0, OUTER_R - 2.4));
   }
-
+  // Pavillon: überdachter Treffpunkt mit Bänken zwischen Quest-Brett und Obby-Turm
+  {
+    const g = new THREE.Group();
+    const wood = M('#f2ead8'), roofM = M('#3f8a6a');
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.3, 0.2, 8), M('#d8cfbc')), 0, 0.1, 0));
+    for (let i = 0; i < 8; i++) {
+      const [x, z] = polar((i / 8) * TAU + TAU / 16, 2.0);
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.2, 8), wood), x, 1.3, z));
+    }
+    g.add(at(new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.3, 8), roofM), 0, 3.05, 0));
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), M('#ffd76a', { metalness: 0.7 })), 0, 3.8, 0));
+    for (let i = 0; i < 3; i++) {
+      const b = bench();
+      const [x, z] = polar((i / 3) * TAU + TAU / 6, 1.35);
+      b.position.set(x, 0.2, z);
+      b.lookAt(0, 0.2, 0);
+      g.add(b);
+    }
+    placeAt(g, deg(330), OUTER_R, 2.6);
+  }
   // ── Leben: Spaziergänger mit Haustieren, Münzregen, Feuerwerk ──
   const walkers = [];
-  for (let i = 0; i < 8; i++) {
-    const n = npc(['#e0433a', '#3a8fd1', '#5fd38d', '#ffb02e', '#b07bff', '#ff8ac8', '#2aa860', '#7a5ad8'][i]);
+  for (let i = 0; i < 12; i++) {
+    const n = npc(['#e0433a', '#3a8fd1', '#5fd38d', '#ffb02e', '#b07bff', '#ff8ac8', '#2aa860', '#7a5ad8', '#ff5aa5', '#5ad1ff', '#c8801a', '#8cff7a'][i]);
     n.userData.rbx = { skip: true };
     const pt = pet(['#c98a4b', '#f7f9fc', '#e8752a', '#9a4e22'][i % 4]);
     pt.userData.rbx = { skip: true };
     root.add(n, pt);
-    walkers.push({ n, pt, r: i % 2 ? 4.5 : 10.2, sp: (0.07 + rand() * 0.05) * (i % 3 ? 1 : -1), ph: rand() * TAU });
+    walkers.push({ n, pt, r: i % 2 ? WALK_PLAZA : RING_MID, sp: (0.07 + rand() * 0.05) * (i % 3 ? 1 : -1), ph: rand() * TAU });
   }
   anims.push((t) =>
     walkers.forEach(({ n, pt, r, sp, ph }) => {
@@ -620,11 +662,11 @@ export function buildSpawnTown(ctx, K) {
   );
   // Münzregen über dem Marktplatz
   const rain = [], coinM = M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.4 });
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 40; i++) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.04, 14), coinM);
     c.userData.rbx = { skip: true };
     root.add(c);
-    rain.push([c, rand() * TAU, 1 + rand() * 4, rand(), 0.5 + rand() * 0.5]);
+    rain.push([c, rand() * TAU, 1 + rand() * (PLAZA - 2), rand(), 0.5 + rand() * 0.5]);
   }
   anims.push((t) =>
     rain.forEach(([c, a, r, ph, sp]) => {
@@ -635,12 +677,12 @@ export function buildSpawnTown(ctx, K) {
     }),
   );
   // Feuerwerk (nachts häufiger)
-  const fw = [], FWN = 5, FWP = 60;
+  const fw = [], FWN = 7, FWP = 60;
   for (let f = 0; f < FWN; f++) {
     const pos = new Float32Array(FWP * 3);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const mat = new THREE.PointsMaterial({ size: 0.35, map: dotTex(), color: ['#ff5aa5', '#ffe07a', '#5ad1ff', '#8cff7a', '#c48bff'][f], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const mat = new THREE.PointsMaterial({ size: 0.35, map: dotTex(), color: ['#ff5aa5', '#ffe07a', '#5ad1ff', '#8cff7a', '#c48bff', '#ff8a3d', '#ffffff'][f], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
     const pts = new THREE.Points(geo, mat);
     pts.frustumCulled = false;
     scene.add(pts);
@@ -671,7 +713,7 @@ export function buildSpawnTown(ctx, K) {
       if (cyc !== f.cyc) {
         f.cyc = cyc;
         f.t0 = t;
-        const a = rand() * TAU, r = 2 + rand() * 8;
+        const a = rand() * TAU, r = 2 + rand() * 14;
         f.at.set(Math.cos(a) * r, y0 + 7 + rand() * 4, Math.sin(a) * r);
       }
       const e = t - f.t0;
@@ -691,7 +733,7 @@ export function buildSpawnTown(ctx, K) {
   {
     const glow = E('#ffd76a', 1.4);
     lampMats.push(glow);
-    const rim = at(new THREE.Mesh(new THREE.TorusGeometry(5.24, 0.07, 6, 64), glow), 0, y0 + 0.1, 0);
+    const rim = at(new THREE.Mesh(new THREE.TorusGeometry(PLAZA + 0.04, 0.07, 6, 96), glow), 0, y0 + 0.1, 0);
     rim.rotation.x = Math.PI / 2;
     root.add(rim);
   }
@@ -710,12 +752,13 @@ export function buildSpawnTown(ctx, K) {
       });
     }
   }
-  // Blumenbeete zwischen Platz und Ringstraße
-  scatter(10, () => flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'], rand), 0.45, 5.5, 9.3);
-  scatter(14, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, 5.6, 9.2);
 
   // ── Grün ──
-  if (!ctx.modelWorld) scatter(12, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, 11, 13.4); // sonst Bäume als Modelle
-  scatter(24, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, 5.6, 13.4);
-  scatter(12, () => flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand), 0.45, 5.6, 13.4);
+  // Blumenbeete und Büsche zwischen den Läden (der Platz und die Straßen sind reserviert und bleiben frei)
+  scatter(16, () => flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'], rand), 0.45, PLAZA + 0.6, RING_IN - 0.3);
+  scatter(18, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, PLAZA + 0.6, RING_IN - 0.3);
+  // äußerer Ring: zwischen den Spielbereichen (rMax unter R - 2,5, sonst vervielfacht scatter die Anzahl)
+  scatter(22, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, RING_OUT + 0.4, R - 2.6);
+  scatter(14, () => flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand), 0.45, RING_OUT + 0.4, R - 2.6);
+  if (!ctx.modelWorld) scatter(18, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, OUTER_R + 1.4, R - 2.6); // sonst Bäume als Modelle
 }

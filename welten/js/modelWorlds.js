@@ -1521,11 +1521,12 @@ const SPAWN = {
   after: true,
   build(ctx) {
     const { R } = ctx;
-    scatterModels(ctx, 14, ['tree_single_A', 'tree_single_B'], 2.2, 2.8, { rMin: 11, rMax: R - 1.4, gap: 0.7 });
-    scatterModels(ctx, 3, ['trees_B_small'], 2, 2.2, { rMin: 11, rMax: R - 1.6, gap: 0.65 });
-    scatterModels(ctx, 6, ['post_lantern'], 0.8, 0.8, { rMin: 5.6, rMax: 9.4, gap: 1 });
-    scatterModels(ctx, 8, ['barrel', 'crate_A_big', 'sack', 'crate_long_C', 'bucket_water'], 3, 3.4, { rMin: 5.6, rMax: 13, gap: 1 });
-    scatterModels(ctx, 4, ['rock_single_A', 'rock_single_C', 'rock_single_E'], 2.6, 3.4, { rMin: 11, rMax: R - 1.4, gap: 0.8 });
+    // Spawn (spawnTown.js): Platz, Straßen und Spielbereiche sind reserviert und bleiben frei.
+    // Bäume und Felsen nur im grünen Gürtel vor der Stadtmauer, Kisten und Fässer neben den Läden.
+    scatterModels(ctx, 26, ['tree_single_A', 'tree_single_B'], 2.2, 2.8, { rMin: 20.2, rMax: R - 1.6, gap: 0.7 });
+    scatterModels(ctx, 5, ['trees_B_small'], 2, 2.2, { rMin: 20.2, rMax: R - 1.8, gap: 0.65 });
+    scatterModels(ctx, 10, ['barrel', 'crate_A_big', 'sack', 'crate_long_C', 'bucket_water'], 3, 3.4, { rMin: 10.4, rMax: 14.2, gap: 1 });
+    scatterModels(ctx, 6, ['rock_single_A', 'rock_single_C', 'rock_single_E'], 2.6, 3.4, { rMin: 20.2, rMax: R - 1.6, gap: 0.8 });
     SPAWN.backdrop(ctx); // der Spawn gehört zu keinem Planeten, darum ruft planet1/2/3 die Kulisse nicht auf
   },
   backdrop(ctx) {
