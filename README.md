@@ -1191,3 +1191,17 @@ Dann <http://localhost:8000> öffnen.
   - `css/style.css` – Gestaltung
 
 Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte kommen automatisch aus der Stufe.
+
+## Welten-Werkstatt (Artifact)
+
+`tools/werkstatt/` baut eine Seite, auf der man alle 30 Welten der Reihe nach in der Roblox-Vorschau absegnet:
+erst wenn eine Welt gefällt, wird die nächste freigeschaltet. Je Welt kann man Änderungswünsche notieren; sie liegen
+in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt mit `status`, `wish`, `reply`).
+
+```
+npm i three@0.160.0   # irgendwo, nur für OrbitControls und GLTFLoader
+node tools/werkstatt/build.mjs <zielordner> <pfad-zu-node_modules/three>
+```
+
+Das Skript kopiert die Engine-Module, die Himmelsbilder und die Modell-Bibliothek (als Base64-Text, weil Artifacts
+keine .glb ausliefern) und schreibt `files.json` mit allen Dateien für den Upload.

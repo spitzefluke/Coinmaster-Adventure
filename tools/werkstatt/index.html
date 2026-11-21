@@ -1,0 +1,495 @@
+<title>Welten-Werkstatt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Fredoka+One&family=Montserrat:wght@500;600;700;900&family=Marcellus+SC&display=swap">
+<style>
+  /* Werkstatt-Layout: links die Reihenfolge der Welten, rechts die große Roblox-Ansicht mit dem Urteil darunter.
+     Bewusst nur dunkel: wie die Spiel-Vorschau des Projekts (Nachtblau, Münzgold). */
+  :root {
+    --night: #0d0b16;
+    --panel: #171425;
+    --panel-2: #201c33;
+    --line: #2e2945;
+    --ink: #f3ecdc;
+    --ink-soft: #b7aec8;
+    --ink-faint: #7d7494;
+    --gold: #f2c14e;
+    --gold-deep: #c8901e;
+    --ok: #5fd38d;
+    --wait: #7ad0ff;
+    --lock: #4a4462;
+    --display: "Grenze Gotisch", Georgia, serif;
+    --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--night); color: var(--ink); }
+  body { font-family: var(--body); font-size: 15px; line-height: 1.5; }
+  button, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .wrap { max-width: 1480px; margin: 0 auto; padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+
+  /* Kopf */
+  .top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 28px; }
+  .brand small { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .brand h1 { margin: 2px 0 0; font-family: var(--display); font-weight: 700; font-size: clamp(30px, 4vw, 44px); line-height: 1; text-wrap: balance; }
+  .progress { min-width: min(100%, 340px); display: grid; gap: 6px; }
+  .progress .label { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .progress .label b { color: var(--ink); font-weight: 600; }
+  .bar { height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; transition: width .5s ease; }
+
+  .grid { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 18px; align-items: start; }
+
+  /* Reihenfolge der Welten */
+  .list { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; max-height: calc(100vh - 140px); overflow: auto; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+  .group { margin: 10px 6px 4px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); display: flex; align-items: center; gap: 8px; }
+  .group:first-child { margin-top: 2px; }
+  .group::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--ink-faint)); }
+  .w { width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 9px; background: none; text-align: left; }
+  .w .n { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  .w .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .w:hover:not([aria-disabled="true"]) { background: var(--panel-2); }
+  .w[aria-current="true"] { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+  .w[aria-disabled="true"] { cursor: not-allowed; color: var(--ink-faint); }
+  .chip { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+  .chip.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .chip.now { background: var(--gold); color: #2a1c00; font-weight: 600; }
+  .chip.wait { background: color-mix(in srgb, var(--wait) 16%, transparent); color: var(--wait); }
+  .chip.lock { color: var(--ink-faint); border: 1px solid var(--lock); }
+
+  /* Bühne */
+  .stage { display: grid; gap: 14px; min-width: 0; }
+  .viewer { position: relative; aspect-ratio: 16 / 9.5; max-height: 72vh; width: 100%; border-radius: 16px; overflow: hidden; background: radial-gradient(120% 90% at 50% 20%, #2a2346, var(--night)); border: 1px solid var(--line); }
+  .viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .badge { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge span { font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 99px; background: rgba(13, 11, 22, .72); color: var(--ink); backdrop-filter: blur(6px); }
+  .tools { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tool { padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(13, 11, 22, .72); backdrop-filter: blur(6px); font-size: 13px; font-weight: 600; }
+  .tool:hover { border-color: var(--gold); }
+  .tool[aria-pressed="true"] { background: var(--gold); color: #2a1c00; border-color: var(--gold); }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13, 11, 22, .55); backdrop-filter: blur(3px); font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .loading .coin { width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1b8, var(--gold) 45%, var(--gold-deep)); animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotateY(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .loading .coin { animation: none; } .bar i { transition: none; } }
+
+  /* Urteil */
+  .review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; display: grid; gap: 10px; align-content: start; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  .card h2 { margin: 0; font-family: var(--display); font-size: 34px; line-height: 1.05; font-weight: 700; }
+  .card p { margin: 0; color: var(--ink-soft); max-width: 62ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .facts b { color: var(--ink); font-weight: 600; }
+  label.h { font-weight: 600; }
+  textarea { width: 100%; min-height: 112px; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--night); line-height: 1.45; }
+  textarea:focus { border-color: var(--gold); outline: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .btn { padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); font-weight: 600; }
+  .btn:hover { border-color: var(--ink-faint); }
+  .btn.primary { background: linear-gradient(180deg, #ffd978, var(--gold)); color: #2a1c00; border-color: var(--gold-deep); }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { font-size: 13px; color: var(--ink-faint); }
+  .reply { border-left: 3px solid var(--wait); background: color-mix(in srgb, var(--wait) 7%, transparent); padding: 10px 12px; border-radius: 0 10px 10px 0; }
+  .reply b { display: block; font-size: 12px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--wait); margin-bottom: 2px; }
+  .reply div { white-space: pre-wrap; }
+  .done { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); font-weight: 600; }
+  .note { font-size: 13px; color: var(--ink-faint); padding: 8px 10px; border: 1px dashed var(--line); border-radius: 10px; }
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--gold); color: var(--ink); padding: 10px 16px; border-radius: 12px; font-weight: 600; max-width: calc(100% - 32px); z-index: 20; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .list { position: static; max-height: none; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
+    .group { display: none; }
+    .w { flex: 0 0 auto; width: auto; grid-template-columns: auto auto; }
+    .w .n { display: none; }
+    .review { grid-template-columns: minmax(0, 1fr); }
+    .viewer { aspect-ratio: 4 / 3.4; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <small>Coinmaster Adventure</small>
+      <h1>Welten-Werkstatt</h1>
+    </div>
+    <div class="progress" aria-live="polite">
+      <div class="label"><span id="prog-text">Fortschritt wird geladen …</span><b id="prog-num"></b></div>
+      <div class="bar"><i id="prog-bar"></i></div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <nav class="list" id="list" aria-label="Welten der Reihe nach"></nav>
+
+    <section class="stage">
+      <div class="viewer">
+        <canvas id="viewer" aria-label="3D-Ansicht der Welt, wie in Roblox"></canvas>
+        <div class="badge"><span id="b-pos"></span><span id="b-parts"></span><span id="b-models" hidden>Häuser, Bäume und Felsen laden …</span></div>
+        <div class="tools">
+          <button class="tool" id="t-home" type="button">Startansicht</button>
+          <button class="tool" id="t-top" type="button">Draufsicht</button>
+          <button class="tool" id="t-low" type="button">Spielerhöhe</button>
+          <button class="tool" id="t-rot" type="button" aria-pressed="true">Drehen</button>
+          <button class="tool" id="t-fig" type="button" aria-pressed="false">Figur zum Vergleich</button>
+        </div>
+        <div class="loading" id="loading"><div><div class="coin"></div><span id="loading-text">Engine wird geladen …</span></div></div>
+      </div>
+
+      <div class="review">
+        <article class="card">
+          <div class="eyebrow" id="w-planet"></div>
+          <h2 id="w-name">Spawn</h2>
+          <p id="w-text"></p>
+          <div class="facts" id="w-facts"></div>
+        </article>
+
+        <article class="card" id="judge">
+          <label class="h" for="wish">Was soll sich an dieser Welt ändern?</label>
+          <textarea id="wish" placeholder="Zum Beispiel: Der Brunnen soll größer werden, mehr Bäume am Rand, die Läden bunter …"></textarea>
+          <div class="row">
+            <button class="btn" id="save" type="button">Wunsch speichern</button>
+            <span class="hint" id="save-state"></span>
+          </div>
+          <div class="reply" id="reply" hidden><b>Claude</b><div id="reply-text"></div></div>
+          <div id="verdict"></div>
+          <div class="note" id="store-note" hidden></div>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from './vendor/OrbitControls.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 3200);
+}
+
+// ── Engine laden (Module des Projekts) ──
+let W, F, RW;
+try {
+  [W, F, RW] = await Promise.all([import('./welten/js/worlds.js'), import('./welten/js/worldFactory.js'), import('./welten/js/robloxWorld.js')]);
+} catch (e) {
+  console.error(e);
+  $('loading-text').textContent = 'Die 3D-Engine konnte nicht geladen werden. Bitte die Seite neu laden.';
+  throw e;
+}
+const { WORLDS, planetById, galaxyById } = W;
+const ORDER = WORLDS.filter((w) => !w.soon);
+const STUDS = 8;
+
+// ── Fortschritt: geteilte Daten (db), sonst nur in diesem Browser ──
+const docs = {}; // id → { status, wish, wishAt, reply, replyAt }
+let db = null, storeReady = false;
+const LOCAL = 'werkstatt.welten';
+function loadLocal() {
+  try { Object.assign(docs, JSON.parse(localStorage.getItem(LOCAL) || '{}')); } catch {}
+}
+function saveLocal() {
+  try { localStorage.setItem(LOCAL, JSON.stringify(docs)); } catch {}
+}
+const queues = {};
+function writeDoc(id, patch) {
+  docs[id] = { ...(docs[id] || {}), ...patch };
+  render();
+  if (!db) { saveLocal(); return Promise.resolve(); }
+  const body = { ...docs[id] };
+  queues[id] = (queues[id] || Promise.resolve()).then(() => db.collection('welten').doc(id).set(body)).catch((e) => {
+    console.error(e);
+    toast(e?.code === 'not_granted' || e?.code === 'permission_denied' ? 'Du kannst hier nur ansehen, nicht speichern.' : 'Speichern hat nicht geklappt. Bitte nochmal versuchen.');
+  });
+  return queues[id];
+}
+
+const approved = (id) => docs[id]?.status === 'gefaellt';
+const currentIndex = () => {
+  const i = ORDER.findIndex((w) => !approved(w.id));
+  return i < 0 ? ORDER.length : i;
+};
+const unlocked = (i) => i <= currentIndex() || approved(ORDER[i].id);
+let selected = null; // Welt-Id in der Ansicht
+
+// ── Liste ──
+function groupName(w) {
+  if (w.planet === 'hub') return { name: 'Treffpunkt', color: '#f2c14e' };
+  const p = planetById[w.planet];
+  return { name: `${p.name} · ${p.title}`, color: p.color };
+}
+function render() {
+  const cur = currentIndex();
+  const n = ORDER.filter((w) => approved(w.id)).length;
+  $('prog-text').textContent = cur >= ORDER.length ? 'Alle Welten sind abgesegnet' : `Gerade dran: ${ORDER[cur].name}`;
+  $('prog-num').textContent = `${n} von ${ORDER.length} abgesegnet`;
+  $('prog-bar').style.width = `${(n / ORDER.length) * 100}%`;
+
+  let html = '', last = '';
+  ORDER.forEach((w, i) => {
+    const g = groupName(w);
+    if (g.name !== last) {
+      html += `<div class="group" style="--dot:${g.color}">${esc(g.name)}</div>`;
+      last = g.name;
+    }
+    const d = docs[w.id] || {};
+    const open = unlocked(i);
+    let chip;
+    if (approved(w.id)) chip = '<span class="chip ok">gefällt</span>';
+    else if (i === cur) chip = waiting(d) ? '<span class="chip wait">Wunsch offen</span>' : '<span class="chip now">dran</span>';
+    else chip = '<span class="chip lock">später</span>';
+    html += `<button class="w" type="button" data-id="${w.id}" data-i="${i}" aria-current="${w.id === selected}" aria-disabled="${!open}"><span class="n">${i + 1}</span><span class="name">${esc(w.name)}</span>${chip}</button>`;
+  });
+  $('list').innerHTML = html;
+  $('list').querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  renderJudge();
+}
+const waiting = (d) => d.wish && (!d.replyAt || (d.wishAt || 0) > d.replyAt);
+
+$('list').addEventListener('click', (e) => {
+  const b = e.target.closest('.w');
+  if (!b) return;
+  const i = +b.dataset.i;
+  if (!unlocked(i)) {
+    toast(`Erst „${ORDER[currentIndex()].name}“ absegnen, dann geht es weiter.`);
+    return;
+  }
+  show(ORDER[i].id);
+});
+
+// ── Urteil ──
+let wishDirty = false;
+function renderJudge() {
+  if (!selected) return;
+  const i = ORDER.findIndex((w) => w.id === selected), w = ORDER[i], d = docs[selected] || {};
+  if (!wishDirty && document.activeElement !== $('wish')) $('wish').value = d.wish || '';
+  $('save-state').textContent = waiting(d) ? 'Gespeichert. Claude setzt es beim nächsten Mal um.' : d.wish ? 'Gespeichert.' : '';
+  $('reply').hidden = !d.reply;
+  $('reply-text').textContent = d.reply || '';
+  const next = ORDER[i + 1];
+  if (approved(selected)) {
+    $('verdict').innerHTML = `<div class="done">✓ Diese Welt gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
+  } else {
+    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">Gefällt mir${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
+  }
+}
+$('verdict').addEventListener('click', async (e) => {
+  if (e.target.id === 'approve') {
+    if (wishDirty) await saveWish();
+    const i = ORDER.findIndex((w) => w.id === selected);
+    writeDoc(selected, { status: 'gefaellt', approvedAt: Date.now() });
+    toast(`${ORDER[i].name} ist abgesegnet.`);
+    const next = ORDER[i + 1];
+    if (next) show(next.id);
+  } else if (e.target.id === 'reopen') {
+    writeDoc(selected, { status: 'offen' });
+  } else if (e.target.id === 'go-next') {
+    const i = ORDER.findIndex((w) => w.id === selected);
+    if (ORDER[i + 1] && unlocked(i + 1)) show(ORDER[i + 1].id);
+  }
+});
+function saveWish() {
+  const v = $('wish').value.trim();
+  wishDirty = false;
+  const d = docs[selected] || {};
+  if (v === (d.wish || '')) return Promise.resolve();
+  return writeDoc(selected, { status: d.status === 'gefaellt' ? 'gefaellt' : 'offen', wish: v, wishAt: Date.now() });
+}
+$('wish').addEventListener('input', () => {
+  wishDirty = true;
+  $('save-state').textContent = 'Nicht gespeichert';
+});
+$('wish').addEventListener('blur', () => wishDirty && saveWish().then(() => toast('Wunsch gespeichert.')));
+$('save').addEventListener('click', () => saveWish().then(() => toast($('wish').value.trim() ? 'Wunsch gespeichert.' : 'Wunsch gelöscht.')));
+
+// ── 3D-Ansicht ──
+const canvas = $('viewer');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
+const controls = new OrbitControls(camera, canvas);
+Object.assign(controls, { enableDamping: true, enablePan: false, maxPolarAngle: Math.PI * 0.62, autoRotate: !matchMedia('(prefers-reduced-motion: reduce)').matches, autoRotateSpeed: 0.45 });
+$('t-rot').setAttribute('aria-pressed', String(controls.autoRotate));
+const CS0 = (F.ISLAND_RADIUS / 10) * STUDS;
+let CS = CS0, built = null, lua = null, figure = null, fly = null;
+RW.worldLua().then((l) => (lua = l)).catch((e) => console.error('Luau konnte nicht starten', e));
+
+function view(kind) {
+  const t = new THREE.Vector3(0, 0.6 * STUDS, 0);
+  let p;
+  if (kind === 'top') p = new THREE.Vector3(0.01, 46 * CS, 0.6 * CS);
+  else if (kind === 'low') { t.set(0, 0.9 * STUDS, 0); p = new THREE.Vector3(0, 1.1 * STUDS, 12.5 * CS); }
+  else p = new THREE.Vector3(19 * CS, 12 * CS, 22 * CS).multiplyScalar(1.05);
+  controls.minDistance = kind === 'low' ? 2 * STUDS : 10 * CS0;
+  fly = { t: 0, fromT: controls.target.clone(), toT: t, fromP: camera.position.clone(), toP: p };
+}
+$('t-home').onclick = () => view('home');
+$('t-top').onclick = () => { controls.autoRotate = false; $('t-rot').setAttribute('aria-pressed', 'false'); view('top'); };
+$('t-low').onclick = () => { controls.autoRotate = false; $('t-rot').setAttribute('aria-pressed', 'false'); view('low'); };
+$('t-rot').onclick = (e) => { controls.autoRotate = !controls.autoRotate; e.currentTarget.setAttribute('aria-pressed', String(controls.autoRotate)); };
+$('t-fig').onclick = (e) => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  setFigure(on);
+};
+function setFigure(on) {
+  if (figure) { figure.setParent?.(null); figure = null; }
+  if (!on || !built) return;
+  const spot = built.data.meta.spot;
+  figure = RW.addFigure(built.rw, spot, [spot[0] * 2, spot[1], spot[2] * 2]);
+  controls.autoRotate = false;
+  $('t-rot').setAttribute('aria-pressed', 'false');
+  const look = new THREE.Vector3(spot[0], spot[1] + 3.6, spot[2]);
+  const dir = new THREE.Vector3(spot[0], 0, spot[2]).normalize().add(new THREE.Vector3(0, 0.5, 0)).normalize();
+  controls.minDistance = 1.5 * STUDS;
+  fly = { t: 0, fromT: controls.target.clone(), toT: look, fromP: camera.position.clone(), toP: look.clone().addScaledVector(dir, 5 * STUDS) };
+}
+
+let building = 0;
+function show(id) {
+  if (wishDirty) saveWish();
+  selected = id;
+  const w = ORDER.find((x) => x.id === id);
+  const i = ORDER.indexOf(w);
+  render();
+  const g = w.planet === 'hub' ? null : planetById[w.planet];
+  const gal = g?.galaxy ? galaxyById[g.galaxy] : null;
+  $('w-planet').textContent = g ? `${gal ? gal.name + ' · ' : ''}${g.name} · ${g.title}` : 'Treffpunkt aller Spieler';
+  $('w-name').textContent = w.name;
+  $('w-text').textContent = w.text || '';
+  $('b-pos').textContent = `Welt ${i + 1} von ${ORDER.length}`;
+  $('b-parts').textContent = '';
+  $('b-models').hidden = true;
+  $('w-facts').innerHTML = '';
+  try { history.replaceState(null, '', '#' + id); } catch {}
+
+  $('loading').hidden = false;
+  $('loading-text').textContent = `${w.name} wird gebaut …`;
+  $('t-fig').setAttribute('aria-pressed', 'false');
+  const token = ++building;
+  // erst zeichnen lassen (Ladeanzeige), dann bauen: das Bauen blockiert kurz
+  requestAnimationFrame(() => setTimeout(() => {
+    if (token !== building) return;
+    if (built) {
+      lua?.call('__weatherReset');
+      lua?.call('__worldFxReset');
+      built.rw.dispose();
+      built = null;
+      figure = null;
+    }
+    try {
+      built = RW.buildRobloxWorld(w, { shadows: renderer.shadowMap.enabled });
+    } catch (e) {
+      console.error(e);
+      $('loading-text').textContent = `${w.name} konnte nicht gebaut werden.`;
+      return;
+    }
+    CS = (F.islandRadius(w) / 10) * STUDS;
+    controls.maxDistance = 56 * CS;
+    const count = built.data.parts.length + built.data.sky.length;
+    $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
+    const wide = Math.round(built.data.meta.radius * 2);
+    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    RW.showWorldFx(built.rw, w.id).catch((e) => console.error(e));
+    RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
+    $('loading').hidden = true;
+    if (built.rw.modelsReady) {
+      $('b-models').hidden = false;
+      built.rw.modelsReady.finally(() => token === building && ($('b-models').hidden = true));
+    }
+    view('home');
+    if (!fly) return;
+    camera.position.copy(fly.toP).multiplyScalar(1.25); // kurzer Anflug
+  }, 30));
+}
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  const pr = renderer.getPixelRatio();
+  if (canvas.width !== Math.round(w * pr) || canvas.height !== Math.round(h * pr)) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+let visible = true;
+new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(canvas);
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (!visible || !built) return;
+  resize();
+  if (fly) {
+    fly.t = Math.min(1, fly.t + dt / 1.2);
+    const k = fly.t < 0.5 ? 2 * fly.t * fly.t : 1 - Math.pow(-2 * fly.t + 2, 2) / 2;
+    controls.target.lerpVectors(fly.fromT, fly.toT, k);
+    camera.position.lerpVectors(fly.fromP, fly.toP, k);
+    if (fly.t >= 1) fly = null;
+  }
+  controls.update();
+  camera.updateMatrixWorld();
+  if (lua) { lua.setCamera(camera); lua.frame(dt); }
+  built.rw.update(dt);
+  built.rw.render(renderer, camera);
+});
+camera.position.set(19 * CS0, 12 * CS0, 22 * CS0);
+controls.target.set(0, 0.6 * STUDS, 0);
+
+// ── Start ──
+loadLocal();
+const startId = () => {
+  const h = location.hash.slice(1);
+  const i = ORDER.findIndex((w) => w.id === h);
+  return i >= 0 && unlocked(i) ? h : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
+};
+show(startId());
+
+(async () => {
+  db = await window.claude?.use?.('db').catch(() => null) ?? null;
+  const note = $('store-note');
+  if (!db) {
+    note.hidden = false;
+    note.textContent = 'Dein Fortschritt wird nur in diesem Browser gespeichert. Claude kann deine Wünsche hier nicht lesen: schreib sie dann einfach in den Chat.';
+    return;
+  }
+  for (const k of Object.keys(docs)) delete docs[k]; // der geteilte Stand zählt
+  const timer = setTimeout(() => { note.hidden = false; note.textContent = 'Der gespeicherte Fortschritt ist gerade nicht erreichbar. Was du jetzt änderst, wird nachgetragen, sobald die Verbindung steht.'; }, 10000);
+  let first = true;
+  db.collection('welten').onSnapshot((snap) => {
+    if (!snap.metadata.fromCache) { clearTimeout(timer); note.hidden = true; }
+    for (const d of snap.docs) docs[d.id] = { ...d.data() };
+    for (const c of snap.docChanges()) if (c.type === 'removed') delete docs[c.doc.id];
+    storeReady = true;
+    if (first) {
+      first = false;
+      const want = startId();
+      if (want !== selected) { show(want); return; }
+    }
+    render();
+  }, (e) => {
+    clearTimeout(timer);
+    note.hidden = false;
+    note.textContent = 'Der gespeicherte Fortschritt konnte nicht geladen werden. Bitte die Seite neu laden.';
+    console.error(e);
+  });
+})();
+</script>
