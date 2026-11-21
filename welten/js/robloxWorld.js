@@ -60,11 +60,15 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
   rw.setShadowArea(new THREE.Vector3(0, 0, 0), data.meta.radius * 1.05);
   const model = inst('Model', { Name: 'Welt_' + world.name }, rw.workspace);
   // Teile mit Schrift (SurfaceGui) einzeln, alle anderen gebündelt
-  const plain = [], signs = [];
+  // Ebenen: Welt (Insel und Bauten), Deko (Streu-Deko auf der Insel), Umgebung (Kulisse, Wolken, Schwebeinseln)
+  // Die Werkstatt blendet Deko und Umgebung einzeln aus; die Himmelskuppel bleibt immer (sie ist der Himmel selbst).
+  const plain = [], deko = [], around = [], signs = [];
   // mit Himmelsbild ist die Kuppel ausgeblendet (in Roblox macht das das Licht-Skript)
   const hideDome = !!data.lighting?.himmel;
-  for (const p of [...data.parts, ...data.sky]) if (!(hideDome && p.name === 'Himmelskuppel')) (p.text ? signs : plain).push(p);
+  for (const p of data.parts) (p.text ? signs : p.deko ? deko : plain).push(p);
+  for (const p of data.sky) if (p.name === 'Himmelskuppel') { if (!hideDome) plain.push(p); } else (p.text ? signs : around).push(p);
   rw.addStaticParts(plain);
+  const layers = { deko: rw.addStaticParts(deko), umgebung: rw.addStaticParts(around) };
   for (const p of signs) {
     const part = inst(p.className || 'Part', {
       Name: p.name || 'Schild', Size: v3(p.size), CFrame: cframe(p.pos, p.rot), Color: hexColor(p.color), Material: p.material, Transparency: p.transparency || 0,
@@ -95,7 +99,7 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     }, holder);
   }
   applyLighting(rw, data.lighting);
-  return { rw, data, model };
+  return { rw, data, model, layers };
 }
 
 // ── Luau für Wetter (WeatherFx) und Figuren (AuraFx.BuildDummy) ──

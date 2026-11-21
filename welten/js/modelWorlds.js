@@ -49,7 +49,10 @@ export function stand(ctx, g, x, z, { face = null, sink = 0.08, rot = null, orig
   return g;
 }
 export function scatterModels(ctx, n, ids, sMin, sMax, opts = {}) {
-  for (let i = 0; i < n; i++) place(ctx, pick(ctx.rand, ids), ctx.rr(sMin, sMax), opts);
+  for (let i = 0; i < n; i++) {
+    const g = place(ctx, pick(ctx.rand, ids), ctx.rr(sMin, sMax), opts);
+    if (g) g.userData.deko = true; // Streu-Deko: in der Vorschau eigene Ebene
+  }
 }
 
 // ── Kulisse: Berge und Hügel aus dem Paket, groß und weit weg (im Ordner „Himmel“) ──

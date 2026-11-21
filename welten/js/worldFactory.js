@@ -366,7 +366,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     if ((rMax ?? R) >= R - 2.5) n = Math.round(n * AREA);
     for (let i = 0; i < n; i++) {
       const p = spot(d, rMin, rMax);
-      if (p) put(make(i), p[0], p[1], opts);
+      if (p) put(make(i), p[0], p[1], opts).userData.deko = true; // Streu-Deko: in der Vorschau eigene Ebene
     }
   };
 

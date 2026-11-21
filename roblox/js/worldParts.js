@@ -666,7 +666,12 @@ export function worldToParts(world) {
     }
     if (skip || rbx.kind === 'ground' || rbx.kind === 'underside' || rbx.name === 'Rand') return;
     if (o.material.blending === THREE.AdditiveBlending) return; // Lichtstrahlen, Strahl unter dem UFO
-    convertMesh(rbx.sky ? sky : parts, o, world);
+    const out = rbx.sky ? sky : parts, n0 = out.length;
+    convertMesh(out, o, world);
+    // Streu-Deko (Bäume, Büsche, Felsen, Kisten …): eigene Ebene, die die Vorschau ausblenden kann
+    let deko = false;
+    for (let q = o; q && !deko; q = q.parent) deko = !!q.userData.deko;
+    if (deko && !rbx.sky) for (let i = n0; i < out.length; i++) out[i].deko = true;
   });
   pullInsideDome(sky);
   // Kulisse (Schwebeinseln, Nachbarinseln, ferne Modelle) wirft keine Schatten: sonst lagen große, schwarze

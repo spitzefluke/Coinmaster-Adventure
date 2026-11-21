@@ -25,6 +25,7 @@
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { background: var(--night); color: var(--ink); }
   body { font-family: var(--body); font-size: 15px; line-height: 1.5; }
   button, textarea { font: inherit; color: inherit; }
@@ -42,6 +43,21 @@
   .progress .label b { color: var(--ink); font-weight: 600; }
   .bar { height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
   .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; transition: width .5s ease; }
+
+  /* Abläufe: Welten, Deko, Umgebung */
+  .tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .track { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+  .track b { font-size: 15px; }
+  .track span { font-size: 12.5px; color: var(--ink-faint); }
+  .track em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .track:hover { border-color: var(--ink-faint); }
+  .track[aria-selected="true"] { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--panel)); }
+  .track[aria-selected="true"] em { color: var(--gold); }
+  .tool.layer::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; border: 1.5px solid currentColor; vertical-align: 0; }
+  .tool.layer[aria-pressed="true"]::before { background: currentColor; }
+  .tool.layer[aria-pressed="true"] { background: rgba(13, 11, 22, .72); color: var(--ink); border-color: var(--gold); }
+  .tool.layer[aria-pressed="false"] { color: var(--ink-faint); }
+  .tools .sep { width: 1px; background: rgba(255, 255, 255, .18); margin: 2px 4px; }
 
   .grid { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 18px; align-items: start; }
 
@@ -110,6 +126,8 @@
     .w .n { display: none; }
     .review { grid-template-columns: minmax(0, 1fr); }
     .viewer { aspect-ratio: 4 / 3.4; }
+    .tracks { grid-template-columns: minmax(0, 1fr); }
+    .track span { display: none; }
   }
 </style>
 
@@ -125,6 +143,12 @@
     </div>
   </header>
 
+  <div class="tracks" role="tablist" aria-label="Ablauf wählen">
+    <button class="track" role="tab" type="button" data-track="welt"><b>Welten</b><span>Insel, Wege, Gebäude und alles Feste</span><em id="tp-welt"></em></button>
+    <button class="track" role="tab" type="button" data-track="deko"><b>Deko</b><span>Bäume, Büsche, Blumen, Felsen, Kisten …</span><em id="tp-deko"></em></button>
+    <button class="track" role="tab" type="button" data-track="umgebung"><b>Umgebung</b><span>Schwebeinseln, Berge, Wolken, Wahrzeichen am Horizont</span><em id="tp-umgebung"></em></button>
+  </div>
+
   <div class="grid">
     <nav class="list" id="list" aria-label="Welten der Reihe nach"></nav>
 
@@ -138,6 +162,9 @@
           <button class="tool" id="t-low" type="button">Spielerhöhe</button>
           <button class="tool" id="t-rot" type="button" aria-pressed="true">Drehen</button>
           <button class="tool" id="t-fig" type="button" aria-pressed="false">Figur zum Vergleich</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="tool layer" id="l-deko" type="button" aria-pressed="true">Deko</button>
+          <button class="tool layer" id="l-umg" type="button" aria-pressed="true">Umgebung</button>
         </div>
         <div class="loading" id="loading"><div><div class="coin"></div><span id="loading-text">Engine wird geladen …</span></div></div>
       </div>
@@ -151,7 +178,7 @@
         </article>
 
         <article class="card" id="judge">
-          <label class="h" for="wish">Was soll sich an dieser Welt ändern?</label>
+          <label class="h" for="wish" id="wish-label">Was soll sich an dieser Welt ändern?</label>
           <textarea id="wish" placeholder="Zum Beispiel: Der Brunnen soll größer werden, mehr Bäume am Rand, die Läden bunter …"></textarea>
           <div class="row">
             <button class="btn" id="save" type="button">Wunsch speichern</button>
@@ -218,12 +245,20 @@ function writeDoc(id, patch) {
   return queues[id];
 }
 
-const approved = (id) => docs[id]?.status === 'gefaellt';
-const currentIndex = () => {
-  const i = ORDER.findIndex((w) => !approved(w.id));
+// Drei Abläufe, jeder mit eigener Reihenfolge, eigenen Wünschen und eigenem Absegnen
+const TRACKS = {
+  welt: { name: 'Welten', what: 'dieser Welt', short: '', label: 'Was soll sich an der Welt selbst ändern (Insel, Wege, Gebäude)?', placeholder: 'Zum Beispiel: Der Brunnen soll größer werden, die Läden bunter, ein breiterer Weg zum Portal …', layers: { deko: true, umgebung: true } },
+  deko: { name: 'Deko', what: 'der Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { deko: true, umgebung: false } },
+  umgebung: { name: 'Umgebung', what: 'der Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { deko: true, umgebung: true } },
+};
+let track = 'welt';
+const docId = (id, t = track) => (t === 'welt' ? id : `${t}-${id}`);
+const approved = (id, t = track) => docs[docId(id, t)]?.status === 'gefaellt';
+const currentIndex = (t = track) => {
+  const i = ORDER.findIndex((w) => !approved(w.id, t));
   return i < 0 ? ORDER.length : i;
 };
-const unlocked = (i) => i <= currentIndex() || approved(ORDER[i].id);
+const unlocked = (i, t = track) => i <= currentIndex(t) || approved(ORDER[i].id, t);
 let selected = null; // Welt-Id in der Ansicht
 
 // ── Liste ──
@@ -235,8 +270,14 @@ function groupName(w) {
 function render() {
   const cur = currentIndex();
   const n = ORDER.filter((w) => approved(w.id)).length;
-  $('prog-text').textContent = cur >= ORDER.length ? 'Alle Welten sind abgesegnet' : `Gerade dran: ${ORDER[cur].name}`;
+  const T = TRACKS[track];
+  $('prog-text').textContent = cur >= ORDER.length ? `${T.name}: alles abgesegnet` : `${T.name} · gerade dran: ${ORDER[cur].name}`;
   $('prog-num').textContent = `${n} von ${ORDER.length} abgesegnet`;
+  for (const t of Object.keys(TRACKS)) {
+    const k = ORDER.filter((w) => approved(w.id, t)).length;
+    $('tp-' + t).textContent = `${k} / ${ORDER.length} abgesegnet`;
+    document.querySelector(`.track[data-track="${t}"]`).setAttribute('aria-selected', String(t === track));
+  }
   $('prog-bar').style.width = `${(n / ORDER.length) * 100}%`;
 
   let html = '', last = '';
@@ -246,7 +287,7 @@ function render() {
       html += `<div class="group" style="--dot:${g.color}">${esc(g.name)}</div>`;
       last = g.name;
     }
-    const d = docs[w.id] || {};
+    const d = docs[docId(w.id)] || {};
     const open = unlocked(i);
     let chip;
     if (approved(w.id)) chip = '<span class="chip ok">gefällt</span>';
@@ -265,38 +306,61 @@ $('list').addEventListener('click', (e) => {
   if (!b) return;
   const i = +b.dataset.i;
   if (!unlocked(i)) {
-    toast(`Erst „${ORDER[currentIndex()].name}“ absegnen, dann geht es weiter.`);
+    toast(`Erst „${TRACKS[track].short}${ORDER[currentIndex()].name}“ absegnen, dann geht es weiter.`);
     return;
   }
   show(ORDER[i].id);
 });
+document.querySelector('.tracks').addEventListener('click', (e) => {
+  const b = e.target.closest('.track');
+  if (!b || b.dataset.track === track) return;
+  setTrack(b.dataset.track);
+});
+function setTrack(t, id) {
+  if (wishDirty) saveWish();
+  track = t;
+  const T = TRACKS[t];
+  $('wish-label').textContent = T.label;
+  $('wish').placeholder = T.placeholder;
+  layerOn.deko = T.layers.deko;
+  layerOn.umgebung = T.layers.umgebung;
+  // in jedem Ablauf weiter bei der Welt, die gerade dran ist (oder der gewünschten, wenn sie offen ist)
+  const i = id ? ORDER.findIndex((w) => w.id === id) : -1;
+  const target = i >= 0 && unlocked(i) ? id : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
+  if (target === selected && built) {
+    applyLayers();
+    render();
+    try { history.replaceState(null, '', '#' + docId(selected)); } catch {}
+  } else show(target);
+}
 
 // ── Urteil ──
 let wishDirty = false;
 function renderJudge() {
   if (!selected) return;
-  const i = ORDER.findIndex((w) => w.id === selected), w = ORDER[i], d = docs[selected] || {};
+  const i = ORDER.findIndex((w) => w.id === selected), w = ORDER[i], d = docs[docId(selected)] || {};
+  const T = TRACKS[track];
   if (!wishDirty && document.activeElement !== $('wish')) $('wish').value = d.wish || '';
   $('save-state').textContent = waiting(d) ? 'Gespeichert. Claude setzt es beim nächsten Mal um.' : d.wish ? 'Gespeichert.' : '';
   $('reply').hidden = !d.reply;
   $('reply-text').textContent = d.reply || '';
   const next = ORDER[i + 1];
   if (approved(selected)) {
-    $('verdict').innerHTML = `<div class="done">✓ Diese Welt gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
+    $('verdict').innerHTML = `<div class="done">✓ ${track === 'welt' ? 'Diese Welt' : T.name + ' von ' + esc(w.name)} gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
   } else {
-    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">Gefällt mir${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
+    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">${track === 'welt' ? 'Gefällt mir' : T.name + ' gefällt mir'}${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird im Ablauf „${T.name}“ ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
   }
 }
 $('verdict').addEventListener('click', async (e) => {
   if (e.target.id === 'approve') {
     if (wishDirty) await saveWish();
     const i = ORDER.findIndex((w) => w.id === selected);
-    writeDoc(selected, { status: 'gefaellt', approvedAt: Date.now() });
-    toast(`${ORDER[i].name} ist abgesegnet.`);
+    writeDoc(docId(selected), { status: 'gefaellt', approvedAt: Date.now() });
+    toast(`${TRACKS[track].short}${ORDER[i].name} ist abgesegnet.`);
     const next = ORDER[i + 1];
     if (next) show(next.id);
   } else if (e.target.id === 'reopen') {
-    writeDoc(selected, { status: 'offen' });
+    writeDoc(docId(selected), { status: 'offen' });
   } else if (e.target.id === 'go-next') {
     const i = ORDER.findIndex((w) => w.id === selected);
     if (ORDER[i + 1] && unlocked(i + 1)) show(ORDER[i + 1].id);
@@ -305,9 +369,9 @@ $('verdict').addEventListener('click', async (e) => {
 function saveWish() {
   const v = $('wish').value.trim();
   wishDirty = false;
-  const d = docs[selected] || {};
+  const d = docs[docId(selected)] || {};
   if (v === (d.wish || '')) return Promise.resolve();
-  return writeDoc(selected, { status: d.status === 'gefaellt' ? 'gefaellt' : 'offen', wish: v, wishAt: Date.now() });
+  return writeDoc(docId(selected), { status: d.status === 'gefaellt' ? 'gefaellt' : 'offen', wish: v, wishAt: Date.now(), welt: selected, ablauf: track });
 }
 $('wish').addEventListener('input', () => {
   wishDirty = true;
@@ -363,6 +427,27 @@ function setFigure(on) {
   fly = { t: 0, fromT: controls.target.clone(), toT: look, fromP: camera.position.clone(), toP: look.clone().addScaledVector(dir, 5 * STUDS) };
 }
 
+// ── Ebenen: Deko und Umgebung ein- und ausblenden ──
+const layerOn = { deko: true, umgebung: true };
+let fxShown = false;
+function applyLayers() {
+  $('l-deko').setAttribute('aria-pressed', String(layerOn.deko));
+  $('l-umg').setAttribute('aria-pressed', String(layerOn.umgebung));
+  if (!built) return;
+  built.layers.deko.visible = layerOn.deko;
+  built.layers.umgebung.visible = layerOn.umgebung;
+  // Umgebungseffekte aus Luau (Wahrzeichen am Horizont, Himmelseffekte) mit der Umgebung
+  if (layerOn.umgebung && !fxShown) {
+    fxShown = true;
+    RW.showWorldFx(built.rw, selected).catch((e) => console.error(e));
+  } else if (!layerOn.umgebung && fxShown) {
+    fxShown = false;
+    lua?.call('__worldFxReset');
+  }
+}
+$('l-deko').onclick = () => { layerOn.deko = !layerOn.deko; applyLayers(); };
+$('l-umg').onclick = () => { layerOn.umgebung = !layerOn.umgebung; applyLayers(); };
+
 let building = 0;
 function show(id) {
   if (wishDirty) saveWish();
@@ -379,7 +464,7 @@ function show(id) {
   $('b-parts').textContent = '';
   $('b-models').hidden = true;
   $('w-facts').innerHTML = '';
-  try { history.replaceState(null, '', '#' + id); } catch {}
+  try { history.replaceState(null, '', '#' + docId(id)); } catch {}
 
   $('loading').hidden = false;
   $('loading-text').textContent = `${w.name} wird gebaut …`;
@@ -394,6 +479,7 @@ function show(id) {
       built.rw.dispose();
       built = null;
       figure = null;
+      fxShown = false;
     }
     try {
       built = RW.buildRobloxWorld(w, { shadows: renderer.shadowMap.enabled });
@@ -407,8 +493,9 @@ function show(id) {
     const count = built.data.parts.length + built.data.sky.length;
     $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     const wide = Math.round(built.data.meta.radius * 2);
-    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
-    RW.showWorldFx(built.rw, w.id).catch((e) => console.error(e));
+    const nDeko = built.data.parts.filter((p) => p.deko).length, nUmg = built.data.sky.length;
+    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
     $('loading').hidden = true;
     if (built.rw.modelsReady) {
@@ -456,12 +543,17 @@ controls.target.set(0, 0.6 * STUDS, 0);
 
 // ── Start ──
 loadLocal();
-const startId = () => {
+function parseHash() {
   const h = location.hash.slice(1);
-  const i = ORDER.findIndex((w) => w.id === h);
-  return i >= 0 && unlocked(i) ? h : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
+  for (const t of ['deko', 'umgebung']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
+  return { t: 'welt', id: h };
+}
+const startId = () => {
+  const { id } = parseHash();
+  const i = ORDER.findIndex((w) => w.id === id);
+  return i >= 0 && unlocked(i) ? id : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
 };
-show(startId());
+setTrack(parseHash().t, parseHash().id);
 
 (async () => {
   db = await window.claude?.use?.('db').catch(() => null) ?? null;
