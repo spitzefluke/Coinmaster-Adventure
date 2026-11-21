@@ -1107,8 +1107,8 @@ Neugierige ab, ist aber kein echter Zugriffsschutz, weil die Seite komplett im B
 überarbeitet ist, was noch überarbeitet werden muss und wer was macht. Sie liegt in Supabase, jeder Admin meldet
 sich mit seinem eigenen Code an.
 
-- **Punkte:** 82 vorausgefüllte Punkte in neun Gruppen: Bereiche der Webseite, alle Welten nach Planeten, die
-  Mutationen (allgemein und alle elf einzeln mit ihrem Wetter), die Systeme des Roblox-Spiels und Handgriffe in Roblox Studio (Installer, Welten einfügen, Modelle importieren,
+- **Punkte:** 105 vorausgefüllte Punkte in elf Gruppen: Bereiche der Webseite, alle Welten nach Planeten, die
+  Mutationen (allgemein und alle elf einzeln mit ihrem Wetter), Admin Events (darunter Admin gegen Admin Fight), jährliche Events (Weihnachten und weitere internationale und nationale Feiertage), die Systeme des Roblox-Spiels und Handgriffe in Roblox Studio (Installer, Welten einfügen, Modelle importieren,
   Decal-, Bild- und SoundIds eintragen, Admins, API-Zugriff, Veröffentlichen). Eigene Punkte lassen sich in jeder
   Gruppe anlegen, umbenennen und entfernen.
 - **Je Punkt:** Status in drei Stufen (muss überarbeitet werden, in Arbeit, überarbeitet), wer zuständig ist
@@ -1126,7 +1126,7 @@ sich mit seinem eigenen Code an.
 **Einrichten (einmalig):**
 
 1. In Supabase: SQL Editor → New query → den ganzen Inhalt von `checkliste/supabase.sql` einfügen → Run. Das legt
-   die Tabellen, die Funktionen, die beiden Admins (noch ohne Code) und die 82 Startpunkte an. Im SQL steht kein
+   die Tabellen, die Funktionen, die beiden Admins (noch ohne Code) und die 105 Startpunkte an. Im SQL steht kein
    Code. Mehrfach ausführen ist ungefährlich; festgelegte Codes und Häkchen bleiben.
 2. Unter Project Settings → API die „Project URL“ und den „Publishable key“ (oder den alten „anon public“-Key) in
    `checkliste/js/config.js` eintragen. Nie den Secret- bzw. service_role-Key. Die Seite holt diese Datei bei jedem

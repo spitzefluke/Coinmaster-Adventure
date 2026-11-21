@@ -235,8 +235,10 @@ insert into public.checkliste_gruppen (id, titel, reihenfolge) values
   ('welten-p4', 'Welten · Planet 4', 5),
   ('welten-juwel', 'Welten · Juwelnebel', 6),
   ('mutationen', 'Mutationen', 7),
-  ('spiel', 'Roblox-Spiel', 8),
-  ('studio', 'In Roblox Studio erledigen', 9)
+  ('admin-events', 'Admin Events', 8),
+  ('jahres-events', 'Jährliche Events', 9),
+  ('spiel', 'Roblox-Spiel', 10),
+  ('studio', 'In Roblox Studio erledigen', 11)
 on conflict (id) do update set reihenfolge = excluded.reihenfolge;
 
 insert into public.checkliste_punkte (id, gruppe, titel, status, wer, notiz, reihenfolge) values
@@ -321,7 +323,30 @@ insert into public.checkliste_punkte (id, gruppe, titel, status, wer, notiz, rei
   ('mut-hacked', 'mutationen', 'Systemfehler (Datensturm)', 'offen', '', '', 79),
   ('mut-golden', 'mutationen', 'Midas-Gold (Goldregen)', 'offen', '', '', 80),
   ('mut-kosmisch', 'mutationen', 'Sternenstaub (Sternschnuppen)', 'offen', '', '', 81),
-  ('mut-big', 'mutationen', 'GIGANT (Riesenmond)', 'offen', '', '', 82)
+  ('mut-big', 'mutationen', 'GIGANT (Riesenmond)', 'offen', '', '', 82),
+  ('aev-fight', 'admin-events', 'Admin gegen Admin Fight', 'offen', '', '', 83),
+  ('aev-ansage', 'admin-events', 'Ansage an alle', 'offen', '', '', 84),
+  ('aev-boost', 'admin-events', 'Server-Boosts für alle (10, 30, 60 min)', 'offen', '', '', 85),
+  ('aev-egg', 'admin-events', 'Admin Egg an alle', 'offen', '', '', 86),
+  ('aev-wetter', 'admin-events', 'Wetter erzwingen (z. B. Riesenmond, Goldregen)', 'offen', '', '', 87),
+  ('aev-uhrzeit', 'admin-events', 'Uhrzeit für alle umstellen', 'offen', '', '', 88),
+  ('aev-muenzregen', 'admin-events', 'Münzregen auf der Insel', 'offen', '', '', 89),
+  ('aev-quiz', 'admin-events', 'Quiz oder Schnitzeljagd mit Belohnung', 'offen', '', '', 90),
+  ('jev-neujahr', 'jahres-events', 'Silvester und Neujahr (31.12. bis 1.1.)', 'offen', '', '', 91),
+  ('jev-mondneujahr', 'jahres-events', 'Chinesisches Neujahr (Januar oder Februar)', 'offen', '', '', 92),
+  ('jev-valentinstag', 'jahres-events', 'Valentinstag (14.2.)', 'offen', '', '', 93),
+  ('jev-karneval', 'jahres-events', 'Karneval und Fasching', 'offen', '', '', 94),
+  ('jev-stpatrick', 'jahres-events', 'St. Patrick’s Day (17.3.)', 'offen', '', '', 95),
+  ('jev-ostern', 'jahres-events', 'Ostern', 'offen', '', '', 96),
+  ('jev-holi', 'jahres-events', 'Holi, Fest der Farben', 'offen', '', '', 97),
+  ('jev-sommer', 'jahres-events', 'Sommeranfang und Sommerferien', 'offen', '', '', 98),
+  ('jev-einheit', 'jahres-events', 'Tag der Deutschen Einheit (3.10.)', 'offen', '', '', 99),
+  ('jev-oktoberfest', 'jahres-events', 'Oktoberfest', 'offen', '', '', 100),
+  ('jev-halloween', 'jahres-events', 'Halloween (31.10.)', 'offen', '', '', 101),
+  ('jev-thanksgiving', 'jahres-events', 'Thanksgiving', 'offen', '', '', 102),
+  ('jev-advent', 'jahres-events', 'Advent und Nikolaus (6.12.)', 'offen', '', '', 103),
+  ('jev-weihnachten', 'jahres-events', 'Weihnachten (24. bis 26.12.)', 'offen', '', '', 104),
+  ('jev-geburtstag', 'jahres-events', 'Geburtstag des Spiels', 'offen', '', '', 105)
 on conflict (id) do nothing;
 
 -- ── Admins (ohne Code; den legt jeder auf der Seite selbst fest) ──
