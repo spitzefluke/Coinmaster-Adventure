@@ -79,6 +79,53 @@ export function buildSpawnTown(ctx, K) {
     root.add(m);
   }
   const streetM = new THREE.MeshStandardMaterial({ map: cobble, color: '#e8e0d0', roughness: 0.85 });
+  // Wege (Werkstatt-Wunsch): Randsteine, Querbänder und Rauten im Pflaster, zu den Portal-Hallen zwei leuchtende
+  // Linien in der Farbe des Planeten, am Platzrand ein Wegweiser je Boulevard
+  const planetColor = {};
+  for (const p of ctx.portals || []) planetColor[p.world.planet] ??= p.color;
+  const BLVD = [
+    { name: 'Obby-Turm', sub: 'Sprungstrecke', glow: null },
+    { name: 'Heimat-Tor', sub: 'Planet 1', glow: planetColor.p1 || '#5fd38d' },
+    { name: 'Raketenstart', sub: 'Planet 2', glow: planetColor.p2 || '#8a9cff' },
+    { name: 'Tiefsee & Himmel', sub: 'Planet 3 und 4', glow: planetColor.p3 || '#5ad1ff' },
+  ];
+  function roadDecor(a, r0, len, mid, k) {
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const at2 = (d, o) => [ca * d - sa * o, sa * d + ca * o];
+    const flat = (w, h, dd, mat, d, o, y, rot = 0) => {
+      const [x, z] = at2(d, o);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), mat);
+      m.position.set(x, y0 + y, z);
+      m.rotation.y = -a + rot;
+      root.add(m);
+      return m;
+    };
+    const curb = M('#a89e8c'), band = M('#c8b48a'), inlay = M('#c8a040', { metalness: 0.4, roughness: 0.5 });
+    for (const sg of [-1, 1]) flat(len, 0.12, 0.2, curb, mid, sg * (ROAD_W / 2 + 0.08), 0.06);
+    for (let d = r0 + 0.9; d < r0 + len - 0.4; d += 1.8) flat(0.22, 0.08, ROAD_W - 0.3, band, d, 0, 0.04);
+    for (let d = r0 + 1.8; d < r0 + len - 0.8; d += 3.6) flat(0.55, 0.085, 0.55, inlay, d, 0, 0.045, Math.PI / 4);
+    const b = BLVD[k];
+    if (b.glow) {
+      const g = E(b.glow, 1.2);
+      lampMats.push(g);
+      for (const sg of [-1, 1]) flat(len - 0.6, 0.09, 0.1, g, mid, sg * 0.75, 0.045);
+    }
+    // Wegweiser am Platzrand
+    const [px, pz] = at2(PLAZA + 0.5, ROAD_W / 2 + 0.75);
+    const post = new THREE.Group();
+    post.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 2.2, 8), M('#6b4a2e')), 0, 1.1, 0));
+    const sign = signBoard(b.name, { w: 1.8, h: 0.5, bg: '#2a2232', fg: b.glow || '#ffe7a8', sub: b.sub });
+    sign.position.set(0, 2.0, 0.05);
+    post.add(sign);
+    const arrow = at(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), M(b.glow || '#ffe7a8')), 1.05, 2.0, 0.05);
+    arrow.rotation.z = -Math.PI / 2;
+    post.add(arrow);
+    post.position.set(px, y0, pz);
+    post.rotation.y = Math.atan2(-ca, -sa); // Schild zum Platz
+    root.add(post);
+    reserve(px, pz, 0.4);
+  }
+
   // vier Boulevards: zu den drei Portal-Hallen und zum Obby-Turm
   const roadEnd = HALL_R - 2.2;
   for (let k = 0; k < 4; k++) {
@@ -89,6 +136,7 @@ export function buildSpawnTown(ctx, K) {
     road.userData.rbx = { color: '#d8cfbc' };
     root.add(road);
     for (let d = PLAZA; d < roadEnd; d += 0.7) reserve(Math.cos(a) * d, Math.sin(a) * d, ROAD_W / 2 + 0.2);
+    roadDecor(a, r0, len, mid, k);
     // Laternen am Rand mit Lichterketten
     let prev = null;
     for (let d = PLAZA + 1.0; d < roadEnd - 0.5; d += 2.6)
@@ -110,6 +158,21 @@ export function buildSpawnTown(ctx, K) {
   ring.userData.rbx = { color: '#d8cfbc' };
   root.add(ring);
   for (let i = 0; i < 180; i++) reserve(...polar((i / 180) * TAU, RING_MID), (RING_OUT - RING_IN) / 2 + 0.15);
+  // Randsteine an der Ringstraße und ein Mosaikstern auf dem Platz (Werkstatt-Wunsch: Wege mit Mustern)
+  for (const [r0, r1] of [[RING_IN - 0.18, RING_IN], [RING_OUT, RING_OUT + 0.18]]) {
+    const c = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 160), M('#a89e8c'));
+    c.rotation.x = -Math.PI / 2;
+    c.position.y = y0 + 0.07;
+    c.userData.rbx = { color: '#a89e8c' };
+    root.add(c);
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * TAU, long = i % 2 === 0, r0 = 3.4 * (PLAZA / 8.5), r1 = (long ? 5.6 : 4.6) * (PLAZA / 8.5);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 0.02, long ? 0.34 : 0.22), M(long ? '#c8a040' : '#5aa8b8', { roughness: 0.5 }));
+    m.position.set(Math.cos(a) * (r0 + r1) / 2, y0 + 0.09, Math.sin(a) * (r0 + r1) / 2);
+    m.rotation.y = -a;
+    root.add(m);
+  }
 
   function stringLights(a, b) {
     const n = 9, cols = ['#ffd76a', '#ff8ac8', '#7ad0ff', '#8cff7a'];
@@ -313,7 +376,11 @@ export function buildSpawnTown(ctx, K) {
         for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), M('#ffcf4a', { metalness: 0.7, roughness: 0.3 })), x, y + k * 0.055, -D / 2 + 0.32));
       }) },
   ];
-  for (const s of shops) {
+  // Markthalle (Werkstatt-Wunsch „weniger Gebäude“): Eier-Laden, Boost-Labor, Robux-Palast und Haustier-Hof
+  // als vier Theken unter einem Dach; die Bereiche (userData.area) bleiben je Theke erhalten
+  const MARKET = new Set(['eier', 'boosts', 'robux', 'haustiere']);
+  marketHall(shops.filter((s) => MARKET.has(s.id)));
+  for (const s of shops.filter((x) => !MARKET.has(x.id))) {
     const house = shopHouse(s);
     if (s.palace) {
       // Robux-Palast: goldene Kuppel und zwei Türmchen
@@ -338,6 +405,81 @@ export function buildSpawnTown(ctx, K) {
     house.userData.area = s.id;
     addArea(s.id, s.name, ...polar(deg(s.a), SHOP_R - 2.6));
   }
+  function marketHall(list) {
+    const g = new THREE.Group();
+    const HW = 10.4, HD = 5.0, HH = 3.4;
+    const stone = M('#e8dfcc'), stoneD = M('#c8bca4'), roofM = M('#b0402e'), gold = M('#e8c060', { metalness: 0.6, roughness: 0.35 });
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW, 0.18, HD), M('#cfc4ae')), 0, 0.09, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW, HH, 0.3), stone), 0, HH / 2, -HD / 2));
+    for (const sx of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, HH, HD), stone), (sx * HW) / 2, HH / 2, 0));
+    // Arkaden vorne: Säulen mit Bögen
+    for (let i = 0; i <= 4; i++) {
+      const x = -HW / 2 + 0.3 + (i * (HW - 0.6)) / 4;
+      g.add(at(column(HH - 0.4, '#efe8db'), x, 0.18, HD / 2 - 0.1));
+    }
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.2, 0.5, 0.35), stoneD), 0, HH - 0.05, HD / 2 - 0.1));
+    // Satteldach mit Gesims und Laterne obenauf
+    for (const sz of [-1, 1]) {
+      const sl = new THREE.Mesh(new THREE.BoxGeometry(HW + 0.6, 0.16, HD * 0.62), roofM);
+      sl.rotation.x = sz * 0.55;
+      sl.position.set(0, HH + 0.75, sz * HD * 0.27);
+      g.add(sl);
+    }
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), stone), 0, HH + 1.75, 0));
+    g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.95, 0.9, 4), roofM), 0, HH + 2.6, 0)).children.at(-1).rotation.y = Math.PI / 4;
+    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), gold), 0, HH + 3.15, 0));
+    const big = signBoard('Markthalle', { w: 4.2, h: 0.8, bg: '#7a2a1e', fg: '#ffe7a8', sub: 'Eier · Boosts · Robux · Haustiere' });
+    big.position.set(0, HH + 0.55, HD / 2 + 0.12);
+    g.add(big);
+    // Theken
+    const stalls = [];
+    list.forEach((sh, i) => {
+      const st = new THREE.Group();
+      const x = -HW / 2 + 1.3 + (i * (HW - 2.6)) / (list.length - 1 || 1);
+      st.position.set(x, 0.18, -0.6);
+      const acc = M(sh.accent, { metalness: 0.3, roughness: 0.5 });
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 0.6), M('#8a5a3a')), 0, 0.4, 0.5));
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.7), acc), 0, 0.84, 0.5));
+      for (const y of [0.9, 1.6]) st.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.4), M('#6b4a2e')), 0, y, -0.6));
+      // gestreifte Markise in der Ladenfarbe
+      for (let k = 0; k < 5; k++) {
+        const aw = at(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.06, 1.0), k % 2 ? acc : M('#ffffff')), -0.88 + k * 0.44, 1.95, 0.75);
+        aw.rotation.x = 0.35;
+        st.add(aw);
+      }
+      const sg = signBoard(sh.name, { w: 2.0, h: 0.5, bg: sh.accent, fg: '#ffffff', sub: sh.sub });
+      sg.position.set(0, 2.45, 0.3); // unter dem Arkadenbalken, von vorne zu lesen
+      st.add(sg);
+      st.add(at(npc(sh.keeper ?? sh.accent), 0, 0, -0.15));
+      if (sh.items) {
+        const it = new THREE.Group();
+        sh.items(it, 1.84);
+        it.scale.setScalar(0.78);
+        it.position.z = -0.25;
+        st.add(it);
+      }
+      if (sh.palace) {
+        const d = K.dome(0.75, '#ffe7a0', '#c8a040');
+        d.position.set(0, 3.3, -0.3);
+        st.add(d);
+      }
+      if (sh.id === 'haustiere')
+        for (let k = 0; k < 3; k++) {
+          const pp = pet(['#c98a4b', '#a3a3ad', '#ffd23f'][k]);
+          pp.position.set(-0.6 + k * 0.6, 0, 1.4);
+          st.add(pp);
+        }
+      st.userData.area = sh.id;
+      g.add(st);
+      stalls.push([st, sh]);
+    });
+    const o = placeAt(g, deg(45), SHOP_R, 5.4);
+    o.updateMatrixWorld(true);
+    for (const [st, sh] of stalls) {
+      const w = st.localToWorld(new THREE.Vector3(0, 0, 2.2));
+      addArea(sh.id, sh.name, w.x, w.z);
+    }
+  }
   // Kleines Block-Haustier, hüpft
   function pet(c) {
     const g = new THREE.Group();
@@ -353,11 +495,49 @@ export function buildSpawnTown(ctx, K) {
 
   // ── Ranglisten, Münzindex ──
   {
-    const boards = [['Meiste Moneten', '#ffd76a', 'taler'], ['Münzen gesammelt', '#7ad0ff', 'coins'], ['Wiedergeburten', '#ff8ac8', 'rebirths']];
+    // Ruhmeshalle (Werkstatt-Wunsch „epischer“): Podest mit Stufen, drei Steinstelen mit Goldrahmen, die mittlere
+    // höher und mit Krone, leuchtende Plaketten für Platz 1 bis 3, Feuerschalen an den Seiten
+    const boards = [['Münzen gesammelt', '#7ad0ff', 'coins'], ['Meiste Moneten', '#ffd76a', 'taler'], ['Wiedergeburten', '#ff8ac8', 'rebirths']];
+    const mon = new THREE.Group();
+    const stone = M('#d8d0c0'), stoneD = M('#a89e8c'), gold = M('#ffcf4a', { metalness: 0.75, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 });
+    for (let i = 0; i < 3; i++) mon.add(at(new THREE.Mesh(new THREE.BoxGeometry(12 - i * 1.0, 0.25, 3.4 - i * 0.5), i % 2 ? stoneD : stone), 0, 0.125 + i * 0.25, -i * 0.15));
     boards.forEach(([t, c, k], i) => {
-      const o = placeAt(leaderboard(t, c, rankRows(k, rand)), deg(297 + i * 18), SHOP_R + 0.6, 1.8);
-      o.userData.area = 'ranglisten';
+      const x = (i - 1) * 3.75, lift = i === 1 ? 0.7 : 0, base = 0.75;
+      const stele = at(new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.9 + lift, 0.45), stoneD), x, base + (3.9 + lift) / 2, -0.75);
+      mon.add(stele);
+      for (const [w, h, dx, dy] of [[3.75, 0.14, 0, 3.9 + lift], [3.75, 0.14, 0, 0.05], [0.14, 3.9 + lift, -1.84, (3.9 + lift) / 2], [0.14, 3.9 + lift, 1.84, (3.9 + lift) / 2]]) mon.add(at(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.12), gold), x + dx, base + dy, -0.48));
+      const lb = leaderboard(t, c, rankRows(k, rand));
+      lb.position.set(x, base + lift - 0.25, -0.35);
+      mon.add(lb);
+      // Plakette mit der Platzfarbe unter jeder Tafel
+      mon.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.28, 0.08), E(['#cfd8e8', '#ffd24a', '#e0975a'][i], 0.9)), x, base + 0.2, -0.28));
     });
+    // Krone auf der mittleren Stele
+    const crown = new THREE.Group();
+    crown.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.55, 0.36, 16, 1, true), gold), 0, 0.18, 0));
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * TAU;
+      crown.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.42, 6), gold), Math.cos(a) * 0.56, 0.55, Math.sin(a) * 0.56));
+      crown.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), E(['#ff3a5a', '#3ad8ff', '#7aff5a', '#ffd23f', '#c88aff'][k], 1.2)), Math.cos(a) * 0.6, 0.2, Math.sin(a) * 0.6));
+    }
+    crown.position.set(0, 0.75 + 4.6 + 0.08, -0.75);
+    mon.add(crown);
+    anims.push((tt) => (crown.rotation.y = tt * 0.4));
+    // Feuerschalen links und rechts
+    for (const sx of [-1, 1]) {
+      const fx = sx * 5.6;
+      mon.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 1.6, 10), stone), fx, 0.75 + 0.8, 0.6));
+      mon.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.24, 0.3, 12), gold), fx, 0.75 + 1.75, 0.6));
+      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.7, 8), E('#ffb02e', 1.8)), fx, 0.75 + 2.25, 0.6);
+      mon.add(fl);
+      anims.push((tt) => fl.scale.set(1, 0.85 + Math.sin(tt * 9 + sx) * 0.15, 1));
+    }
+    const sgn = signBoard('Ruhmeshalle', { w: 3.2, h: 0.6, bg: '#3a2a12', fg: '#ffd76a', sub: 'Die Besten des Servers' });
+    sgn.position.set(0, 0.62, 1.55);
+    sgn.rotation.x = -0.25;
+    mon.add(sgn);
+    const mo = placeAt(mon, deg(315), SHOP_R + 0.4, 5.6);
+    mo.userData.area = 'ranglisten';
     addArea('ranglisten', 'Ranglisten', ...polar(deg(315), SHOP_R - 2.4));
     const lib = new THREE.Group();
     // Rotunde um das Index-Buch
@@ -377,29 +557,74 @@ export function buildSpawnTown(ctx, K) {
     addArea('index', 'Münzindex', ...polar(deg(240), SHOP_R - 2.4));
   }
 
-  // ── Belohnung, Codes, Gruppen-Belohnung (äußerer Ring) ──
+  // ── Belohnungs-Haus (Werkstatt-Wunsch „weniger Gebäude“): tägliche Belohnung, Codes, Gruppen-Belohnung und
+  // Quest-Brett unter einem Dach; jede Station behält ihren Bereich (userData.area) ──
   {
-    const ch = new THREE.Group();
-    ch.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.4, 8), M('#4a4458')), 0, 0.2, 0));
-    const c = chest(anims);
-    c.position.y = 0.4;
-    c.scale.setScalar(1.4);
-    ch.add(c);
-    const s1 = signBoard('Tägliche Belohnung', { w: 2.6, h: 0.6, bg: '#e0a030', fg: '#ffffff', sub: 'Jeden Tag ein Geschenk' });
-    s1.position.set(0, 2.2, 0);
-    ch.add(s1);
-    placeAt(ch, deg(60), OUTER_R, 1.6).userData.area = 'belohnung';
-    addArea('belohnung', 'Tägliche Belohnung', ...polar(deg(60), OUTER_R - 1.5));
-    placeAt(codesTerminal(anims), deg(240), OUTER_R, 1.0).userData.area = 'codes';
-    addArea('codes', 'Codes', ...polar(deg(240), OUTER_R - 1.2));
-    const grp = new THREE.Group();
-    grp.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.9), M('#3a7be0')), 0, 0.45, 0));
-    grp.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 1.0), M('#ffd76a', { metalness: 0.6 })), 0, 0.95, 0));
-    const s2 = signBoard('Gruppe', { w: 1.8, h: 0.55, bg: '#3a7be0', fg: '#ffffff', sub: 'Beitreten = Bonus' });
-    s2.position.set(0, 1.7, 0);
-    grp.add(s2);
-    placeAt(grp, deg(120), OUTER_R, 1.2).userData.area = 'gruppe';
-    addArea('gruppe', 'Gruppen-Belohnung', ...polar(deg(120), OUTER_R - 1.3));
+    const g = new THREE.Group();
+    const HW = 8.6, HD = 3.8, HH = 3.0;
+    const wall = M('#fff4e0'), trim = M('#e0a030', { metalness: 0.4, roughness: 0.4 }), roofM = M('#3a7be0');
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW, 0.18, HD), M('#d8cfbc')), 0, 0.09, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW, HH, 0.25), wall), 0, HH / 2, -HD / 2));
+    for (const sx of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.25, HH, HD), wall), (sx * HW) / 2, HH / 2, 0));
+    for (let i = 0; i <= 4; i++) g.add(at(column(HH - 0.3, '#fff8ea'), -HW / 2 + 0.25 + (i * (HW - 0.5)) / 4, 0.18, HD / 2 - 0.1));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.3, 0.32, HD + 0.3), roofM), 0, HH + 0.1, 0));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.36, 0.1, HD + 0.36), trim), 0, HH - 0.08, 0));
+    const big = signBoard('Belohnungen', { w: 3.6, h: 0.75, bg: '#e0a030', fg: '#ffffff', sub: 'Täglich · Codes · Gruppe · Quests' });
+    big.position.set(0, HH + 0.75, HD / 2 + 0.05);
+    g.add(big);
+    for (const sx of [-1, 1]) {
+      const gift = new THREE.Group();
+      gift.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), M(sx > 0 ? '#ff5aa5' : '#5ad1ff')), 0, 0.25, 0));
+      gift.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.1, 0.12), trim), 0, 0.5, 0));
+      gift.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.54), trim), 0, 0.5, 0));
+      gift.position.set(sx * (HW / 2 - 0.5), HH + 0.26, HD / 2 - 0.3);
+      g.add(gift);
+    }
+    const stations = [];
+    const station = (id, name, x, build) => {
+      const st = new THREE.Group();
+      st.position.set(x, 0.18, -0.4);
+      build(st);
+      st.userData.area = id;
+      g.add(st);
+      stations.push([st, id, name]);
+    };
+    station('belohnung', 'Tägliche Belohnung', -3.15, (st) => {
+      st.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.3, 8), M('#4a4458')), 0, 0.15, 0));
+      const c = chest(anims);
+      c.position.y = 0.3;
+      c.scale.setScalar(1.15);
+      st.add(c);
+      const sg = signBoard('Täglich', { w: 1.6, h: 0.45, bg: '#e0a030', fg: '#ffffff', sub: 'Jeden Tag ein Geschenk' });
+      sg.position.set(0, 2.15, -0.6);
+      st.add(sg);
+    });
+    station('codes', 'Codes', -1.05, (st) => {
+      const t = codesTerminal(anims);
+      t.scale.setScalar(0.85);
+      st.add(t);
+    });
+    station('gruppe', 'Gruppen-Belohnung', 1.05, (st) => {
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.85), M('#3a7be0')), 0, 0.42, 0));
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 0.95), M('#ffd76a', { metalness: 0.6 })), 0, 0.9, 0));
+      const sg = signBoard('Gruppe', { w: 1.5, h: 0.45, bg: '#3a7be0', fg: '#ffffff', sub: 'Beitreten = Bonus' });
+      sg.position.set(0, 2.15, -0.6);
+      st.add(sg);
+    });
+    station('quests', 'Quest-Brett', 3.15, (st) => {
+      for (const sx of [-1, 1]) st.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, 0.12), M('#6b4a2e')), sx * 0.9, 1.0, -0.3));
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.1), M('#8a5a3a')), 0, 1.35, -0.3));
+      ['#fff6d0', '#d0f0ff', '#ffd0e0', '#e0ffd0'].forEach((c, k) => st.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.45, 0.02), M(c)), -0.6 + k * 0.4, 1.35 + (k % 2 ? 0.18 : -0.12), -0.24)));
+      const sg = signBoard('Quests', { w: 1.5, h: 0.45, bg: '#6b4a2e', fg: '#ffe7a8', sub: 'Tagesaufgaben' });
+      sg.position.set(0, 2.25, -0.25);
+      st.add(sg);
+    });
+    const o = placeAt(g, deg(125), OUTER_R, 4.6);
+    o.updateMatrixWorld(true);
+    for (const [st, id, name] of stations) {
+      const w = st.localToWorld(new THREE.Vector3(0, 0, 2.0));
+      addArea(id, name, w.x, w.z);
+    }
   }
 
   // ── Portal-Hallen je Planet (äußerer Ring, am Ende der Boulevards) ──
@@ -589,19 +814,6 @@ export function buildSpawnTown(ctx, K) {
     placeAt(g, deg(210), OUTER_R, 2.6).userData.area = 'vip';
     addArea('vip', 'VIP-Lounge', ...polar(deg(210), OUTER_R - 1.8));
   }
-  // Quest-Brett
-  {
-    const g = new THREE.Group();
-    for (const s of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), M('#6b4a2e')), s * 1.1, 1.1, 0));
-    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.1), M('#8a5a3a')), 0, 1.5, 0));
-    const notes = ['#fff6d0', '#d0f0ff', '#ffd0e0', '#e0ffd0', '#fff6d0'];
-    notes.forEach((c, i) => g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.5, 0.02), M(c)), -0.85 + i * 0.42, 1.5 + (i % 2 ? 0.2 : -0.15), 0.07)));
-    const sg = signBoard('Quests', { w: 1.6, h: 0.45, bg: '#6b4a2e', fg: '#ffe7a8', sub: 'Tagesaufgaben' });
-    sg.position.set(0, 2.5, 0.05);
-    g.add(sg);
-    placeAt(g, deg(300), OUTER_R, 1.5).userData.area = 'quests';
-    addArea('quests', 'Quest-Brett', ...polar(deg(300), OUTER_R - 1.4));
-  }
   // Obby-Turm mit Sprungstrecke
   {
     const g = new THREE.Group();
@@ -623,26 +835,7 @@ export function buildSpawnTown(ctx, K) {
     placeAt(g, 0, OUTER_R + 0.6, 3.0).userData.area = 'obby';
     addArea('obby', 'Obby-Turm', ...polar(0, OUTER_R - 2.4));
   }
-  // Pavillon: überdachter Treffpunkt mit Bänken zwischen Quest-Brett und Obby-Turm
-  {
-    const g = new THREE.Group();
-    const wood = M('#f2ead8'), roofM = M('#3f8a6a');
-    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.3, 0.2, 8), M('#d8cfbc')), 0, 0.1, 0));
-    for (let i = 0; i < 8; i++) {
-      const [x, z] = polar((i / 8) * TAU + TAU / 16, 2.0);
-      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.2, 8), wood), x, 1.3, z));
-    }
-    g.add(at(new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.3, 8), roofM), 0, 3.05, 0));
-    g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), M('#ffd76a', { metalness: 0.7 })), 0, 3.8, 0));
-    for (let i = 0; i < 3; i++) {
-      const b = bench();
-      const [x, z] = polar((i / 3) * TAU + TAU / 6, 1.35);
-      b.position.set(x, 0.2, z);
-      b.lookAt(0, 0.2, 0);
-      g.add(b);
-    }
-    placeAt(g, deg(330), OUTER_R, 2.6);
-  }
+  // (Pavillon entfernt, Werkstatt-Wunsch „weniger Gebäude“)
   // ── Leben: Spaziergänger mit Haustieren, Münzregen, Feuerwerk ──
   const walkers = [];
   for (let i = 0; i < 12; i++) {

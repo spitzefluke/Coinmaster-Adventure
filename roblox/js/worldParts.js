@@ -903,13 +903,14 @@ export function worldToParts(world) {
       ...(e.rotSpeed ? { rotSpeed: e.rotSpeed } : {}),
       ...(e.transparency ? { transparency: e.transparency } : {}),
       ...(e.rot ? { rot: e.rot } : {}),
+      ...(e.keep ? { keep: true } : {}),
       ...(e.sizeEnd ? { sizeEnd: e.sizeEnd * STUDS } : {}),
       ...(e.squash ? { squash: e.squash } : {}),
       squares: false,
     });
   // Werkstatt-Wünsche: weitere Teilchen der Welt ebenso beruhigen oder entfernen (Tiere bleiben)
   for (let i = emitters.length - 1; i >= n0; i--) {
-    if (LIFE.test(emitters[i].name || '')) continue;
+    if (LIFE.test(emitters[i].name || '') || emitters[i].keep) continue;
     if (NO_PARTICLES.has(world.id)) emitters.splice(i, 1);
     else if (CALM.has(world.id)) emitters[i] = calm(emitters[i]);
   }

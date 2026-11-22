@@ -59,6 +59,7 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       layOnGround(tile, height, x, z, { yaw: -a + (style.kind === 'stone' ? rand() : 0), lift: 0.02 });
       tile.receiveShadow = true;
       root.add(tile);
+      (shared.pathTiles = shared.pathTiles || []).push({ mesh: tile, x, z, a, k }); // für Brücken über Bäche
       reserve(x, z, 0.42);
       if (style.trail) ctx.paint?.(x, z, 0.78, ...style.trail);
       // leuchtende Fugen (Lava) oder Rand (Candy) neben jeder zweiten Platte
@@ -163,7 +164,7 @@ const LANDMARK = {
   // Riesenbaum mit Baumhaus
   wald(ctx, kit) {
     const { M, E, at, group } = kit;
-    const p = ctx.spot(2.8, 3, 8);
+    const p = ctx.spot(4.2, 4, 8);
     if (!p) return;
     const parts = [at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.2, 7, 12), M('#6b4a2e')), 0, 3.5, 0)];
     for (let i = 0; i < 4; i++) {
@@ -179,60 +180,231 @@ const LANDMARK = {
       ball.userData.rbx = { facets: true, facetThick: 0.12, name: 'Krone' };
       parts.push(ball);
     }
-    // Baumhaus auf halber Höhe
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 2.6), M('#9a7048')), 0, 4.2, 0));
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1.2), M('#b58654')), 0.9, 4.85, 0.9));
-    parts.push(at(new THREE.Mesh(new THREE.ConeGeometry(1.05, 0.7, 4), M('#7a4a2a')), 0.9, 5.75, 0.9));
+    // Baumhaus (Werkstatt-Wunsch): große Plattform mit Geländer und Laternen, Bretterhaus mit Spitzdach,
+    // warm leuchtenden Fenstern und Blumenkästen, Wendeltreppe um den Stamm, Hängebrücke zu einer zweiten
+    // Plattform, Fahne, Seilrolle mit Korb und Vogelhäuschen
+    const wood = M('#9a7048'), plank = M('#b58654'), darkWood = M('#6e4a2c'), roofM = M('#7a3e24'), rope = M('#c8b088');
+    const warm = E('#ffcf6a', 1.5), PY = 4.2, PS = 3.8;
+    const box = (w, h, d, m, x, y, z, ry = 0) => { const b = at(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), x, y, z); b.rotation.y = ry; parts.push(b); return b; };
+    box(PS, 0.16, PS, wood, 0, PY, 0);
+    for (let i = -1; i <= 1; i += 2) box(PS, 0.18, 0.16, darkWood, 0, PY - 0.14, i * (PS / 2 - 0.1)); // Tragbalken
+    // Geländer: Pfosten und Handlauf an drei Seiten (vorne offen zur Treppe und zur Brücke)
+    for (const [sx, sz, along] of [[0, -1, 'x'], [-1, 0, 'z'], [0, 1, 'x']]) {
+      for (let k = -2; k <= 2; k++) {
+        const o = (k / 2) * (PS / 2 - 0.12);
+        box(0.1, 0.7, 0.1, darkWood, along === 'x' ? o : sx * (PS / 2 - 0.08), PY + 0.43, along === 'z' ? o : sz * (PS / 2 - 0.08));
+      }
+      box(along === 'x' ? PS : 0.1, 0.08, along === 'z' ? PS : 0.1, darkWood, sx * (PS / 2 - 0.08), PY + 0.8, sz * (PS / 2 - 0.08));
+    }
+    for (const [x, z] of [[-1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]]) {
+      box(0.12, 0.9, 0.12, darkWood, x, PY + 0.53, z);
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.22), warm), x, PY + 1.1, z));
+    }
+    // Bretterhaus mit Spitzdach (zwei schräge Dachflächen), Tür, Fenster und Blumenkästen
+    const HX = 0.95, HZ = 0.95, HW = 1.7, HH = 1.35, HD = 1.5;
+    box(HW, HH, HD, plank, HX, PY + 0.08 + HH / 2, HZ);
+    for (let y = 0.2; y < HH; y += 0.27) box(HW + 0.03, 0.04, HD + 0.03, darkWood, HX, PY + 0.08 + y, HZ); // Bretterfugen
+    for (const sgn of [-1, 1]) {
+      const r = box(HW + 0.3, 0.1, HD * 0.62, roofM, HX, PY + HH + 0.42, HZ + sgn * HD * 0.27);
+      r.rotation.x = sgn * 0.62;
+    }
+    box(0.12, 0.62, HD * 0.2, darkWood, HX + HW / 2 + 0.01, PY + HH + 0.25, HZ); // Giebel
+    box(0.45, 0.8, 0.05, darkWood, HX, PY + 0.48, HZ + HD / 2 + 0.02); // Tür
+    for (const [x, z, ry] of [[HX - HW / 2 - 0.02, HZ, Math.PI / 2], [HX + 0.45, HZ + HD / 2 + 0.02, 0], [HX - 0.45, HZ + HD / 2 + 0.02, 0]]) {
+      if (Math.abs(ry) > 0) {
+        box(0.04, 0.38, 0.42, warm, x, PY + 0.85, z);
+        box(0.18, 0.12, 0.5, M('#8a5a32'), x - 0.08, PY + 0.6, z);
+        for (let f = -1; f <= 1; f++) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), M(['#ff7a9a', '#ffe25f', '#ffffff'][f + 1])), x - 0.12, PY + 0.7, z + f * 0.15));
+      } else {
+        box(0.34, 0.34, 0.04, warm, x, PY + 0.88, z);
+        box(0.42, 0.1, 0.16, M('#8a5a32'), x, PY + 0.64, z + 0.07);
+        for (let f = -1; f <= 1; f++) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), M(['#ff7a9a', '#ffe25f', '#b07bff'][f + 1])), x + f * 0.12, PY + 0.73, z + 0.1));
+      }
+    }
+    // Fahne auf dem Dach
+    box(0.05, 1.0, 0.05, darkWood, HX - HW / 2 + 0.1, PY + HH + 1.0, HZ);
+    box(0.04, 0.32, 0.5, M('#d8402e'), HX - HW / 2 + 0.1, PY + HH + 1.32, HZ + 0.27);
+    // Wendeltreppe um den Stamm bis zur Plattform
+    const steps = 15;
+    for (let i = 0; i < steps; i++) {
+      const a = Math.PI * 1.1 + i * 0.42, y = 0.2 + (i * (PY - 0.2)) / steps, r = 1.6;
+      box(0.75, 0.1, 0.36, plank, Math.cos(a) * r, y, Math.sin(a) * r, -a);
+      if (i % 3 === 0) box(0.07, 0.75, 0.07, darkWood, Math.cos(a) * (r + 0.36), y + 0.4, Math.sin(a) * (r + 0.36));
+    }
+    // zweite Plattform auf Stelzen mit Hängebrücke
+    const P2 = [3.7, 3.5, -1.6];
+    box(1.5, 0.14, 1.5, wood, P2[0], P2[1], P2[2]);
+    for (const [dx, dz] of [[0.6, 0.6], [-0.6, 0.6], [0.6, -0.6], [-0.6, -0.6]]) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, P2[1], 6), darkWood), P2[0] + dx, P2[1] / 2, P2[2] + dz));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), warm), P2[0] + 0.6, P2[1] + 0.3, P2[2] + 0.6));
+    {
+      const A = new THREE.Vector3(PS / 2, PY, -1.1), B = new THREE.Vector3(P2[0] - 0.7, P2[1], P2[2] + 0.2), n = 8;
+      const dir = B.clone().sub(A), ang = Math.atan2(dir.x, dir.z), side = new THREE.Vector3(dir.z, 0, -dir.x).normalize().multiplyScalar(0.36);
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, q = A.clone().lerp(B, t);
+        q.y -= Math.sin(t * Math.PI) * 0.35;
+        box(0.68, 0.06, 0.2, plank, q.x, q.y, q.z, ang);
+        if (i % 2 === 0) for (const sg of [-1, 1]) box(0.04, 0.5, 0.04, rope, q.x + side.x * sg, q.y + 0.25, q.z + side.z * sg);
+      }
+      for (const sg of [-1, 1]) {
+        const m = A.clone().lerp(B, 0.5).add(side.clone().multiplyScalar(sg));
+        const r = box(0.04, 0.04, dir.length(), rope, m.x, m.y + 0.45, m.z, ang);
+        r.rotation.x = -Math.atan2(B.y - A.y, Math.hypot(dir.x, dir.z));
+      }
+    }
+    // Seilrolle mit Korb und Vogelhäuschen am Stamm
+    box(0.9, 0.08, 0.08, darkWood, -2.15, PY + 1.2, 0.4);
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 5), rope), -2.5, PY - 0.0, 0.4));
+    box(0.42, 0.3, 0.42, M('#c89a5a'), -2.5, PY - 1.25, 0.4);
+    box(0.32, 0.32, 0.32, plank, -0.4, 2.8, 1.1);
+    const bh = at(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 4), roofM), -0.4, 3.07, 1.1);
+    bh.rotation.y = Math.PI / 4;
+    parts.push(bh);
+    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), M('#2a1a10')), -0.4, 2.85, 1.27));
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * TAU;
       parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), E('#ffd76a', 1.6)), Math.cos(a) * 1.35, 3.9, Math.sin(a) * 1.35));
     }
     ctx.put(group(...parts), p[0], p[1], { rot: false });
   },
-  // Wolkenkratzer mit Leuchtbändern und Antenne
+  // Hochhaus (Werkstatt-Wunsch): gestaffelte Stockwerke mit Fensterbändern (einige Fenster warm beleuchtet),
+  // Sockel mit Vorplatz, Eingang mit Vordach, Drehtür und Schriftzug, Pflanzkübel; auf dem Dach ein
+  // Hubschrauberlandeplatz, Antenne mit Blinklicht und Leuchtreklame
   stadt(ctx, kit) {
-    const { M, E, at, group } = kit;
-    const p = ctx.spot(1.8, 6, 11);
+    const { M, E, at, group, signBoard } = kit;
+    const p = ctx.spot(2.6, 6, 11);
     if (!p) return;
-    const H = 10;
-    const parts = [at(new THREE.Mesh(new THREE.BoxGeometry(2, H, 2), M('#7fa8d8', { metalness: 0.5, roughness: 0.25 })), 0, H / 2, 0)];
-    for (let y = 1; y < H; y += 1.1)
-      for (const [w, d] of [[2.04, 0.08], [0.08, 2.04]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), E('#bff0ff', 1.1)), 0, y, 0));
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 1.4), M('#5f7fa8', { metalness: 0.5 })), 0, H + 0.4, 0));
-    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.4, 6), M('#c8d0d8', { metalness: 0.6 })), 0, H + 2, 0));
-    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), E('#ff3a4a', 2)), 0, H + 3.25, 0));
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
-  },
-  // Eispalast mit vier Türmen
-  eis(ctx, kit) {
-    const { M, at, group } = kit;
-    const p = ctx.spot(3.2, 4, 9);
-    if (!p) return;
-    const ice = M('#bfe8ff', { roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 });
-    const roof = M('#eaf7ff', { roughness: 0.3 });
-    const parts = [at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 2.6), ice), 0, 1.4, 0), at(new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.8, 4), roof), 0, 3.7, 0)];
-    for (const [x, z] of [[1.5, 1.5], [-1.5, 1.5], [1.5, -1.5], [-1.5, -1.5]]) {
-      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 3.8, 10), ice), x, 1.9, z));
-      parts.push(at(new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.3, 10), roof), x, 4.45, z));
+    const rand = ctx.rand;
+    const parts = [];
+    const box = (w, h, d, m, x, y, z) => { const b = at(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), x, y, z); parts.push(b); return b; };
+    const frame = M('#d4dae4', { roughness: 0.6 }), glass = M('#35557e', { metalness: 0.6, roughness: 0.18 }), lit = E('#ffe2a0', 1.2);
+    const stone = M('#bdb6aa'), dark = M('#4a5262', { metalness: 0.5, roughness: 0.35 });
+    // Vorplatz und Sockel
+    box(3.6, 0.12, 3.6, stone, 0, 0.06, 0);
+    box(2.7, 1.2, 2.7, M('#8f97a6'), 0, 0.72, 0);
+    // Stockwerke: drei Stufen, jede schmaler; je Stockwerk ein Glasband ringsum und Fensterteilung
+    const FH = 0.62;
+    let y = 1.32;
+    const tiers = [[2.3, 8], [1.85, 6], [1.4, 4]];
+    for (const [w, floors] of tiers) {
+      box(w, floors * FH, w, frame, 0, y + (floors * FH) / 2, 0);
+      for (let f = 0; f < floors; f++) {
+        const fy = y + f * FH + FH * 0.5;
+        for (const [dx, dz, ww, dd] of [[0, w / 2, w * 0.92, 0.06], [0, -w / 2, w * 0.92, 0.06], [w / 2, 0, 0.06, w * 0.92], [-w / 2, 0, 0.06, w * 0.92]]) {
+          box(ww, FH * 0.55, dd, glass, dx, fy, dz);
+          // beleuchtete Fenster: einzelne Felder im Band
+          const cols = 4;
+          for (let c = 0; c < cols; c++) {
+            if (rand() > 0.32) continue;
+            const o = ((c + 0.5) / cols - 0.5) * w * 0.86;
+            box(ww > 0.1 ? w * 0.18 : 0.07, FH * 0.45, ww > 0.1 ? 0.07 : w * 0.18, lit, dx + (ww > 0.1 ? o : Math.sign(dx) * 0.01), fy, dz + (ww > 0.1 ? Math.sign(dz) * 0.01 : o));
+          }
+        }
+      }
+      // Fensterteilung: senkrechte Streben an den Kanten
+      for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) box(0.12, floors * FH, 0.12, frame, (cx * w) / 2, y + (floors * FH) / 2, (cz * w) / 2);
+      y += floors * FH;
+      box(w + 0.14, 0.14, w + 0.14, frame, 0, y + 0.07, 0); // Gesims
+      y += 0.14;
     }
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.12), M('#7ab8e0')), 0, 0.7, 1.32));
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
-  },
-  // Lavatempel: Stufenpyramide mit Feuerschale
-  lava(ctx, kit) {
-    const { M, E, at, group } = kit;
-    const p = ctx.spot(2.6, 5, 10);
-    if (!p) return;
-    const stone = M('#2a221e'), parts = [];
+    // Eingang: Vordach auf zwei Stützen, Drehtür aus Glas, Schriftzug darüber
+    box(1.5, 0.08, 0.75, dark, 0, 1.0, 1.35 + 0.37);
+    for (const sx of [-0.65, 0.65]) box(0.07, 0.95, 0.07, dark, sx, 0.52, 2.0);
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.8, 16), M('#bfe6ff', { transparent: true, opacity: 0.45, roughness: 0.1 })), 0, 0.52, 1.38));
     for (let i = 0; i < 3; i++) {
-      const s = 3.4 - i * 0.95;
-      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s, 0.8, s), stone), 0, 0.4 + i * 0.8, 0));
-      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s + 0.06, 0.08, s + 0.06), E('#ff5a14', 1.3)), 0, 0.8 + i * 0.8, 0));
+      const v = box(0.6, 0.76, 0.03, dark, 0, 0.52, 1.38);
+      v.rotation.y = (i / 3) * Math.PI;
     }
-    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.35, 0.4, 12), M('#1a1412')), 0, 2.6, 0));
-    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), E('#ffb02e', 2)), 0, 2.9, 0));
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    const sign = signBoard('COIN TOWER', { w: 1.8, h: 0.4, bg: '#16202e', fg: '#7ad0ff' });
+    sign.position.set(0, 1.28, 1.37);
+    parts.push(sign);
+    // Pflanzkübel mit Büschen auf dem Vorplatz
+    for (const [x, z] of [[1.45, 1.45], [-1.45, 1.45], [1.45, -1.45], [-1.45, -1.45]]) {
+      box(0.5, 0.35, 0.5, M('#7a7f8a'), x, 0.3, z);
+      const b = kit.bush(0.32, '#4f9a3f', rand);
+      b.position.set(x, 0.45, z);
+      parts.push(b);
+    }
+    // Dach: Hubschrauberlandeplatz mit H und Ring, Antenne mit Blinklicht, Leuchtreklame
+    const top = y;
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.05, 24), M('#3a3f48')), 0, top + 0.03, 0));
+    const ring = at(new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.03, 4, 28), M('#ffd23f')), 0, top + 0.07, 0);
+    ring.rotation.x = Math.PI / 2;
+    parts.push(ring);
+    for (const x of [-0.16, 0.16]) box(0.07, 0.02, 0.5, M('#ffffff'), x, top + 0.07, 0);
+    box(0.3, 0.02, 0.07, M('#ffffff'), 0, top + 0.07, 0);
+    box(0.08, 2.2, 0.08, M('#c8d0d8', { metalness: 0.6 }), 0.55, top + 1.1, -0.55);
+    const blink = E('#ff3a4a', 2);
+    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), blink), 0.55, top + 2.28, -0.55));
+    const ad = signBoard('COINMASTER', { w: 1.3, h: 0.32, bg: '#1a0e24', fg: '#ff7ae0' });
+    ad.position.set(0, top + 0.32, 0.72);
+    parts.push(ad);
+    const tower = group(...parts);
+    ctx.put(tower, p[0], p[1], { rot: false });
+    tower.lookAt(0, tower.position.y, 0); // Eingang zur Inselmitte
+    ctx.anims.push((t) => (blink.emissiveIntensity = Math.sin(t * 4) > 0 ? 2.2 : 0.2));
   },
+  // Eisburg (Werkstatt-Wunsch): Ringmauer mit Zinnen und Eiszapfen, vier Ecktürme und ein hoher Bergfried mit
+  // Spitzhelmen aus durchscheinendem Eis, Tor mit Bogen, innen leuchtet es blau aus den Fensterschlitzen
+  eis(ctx, kit) {
+    const { M, E, at, group } = kit;
+    const p = ctx.spot(4.4, 4, 9);
+    if (!p) return;
+    const parts = [];
+    const add = (m, x, y, z) => { at(m, x, y, z); parts.push(m); return m; };
+    const ice = M('#bfe8ff', { roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.85 });
+    const iceDeep = M('#8fd0f4', { roughness: 0.1, metalness: 0.15, transparent: true, opacity: 0.9 });
+    const snow = M('#f4fbff', { roughness: 0.6 }), spire = M('#dff4ff', { roughness: 0.08, transparent: true, opacity: 0.75 });
+    const glow = E('#5ac8ff', 1.4);
+    const W = 5.4, WH = 1.7, WT = 0.45;
+    // Ringmauer mit Zinnen und Eiszapfen (vorne mit Tor)
+    for (const [dx, dz, along] of [[0, -1, 'x'], [-1, 0, 'z'], [1, 0, 'z'], [0, 1, 'x']]) {
+      const front = dz === 1;
+      const segs = front ? [[-W / 2, -0.7], [0.7, W / 2]] : [[-W / 2, W / 2]];
+      for (const [a0, a1] of segs) {
+        const len = a1 - a0, mid = (a0 + a1) / 2;
+        const wx = along === 'x' ? mid : (dx * W) / 2, wz = along === 'z' ? mid : (dz * W) / 2;
+        add(new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : WT, WH, along === 'z' ? len : WT), ice), wx, WH / 2, wz);
+        add(new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : WT + 0.08, 0.1, along === 'z' ? len : WT + 0.08), snow), wx, WH + 0.05, wz);
+        for (let t = a0 + 0.25; t < a1 - 0.1; t += 0.55) {
+          const mx = along === 'x' ? t : (dx * W) / 2, mz = along === 'z' ? t : (dz * W) / 2;
+          add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.32, 0.28), iceDeep), mx, WH + 0.26, mz);
+          const ic = add(new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.32 + ((t * 7) % 0.25), 5), spire), mx + dx * (WT / 2 + 0.02), WH - 0.2, mz + dz * (WT / 2 + 0.02));
+          ic.rotation.x = Math.PI;
+        }
+      }
+    }
+    // Tor: Bogen aus Eis über der Öffnung, Torflügel halb offen, Licht dahinter
+    add(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.16, 6, 14, Math.PI), iceDeep), 0, WH - 0.35, W / 2);
+    for (const sx of [-1, 1]) add(new THREE.Mesh(new THREE.BoxGeometry(0.22, WH + 0.5, 0.6), iceDeep), sx * 0.82, (WH + 0.5) / 2, W / 2);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.2, WH - 0.4, 0.05), glow), 0, (WH - 0.4) / 2, W / 2 - 0.4);
+    // Ecktürme mit Spitzhelm
+    for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const tx = (x * W) / 2, tz = (z * W) / 2, TH = 3.2;
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, TH, 12), ice), tx, TH / 2, tz);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.16, 12), snow), tx, TH + 0.08, tz);
+      add(new THREE.Mesh(new THREE.ConeGeometry(0.74, 1.9, 12), spire), tx, TH + 1.1, tz);
+      add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 0.05), glow), tx + x * 0.02, TH * 0.65, tz + z * 0.69);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        const ic = add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 5), spire), tx + Math.cos(a) * 0.68, TH - 0.18, tz + Math.sin(a) * 0.68);
+        ic.rotation.x = Math.PI;
+      }
+    }
+    // Bergfried in der Mitte: hoher Turm mit Galerie, leuchtenden Fenstern und schlanker Spitze
+    add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.6, 2.2), ice), 0, 1.8, -0.4);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 2.6, 12), iceDeep), 0, 4.9, -0.4);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.14, 12), snow), 0, 6.27, -0.4);
+    add(new THREE.Mesh(new THREE.ConeGeometry(1.0, 3.0, 12), spire), 0, 7.85, -0.4);
+    add(new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), glow), 0, 9.6, -0.4);
+    for (const [x, z] of [[0, 0.71], [0.71, 0], [-0.71, 0], [0, -0.71]]) {
+      add(new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x) > 0 ? 0.05 : 0.22, 0.7, Math.abs(z) > 0 ? 0.05 : 0.22), glow), x * 1.55, 2.4, -0.4 + z * 1.55);
+      add(new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x) > 0 ? 0.05 : 0.18, 0.5, Math.abs(z) > 0 ? 0.05 : 0.18), glow), x * 1.27, 5.1, -0.4 + z * 1.27);
+    }
+    const castle = group(...parts);
+    ctx.put(castle, p[0], p[1], { rot: false });
+    castle.lookAt(0, castle.position.y, 0); // Tor zur Inselmitte
+  },
+  // Lava: kein Lavatempel mehr (Werkstatt-Wunsch), Wahrzeichen ist der Vulkan (worldFactory.js)
   // Riesenkristall in der Höhle
   hoehle(ctx, kit) {
     const { crystal, group } = kit;

@@ -375,22 +375,63 @@ export function floatingIsles(ctx, { far = 6, near = 7, tops = ['hills_A_trees',
 
 // ── Normal: Startdorf mit Windmühle, Brunnen, Häusern, Feld und Bach ──
 function stream(ctx, kit) {
-  const { root, height, reserve, R, shared } = ctx;
+  const { root, height, reserve, R, shared, rand } = ctx;
+  // Bach (Werkstatt-Wunsch): entspringt an einer Quelle im Inneren, schlängelt sich im Bogen über die Insel und
+  // endet an der Kante, wo er als Wasserfall hinabstürzt (worldParts.js liest shared.fallAngle)
+  const aE = rand() * TAU, aS = aE + 2.3, rS = 3.4, rE = R - 0.2;
   const pts = [];
-  for (let i = 0; i <= 16; i++) {
-    const x = -R + (i / 16) * 2 * R, z = Math.sin(i * 0.45) * 1.2 + 1.5;
-    if (Math.hypot(x, z) < R - 0.35) pts.push(new THREE.Vector3(x, height(x, z) + 0.03, z));
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20, a = aS + (aE - aS) * t + Math.sin(t * Math.PI * 2.4) * 0.12 * (1 - t), r = rS + (rE - rS) * Math.pow(t, 0.9);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    pts.push(new THREE.Vector3(x, height(x, z) + 0.03, z));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
   shared.stream = curve;
+  shared.fallAngle = aE;
   // flaches Bachbett mit Ufer statt einer Röhre (dem Gelände nach)
   creek(ctx, kit, curve, { width: 0.9 });
-  void root;
-  for (let i = 0; i <= 30; i++) {
-    const p = curve.getPoint(i / 30);
+  // Quelle: kleiner Teich mit Steinen ringsum
+  {
+    const p = curve.getPoint(0);
+    const pond = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), kit.M('#3fa6e6', { roughness: 0.08, emissive: '#1f6fae', emissiveIntensity: 0.2 }));
+    pond.position.set(p.x, height(p.x, p.z) + 0.05, p.z);
+    pond.userData.rbx = { name: 'Bach' };
+    root.add(pond);
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU + rand() * 0.3, x = p.x + Math.cos(a) * 1.0, z = p.z + Math.sin(a) * 1.0;
+      const st = kit.rockMesh(0.14 + rand() * 0.12, '#9a9aa6', rand);
+      st.position.set(x, height(x, z) + 0.02, z);
+      root.add(st);
+    }
+    reserve(p.x, p.z, 1.3);
+  }
+  for (let i = 0; i <= 40; i++) {
+    const p = curve.getPoint(i / 40);
     reserve(p.x, p.z, 0.45);
   }
   return curve;
+}
+
+// Brücken, wo die Wege den Bach kreuzen: Wegplatten im Wasser fallen weg, darüber eine Holzbrücke
+function pathBridges(ctx, curve) {
+  const { shared, reserve } = ctx;
+  const samples = Array.from({ length: 161 }, (_, i) => [i / 160, curve.getPoint(i / 160)]);
+  const nearest = (x, z) => samples.reduce((b, [t, p]) => { const d = Math.hypot(p.x - x, p.z - z); return d < b[0] ? [d, t] : b; }, [1e9, 0]);
+  const cross = new Map();
+  for (const tile of shared.pathTiles || []) {
+    const [d, t] = nearest(tile.x, tile.z);
+    if (d > 1.0) continue;
+    tile.mesh.parent?.remove(tile.mesh);
+    if (!cross.has(tile.k)) cross.set(tile.k, []);
+    cross.get(tile.k).push(t);
+  }
+  const ts = [...cross.values()].map((list) => list.reduce((a, b) => a + b, 0) / list.length);
+  if (!ts.length) ts.push(0.5); // kein Weg kreuzt: eine Brücke in der Mitte
+  for (const t of ts) {
+    const p = curve.getPoint(t), d = curve.getTangent(t);
+    reserve(p.x, p.z, 1.6);
+    stand(ctx, model('building_bridge_A', 1.5), p.x, p.z, { rot: Math.atan2(d.x, d.z) + Math.PI / 2, sink: 0.05, origin: true });
+  }
 }
 
 const NORMAL = {
@@ -398,13 +439,7 @@ const NORMAL = {
   build(ctx, kit) {
     const { rand, rr, R, reserve } = ctx;
     const curve = stream(ctx, kit);
-    // Steinbrücke über den Bach
-    {
-      const t = 0.42, p = curve.getPoint(t), d = curve.getTangent(t);
-      const b = model('building_bridge_A', 1.5);
-      reserve(p.x, p.z, 1.6);
-      stand(ctx, b, p.x, p.z, { rot: Math.atan2(d.x, d.z) + Math.PI / 2, sink: 0.05, origin: true });
-    }
+    pathBridges(ctx, curve);
     // Wasserpflanzen und Seerosen am Bach
     for (let i = 1; i < 26; i++) {
       if (rand() < 0.45) continue;
@@ -860,6 +895,49 @@ function cityStreets(ctx, kit, k, T) {
   });
 }
 
+// Blockhütte im Schnee: Wände aus liegenden Stämmen, Satteldach mit Schneedecke, Schornstein mit Rauch,
+// warm leuchtende Fenster und Tür; Vorderseite zeigt zu face
+function logCabin(ctx, kit, x, z, face) {
+  const { M, E, at } = kit;
+  const g = new THREE.Group();
+  const log = M('#7a5232'), logD = M('#62412a'), snow = M('#ffffff', { roughness: 0.6 }), warm = E('#ffcf6a', 1.4);
+  const W = 1.8, D = 1.4, H = 1.05;
+  for (let i = 0; i < 6; i++) {
+    const y = 0.1 + i * (H / 6);
+    for (const [len, x0, z0, ry] of [[W + 0.2, 0, D / 2, 0], [W + 0.2, 0, -D / 2, 0], [D + 0.2, W / 2, 0, Math.PI / 2], [D + 0.2, -W / 2, 0, Math.PI / 2]]) {
+      const c = at(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, len, 7), i % 2 ? log : logD), x0, y, z0);
+      c.rotation.set(0, ry, Math.PI / 2);
+      g.add(c);
+    }
+  }
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(W - 0.05, H, D - 0.05), M('#5a3a22')), 0, H / 2 + 0.05, 0));
+  for (const sg of [-1, 1]) {
+    const r = at(new THREE.Mesh(new THREE.BoxGeometry(W + 0.5, 0.1, D * 0.68), logD), 0, H + 0.42, sg * D * 0.28);
+    r.rotation.x = sg * 0.68;
+    g.add(r);
+    const sn = at(new THREE.Mesh(new THREE.BoxGeometry(W + 0.55, 0.08, D * 0.66), snow), 0, H + 0.49, sg * D * 0.29);
+    sn.rotation.x = sg * 0.68;
+    g.add(sn);
+  }
+  const chim = at(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.75, 0.28), M('#6a6a72')), W * 0.28, H + 0.75, -D * 0.2);
+  g.add(chim);
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 0.32), snow), W * 0.28, H + 1.14, -D * 0.2));
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.72, 0.05), M('#4a2e1a')), -0.35, 0.42, D / 2 + 0.1));
+  for (const wx of [0.45]) {
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.3, 0.05), warm), wx, 0.62, D / 2 + 0.1));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.05, 0.12), snow), wx, 0.45, D / 2 + 0.14));
+  }
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.32), warm), W / 2 + 0.1, 0.62, 0));
+  ctx.put(g, x, z, { rot: false });
+  g.lookAt(face[0], g.position.y, face[1]);
+  ctx.reserve(x, z, 1.3);
+  // Rauch aus dem Schornstein
+  g.updateMatrixWorld(true);
+  const top = new THREE.Vector3(W * 0.28, H + 1.2, -D * 0.2).applyMatrix4(g.matrixWorld);
+  (ctx.shared.emitters = ctx.shared.emitters || []).push({ name: 'Kaminrauch', keep: true, pos: [top.x, top.y, top.z], size: [0.2, 0.1, 0.2], colors: ['#d8dce4', '#a8acb4'], particleSize: 0.3, sizeEnd: 1.1, rate: 3, speed: [0.3, 0.6], lifetime: [3, 5], spread: [12, 12], direction: 'Top', lightEmission: 0, drag: 0.1, acceleration: [0.05, 0, 0.02], transparency: [[0, 1], [0.15, 0.4], [1, 1]] });
+  return g;
+}
+
 // ── Eis: verschneiter Tannenwald, Wachturm, Zeltlager mit Laternen ──
 const EIS = {
   landmark: true, // Eispalast
@@ -871,7 +949,12 @@ const EIS = {
     const camp = clearing(ctx, 3.2, 4, R - 3);
     if (camp) {
       stand(ctx, model('resource_lumber', 2.4), camp[0], camp[1]);
-      around(ctx, camp, [['tent', 3.2], ['tent', 3.2], ['lantern_standing', 0.9], ['crate_A_big', 3.2], ['barrel', 3.2], ['sack', 3.4]], 1.8, 2.8);
+      // verschneite Blockhütten statt Zelten (Werkstatt-Wunsch)
+      for (const [da, dist] of [[0.3, 2.6], [2.5, 2.7]]) {
+        const a = Math.atan2(camp[1], camp[0]) + da, x = camp[0] + Math.cos(a) * dist, z = camp[1] + Math.sin(a) * dist;
+        if (ctx.free(x, z, 1.1)) logCabin(ctx, kit, x, z, camp);
+      }
+      around(ctx, camp, [['lantern_standing', 0.9], ['crate_A_big', 3.2], ['barrel', 3.2], ['sack', 3.4]], 1.6, 2.2);
     }
     scatterModels(ctx, 6, ['trees_A_large@eis', 'trees_A_medium@eis', 'trees_A_small@eis'], 2.3, 2.8, { gap: 0.6 });
     scatterModels(ctx, 10, ['tree_single_A@eis', 'tree_single_B@eis'], 2.6, 3.4, { gap: 0.75 });
@@ -900,9 +983,9 @@ const EIS = {
 
 // ── Lava: Schmiede am Vulkan, Ruinen, verkohlte Bäume, Fackeln, Schatztruhe ──
 const LAVA = {
-  landmark: true, // Lavatempel
+  landmark: false, // der Vulkan ist das Wahrzeichen (Lavatempel entfernt, Werkstatt-Wunsch)
   keepBase: true, // Vulkan mit Lavastrom und Lavaseen
-  baseSpots: [[-0.8, -0.6, 3], [2.8, 2.2, 0.9], [-3, 2.4, 0.9], [1.2, -3.4, 0.9], [-3.6, -1.6, 0.9], [2.2, -0.4, 1.2]],
+  baseSpots: [[-0.8, -0.6, 4.7], [4.8, 3.4, 0.9], [-4.4, 4.2, 0.9], [1.4, -6, 0.9], [-6.4, -3.4, 0.9]],
   build(ctx, kit) {
     const { R, rand, rr } = ctx;
     const forge = place(ctx, 'building_blacksmith_red', 3.6, { rMin: 5, rMax: R - 3, face: [0, 0] });
@@ -977,7 +1060,7 @@ const HOEHLE = {
   build(ctx, kit) {
     const { R } = ctx;
     const mine = place(ctx, 'building_mine_blue@hoehle', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
-    if (mine) around(ctx, [mine.position.x, mine.position.z], [['crates_stacked', 0.7], ['barrel_large', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['chest_gold', 0.8], ['box_stacked', 0.6]], 2.8, 4);
+    if (mine) around(ctx, [mine.position.x, mine.position.z], [['crates_stacked', 0.42], ['barrel_large', 0.42], ['torch_lit', 1.6], ['torch_lit', 1.6], ['chest_gold', 0.6], ['box_stacked', 0.36]], 2.8, 4); // Kisten und Fässer kleiner (Werkstatt-Wunsch)
     // Ruinenhalle: vier Säulen im Quadrat, in der Mitte eine Truhe zwischen Kerzen
     const hall = clearing(ctx, 3, 4, R - 3);
     if (hall) {

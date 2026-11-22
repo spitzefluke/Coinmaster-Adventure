@@ -423,7 +423,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, signBoard, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -2285,17 +2285,41 @@ const BUILDERS = {
     return [c1, c2];
   },
 
-  eis({ put, scatter, rand, rr, root, modelWorld }) {
-    const ig = new THREE.Group();
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), M('#ffffff', { roughness: 0.5 }));
-    const door = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.8, 10, 1, false, 0, Math.PI), M('#f2f8ff'));
-    door.rotation.set(0, 0, Math.PI / 2);
-    door.rotation.order = 'ZYX';
-    door.position.set(1.05, 0, 0);
-    const hole = at(new THREE.Mesh(new THREE.CircleGeometry(0.35, 12, 0, Math.PI), M('#2a3a50')), 1.46, 0.02, 0);
-    hole.rotation.y = Math.PI / 2;
-    ig.add(shell, door, hole);
-    put(ig, -1.5, -1, { rot: false });
+  eis({ put, scatter, rand, rr, root, modelWorld, spot, shared }) {
+    // Iglus aus sichtbaren Schneeblöcken mit Eingangstunnel und Laterne (Werkstatt-Wunsch)
+    const igloo = (s) => {
+      const ig = new THREE.Group(), R0 = 1.15, snowA = M('#ffffff', { roughness: 0.55 }), snowB = M('#eef6ff', { roughness: 0.6 });
+      const rings = 5;
+      for (let i = 0; i < rings; i++) {
+        const ph0 = (i / rings) * (Math.PI / 2), ph1 = ((i + 1) / rings) * (Math.PI / 2), ph = (ph0 + ph1) / 2;
+        const r = R0 * Math.cos(ph), y = R0 * Math.sin(ph), n = Math.max(4, Math.round((Math.PI * 2 * r) / 0.42));
+        for (let k = 0; k < n; k++) {
+          const a = ((k + (i % 2) * 0.5) / n) * Math.PI * 2;
+          if (i < 2 && Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.32) continue; // Eingang frei
+          const b = new THREE.Mesh(new THREE.BoxGeometry(((Math.PI * 2 * r) / n) * 0.94, R0 * (ph1 - ph0) * 0.94, 0.26), k % 2 ? snowA : snowB);
+          b.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+          b.rotation.order = 'YXZ';
+          b.rotation.y = -a + Math.PI / 2;
+          b.rotation.x = -ph;
+          ig.add(b);
+        }
+      }
+      ig.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), snowA), 0, R0 - 0.05, 0));
+      // Tunnel aus drei Bögen und dunkler Eingang
+      for (let k = 0; k < 3; k++) {
+        const x = R0 - 0.1 + k * 0.28;
+        for (const [dy, dz, w, h] of [[0.3, 0.42, 0.26, 0.6], [0.3, -0.42, 0.26, 0.6], [0.66, 0, 0.26, 0.16]]) ig.add(at(new THREE.Mesh(new THREE.BoxGeometry(w, h, dz ? 0.18 : 1.0), k % 2 ? snowB : snowA), x, dy, dz));
+      }
+      ig.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 0.66), M('#22324a')), R0 - 0.2, 0.28, 0));
+      // Laterne vor dem Eingang
+      ig.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), M('#4a3a2a')), R0 + 0.95, 0.45, 0.55));
+      ig.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.16), E('#ffcf6a', 1.6)), R0 + 0.95, 0.98, 0.55));
+      ig.scale.setScalar(s);
+      return ig;
+    };
+    put(igloo(1), -1.5, -1, { rot: false });
+    const p2 = spot(1.6, 4, R - 3);
+    if (p2) put(igloo(0.78), p2[0], p2[1]);
     scatter(9, () => crystal(rr(0.9, 1.6), rand() < 0.5 ? '#8ae6ff' : '#bfe8ff', rand, 0.7), 0.6);
     if (!modelWorld) scatter(7, () => pine(rr(1.6, 2.4), '#e8f4ff', rand), 0.7); // sonst verschneite Modell-Tannen
     // Schneemann
@@ -2312,26 +2336,54 @@ const BUILDERS = {
   },
 
   lava({ put, scatter, rand, rr, root, anims, world, modelWorld, height, shared, reserve }) {
+    // Vulkan (Werkstatt-Wunsch): groß und zerklüftet, Krater mit glühendem Rand und Lavasee, Lavarinnen und
+    // erkaltete Lavaströme an den Flanken, aktiv mit Rauchsäule, Glut und herausfliegenden Lavabrocken
+    const VR = 4.6, VT = 0.95, VH = 7.6, CX = -0.8, CZ = -0.6;
     const vol = new THREE.Group();
-    const cone = new THREE.Mesh(jitter(new THREE.CylinderGeometry(0.7, 2.4, 2.8, 12, 3, true), rand, 0.25, (x, y) => y > 1.3), M('#2a201c'));
-    cone.position.y = 1.4;
-    const lavaTop = at(new THREE.Mesh(new THREE.CircleGeometry(0.72, 14), E('#ff4a00', 1.1)), 0, 2.7, 0);
+    const cone = new THREE.Mesh(jitter(new THREE.CylinderGeometry(VT, VR, VH, 16, 6, true), rand, 0.5, (x, y) => y > VH / 2 - 0.05), M('#2a201c'));
+    cone.position.y = VH / 2;
+    cone.userData.rbx = { facets: true, facetThick: 0.3, name: 'Vulkan' }; // in Roblox Fläche für Fläche (echte Kegelform)
+    const crater = at(new THREE.Mesh(new THREE.CircleGeometry(VT * 0.98, 16), M('#140e0c')), 0, VH - 0.02, 0);
+    crater.rotation.x = -Math.PI / 2;
+    const lavaTop = at(new THREE.Mesh(new THREE.CircleGeometry(VT * 0.62, 16), E('#ff4a00', 1.3)), 0, VH + 0.01, 0);
     lavaTop.rotation.x = -Math.PI / 2;
-    vol.add(cone, lavaTop);
-    // Lavastrom den Hang hinunter
-    const path = new THREE.CatmullRomCurve3([new THREE.Vector3(0.5, 2.75, 0), new THREE.Vector3(1.3, 1.6, 0.4), new THREE.Vector3(2.3, 0.4, 0.2), new THREE.Vector3(3.6, 0.2, -0.6)]);
-    const flow = new THREE.Mesh(new THREE.TubeGeometry(path, 30, 0.18, 6), E('#ff5000', 1));
-    vol.add(flow);
-    put(vol, -0.8, -0.6, { rot: false });
-    lavaRiver({ root, height, shared, reserve, rand, rr }, [-0.8 + 3.6, -0.6 - 0.6]);
-    const glow = new THREE.PointLight('#ff6a1a', 25, 9 * K, 2);
-    glow.position.set(-0.8, 3.4, -0.6);
+    const rim = at(new THREE.Mesh(new THREE.TorusGeometry(VT * 0.95, 0.09, 6, 28), E('#ff7a1a', 1.4)), 0, VH, 0);
+    rim.rotation.x = Math.PI / 2;
+    vol.add(cone, crater, lavaTop, rim);
+    // Streifen auf der Flanke vom Kraterrand zum Fuß (Stücke als flache Quader, die dem Kegel folgen)
+    const flank = (a, w, mat, t0, t1, lift) => {
+      const pt = (t) => {
+        const r = VT + (VR - VT) * t + lift, y = VH * (1 - t) + 0.02;
+        return new THREE.Vector3(Math.cos(a + Math.sin(t * 5 + a) * 0.06) * r, y, Math.sin(a + Math.sin(t * 5 + a) * 0.06) * r);
+      };
+      for (let k = 0; k < 4; k++) {
+        const p0 = pt(t0 + ((t1 - t0) * k) / 4), p1 = pt(t0 + ((t1 - t0) * (k + 1)) / 4);
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w * (1 + k * 0.15), 0.07, p0.distanceTo(p1) + 0.05), mat);
+        m.position.copy(p0).add(p1).multiplyScalar(0.5);
+        m.lookAt(p1);
+        vol.add(m);
+      }
+    };
+    for (let i = 0; i < 6; i++) flank((i / 6) * Math.PI * 2 + rand() * 0.4, rr(0.12, 0.2), E(i % 2 ? '#ff5a10' : '#ff3a00', 1.1), 0, rr(0.55, 0.95), 0.06);
+    for (let i = 0; i < 5; i++) flank((i / 5) * Math.PI * 2 + 0.6 + rand() * 0.3, rr(0.35, 0.55), M('#161010', { roughness: 0.6 }), rr(0.2, 0.4), 1, 0.04);
+    put(vol, CX, CZ, { rot: false });
+    reserve(CX, CZ, VR + 0.3);
+    lavaRiver({ root, height, shared, reserve, rand, rr }, [CX + VR + 0.2, CZ - 0.6]);
+    const glow = new THREE.PointLight('#ff6a1a', 30, 11 * K, 2);
+    glow.position.set(CX, VH + 0.8, CZ);
     root.add(glow);
+    // aktiv: Rauchsäule, Glut über dem Krater und herausfliegende Lavabrocken (keep: nicht beruhigen)
+    const top = height(CX, CZ) + VH;
+    (shared.emitters = shared.emitters || []).push(
+      { name: 'Vulkanrauch', keep: true, pos: [CX, top + 0.4, CZ], size: [1.4, 0.2, 1.4], colors: ['#3a302c', '#5a4e48'], particleSize: 1.4, sizeEnd: 4.2, rate: 6, speed: [0.9, 1.5], lifetime: [6, 9], spread: [10, 10], direction: 'Top', lightEmission: 0, drag: 0.08, acceleration: [0.06, 0, 0.03], transparency: [[0, 1], [0.1, 0.35], [0.7, 0.7], [1, 1]] },
+      { name: 'Kraterglut', keep: true, pos: [CX, top + 0.2, CZ], size: [1.6, 0.1, 1.6], colors: ['#ffd27a', '#ff5a12'], particleSize: 0.12, sizeEnd: 0.04, rate: 10, speed: [0.8, 1.8], lifetime: [0.8, 1.6], spread: [20, 20], direction: 'Top', lightEmission: 1 },
+      { name: 'Lavabrocken', keep: true, pos: [CX, top + 0.2, CZ], size: [0.8, 0.1, 0.8], colors: ['#ffb02e', '#ff4a00'], particleSize: 0.26, sizeEnd: 0.2, rate: 1.5, speed: [3.4, 5], lifetime: [1.8, 2.6], spread: [28, 28], direction: 'Top', lightEmission: 1, acceleration: [0, -3.6, 0] },
+    );
     const pools = [];
     for (let i = 0; i < 4; i++) {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(rr(0.4, 0.8), 14), E('#ff3a00', 1));
       pool.rotation.x = -Math.PI / 2;
-      const p = [[2.8, 2.2], [-3, 2.4], [1.2, -3.4], [-3.6, -1.6]][i];
+      const p = [[4.8, 3.4], [-4.4, 4.2], [1.4, -6], [-6.4, -3.4]][i]; // außerhalb des größeren Vulkans
       put(pool, p[0], p[1], { sink: -0.03, rot: false, lay: true });
       pools.push(pool);
     }
