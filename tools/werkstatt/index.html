@@ -555,7 +555,7 @@ function focusPortal(id) {
   let n = new THREE.Vector3(r[2], 0, r[8]).normalize();
   if (n.dot(door.clone().sub(pos)) < 0) n.negate(); // Vorderseite: zur Hallenmitte und zum Eingang
   const radius = disc.size ? Math.max(disc.size[0], disc.size[2] ?? 0) / 2 : 6.6;
-  portal = { id, pos, n, door, radius: Math.max(4, Math.min(radius, 9)), feetY: pos.y - 10.3, world: ALL.find((w) => w.id === id) };
+  portal = { id, pos, n, door, radius: Math.max(4, Math.min(radius, 9)), feetY: pos.y - 11.6 /* Scheibe 1,55 × 0,72 (Portal) × 1,3 (Halle) Einheiten über dem Boden */, world: ALL.find((w) => w.id === id) };
   controls.autoRotate = false;
   $('t-rot').setAttribute('aria-pressed', 'false');
   controls.minDistance = 2 * STUDS;

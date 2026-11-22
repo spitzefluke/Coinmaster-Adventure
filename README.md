@@ -744,7 +744,7 @@ ein `BloomEffect` Neon und Lava weich nachleuchten (die Vorschau zeigt kein Bloo
 Goldrand um den Platz, zehn goldene Münzen schweben um den Brunnen, dazu Blumenbeete.
 
 **Spawn (Münzstadt, `welten/js/spawnTown.js`):** Hier starten neue Spieler. Die Spawn-Insel ist größer als die
-anderen Welten (Radius 32 statt 16, also 512 statt 256 Studs breit, viermal so viel Fläche), damit viele Spieler Platz haben.
+anderen Welten (Radius 32 statt 16, also 512 statt 256 Studs breit, viermal so viel Fläche), damit viele Spieler Platz haben. Läden und Spielbereiche sind teils zusammengelegt (Markthalle, Belohnungs-Haus); 18 Bereiche.
 Die Maße unten gelten für Radius 24; bei größerer Insel rücken Platz, Läden, Ringstraße und äußerer Ring mit
 `S = R / 24` nach außen, die Gebäude behalten ihre Größe (mehr Freiraum dazwischen).
 Die Inseltiefe und das Wolkenmeer darunter sind gleich wie bei den anderen Inseln. Aufbau von innen nach außen:

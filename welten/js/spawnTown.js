@@ -250,31 +250,49 @@ export function buildSpawnTown(ctx, K) {
     placeAt(g, deg(22.5 + i * 45), 7.75 * S, 0.8);
   }
 
-  // ── Stadtmauer mit Türmen und Fahnen ──
+  // ── Stadtmauer (Werkstatt-Wunsch: echte Burgmauer) ──
+  // Mauer aus Steinquadern (drei Töne, Fugen), außen Brustwehr mit Zinnen und Schießscharten, innen ein
+  // Wehrgang aus Bohlen; acht hohe Türme mit Zinnenkranz, Spitzdach, Fahne und leuchtenden Fenstern
   {
-    const stone = M('#b8ae9c'), dark = M('#9a907e'), roofM = M('#b0402e');
-    const segs = 72;
+    const tones = [M('#bdb3a0'), M('#aea490'), M('#c8bfad')], joint = M('#8f8676'), plank = M('#7a5a3a'), slit = M('#2a2420');
+    const roofM = M('#b0402e'), warm = E('#ffd98a', 0.9);
+    lampMats.push(warm);
+    const segs = 96, WH = 2.2, WT = 0.9;
     for (let i = 0; i < segs; i++) {
       const am = ((i + 0.5) / segs) * TAU;
-      const len = 2 * WR * Math.sin(Math.PI / segs) + 0.05;
+      const len = 2 * WR * Math.sin(Math.PI / segs) + 0.04;
       const [x, z] = polar(am, WR);
-      const w = new THREE.Mesh(new THREE.BoxGeometry(len, 1.7, 0.55), i % 2 ? stone : dark);
-      w.position.set(x, height(x, z) + 0.85, z);
-      w.rotation.y = -am + Math.PI / 2;
-      root.add(w);
-      const cr = new THREE.Mesh(new THREE.BoxGeometry(len * 0.45, 0.35, 0.6), stone);
-      cr.position.set(x, height(x, z) + 1.85, z);
-      cr.rotation.y = w.rotation.y;
-      root.add(cr);
+      const seg = new THREE.Group();
+      seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(len, WH, WT), tones[i % 3]), 0, WH / 2, 0));
+      for (const y of [0.55, 1.1, 1.65]) seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.02), joint), 0, y, WT / 2 + 0.005));
+      seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.03, WH * 0.9, 0.02), joint), (i % 2 ? 0.25 : -0.25) * len, WH / 2, WT / 2 + 0.005));
+      seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(len, 0.4, 0.26), tones[(i + 1) % 3]), 0, WH + 0.2, WT / 2 - 0.13)); // Brustwehr
+      seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(len * 0.46, 0.42, 0.28), tones[(i + 2) % 3]), 0, WH + 0.61, WT / 2 - 0.13)); // Zinne
+      seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, WT - 0.3), plank), 0, WH + 0.04, -0.13)); // Wehrgang
+      if (i % 2 === 0) seg.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 0.03), slit), 0, 1.3, WT / 2 + 0.01));
+      seg.position.set(x, height(x, z), z);
+      seg.rotation.y = -am + Math.PI / 2;
+      root.add(seg);
     }
     for (let i = 0; i < 8; i++) {
       const a = deg(i * 45), [x, z] = polar(a, WR);
       const t = new THREE.Group();
-      t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 3.4, 12), stone), 0, 1.7, 0));
-      t.add(at(new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.5, 12), roofM), 0, 4.15, 0));
-      t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.06), E('#ffd98a', 0.6)), 0, 2.4, 0.95));
-      t.add(flag(i % 2 ? '#d9b26a' : '#b0402e', 4.9));
-      reserve(x, z, 1.2);
+      const TH = 4.8;
+      t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.32, TH, 16), tones[i % 3]), 0, TH / 2, 0));
+      for (const y of [0.9, 2.2, 3.5]) t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.2 - y * 0.02, 1.2 - y * 0.02, 0.08, 16), joint), 0, y, 0));
+      t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.3, 0.3, 16), tones[(i + 1) % 3]), 0, TH + 0.1, 0));
+      for (let k = 0; k < 10; k++) {
+        const b = (k / 10) * TAU;
+        t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.42, 0.26), tones[(i + 2) % 3]), Math.cos(b) * 1.3, TH + 0.45, Math.sin(b) * 1.3)).children.at(-1).rotation.y = -b;
+      }
+      t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.9, 16), tones[i % 3]), 0, TH + 0.7, 0));
+      t.add(at(new THREE.Mesh(new THREE.ConeGeometry(1.25, 2.4, 16), roofM), 0, TH + 2.35, 0));
+      t.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), M('#ffd76a', { metalness: 0.7 })), 0, TH + 3.6, 0));
+      // leuchtende Fenster auf zwei Etagen (innen und außen), Tür zur Stadt
+      for (const [y, side] of [[1.8, 1], [3.2, 1], [1.8, -1], [3.2, -1]]) t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.48, 0.06), warm), 0, y, side * 1.3));
+      t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.06), M('#5a3a22')), 0, 0.55, 1.33));
+      t.add(flag(i % 2 ? '#d9b26a' : '#b0402e', TH + 3.6));
+      reserve(x, z, 1.5);
       const o = put(t, x, z, { rot: false });
       o.lookAt(0, o.position.y, 0);
     }
@@ -289,6 +307,28 @@ export function buildSpawnTown(ctx, K) {
     const ph = rand() * 6;
     anims.push((t) => (pivot.rotation.y = Math.sin(t * 2 + ph) * 0.35));
     return g;
+  }
+  // Details am Gebäude (Werkstatt-Wunsch „mehr Details überall“): Laternen an der Vorderseite, Blumenkübel,
+  // optional ein Steinsockel; w und d in lokalen Einheiten der Gruppe, Vorderseite +z
+  function dress(g, w, d, { plinth = false, lanterns = true, planters = true } = {}) {
+    if (plinth) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.16, d + 0.4), M('#b8ae9c')), 0, 0.08, 0));
+    if (lanterns)
+      for (const sx of [-1, 1]) {
+        g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.6, 8), M('#3a3446')), sx * (w / 2 + 0.35), 0.8, d / 2 + 0.35));
+        const l = E('#ffd98a', 1.2);
+        lampMats.push(l);
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), l), sx * (w / 2 + 0.35), 1.72, d / 2 + 0.35));
+        g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.18, 4), M('#3a3446')), sx * (w / 2 + 0.35), 1.96, d / 2 + 0.35)).children.at(-1).rotation.y = Math.PI / 4;
+      }
+    if (planters)
+      for (const sx of [-1, 1]) {
+        const px = sx * (w / 2 + 0.35), pz = d / 2 - 0.4;
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 0.5), M('#9a6a4a')), px, 0.18, pz));
+        const f = flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand);
+        f.position.set(px, 0.36, pz);
+        f.scale.setScalar(0.6);
+        g.add(f);
+      }
   }
   // ── Große Läden (Läden-Ring) ──
   function shopHouse({ name, sub, wall, roof, accent, items, keeper }) {
@@ -315,6 +355,13 @@ export function buildSpawnTown(ctx, K) {
     // Giebeldreiecke als Stufen
     for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, D * (0.8 - i * 0.26)), wallM), sx * (W / 2), H + 0.14 + i * 0.28, 0));
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.0, 0.35), M('#8a5a4a')), W * 0.3, H + 0.8, -0.4));
+    // Firstbalken, Fensterrahmen, Blumenkästen unter den Schaufenstern
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 0.14, 0.18), trimM), 0, H + 0.82, 0));
+    for (const s of [-1, 1]) {
+      for (const [w, h, dx, dy] of [[0.85, 0.06, 0, 0.53], [0.85, 0.06, 0, -0.53], [0.06, 1.1, -0.42, 0], [0.06, 1.1, 0.42, 0]]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), trimM), s * 1.0 + dx, 1.2 + dy, D / 2 + 0.05));
+      for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), M(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'][k])), s * 1.0 - 0.3 + k * 0.2, 0.76, D / 2 + 0.08));
+    }
+    dress(g, W, D, { plinth: true });
     // Leuchtschrift über dem Eingang
     const sign = signBoard(name, { w: 3.0, h: 0.75, bg: accent, fg: '#ffffff', sub });
     sign.material[4].emissiveIntensity = 0.6;
@@ -473,6 +520,14 @@ export function buildSpawnTown(ctx, K) {
       g.add(st);
       stalls.push([st, sh]);
     });
+    dress(g, HW, HD, { plinth: true });
+    // Laternen zwischen den Arkadensäulen
+    for (let i = 0; i < 4; i++) {
+      const lx = -HW / 2 + 0.3 + ((i + 0.5) * (HW - 0.6)) / 4, l = E('#ffd98a', 1.2);
+      lampMats.push(l);
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), M('#3a3446')), lx, HH - 0.5, HD / 2 - 0.1));
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.2), l), lx, HH - 0.82, HD / 2 - 0.1));
+    }
     const o = placeAt(g, deg(45), SHOP_R, 5.4);
     o.updateMatrixWorld(true);
     for (const [st, sh] of stalls) {
@@ -551,6 +606,8 @@ export function buildSpawnTown(ctx, K) {
     lib.add(rd);
     const book = indexBook();
     lib.add(book);
+    lib.add(at(new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.2, 0.16, 24), M('#b8ae9c')), 0, 0.08, 0));
+    dress(lib, 3.4, 3.4, { planters: true });
     lib.scale.setScalar(1.15);
     const o = placeAt(lib, deg(240), SHOP_R, 2.4);
     o.userData.area = 'index';
@@ -619,6 +676,7 @@ export function buildSpawnTown(ctx, K) {
       sg.position.set(0, 2.25, -0.25);
       st.add(sg);
     });
+    dress(g, HW, HD, { plinth: true });
     const o = placeAt(g, deg(125), OUTER_R, 4.6);
     o.updateMatrixWorld(true);
     for (const [st, id, name] of stations) {
@@ -647,8 +705,29 @@ export function buildSpawnTown(ctx, K) {
       pa.lookAt(0, 0, 0.6);
       g.add(pa);
     });
-    g.scale.setScalar(1.15);
-    reserve(cx, cz, 4.0);
+    // prächtiger (Werkstatt-Wunsch): Podest mit Leuchtring in Planetenfarbe unter den Portalen, zwei Obelisken
+    // mit leuchtenden Kristallen am Eingang, Feuerschalen und Banner
+    const pc = list[0]?.color || '#ffd76a', glowM = E(pc, 1.3);
+    lampMats.push(glowM);
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.9, 0.22, 40), M('#d8d0c0')), 0, 0.11, 0.2));
+    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(3.45, 0.06, 6, 60), glowM), 0, 0.23, 0.2)).children.at(-1).rotation.x = Math.PI / 2;
+    for (const sx of [-1, 1]) {
+      const ox = sx * 4.6, oz = 2.8;
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), M('#a89e8c')), ox, 0.2, oz));
+      const ob = at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, 5.4, 4), M('#e8e0d0')), ox, 3.1, oz);
+      ob.rotation.y = Math.PI / 4;
+      g.add(ob);
+      g.add(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), glowM), ox, 6.25, oz));
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.24, 0.32, 12), M('#c8a040', { metalness: 0.6 })), sx * 2.4, 0.95, 3.4));
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 8), M('#4a4458')), sx * 2.4, 0.4, 3.4));
+      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.65, 8), E('#ffb02e', 1.8)), sx * 2.4, 1.42, 3.4);
+      g.add(fl);
+      anims.push((tt) => fl.scale.set(1, 0.85 + Math.sin(tt * 8 + sx * 2) * 0.15, 1));
+      const ban = at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.6, 0.7), M(pc)), ox + sx * 0.25, 4.0, oz);
+      g.add(ban);
+    }
+    g.scale.setScalar(1.3);
+    reserve(cx, cz, 4.6);
     const o = put(g, cx, cz, { rot: false });
     o.lookAt(0, o.position.y, 0);
     o.userData.area = `portale-${planetId}`;
@@ -762,40 +841,12 @@ export function buildSpawnTown(ctx, K) {
     const sg = signBoard('Ei-Schlüpfplatz', { w: 2.8, h: 0.65, bg: '#c8801a', fg: '#ffffff', sub: 'Ei antippen & schlüpfen' });
     sg.position.set(0, 2.6, -0.4);
     g.add(sg);
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.4, 0.14, 32, 1, false, Math.PI * 0.5, Math.PI), M('#b8ae9c')), 0, 0.07, 1.9));
+    dress(g, 5.2, 3.6, { planters: false });
     placeAt(g, deg(30), OUTER_R, 2.8).userData.area = 'schluepfen';
     addArea('schluepfen', 'Ei-Schlüpfplatz', ...polar(deg(30), OUTER_R - 1.6));
   }
-  // Glücksrad
-  {
-    const g = new THREE.Group();
-    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.6, 0.3), M('#4a4458')), 0, 1.3, -0.2));
-    const wheel = new THREE.Group();
-    wheel.position.set(0, 2.6, 0.05);
-    const cols = ['#ff5aa5', '#ffe07a', '#5ad1ff', '#8cff7a', '#c48bff', '#ff8a3d', '#ffffff', '#ff4058'];
-    for (let i = 0; i < 8; i++) {
-      const seg = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.12, 6, 1, false, (i / 8) * TAU, TAU / 8), M(cols[i]));
-      seg.rotation.x = Math.PI / 2;
-      seg.userData.rbx = { skip: true };
-      wheel.add(seg);
-    }
-    // für Roblox: Scheibe als Ganzes
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.48, 1.48, 0.1, 24), M('#ff8ac8'));
-    disc.rotation.x = Math.PI / 2;
-    disc.position.z = -0.04; // liegt hinter den Segmenten
-    wheel.add(disc);
-    wheel.add(at(new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.08, 8, 40), M('#ffd76a', { metalness: 0.7 })), 0, 0, 0.02));
-    wheel.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.25, 16), M('#ffd76a', { metalness: 0.7 })), 0, 0, 0.08)).children.at(-1).rotation.x = Math.PI / 2;
-    g.add(wheel);
-    const pin = at(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 4), M('#e0433a')), 0, 4.25, 0.12);
-    pin.rotation.z = Math.PI;
-    g.add(pin);
-    anims.push((t) => (wheel.rotation.z = t * 0.9 + Math.sin(t * 0.3) * 2));
-    const sg = signBoard('Glücksrad', { w: 2.0, h: 0.55, bg: '#c8306a', fg: '#ffffff', sub: '1× täglich gratis' });
-    sg.position.set(0, 0.8, 0.4);
-    g.add(sg);
-    placeAt(g, deg(150), OUTER_R, 1.9).userData.area = 'gluecksrad';
-    addArea('gluecksrad', 'Glücksrad', ...polar(deg(150), OUTER_R - 1.6));
-  }
+  // (Glücksrad entfernt, Werkstatt-Wunsch; gedreht wird es weiter im Belohnungs-Fenster)
   // VIP-Lounge
   {
     const g = new THREE.Group();
@@ -811,6 +862,7 @@ export function buildSpawnTown(ctx, K) {
     sg.position.set(0, 2.0, -1.4);
     g.add(sg);
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), E('#ffd76a', 0.9)), 0, 1.1, -1.0));
+    dress(g, 4.2, 3.2);
     placeAt(g, deg(210), OUTER_R, 2.6).userData.area = 'vip';
     addArea('vip', 'VIP-Lounge', ...polar(deg(210), OUTER_R - 1.8));
   }
