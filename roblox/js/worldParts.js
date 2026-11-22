@@ -367,8 +367,9 @@ function terrainSurface(out, built, world) {
 
 // Wasserfälle über die Inselkante: Wasser, Lava, Sirup – mit Gischt unten
 const FALLS = {
-  normal: { color: '#3fb0ff', light: '#d2f1ff', material: 'SmoothPlastic', transparency: 0.12, count: 2 },
-  wald: { color: '#349fe6', light: '#c6ecff', material: 'SmoothPlastic', transparency: 0.12, count: 1 },
+  // real: Wasser fällt im Bogen über die Kante, wird nach unten breiter und durchscheinend, strömt sichtbar
+  normal: { color: '#3a9fd8', light: '#e4f6ff', deep: '#2a78b0', material: 'Glass', transparency: 0.2, count: 2, real: true },
+  wald: { color: '#2f8fc8', light: '#dcf2ff', deep: '#22648f', material: 'Glass', transparency: 0.2, count: 1, real: true },
   eis: { color: '#9fe8ff', light: '#ffffff', material: 'Ice', transparency: 0.15, count: 1 },
   lava: { color: '#ff5512', light: '#ffb052', material: 'Neon', transparency: 0, count: 2 },
   sonne: { color: '#ffa41c', light: '#fff09a', material: 'Neon', transparency: 0, count: 2 },
@@ -388,6 +389,7 @@ function seaDip(R, d) {
 function waterfalls(out, emitters, built, world) {
   const f = FALLS[world.id];
   if (!f) return;
+  if (f.real) return realFalls(out, emitters, built, world, f);
   const R = built.radius, depth = 5.5 * (ISLAND_RADIUS / 6), rand = seededRand(world.id + ':fall');
   const start = rand() * Math.PI * 2;
   for (let i = 0; i < f.count; i++) {
@@ -422,6 +424,95 @@ function waterfalls(out, emitters, built, world) {
       colors: [f.light, '#ffffff'], particleSize: 0.9 * STUDS, rate: 22,
       speed: [0.4 * STUDS, 1.1 * STUDS], lifetime: [1.2, 2.4], spread: [40, 40],
       lightEmission: f.material === 'Neon' ? 1 : 0.3, squares: false,
+    });
+  }
+}
+
+// Wasserfall wie in echt: der Bach läuft in einer Rinne zur Kante, das Wasser schießt im Bogen hinaus und fällt
+// auf einer Wurfparabel (x = v·t, y = −g/2·t²). Der Vorhang ist oben dicht und schmal, unten breiter, dünner und
+// durchscheinend. Helle Schlieren laufen mit, Partikel strömen sichtbar nach unten, unten steigt Gischt auf.
+function realFalls(out, emitters, built, world, f) {
+  const R = built.radius, rand = seededRand(world.id + ':fall');
+  const start = rand() * Math.PI * 2;
+  const VX = 0.85, G = 2.2; // Einheiten/s und Einheiten/s² (nur für die Form der Bahn)
+  const mix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString();
+  for (let i = 0; i < f.count; i++) {
+    const a = start + i * 2.4, ca = Math.cos(a), sa = Math.sin(a);
+    const top = Math.max(built.height(ca * (R - 0.6), sa * (R - 0.6)), 0.1);
+    const bottom = seaBase() + 3.4 + seaDip(R, R + 2) * (40 / STUDS);
+    const tEnd = Math.sqrt((2 * (top - bottom)) / G);
+    const W = 2.0;
+    // Punkte der Bahn (r = Abstand zur Inselmitte, y), oben dichter, damit der Bogen rund wirkt
+    const N = 14, path = [];
+    for (let j = 0; j <= N; j++) {
+      const t = tEnd * (j / N) ** 1.6;
+      path.push({ r: R + 0.15 + VX * t, y: top + 0.05 - (G / 2) * t * t, k: j / N });
+    }
+    const P3 = (r, y, off = 0) => new THREE.Vector3(ca * r - sa * off, y, sa * r + ca * off);
+    // Block zwischen zwei Bahnpunkten: Y entlang der Bahn, Z nach außen, X quer
+    const seg = (p0, p1, off, w, thick, push, look) => {
+      const ur = p0.r - p1.r, uy = p0.y - p1.y, len = Math.hypot(ur, uy);
+      const nr = uy / len, ny = -ur / len; // Normale nach außen
+      const Y = new THREE.Vector3(ca * ur, uy, sa * ur).divideScalar(len);
+      const Z = new THREE.Vector3(ca * nr, ny, sa * nr);
+      const X = new THREE.Vector3().crossVectors(Y, Z);
+      const m = P3((p0.r + p1.r) / 2 + nr * push, (p0.y + p1.y) / 2 + ny * push, off);
+      out.push({
+        shape: 'Block', name: 'Wasserfall', pos: [m.x * STUDS, m.y * STUDS, m.z * STUDS],
+        rot: [X.x, Y.x, Z.x, X.y, Y.y, Z.y, X.z, Y.z, Z.z],
+        size: [w * STUDS, (len + 0.08) * STUDS, thick * STUDS], ...look,
+      });
+    };
+    // Rinne auf der Insel: Wasser mit hellem Schaumrand, fließt zur Kante
+    const rot = around(a), at = (r, y, off = 0) => { const p = P3(r, y, off); return [p.x * STUDS, p.y * STUDS, p.z * STUDS]; };
+    out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R - 1.4, top + 0.05), rot, size: [W * 0.9 * STUDS, 0.1 * STUDS, 3 * STUDS], color: f.color, material: f.material, transparency: f.transparency });
+    for (const off of [-1, 1])
+      out.push({ shape: 'Block', name: 'Wasserfall', pos: at(R - 1.4, top + 0.08, off * W * 0.45), rot, size: [0.18 * STUDS, 0.06 * STUDS, 3 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.25 });
+    // Vorhang: dunklerer Kern hinten, darüber die helle Wasserhaut, außen ein durchscheinender Schleier
+    for (let j = 0; j < N; j++) {
+      const p0 = path[j], p1 = path[j + 1], k = p1.k;
+      const grow = 1 + k * 0.55;
+      seg(p0, p1, 0, W * grow * 0.86, 0.32 * (1 - k * 0.5), -0.08, { color: mix(f.deep, f.color, 0.3), material: f.material, transparency: Math.min(0.6, f.transparency + k * 0.3) });
+      seg(p0, p1, 0, W * grow, 0.14, 0.12, { color: mix(f.color, f.light, 0.25 + 0.35 * k), material: f.material, transparency: Math.min(0.8, f.transparency + 0.1 + k * 0.45) });
+      if (k > 0.25) seg(p0, p1, 0, W * grow * 1.35, 0.06, 0.3, { color: f.light, material: 'SmoothPlastic', transparency: Math.min(0.9, 0.55 + k * 0.3) });
+    }
+    // helle Schlieren in unterschiedlicher Breite und Länge, die mit dem Wasser fallen
+    for (let s = 0; s < 9; s++) {
+      const off = (rand() - 0.5) * W * 0.85, w = 0.08 + rand() * 0.16;
+      const j0 = Math.floor(rand() * 4), j1 = Math.min(N, j0 + 5 + Math.floor(rand() * (N - 5)));
+      const tr = 0.1 + rand() * 0.35;
+      for (let j = j0; j < j1; j++) {
+        const k = path[j + 1].k;
+        seg(path[j], path[j + 1], off * (1 + k * 0.55), w * (1 + k * 0.6), 0.04, 0.2 + s * 0.005, { color: f.light, material: 'SmoothPlastic', transparency: Math.min(0.92, tr + k * 0.5) });
+      }
+    }
+    // weißer Wasserwulst an der Abbruchkante
+    out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(R + 0.2, top + 0.02), rot, size: [(W + 0.3) * STUDS, 0.32 * STUDS, 0.7 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.15 });
+    // Gischtwolke am Aufprall: mehrere weiche, durchscheinende Ballen
+    const end = path[N];
+    for (let j = 0; j < 7; j++) {
+      const off = (j - 3) * 0.75 + (rand() - 0.5) * 0.4, s = 1.6 + rand() * 1.4;
+      out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(end.r + (rand() - 0.3) * 1.2, bottom + 0.3 + rand() * 0.6, off), rot, size: [s * STUDS, s * 0.6 * STUDS, s * 0.9 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.35 + rand() * 0.25 });
+    }
+    // Partikel: Wasser strömt über die Kante und fällt (Schwerkraft wie die Bahn oben), unten Gischt und Nebel
+    const ER = [sa, 0, ca, 0, 1, 0, -ca, 0, sa]; // X quer, Y hoch, Z nach außen
+    emitters.push({
+      name: 'Wasserstrom', pos: at(R + 0.25, top + 0.05), rot: ER, size: [W * 0.9 * STUDS, 0.2 * STUDS, 0.3 * STUDS], direction: 'Back',
+      colors: [f.light, mix(f.color, f.light, 0.5)], particleSize: 0.6 * STUDS, sizeEnd: 1.1 * STUDS, rate: 70,
+      speed: [VX * 0.9 * STUDS, VX * 1.15 * STUDS], lifetime: [tEnd * 0.95, tEnd * 1.05], spread: [4, 4],
+      acceleration: [0, -G * STUDS, 0], squash: 0.9, transparency: [[0, 0.2], [0.7, 0.45], [1, 1]], lightEmission: 0.25, rotSpeed: [0, 0],
+    });
+    emitters.push({
+      name: 'Gischt', pos: at(end.r, bottom + 0.4), rot: ER, size: [W * 1.6 * STUDS, 0.4 * STUDS, 1.4 * STUDS], direction: 'Top',
+      colors: ['#ffffff', f.light], particleSize: 1.1 * STUDS, sizeEnd: 2.6 * STUDS, rate: 18,
+      speed: [0.3 * STUDS, 0.9 * STUDS], lifetime: [2, 3.5], spread: [55, 55], drag: 0.6,
+      transparency: [[0, 1], [0.15, 0.55], [0.7, 0.75], [1, 1]], lightEmission: 0.1,
+    });
+    emitters.push({
+      name: 'Spruehnebel', pos: at(end.r - 0.4, bottom + 2.2), rot: ER, size: [W * 1.3 * STUDS, 3 * STUDS, 1.2 * STUDS], direction: 'Back',
+      colors: ['#ffffff'], particleSize: 0.7 * STUDS, sizeEnd: 1.8 * STUDS, rate: 8,
+      speed: [0.2 * STUDS, 0.5 * STUDS], lifetime: [3, 5], spread: [70, 70], drag: 0.4, acceleration: [0, 0.15 * STUDS, 0],
+      transparency: [[0, 1], [0.3, 0.75], [1, 1]], lightEmission: 0.1,
     });
   }
 }
@@ -579,7 +670,24 @@ function pullInsideDome(sky) {
 }
 
 // Partikel der Welt als ParticleEmitter-Einstellungen
+// Feinschliff je Welt für die Roblox-Partikel (die Webseite nutzt weiter FX aus worldFactory.js)
+const EMIT_TWEAK = {
+  // Wald: wenige, kleine Glühwürmchen in Bodennähe, die langsam schweben und sanft pulsieren statt zu flimmern
+  wald: (e, R) => ({
+    ...e,
+    pos: [0, 1.6 * STUDS, 0], size: [e.size[0] * 0.9, 2.4 * STUDS, e.size[2] * 0.9],
+    particleSize: 0.17 * STUDS, sizeEnd: 0.13 * STUDS,
+    rate: Math.round(1.6 * (R / 6) ** 2), lifetime: [6, 10],
+    speed: [0.15 * STUDS, 0.4 * STUDS], spread: [180, 180], drag: 0.35, acceleration: [0, 0.03 * STUDS, 0],
+    transparency: [[0, 1], [0.12, 0.25], [0.28, 0.85], [0.45, 0.2], [0.62, 0.9], [0.8, 0.3], [1, 1]],
+    rotSpeed: [0, 0],
+  }),
+};
 function emitterFor(world, R) {
+  const e = baseEmitter(world, R);
+  return e && EMIT_TWEAK[world.id] ? EMIT_TWEAK[world.id](e, R) : e;
+}
+function baseEmitter(world, R) {
   const cfg = FX[world.fx];
   if (!cfg) return null;
   const area = (cfg.area || R + 1) * 2 * STUDS;
@@ -725,6 +833,9 @@ export function worldToParts(world) {
       spread: e.spread,
       lightEmission: e.lightEmission,
       ...(e.acceleration ? { acceleration: e.acceleration.map((v) => v * STUDS) } : {}), // Schwerkraft (Fontäne)
+      ...(e.drag ? { drag: e.drag } : {}),
+      ...(e.rotSpeed ? { rotSpeed: e.rotSpeed } : {}),
+      ...(e.transparency ? { transparency: e.transparency } : {}),
       squares: false,
     });
   // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur

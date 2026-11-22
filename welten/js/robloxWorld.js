@@ -92,15 +92,17 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     inst('PointLight', { Color: hexColor(l.color), Brightness: l.brightness, Range: l.range }, holder);
   }
   for (const e of data.emitters || (data.emitter ? [data.emitter] : [])) {
-    const holder = inst('Part', { Name: 'Partikelquelle', Size: v3(e.size), CFrame: cframe(e.pos, ID), Transparency: 1, Anchored: true, CanCollide: false }, model);
+    const holder = inst('Part', { Name: 'Partikelquelle', Size: v3(e.size), CFrame: cframe(e.pos, e.rot || ID), Transparency: 1, Anchored: true, CanCollide: false }, model);
     const cols = e.colors.slice(0, 3).map(hexColor);
     inst('ParticleEmitter', {
       Name: e.name || 'Weltpartikel',
       Color: cols.length === 1 ? [[0, cols[0]], [1, cols[0]]] : cols.map((c, i) => [i / (cols.length - 1), c]),
-      Size: [[0, e.particleSize], [1, e.particleSize * 0.8]],
-      Transparency: [[0, 0.1], [0.8, 0.3], [1, 1]],
+      Size: [[0, e.particleSize], [1, e.sizeEnd ?? e.particleSize * 0.8]],
+      Transparency: e.transparency || [[0, 0.1], [0.8, 0.3], [1, 1]],
       Lifetime: e.lifetime, Rate: e.rate, Speed: e.speed, SpreadAngle: e.spread, EmissionDirection: e.direction,
-      LightEmission: e.lightEmission, RotSpeed: [-40, 40], Rotation: [0, 360], Texture: 'rbxasset://textures/particles/sparkles_main.dds',
+      LightEmission: e.lightEmission, RotSpeed: e.rotSpeed || [-40, 40], Rotation: e.rotSpeed ? [0, 0] : [0, 360], Texture: 'rbxasset://textures/particles/sparkles_main.dds',
+      ...(e.drag ? { Drag: e.drag } : {}),
+      ...(e.squash ? { Squash: [[0, e.squash], [1, e.squash]] } : {}),
       ...(e.acceleration ? { Acceleration: v3(e.acceleration) } : {}),
     }, holder);
   }

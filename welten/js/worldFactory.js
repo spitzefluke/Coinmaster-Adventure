@@ -19,7 +19,7 @@ import { GEM_WORLDS, galaxy2After } from './galaxie2.js';
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
 // Der Spawn ist größer: dort treffen sich alle Spieler und brauchen Platz (Fläche gut doppelt so groß)
-export const SPAWN_RADIUS = 24;
+export const SPAWN_RADIUS = 32;
 export const islandRadius = (world) => (world?.hub ? SPAWN_RADIUS : R);
 const K = R / 6; // Vergrößerung gegenüber der ersten Fassung (Radius 6)
 const AREA = K * K; // so viel mehr Fläche: Streu-Gegenstände, Münzen und Partikel wachsen mit

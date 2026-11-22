@@ -324,13 +324,17 @@ function details(ctx, kit) {
 function emitters(ctx) {
   const R = ctx.R, id = ctx.world.id, list = (ctx.shared.emitters = ctx.shared.emitters || []);
   const add = (name, pos, size, colors, particleSize, rate, speed, lifetime, opts = {}) =>
-    list.push({ name, pos, size, colors, particleSize, rate, speed, lifetime, spread: opts.spread ?? [180, 180], direction: opts.direction ?? 'Top', lightEmission: opts.light ?? 0 });
+    list.push({ name, pos, size, colors, particleSize, rate, speed, lifetime, spread: opts.spread ?? [180, 180], direction: opts.direction ?? 'Top', lightEmission: opts.light ?? 0, ...opts.extra });
   const birds = () => add('Voegel', [0, 13, 0], [R * 2.4, 2, R * 2.4], ['#3a3a48', '#55556a'], 0.5, 3, [1.2, 2.2], [8, 12]);
   if (id === 'normal') {
     add('Schmetterlinge', [0, 2, 0], [R * 2, 3, R * 2], ['#ff8ad8', '#ffd84a', '#8ad8ff', '#ffffff'], 0.32, 6, [0.25, 0.7], [6, 10], { light: 0.2 });
     birds();
   } else if (id === 'wald') {
-    add('Blaetter', [0, 10, 0], [R * 2, 1, R * 2], ['#5aa850', '#3f8a46', '#e8a040'], 0.3, 10, [0.4, 0.9], [9, 14], { direction: 'Bottom', spread: [25, 25] });
+    // wenige Blätter, die langsam taumelnd sinken: Luftwiderstand bremst, ein leichter Wind treibt sie seitlich
+    add('Blaetter', [0, 9, 0], [R * 2, 3, R * 2], ['#5aa850', '#3f8a46', '#e8a040'], 0.22, 3, [0.15, 0.4], [14, 20], {
+      direction: 'Bottom', spread: [50, 50],
+      extra: { acceleration: [0.08, -0.06, 0.05], drag: 0.5, rotSpeed: [-160, 160], transparency: [[0, 1], [0.1, 0.25], [0.85, 0.35], [1, 1]] },
+    });
     birds();
   } else if (id === 'stadt') {
     birds();

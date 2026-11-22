@@ -1,6 +1,7 @@
 // Der Spawn als große Münzstadt mit viel Platz für die Spieler.
 //
-// Aufbau von innen nach außen (Einheiten, 1 Einheit = 8 Studs; die Spawn-Insel hat Radius 24):
+// Aufbau von innen nach außen (Einheiten, 1 Einheit = 8 Studs; Maße für Radius 24, bei größerer Insel rückt alles mit S = R / 24
+// nach außen):
 //   Marktplatz (bis 8,5)   weite, freie Fläche: Brunnen in der Mitte, vier Spawn-Pads, Bänke am Rand
 //   Läden-Ring (um 12)     Läden, Münzindex und Ranglisten mit breiten Gassen dazwischen
 //   Ringstraße (14,8–16,4) breiter Rundweg um die Innenstadt
@@ -18,19 +19,22 @@ const TAU = Math.PI * 2;
 const deg = (d) => (d * Math.PI) / 180;
 const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
 
-// Maße der Stadt
-const PLAZA = 8.5; // Radius des Marktplatzes
+// Maße der Stadt bei Inselradius 24; buildSpawnTown rückt sie mit der Insel nach außen (S = R / 24),
+// die Gebäude selbst behalten ihre Größe: eine größere Insel gibt mehr Freiraum dazwischen
+const BASE = { PLAZA: 8.5, SHOP_R: 12, RING_IN: 14.8, RING_OUT: 16.4, OUTER_R: 19, HALL_R: 18.6, WALK_PLAZA: 7.1 };
 const ROAD_W = 3.0; // Breite der Boulevards
-const SHOP_R = 12; // Mitte der Läden
-const RING_IN = 14.8, RING_OUT = 16.4, RING_MID = (RING_IN + RING_OUT) / 2; // Ringstraße
-const OUTER_R = 19; // Spielbereiche im äußeren Ring
-const HALL_R = 18.6; // Portal-Hallen
-const WALK_PLAZA = 7.1; // Rundweg der Spaziergänger am Platzrand
 
 export function buildSpawnTown(ctx, K) {
   const { put, reserve, root, anims, rand, rr, scatter, height, shared, scene, lights, R } = ctx;
   const { M, E, at, signBoard, column, lamp, chest, bench, roundTree, bush, flowerPatch, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
   const y0 = height(0, 0);
+  const S = R / 24;
+  const PLAZA = BASE.PLAZA * S; // Radius des Marktplatzes
+  const SHOP_R = BASE.SHOP_R * S; // Mitte der Läden
+  const RING_IN = BASE.RING_IN * S, RING_OUT = RING_IN + (BASE.RING_OUT - BASE.RING_IN) * Math.min(S, 1.25), RING_MID = (RING_IN + RING_OUT) / 2; // Ringstraße
+  const OUTER_R = BASE.OUTER_R * S; // Spielbereiche im äußeren Ring
+  const HALL_R = BASE.HALL_R * S; // Portal-Hallen
+  const WALK_PLAZA = BASE.WALK_PLAZA * S; // Rundweg der Spaziergänger am Platzrand
   const WR = R - 0.9; // Stadtmauer
   const areas = (shared.areas = []);
   const lampMats = []; // leuchten nachts heller
@@ -67,7 +71,7 @@ export function buildSpawnTown(ctx, K) {
   root.add(plaza);
   reserve(0, 0, PLAZA + 0.3); // der Platz bleibt frei: keine Streu-Deko, keine Modelle
   // Schmuckringe im Pflaster: innen um den Brunnen und außen vor den Bänken
-  for (const [r0, r1, c] of [[3.1, 3.35, '#c8a86a'], [6.3, 6.6, '#b89a5e']]) {
+  for (const [r0, r1, c] of [[3.1 * S, 3.1 * S + 0.25, '#c8a86a'], [6.3 * S, 6.3 * S + 0.3, '#b89a5e']]) {
     const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 96), M(c, { roughness: 0.6 }));
     m.rotation.x = -Math.PI / 2;
     m.position.y = y0 + 0.085;
@@ -105,7 +109,7 @@ export function buildSpawnTown(ctx, K) {
   ring.position.y = y0 + 0.03;
   ring.userData.rbx = { color: '#d8cfbc' };
   root.add(ring);
-  for (let i = 0; i < 140; i++) reserve(...polar((i / 140) * TAU, RING_MID), (RING_OUT - RING_IN) / 2 + 0.15);
+  for (let i = 0; i < 180; i++) reserve(...polar((i / 180) * TAU, RING_MID), (RING_OUT - RING_IN) / 2 + 0.15);
 
   function stringLights(a, b) {
     const n = 9, cols = ['#ffd76a', '#ff8ac8', '#7ad0ff', '#8cff7a'];
@@ -163,7 +167,7 @@ export function buildSpawnTown(ctx, K) {
     const padM = M('#3a3046'), ringM = E('#ffd76a', 1.3);
     lampMats.push(ringM);
     for (const d of [45, 135, 225, 315]) {
-      const [x, z] = polar(deg(d), 4.8);
+      const [x, z] = polar(deg(d), 4.8 * S);
       const pad = at(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.14, 32), padM), x, y0 + 0.11, z);
       pad.userData.rbx = { name: 'SpawnLocation', className: 'SpawnLocation' };
       root.add(pad);
@@ -172,7 +176,7 @@ export function buildSpawnTown(ctx, K) {
       root.add(pr);
     }
     // Platz für die Vergleichsfigur neben dem vorderen Pad
-    const [fx, fz] = polar(deg(64), 5.0);
+    const [fx, fz] = polar(deg(64), 5.0 * S);
     shared.figureSpot = new THREE.Vector3(fx, y0 + 0.08, fz);
     addArea('spawn', 'Marktplatz', 0, 4);
   }
@@ -180,7 +184,7 @@ export function buildSpawnTown(ctx, K) {
   for (let i = 0; i < 8; i++) {
     const g = new THREE.Group();
     for (const x of [-0.55, 0.55]) g.add(at(bench(), x, 0, 0));
-    placeAt(g, deg(22.5 + i * 45), 7.75, 0.8);
+    placeAt(g, deg(22.5 + i * 45), 7.75 * S, 0.8);
   }
 
   // ── Stadtmauer mit Türmen und Fahnen ──
@@ -755,10 +759,10 @@ export function buildSpawnTown(ctx, K) {
 
   // ── Grün ──
   // Blumenbeete und Büsche zwischen den Läden (der Platz und die Straßen sind reserviert und bleiben frei)
-  scatter(16, () => flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'], rand), 0.45, PLAZA + 0.6, RING_IN - 0.3);
-  scatter(18, () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, PLAZA + 0.6, RING_IN - 0.3);
+  scatter(Math.round(16 * S), () => flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff', '#ff8a3d'], rand), 0.45, PLAZA + 0.6, RING_IN - 0.3);
+  scatter(Math.round(18 * S), () => bush(rr(0.22, 0.34), ['#4fb04a', '#3f9a44'][Math.floor(rand() * 2)], rand), 0.3, PLAZA + 0.6, RING_IN - 0.3);
   // äußerer Ring: zwischen den Spielbereichen (rMax unter R - 2,5, sonst vervielfacht scatter die Anzahl)
-  scatter(22, () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, RING_OUT + 0.4, R - 2.6);
-  scatter(14, () => flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand), 0.45, RING_OUT + 0.4, R - 2.6);
-  if (!ctx.modelWorld) scatter(18, () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, OUTER_R + 1.4, R - 2.6); // sonst Bäume als Modelle
+  scatter(Math.round(22 * S * S), () => bush(rr(0.25, 0.4), '#4a9a44', rand), 0.35, RING_OUT + 0.4, R - 2.6);
+  scatter(Math.round(14 * S * S), () => flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff'], rand), 0.45, RING_OUT + 0.4, R - 2.6);
+  if (!ctx.modelWorld) scatter(Math.round(18 * S * S), () => roundTree(rr(1.3, 2.0), ['#4f9a3f', '#5fae4f'][Math.floor(rand() * 2)], rand), 0.9, OUTER_R + 1.4, R - 2.6); // sonst Bäume als Modelle
 }

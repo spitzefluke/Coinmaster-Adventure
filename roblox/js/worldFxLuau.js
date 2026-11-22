@@ -1523,7 +1523,8 @@ local function motes(k, opts)
 	e.Acceleration = opts.Acceleration or V(0, 0, 0)
 	e.Rate = opts.Rate or 20
 	e.LightEmission = opts.Light or 1
-	e.RotSpeed = NumberRange.new(-30, 30)
+	e.RotSpeed = NumberRange.new(-(opts.Spin or 30), opts.Spin or 30)
+	e.Drag = opts.Drag or 0
 	e.Parent = host
 end
 
@@ -1553,8 +1554,9 @@ end
 R.wald = function(k, w)
 	sun(k, 0.8, 0.5, hex("#f6ffd8"), 38, hex("#e0ffb0"))
 	birds(k, 1, hex("#3a2a20"))
-	butterflies(k, 4, { hex("#d9ff7a"), hex("#fff27a") })
-	motes(k, { Name = "Blaetter", Texture = "", Colors = { hex("#8fdc5a"), hex("#c9a05a"), hex("#6fbf4a") }, Rate = 10, Size0 = 1.2, Size1 = 1, Speed = 2, Direction = Enum.NormalId.Bottom, Spread = 30, Acceleration = V(1.5, -0.5, 0.8), Y = 120, Size = V(420, 10, 420), Light = 0, Alpha = 0.1, Life = 14 })
+	butterflies(k, 3, { hex("#d9ff7a"), hex("#fff27a") })
+	-- vereinzelte Blätter, die langsam taumelnd sinken (Luftwiderstand bremst, der Wind treibt sie seitlich)
+	motes(k, { Name = "Blaetter", Texture = "", Colors = { hex("#8fdc5a"), hex("#c9a05a"), hex("#6fbf4a") }, Rate = 4, Size0 = 0.85, Size1 = 0.75, Speed = 0.8, Direction = Enum.NormalId.Bottom, Spread = 45, Acceleration = V(0.7, -0.6, 0.4), Drag = 0.4, Spin = 140, Y = 110, Size = V(420, 30, 420), Light = 0, Alpha = 0.3, Life = 16 })
 	grade(k, hex("#d8ffd0"), 0.06, 0.05)
 end
 

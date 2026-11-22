@@ -207,20 +207,22 @@ export function worldModel(w, offset = [0, 0, 0]) {
     const pe = item('ParticleEmitter', [
       prop.string('Name', e.name || 'Weltpartikel'),
       prop.colorseq('Color', e.colors.slice(0, 3)),
-      prop.numseq('Size', [[0, e.particleSize], [1, e.particleSize * 0.8]]),
-      prop.numseq('Transparency', [[0, 0.1], [0.8, 0.3], [1, 1]]),
+      prop.numseq('Size', [[0, e.particleSize], [1, e.sizeEnd ?? e.particleSize * 0.8]]),
+      prop.numseq('Transparency', e.transparency || [[0, 0.1], [0.8, 0.3], [1, 1]]),
       prop.range('Lifetime', e.lifetime),
       prop.float('Rate', e.rate),
       prop.range('Speed', e.speed),
       prop.vec2('SpreadAngle', e.spread),
       prop.token('EmissionDirection', NORMAL_ID[e.direction]),
       prop.float('LightEmission', e.lightEmission),
-      prop.range('RotSpeed', [-40, 40]),
-      prop.range('Rotation', [0, 360]),
+      prop.range('RotSpeed', e.rotSpeed || [-40, 40]),
+      prop.range('Rotation', e.rotSpeed ? [0, 0] : [0, 360]),
+      ...(e.drag ? [prop.float('Drag', e.drag)] : []),
+      ...(e.squash ? [prop.numseq('Squash', [[0, e.squash], [1, e.squash]])] : []),
       prop.content('Texture', e.squares ? 'rbxasset://textures/particles/sparkles_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
       ...(e.acceleration ? [prop.vec3('Acceleration', e.acceleration)] : []),
     ]);
-    fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
+    fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: e.rot || ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);
   }
   const settings = folder(
     'Einstellungen',

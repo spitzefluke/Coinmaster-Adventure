@@ -35,7 +35,7 @@ const tone = (c, s, l) => hex(col(c).offsetHSL(0, s, relL(c, l))); // bei dunkle
 // glow: Lava-Adern im Fels · crystals: Kristalle aus der Unterseite · depth: Tiefe der Felszunge (× Radius)
 const LIP = { Grass: 'grass', Snow: 'snow' };
 const STYLE = {
-  spawn: { hang: ['grass', 'roots', 'vines'], rockTint: '#a08a72', depth: (1.3 * 16) / 24 }, // größere Insel, gleich tief
+  spawn: { hang: ['grass', 'roots', 'vines'], rockTint: '#a08a72', depth: (1.3 * 16) / 32 }, // größere Insel (SPAWN_RADIUS in worldFactory.js), gleich tief
   normal: { hang: ['grass', 'roots', 'vines'], rockTint: '#a08a72' },
   wald: { hang: ['grass', 'roots', 'roots', 'moss'], depth: 1.15, rockTint: '#7a7462' },
   stadt: { lip: 'plain', hang: ['pipes'], rockMat: 'Slate', rockTint: '#8a8c98', rockLift: 0.12 },
