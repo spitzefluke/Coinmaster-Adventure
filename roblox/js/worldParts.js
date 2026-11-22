@@ -672,6 +672,14 @@ function pullInsideDome(sky) {
 // Partikel der Welt als ParticleEmitter-Einstellungen
 // Feinschliff je Welt für die Roblox-Partikel (die Webseite nutzt weiter FX aus worldFactory.js)
 const EMIT_TWEAK = {
+  // Eis: wenige, feine Flocken, die langsam trudelnd sinken (Luftwiderstand, leichter Wind, Drehung)
+  eis: (e, R) => ({
+    ...e,
+    particleSize: 0.12 * STUDS, sizeEnd: 0.1 * STUDS,
+    rate: Math.round(2.4 * (R / 6) ** 2), speed: [0.25 * STUDS, 0.5 * STUDS], lifetime: [16, 22],
+    spread: [30, 30], drag: 0.3, acceleration: [0.05 * STUDS, -0.03 * STUDS, 0.03 * STUDS], rotSpeed: [-90, 90],
+    transparency: [[0, 1], [0.08, 0.2], [0.85, 0.3], [1, 1]], lightEmission: 0.2,
+  }),
   // Wald: wenige, kleine Glühwürmchen in Bodennähe, die langsam schweben und sanft pulsieren statt zu flimmern
   wald: (e, R) => ({
     ...e,

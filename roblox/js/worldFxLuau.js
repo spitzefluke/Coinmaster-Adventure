@@ -197,6 +197,43 @@ local function aurora(k, colors, az0, span, y)
 	end)
 end
 
+-- Polarlicht als Lichtvorhang: viele schmale Bahnen nebeneinander auf einer gefalteten Linie, unten ein heller,
+-- grüner Saum, darüber Türkis und oben ein zartes Violett, das nach oben ausläuft. Eine Welle läuft langsam an
+-- der Linie entlang (Bahnen heben sich, der Vorhang wogt nach vorn und zurück, das Leuchten zieht mit).
+local function auroraCurtain(k, az0, span, y)
+	local cols = {
+		{ hex("#c8ffe0"), 6, 0.7 }, -- Saum
+		{ hex("#5affb0"), 44, 0.8 },
+		{ hex("#5ae8d8"), 52, 0.87 },
+		{ hex("#a090ff"), 66, 0.93 },
+	}
+	local n, list = 64, {}
+	local step = span / (n - 1)
+	for i = 0, n - 1 do
+		local a = az0 + (i / (n - 1) - 0.5) * span
+		local r = 470 + math.sin(i * 0.31) * 26 + math.sin(i * 0.11 + 1) * 18
+		local x, z = polar(a, r)
+		local w = step * r + 1
+		local h0 = y + math.sin(i * 0.23) * 10
+		local stretch = 0.8 + 0.35 * (0.5 + 0.5 * math.sin(i * 0.47 + 2))
+		local yy = h0
+		for j, c in ipairs(cols) do
+			local h = c[2] * (j == 1 and 1 or stretch)
+			local cf = facing(k, x, yy + h / 2, z)
+			local p = P(k, "Block", V(w, h, 1), cf, c[1], "Neon", c[3], "Polarlicht")
+			table.insert(list, { Part = p, Base = cf, I = i, T0 = c[3] })
+			yy = yy + h * 0.72 -- Bahnen überlappen: weiche Übergänge statt Stufen
+		end
+	end
+	anim(k, function(t)
+		for _, s in ipairs(list) do
+			local ph = t * 0.45 - s.I * 0.16
+			s.Part.CFrame = s.Base * CFrame.new(0, math.sin(ph) * 7, math.sin(ph * 0.7 + 1) * 16)
+			s.Part.Transparency = math.min(0.98, s.T0 + math.sin(t * 0.6 - s.I * 0.21) * 0.05 + 0.02)
+		end
+	end)
+end
+
 -- Lichtstrahlen von der Wasseroberfläche
 local function shafts(k, color, n)
 	local list = {}
@@ -1572,11 +1609,12 @@ end
 
 R.eis = function(k, w)
 	sun(k, -1.2, 0.3, hex("#f4fbff"), 40, hex("#d8f0ff"))
-	aurora(k, { hex("#5affb0"), hex("#7ad0ff"), hex("#b07bff") }, HELD + 1.3, 2.2, 160)
+	auroraCurtain(k, HELD + 1.3, 2.3, 150)
 	-- Wolken und Polarlicht malt auch das Himmelsbild (assets/himmel/eis); hier nur wenige Wolkenbänke
 	cloudBank(k, 4, hex("#eef8ff"), 0.35, 60, 120)
 	birds(k, 1, hex("#ffffff"), 2.2, hex("#e8f2ff"))
-	motes(k, { Name = "Schneeflocken", Colors = { WHITE }, Rate = 30, Size0 = 1.4, Size1 = 1.1, Speed = 3, Direction = Enum.NormalId.Bottom, Spread = 20, Acceleration = V(1, 0, 0.5), Y = 160, Size = V(520, 10, 520), Light = 0.3, Alpha = 0.15, Life = 16 })
+	-- wenige, feine Flocken, die langsam trudeln: Luftwiderstand bremst, ein leichter Wind treibt sie schräg
+	motes(k, { Name = "Schneeflocken", Colors = { WHITE }, Rate = 9, Size0 = 0.9, Size1 = 0.7, Speed = 1, Direction = Enum.NormalId.Bottom, Spread = 35, Acceleration = V(0.6, -0.4, 0.3), Drag = 0.35, Spin = 90, Y = 150, Size = V(520, 40, 520), Light = 0.3, Alpha = 0.35, Life = 22 })
 	grade(k, hex("#d8f0ff"), 0.04, 0.05)
 end
 

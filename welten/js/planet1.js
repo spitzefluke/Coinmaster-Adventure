@@ -261,17 +261,7 @@ export function backdrop(ctx, kit) {
       add(at(new THREE.Mesh(new THREE.SphereGeometry(4.5, 14, 10), M(cols[(i + 2) % 5])), x, base + 22, z));
     }
   }
-  // Polarlicht über dem Eis: Bänder aus durchscheinendem Leuchten hoch am Himmel
-  if (id === 'eis') {
-    const cols = ['#5affb0', '#7ad0ff', '#b07bff'];
-    for (let i = 0; i < 26; i++) {
-      const a = -0.9 + i * 0.075, r = 52;
-      const m = E(cols[Math.floor(i / 9) % 3], 1.2, { transparent: true, opacity: 0.45 });
-      const band = at(new THREE.Mesh(new THREE.BoxGeometry(4.2, 9 + Math.sin(i * 0.7) * 3, 0.2), m), Math.cos(a) * r, 26 + Math.sin(i * 0.5) * 2.5, Math.sin(a) * r);
-      band.rotation.y = -a + Math.PI / 2;
-      add(band);
-    }
-  }
+  // Polarlicht über dem Eis: ein Lichtvorhang aus WorldFx (roblox/js/worldFxLuau.js, auroraCurtain)
 }
 
 // ── mehr Details am Boden ──
@@ -340,7 +330,7 @@ function emitters(ctx) {
     birds();
     add('Lichter', [0, 6, 0], [R * 2, 8, R * 2], ['#ffe7a8', '#bff0ff'], 0.18, 6, [0.1, 0.3], [5, 9], { light: 1 });
   } else if (id === 'eis') {
-    add('Polarlicht', [0, 26, 0], [R * 4, 6, R * 4], ['#5affb0', '#7ad0ff', '#b07bff'], 1.4, 8, [0.2, 0.5], [6, 10], { light: 1 });
+    // Polarlicht: der Lichtvorhang aus WorldFx (auroraCurtain); früher hier Leuchtpartikel am Himmel
   } else if (id === 'lava') {
     add('Asche', [0, 0.5, 0], [R * 2, 1, R * 2], ['#5a4a44', '#8a7a70'], 0.3, 14, [0.6, 1.4], [8, 12], { spread: [20, 20] });
     add('Rauchfahne', [-50, 18, -30], [6, 2, 6], ['#3a302c', '#5a4a44'], 4, 6, [1.5, 3], [8, 12], { spread: [15, 15] });

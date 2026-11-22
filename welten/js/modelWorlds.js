@@ -594,7 +594,7 @@ const STADT = {
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
       for (const side of [-1, 1])
         for (let i = 1; i <= k; i++) {
-          const along = i * T + 0.2, off = 3.7 * side;
+          const along = i * T + 0.2, off = 4.3 * side; // hinter dem Gehweg (bis 2,62 neben der Straßenmitte)
           const x = dx * along + -dz * off, z = dz * along + dx * off;
           if (Math.hypot(x, z) > R - 2 || !ctx.free(x, z, 1.5)) continue;
           reserve(x, z, 1.7);
@@ -607,6 +607,7 @@ const STADT = {
         if (Math.hypot(x, z) < R - 1.5) stand(ctx, model('city_streetlight', 2.6), x, z, { face: [dx * along, dz * along] });
       }
     for (const [x, z] of [[1.9, 1.9], [-1.9, 1.9], [1.9, -1.9], [-1.9, -1.9]]) stand(ctx, model('city_trafficlight_A', 2.6), x, z, { face: [0, 0] });
+    cityStreets(ctx, kit, k, T);
     // Autos auf den Fahrspuren
     const cars = ['city_car_hatchback', 'city_car_sedan', 'city_car_stationwagon', 'city_car_taxi', 'city_car_police'];
     for (let i = 0; i < 6; i++) {
@@ -681,6 +682,183 @@ const STADT = {
     undersideLights(ctx, 16);
   }
 };
+
+// Straßen der Stadt wie echt: erhöhte Gehwege mit Bordstein und Fugen, Ecken an der Kreuzung, auf der Fahrbahn
+// Haltelinien, Abbiegepfeile, Flicken, Risse, Gullydeckel und Abflussgitter; am Rand Bushaltestelle, Briefkästen,
+// Hydranten, Mülleimer und Verkehrsschilder. Maße in Einheiten, Straßenmitte bei 0, Platte 3,2 breit.
+function cityStreets(ctx, kit, k, T) {
+  const { root, rand, rr, height, reserve } = ctx;
+  const S = T / 2, END = k * T + S;
+  const mats = new Map();
+  const mat = (c, o = {}) => {
+    const key = c + JSON.stringify(o);
+    if (!mats.has(key)) mats.set(key, new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o }));
+    return mats.get(key);
+  };
+  const ROAD = 0.18; // Oberkante der Straßenplatten über dem Boden
+  const WALK = 0.28; // Oberkante des Gehwegs
+  // Arm (dx, dz): a entlang der Straße, o quer dazu (positiv = links in Fahrtrichtung nach außen)
+  const P = (dx, dz, a, o) => [dx * a - dz * o, dz * a + dx * o];
+  const box = (w, h, d, color, [x, z], y, rotY = 0, o = {}) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o));
+    m.position.set(x, height(x, z) + y, z);
+    m.rotation.y = rotY;
+    m.receiveShadow = true;
+    root.add(m);
+    return m;
+  };
+  const cyl = (r, h, color, [x, z], y, seg = 12, o = {}) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat(color, o));
+    m.position.set(x, height(x, z) + y, z);
+    root.add(m);
+    return m;
+  };
+  const ARMS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const WALK_IN = S, WALK_OUT = S + 1.02, CURB = 0.12;
+  for (const [dx, dz] of ARMS) {
+    const rot = -Math.atan2(dz, dx), len = END - S, mid = S + len / 2;
+    for (const side of [-1, 1]) {
+      // Gehweg: Platten mit Fugen, zur Fahrbahn ein Bordstein aus hellem Granit
+      const oW = side * (WALK_IN + CURB + (WALK_OUT - WALK_IN - CURB) / 2);
+      box(len, WALK, WALK_OUT - WALK_IN - CURB, '#c9c3b8', P(dx, dz, mid, oW), WALK / 2, rot);
+      box(len, WALK + 0.03, CURB, '#a29d95', P(dx, dz, mid, side * (WALK_IN + CURB / 2)), (WALK + 0.03) / 2, rot);
+      for (let a = S + 0.9; a < END - 0.2; a += 0.9) box(0.025, 0.006, WALK_OUT - WALK_IN - CURB, '#9a958c', P(dx, dz, a, oW), WALK + 0.003, rot);
+      for (let a = S + 0.3; a < END; a += 1.4) reserve(...P(dx, dz, a, side * (WALK_IN + 0.5)), 0.45);
+      // Abflussgitter am Bordstein
+      for (let a = S + 1.6; a < END - 0.5; a += 3.2) box(0.34, 0.012, 0.16, '#2c2c30', P(dx, dz, a, side * (WALK_IN - 0.12)), ROAD + 0.006, rot, { metalness: 0.6, roughness: 0.5 });
+    }
+    // Haltelinie und Abbiegepfeil auf der Spur, die zur Kreuzung führt (Rechtsverkehr: rechte Seite)
+    const inLane = -0.75;
+    box(0.14, 0.01, 1.3, '#f4f4f0', P(dx, dz, S + 0.35, -0.72), ROAD + 0.005, rot);
+    {
+      const [ax, az] = P(dx, dz, S + 1.6, inLane);
+      box(0.6, 0.01, 0.1, '#f4f4f0', [ax, az], ROAD + 0.005, rot);
+      for (const s2 of [-1, 1]) {
+        const [hx, hz] = P(dx, dz, S + 1.37, inLane + s2 * 0.09);
+        box(0.3, 0.01, 0.09, '#f4f4f0', [hx, hz], ROAD + 0.005, rot - s2 * 0.6);
+      }
+    }
+    // Flicken und Risse im Asphalt, ein Gullydeckel in der Fahrbahn
+    for (let i = 0; i < 3; i++) {
+      const a = rr(S + 2.2, END - 0.8), o = rr(-1.1, 1.1);
+      box(rr(0.5, 1.1), 0.008, rr(0.4, 0.8), rand() < 0.5 ? '#3c3d44' : '#55565e', P(dx, dz, a, o), ROAD + 0.004, rot + rr(-0.15, 0.15));
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = rr(S + 1, END - 0.5), o = rr(-1.2, 1.2);
+      box(rr(0.3, 0.7), 0.006, 0.025, '#26262b', P(dx, dz, a, o), ROAD + 0.003, rot + rr(-0.8, 0.8));
+    }
+    cyl(0.2, 0.012, '#3a3a40', P(dx, dz, rr(S + 3, END - 1.5), rr(-0.4, 0.4) + 0.75 * (rand() < 0.5 ? -1 : 1)), ROAD + 0.006, 14, { metalness: 0.6, roughness: 0.45 });
+  }
+  // Gehweg-Ecken an der Kreuzung (der Platz der Ampeln) mit Bordstein zu beiden Straßen
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const c = WALK_IN + (WALK_OUT - WALK_IN) / 2;
+      box(WALK_OUT - WALK_IN, WALK, WALK_OUT - WALK_IN, '#c9c3b8', [sx * c, sz * c], WALK / 2);
+      box(WALK_OUT - WALK_IN, WALK + 0.03, CURB, '#a29d95', [sx * c, sz * (WALK_IN + CURB / 2)], (WALK + 0.03) / 2);
+      box(CURB, WALK + 0.03, WALK_OUT - WALK_IN, '#a29d95', [sx * (WALK_IN + CURB / 2), sz * c], (WALK + 0.03) / 2);
+    }
+  // ── Leben am Straßenrand (alles auf dem Gehweg, außen an den Häusern) ──
+  const onWalk = (dx, dz, a, side) => P(dx, dz, a, side * (WALK_OUT - 0.28));
+  // Vorderseite (+z) zur Straße: von außen (o = side) zurück zur Mitte
+  const facing = (g, dx, dz, side) => (g.rotation.y = Math.atan2(dz * side, -dx * side));
+  const item = (g, [x, z]) => {
+    g.position.set(x, height(x, z) + WALK, z);
+    root.add(g);
+    return g;
+  };
+  const group = () => new THREE.Group();
+  // Bushaltestelle: Dach, Glasrückwand, Bank, Haltestellenschild (gelbes Rund mit grünem H)
+  {
+    const [dx, dz] = ARMS[Math.floor(rand() * 4)], side = rand() < 0.5 ? -1 : 1, a = S + 1.6 * 2.6;
+    const g = group();
+    const add = (m, x, y, z) => (m.position.set(x, y, z), g.add(m), m);
+    const metal = mat('#4a5260', { metalness: 0.5, roughness: 0.4 });
+    for (const x of [-0.75, 0.75]) add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, 0.06), metal), x, 0.475, -0.25);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.65), metal), 0, 0.97, -0.08);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.03), mat('#bfe6ff', { transparent: true, opacity: 0.35, roughness: 0.1 })), 0, 0.5, -0.27);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.05, 0.25), mat('#8a5a3a')), 0, 0.28, -0.12);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.05), metal), 1.0, 0.6, 0.05);
+    const sign = add(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.03, 20), mat('#ffd400')), 1.0, 1.25, 0.05);
+    sign.rotation.x = Math.PI / 2;
+    for (const x of [-0.06, 0.06]) add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.18, 0.035), mat('#1f8a3a')), 1.0 + x, 1.25, 0.07);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.035), mat('#1f8a3a')), 1.0, 1.25, 0.07);
+    item(g, P(dx, dz, a, side * (WALK_OUT - 0.32)));
+    facing(g, dx, dz, side);
+  }
+  // Briefkästen, Hydranten, Mülleimer und Verkehrsschilder an den Armen verteilt
+  const post = (h) => new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, h, 8), mat('#8a9098', { metalness: 0.5, roughness: 0.4 }));
+  const stopSign = () => {
+    const g = group();
+    const p = post(1.1);
+    p.position.y = 0.55;
+    g.add(p);
+    const o = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 8), mat('#d8262a'));
+    o.rotation.set(Math.PI / 2, 0, Math.PI / 8);
+    o.position.set(0, 1.1, 0.02);
+    g.add(o);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.035), mat('#ffffff'));
+    bar.position.set(0, 1.1, 0.03);
+    g.add(bar);
+    return g;
+  };
+  const parkSign = () => {
+    const g = group();
+    const p = post(1.1);
+    p.position.y = 0.55;
+    g.add(p);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.03), mat('#1f5fc8'));
+    b.position.set(0, 1.08, 0.02);
+    g.add(b);
+    for (const [w, h, x, y] of [[0.05, 0.22, -0.05, 0], [0.12, 0.05, 0.015, 0.085], [0.12, 0.05, 0.015, 0.0], [0.05, 0.11, 0.07, 0.045]]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.035), mat('#ffffff'));
+      l.position.set(x, 1.08 + y, 0.03);
+      g.add(l);
+    }
+    return g;
+  };
+  const mailbox = () => {
+    const g = group();
+    const p = post(0.45);
+    p.position.y = 0.22;
+    g.add(p);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.36, 0.22), mat('#ffcc00'));
+    b.position.y = 0.6;
+    g.add(b);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 12, 1, false, 0, Math.PI), mat('#ffcc00'));
+    top.rotation.z = Math.PI / 2;
+    top.position.y = 0.78;
+    g.add(top);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.02), mat('#222222'));
+    slot.position.set(0, 0.7, 0.115);
+    g.add(slot);
+    return g;
+  };
+  ARMS.forEach(([dx, dz], n) => {
+    for (const side of [-1, 1]) {
+      // Stoppschild vor der Kreuzung (auf der Seite der ankommenden Spur), am anderen Ende ein Parkschild
+      if (side === -1) {
+        const g = item(stopSign(), onWalk(dx, dz, S + 0.45, side));
+        facing(g, dx, dz, side);
+      } else if (n % 2) {
+        const g = item(parkSign(), onWalk(dx, dz, S + 2 * T + 1.0, side));
+        facing(g, dx, dz, side);
+      }
+      // Hydrant, Briefkasten oder Mülleimer zwischen den Laternen
+      const kinds = ['city_firehydrant', 'mailbox', 'city_trash_A'];
+      for (let i = 1; i < k; i++) {
+        const kind = kinds[(i + n + (side > 0 ? 1 : 0)) % 3];
+        const p = onWalk(dx, dz, i * T + 0.55, side);
+        if (kind === 'mailbox') facing(item(mailbox(), p), dx, dz, side);
+        else {
+          const g = model(kind, kind === 'city_trash_A' ? 3.4 : 2.6);
+          g.position.set(p[0], height(p[0], p[1]) + WALK - g.userData.base, p[1]);
+          g.rotation.y = rand() * TAU;
+          root.add(g);
+        }
+      }
+    }
+  });
+}
 
 // ── Eis: verschneiter Tannenwald, Wachturm, Zeltlager mit Laternen ──
 const EIS = {
