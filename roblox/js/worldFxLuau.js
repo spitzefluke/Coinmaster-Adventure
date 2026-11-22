@@ -1807,7 +1807,7 @@ R.diamantkern = function(k, w) gemSky(k, { hex("#8af0ff"), hex("#e8fdff"), hex("
 WorldFx.Recipes = R
 
 -- Werkstatt-Wünsche: ruhigere Teilchen (wie Wald und Eis) und Welten ganz ohne schwebende Teilchen
-local CALM = { candy = true, lava = true, neptun = true, sonne = true, quarzfeld = true, smaragdwald = true, jadetempel = true, saphirsee = true, diamantkern = true }
+local CALM = { candy = true, lava = true, neptun = true, sonne = true, quarzfeld = true, smaragdwald = true, jadetempel = true, saphirsee = true, diamantkern = true, tiefseegraben = true }
 local NO_MOTES = { opalwolken = true, alien = true, goetterthron = true, hoehle = true }
 
 -- Umgebung einer Welt bauen; mitte = Mitte der Insel (Himmelskuppel), eltern = Ordner/Model

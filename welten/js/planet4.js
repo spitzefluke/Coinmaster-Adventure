@@ -20,13 +20,23 @@ const PATHS = {
 function gold(M) {
   return M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 });
 }
+// Wolkenbausch (Werkstatt-Wunsch „vor allem die Wolken verbessern“): flacher, breiter Sockel aus mehreren
+// Kugeln, darüber höhere Bäusche, die Mitte am höchsten; unten zart lavendel getönt, oben strahlend weiß
 function cloudPuff(kit, rand, s = 1, c = '#ffffff') {
   const { M, at, group } = kit;
   const parts = [];
-  for (let i = 0; i < 4; i++) {
-    const r = s * (0.5 + rand() * 0.3);
-    parts.push(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), M(c, { roughness: 1 })), (i - 1.5) * s * 0.55, r * 0.6 + rand() * 0.1 * s, (rand() - 0.5) * s * 0.5));
+  const top = M(c, { roughness: 1 }), under = M('#e6e4f6', { roughness: 1 }), mid = M('#f4f3fc', { roughness: 1 });
+  for (let i = 0; i < 5; i++) {
+    const r = s * (0.45 + rand() * 0.2), x = (i - 2) * s * 0.5, z = (rand() - 0.5) * s * 0.5;
+    const m = at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), under), x, r * 0.35, z);
+    m.scale.set(1.2, 0.6, 1);
+    parts.push(m);
   }
+  for (let i = 0; i < 4; i++) {
+    const r = s * (0.5 + rand() * 0.25) * (i === 1 || i === 2 ? 1.2 : 0.9), x = (i - 1.5) * s * 0.55;
+    parts.push(at(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), i % 2 ? top : mid), x, s * 0.45 + r * 0.55, (rand() - 0.5) * s * 0.35));
+  }
+  parts.push(at(new THREE.Mesh(new THREE.IcosahedronGeometry(s * 0.55, 1), top), (rand() - 0.5) * s * 0.3, s * 1.15, 0));
   return group(...parts);
 }
 // weißer Baum mit goldenem Laub
@@ -55,49 +65,91 @@ const TIEFSEEGRABEN = {
   build(ctx, kit) {
     const { M, E, at, group } = kit;
     const { rand, rr, R, anims, put, spot, scatter } = ctx;
-    // Anglerfisch so groß wie ein Haus, der Leuchtköder wippt
-    const p = spot(3.6, 3, 9);
+    // Anglerfisch so groß wie ein Haus (Werkstatt-Wunsch „vor allem den Anglerfisch verbessern“): knubbelige,
+    // dunkle Haut, weit vorstehender Unterkiefer mit zwei Reihen langer Nadelzähne, leuchtende Punkte an den
+    // Flanken, Rückenstacheln, breite Brustflossen und Schwanzflosse, kleine glühende Augen und eine
+    // geschwungene, gegliederte Angel mit pulsierendem Köder und Fäden; im Maul ein schwaches Glimmen
+    const p = spot(4.2, 3, 9);
     if (p) {
-      const skin = M('#1a2230'), dark = M('#0c1018');
-      const body = at(new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), skin), 0, 2.6, 0);
-      body.scale.set(1, 0.85, 1.25);
-      const jaw = at(new THREE.Mesh(new THREE.SphereGeometry(2.2, 14, 8, 0, TAU, Math.PI / 2, Math.PI / 2), dark), 0, 2.2, 0.7);
-      jaw.scale.set(1, 0.7, 1.25);
-      const parts = [body, jaw];
-      for (let i = 0; i < 9; i++) {
-        const a = -0.9 + (i / 8) * 1.8;
-        const tooth = at(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6, 5), M('#f2f0e8')), Math.sin(a) * 1.9, 2.15, 1.5 + Math.cos(a) * 1.1);
-        tooth.rotation.x = Math.PI;
-        parts.push(tooth);
+      const skin = M('#1a2230'), skin2 = M('#232c3c'), dark = M('#0a0d14'), toothM = M('#f2f0e8', { roughness: 0.4 }), dotM = E('#5affd8', 1.3);
+      const parts = [];
+      const body = at(new THREE.Mesh(new THREE.SphereGeometry(2.4, 18, 14), skin), 0, 2.7, 0);
+      body.scale.set(1.05, 0.9, 1.3);
+      parts.push(body);
+      for (let k = 0; k < 26; k++) {
+        const a = rand() * TAU, b = rr(-0.3, 1.2), bx = Math.cos(a) * Math.cos(b) * 2.45, by = Math.sin(b) * 2.1, bz = Math.sin(a) * Math.cos(b) * 3.0;
+        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(rr(0.12, 0.26), 6, 4), skin2), bx, 2.7 + by, bz));
       }
-      for (const s of [-1, 1]) {
-        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), M('#e8f0f0')), s * 1.1, 3.6, 2));
-        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), E('#5affd8', 1.4)), s * 1.15, 3.65, 2.35));
-        const fin = at(new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.6, 4), skin), s * 2.4, 2.3, -0.4);
-        fin.rotation.z = s * 1.3;
+      const jaw = at(new THREE.Mesh(new THREE.SphereGeometry(2.3, 16, 8, 0, TAU, Math.PI / 2, Math.PI / 2), dark), 0, 2.15, 0.95);
+      jaw.scale.set(1.05, 0.75, 1.35);
+      parts.push(jaw);
+      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 8), E('#3a8a7a', 0.35)), 0, 2.2, 1.6));
+      // Zähne: oben nach unten, unten nach oben, lang und nadelspitz
+      for (let i = 0; i < 13; i++) {
+        const a = -1.1 + (i / 12) * 2.2, h = 0.5 + (i % 3) * 0.25;
+        const up = at(new THREE.Mesh(new THREE.ConeGeometry(0.09, h, 5), toothM), Math.sin(a) * 2.05, 2.35, 1.6 + Math.cos(a) * 1.4);
+        up.rotation.x = Math.PI - 0.25;
+        const lo = at(new THREE.Mesh(new THREE.ConeGeometry(0.1, h + 0.2, 5), toothM), Math.sin(a) * 2.25, 1.85, 1.9 + Math.cos(a) * 1.55);
+        lo.rotation.x = 0.35;
+        parts.push(up, lo);
+      }
+      // Augen und Leuchtpunkte an den Flanken
+      for (const sx of [-1, 1]) {
+        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), M('#d8e4e4')), sx * 1.25, 3.75, 2.1));
+        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), E('#5affd8', 1.6)), sx * 1.32, 3.8, 2.35));
+        for (let k = 0; k < 6; k++) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), dotM), sx * (2.35 - Math.abs(k - 2.5) * 0.08), 2.4 + (k % 2) * 0.35, 1.2 - k * 0.65));
+        // breite Brustflosse aus drei Strahlen mit Haut
+        const fin = new THREE.Group();
+        fin.position.set(sx * 2.35, 2.1, -0.2);
+        fin.add(at(new THREE.Mesh(new THREE.CircleGeometry(1.1, 10, 0, Math.PI), M('#2a3446', { side: THREE.DoubleSide, transparent: true, opacity: 0.9 })), 0, 0, 0));
+        fin.rotation.set(0, sx * 1.2, sx * 0.4);
         parts.push(fin);
       }
-      const tail = at(new THREE.Mesh(new THREE.ConeGeometry(1.1, 2, 4), skin), 0, 2.6, -3.4);
-      tail.rotation.x = -Math.PI / 2;
-      parts.push(tail);
-      // Angel mit Leuchtköder
+      // Rückenstacheln
+      for (let k = 0; k < 5; k++) {
+        const sp = at(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9 - k * 0.1, 5), skin2), 0, 4.65 - k * 0.15, -0.6 - k * 0.55);
+        sp.rotation.x = -0.4;
+        parts.push(sp);
+      }
+      // Schwanzflosse: zwei breite Lappen
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 1.4, 10), skin), 0, 2.7, -3.7));
+      parts[parts.length - 1].rotation.x = Math.PI / 2;
+      for (const sy of [-1, 1]) {
+        const lobe = at(new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), M('#2a3446')), 0, 2.7 + sy * 0.8, -4.7);
+        lobe.rotation.set(-Math.PI / 2 + sy * 0.6, 0, 0);
+        lobe.scale.set(0.25, 1, 1);
+        parts.push(lobe);
+      }
+      // gegliederte Angel mit Köder und Leuchtfäden
       const rod = new THREE.Group();
-      rod.position.set(0, 4.6, 0.8);
-      const stalk = at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.6, 6), skin), 0, 1.3, 0);
-      rod.add(stalk);
-      const bulb = at(new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), E('#5affd8', 2.4)), 0, 2.7, 1.1);
-      rod.add(bulb, at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.3, 5), skin), 0, 2.4, 0.55));
-      rod.children.at(-1).rotation.x = 1.1;
+      rod.position.set(0, 4.7, 0.9);
+      let py = 0, pz = 0;
+      for (let k = 0; k < 5; k++) {
+        const ny = py + 0.6 - k * 0.06, nz = pz + k * 0.22;
+        const seg = at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, Math.hypot(ny - py, nz - pz) + 0.05, 6), skin), 0, (py + ny) / 2, (pz + nz) / 2);
+        seg.rotation.x = Math.atan2(nz - pz, ny - py);
+        rod.add(seg);
+        py = ny;
+        pz = nz;
+      }
+      const bulb = at(new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), E('#5affd8', 2.4)), 0, py + 0.1, pz + 0.45);
+      rod.add(bulb);
+      rod.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.68, 12, 8), E('#5affd8', 0.6, { transparent: true, opacity: 0.25 })), 0, py + 0.1, pz + 0.45));
+      for (let k = 0; k < 4; k++) {
+        const f = at(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 4), E('#9ff3f0', 1.2)), Math.cos(k * 1.57) * 0.18, py - 0.35, pz + 0.45 + Math.sin(k * 1.57) * 0.18);
+        f.rotation.set(Math.sin(k * 1.57) * 0.3, 0, Math.cos(k * 1.57) * 0.3);
+        rod.add(f);
+      }
       parts.push(rod);
       const fish = group(...parts);
       put(fish, p[0], p[1], { rot: false });
       fish.lookAt(0, fish.position.y, 0);
       const y0 = fish.position.y;
       anims.push((t) => {
-        rod.rotation.x = Math.sin(t * 0.8) * 0.18;
+        rod.rotation.x = Math.sin(t * 0.8) * 0.15;
         bulb.material.emissiveIntensity = 2 + Math.sin(t * 2.2) * 0.8;
         fish.position.y = y0 + Math.sin(t * 0.5) * 0.12;
-        jaw.rotation.x = Math.max(0, Math.sin(t * 0.4)) * 0.12;
+        jaw.rotation.x = Math.max(0, Math.sin(t * 0.4)) * 0.1;
       });
     }
     // Schlote (Black Smoker) mit glühender Spitze
@@ -169,8 +221,9 @@ const TIEFSEEGRABEN = {
     }
   },
   emitters(ctx, add) {
-    for (const v of ctx.shared.vents || []) add('Schlotblasen', v, [0.6, 0.2, 0.6], ['#c8d0d8', '#8a96a4'], 0.3, 8, [1.2, 2], [4, 6], { spread: [8, 8], light: 0.2 });
-    add('Leuchtplankton', [0, 4, 0], [ctx.R * 2.4, 8, ctx.R * 2.4], ['#5affd8', '#7ad0ff', '#ff7ae0'], 0.12, 14, [0.05, 0.2], [6, 10], { light: 1 });
+    // weniger Partikel (Werkstatt-Wunsch „verringere die Partikel“)
+    for (const v of ctx.shared.vents || []) add('Schlotblasen', v, [0.6, 0.2, 0.6], ['#c8d0d8', '#8a96a4'], 0.24, 3, [1.0, 1.6], [4, 6], { spread: [8, 8], light: 0.2 });
+    add('Leuchtplankton', [0, 4, 0], [ctx.R * 2.4, 8, ctx.R * 2.4], ['#5affd8', '#7ad0ff', '#ff7ae0'], 0.09, 4, [0.05, 0.15], [6, 10], { light: 1 });
   },
   sounds: [['Tiefe', 'tiefes Grollen und Knacken in großer Tiefe', 0.45], ['Blubbern', 'blubbernde Schlote', 0.25]],
 };
@@ -200,7 +253,6 @@ const WOLKENBURG = {
       if (isGate) {
         for (const s of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, d), marble), s * 1.9, 1.1, z));
         parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, d), marble), 0, 1.9, z));
-        parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.6, 0.1), gm), 0, 0.8, z + 0.2));
       } else parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w, 2.2, d), marble), x, 1.1, z));
       const n = 8;
       for (let i = 0; i < n; i++) {
@@ -209,8 +261,15 @@ const WOLKENBURG = {
         parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w > 1 ? 0.4 : 0.6, 0.4, d > 1 ? 0.4 : 0.6), marble2), x + (w > 1 ? u * w : 0), 2.4, z + (d > 1 ? u * d : 0)));
       }
     }
-    // Fenster leuchten golden
-    for (const s of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.05), E('#ffd76a', 1)), s * 0.7, 3.4, 1.53));
+    // Fenster leuchten golden, auf allen Seiten und zwei Etagen; goldene Bänder, Banner, Fallgitter im Tor
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]])
+      for (const y of [2.0, 3.6])
+        for (const s of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(nz ? 0.45 : 0.05, 0.75, nx ? 0.45 : 0.05), E('#ffd76a', 1)), nx * 1.53 + (nz ? s * 0.7 : 0), y, nz * 1.53 + (nx ? s * 0.7 : 0)));
+    for (const y of [1.0, 4.95]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(3.08, 0.12, 3.08), gm), 0, y, 0));
+    for (const [nx, nz] of [[1, 0], [-1, 0]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.7), M('#5a7aff')), nx * 1.55, 3.0, nz));
+    for (let k = -2; k <= 2; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.5, 0.06), gm), k * 0.28, 0.85, 3.05));
+    for (const y of [0.4, 0.9, 1.4]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.06), gm), 0, y, 3.05));
+    for (const [x, z] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) for (const y of [1.5, 3.0]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, 0.12), E('#ffd76a', 0.9)), x + Math.sign(x) * 0.0, y, z + Math.sign(z) * 0.9));
     const castle = group(...parts);
     reserve(0, 0, 4.6);
     put(castle, 0, 0, { rot: false });
@@ -243,7 +302,15 @@ const WOLKENBURG = {
       put(pole, x, z, { rot: false });
       pole.rotation.y = -a;
     }
-    ctx.scatter(16, () => cloudPuff(kit, rand, rr(0.6, 1.1)), 0.9, R - 3, R - 1);
+    ctx.scatter(24, () => cloudPuff(kit, rand, rr(0.6, 1.2)), 0.9, R - 3, R - 1);
+    // Wolkenkranz um den Burgsockel: die Burg steht wie auf einer Wolke
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU + rand() * 0.2, r = 4.6 + rand() * 0.4, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const c = cloudPuff(kit, rand, rr(0.7, 1.0));
+      c.position.set(x, height(x, z) - 0.2, z);
+      c.rotation.y = -a;
+      root.add(c);
+    }
     // goldene Brücken zu kleinen Wolkeninseln außerhalb der Insel
     for (let i = 0; i < 2; i++) {
       const a = rand() * TAU * 0.4 + i * Math.PI;

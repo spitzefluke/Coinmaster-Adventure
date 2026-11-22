@@ -1787,17 +1787,39 @@ function underwaterLife({ scatter, rand, root, anims }, cols) {
 const LANDMARKS = {
   korallenriff({ put, spot, anims }) {
     const w = spot(3.4, 4, 8);
-    if (w) put(shipwreck(anims), w[0], w[1]);
+    if (w) {
+      put(shipwreck(anims), w[0], w[1]);
+      // am Wrack (Werkstatt-Wunsch): offene Schatztruhe mit Goldglanz, Laterne, Anker im Sand
+      const t = new THREE.Group();
+      t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.4), M('#6b4a2e')), 0, 0.18, 0));
+      t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 0.42), M('#ffcf4a', { metalness: 0.7 })), 0, 0.38, 0));
+      for (let k = 0; k < 6; k++) t.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 10), E('#ffcf4a', 0.8)), -0.2 + k * 0.08, 0.42 + (k % 2) * 0.03, 0));
+      t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.16), E('#ffd98a', 1.4)), 0.6, 0.2, 0.3));
+      const anchor = at(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 6, 12, Math.PI), M('#4a4f58', { metalness: 0.5 })), -0.8, 0.3, 0.2);
+      anchor.rotation.z = Math.PI;
+      t.add(anchor, at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.06), M('#4a4f58', { metalness: 0.5 })), -0.8, 0.5, 0.2));
+      put(t, w[0] + 2.4, w[1] + 0.6);
+    }
     const c = spot(2.8, 5, 11);
     if (c) put(coralArch(['#ff7a8a', '#ffb05a', '#b07bff', '#ffe25f']), c[0], c[1]);
   },
-  muschelland({ put, spot, anims, rand }) {
+  muschelland({ put, spot, anims, rand, root, height }) {
     const h = spot(2.4, 4, 9);
     if (h) {
+      // Muschelhaus (Werkstatt-Wunsch „alles deutlich verbessern“): Tür mit Rundbogen, leuchtende Rundfenster,
+      // Perlen-Schornstein, Vorgarten mit Perlenzaun und Seesternen
       const house = conch('#ffc8a0', rand);
       house.scale.setScalar(4);
       house.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.04), M('#8a5a3a')), 0.25, 0.12, 0.25));
+      house.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 4, 12, Math.PI), M('#ffe8f0')), 0.25, 0.21, 0.25));
+      for (const [x, y, z] of [[0.05, 0.3, 0.3], [0.38, 0.38, 0.12], [0.2, 0.55, 0.18]]) house.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 12), E('#ffd6ec', 1.2)), x, y, z)).children.at(-1).rotation.x = Math.PI / 2;
+      house.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), M('#fff6fa', { roughness: 0.2 })), 0.1, 0.8, 0));
       put(house, h[0], h[1]);
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2, x = h[0] + Math.cos(a) * 2.2, z = h[1] + Math.sin(a) * 2.2;
+        if (k % 4 === 0) continue;
+        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M('#fff6fa', { roughness: 0.2, metalness: 0.2 })), x, height(x, z) + 0.12, z));
+      }
     }
     const f = spot(1.6, 5, 11);
     if (f) put(pearlFountain(anims), f[0], f[1]);
@@ -2487,26 +2509,51 @@ const BUILDERS = {
     planetBackdrop(scene, { color: '#2a5ad8', bands: ['#4a8aff', '#1a3a9a', '#6aa8ff', '#2a4ab8', '#8ac8ff'], size: 10, pos: [24, 8, -38], glow: '#3a7aff' });
     scatter(10, () => crystal(rr(1.2, 2.6), rand() < 0.5 ? '#3a9aff' : '#6ac8ff', rand, 1), 0.7);
     if (!modelWorld) scatter(8, () => rockMesh(rr(0.3, 0.6), '#2a4fa0', rand), 0.45);
-    // Sturmwirbel in der Mitte
-    const vortex = new THREE.Group();
-    for (let i = 0; i < 4; i++) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4 + i * 0.25, 0.04, 6, 30), E('#9fd8ff', 1.2, { transparent: true, opacity: 0.6 }));
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.3 + i * 0.5;
-      vortex.add(ring);
-    }
-    put(vortex, 0, 0, { rot: false });
-    anims.push((t) => vortex.children.forEach((r, i) => (r.rotation.z = t * (1 + i * 0.4))));
+    // (Sturmwirbel in der Mitte entfernt, Werkstatt-Wunsch)
   },
 
   mars({ put, scatter, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#d8743a', bands: ['#b0502a', '#e8a070'], size: 4, pos: [20, 16, -40], glow: '#ff9a5a' }); // Phobos-ähnlicher Mond
     put(rover(), 1.6, 1.2);
+    // Forschungsstation mit Glaskuppeln (Werkstatt-Wunsch „Glasgebäude verbessern“): drei Kuppeln mit Glas,
+    // Rahmenrippen und Sockelring, innen Pflanzenbeete unter warmem Licht, verbunden durch Röhrengänge mit
+    // Fensterreihe, Luftschleuse mit Warnlicht, Antenne und Wassertank
     const base = new THREE.Group();
-    base.add(dome(1, '#cfe8ff', '#e0e0e0'));
-    const tunnel = at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 10), M('#e0e0e0')), 1.4, 0.3, 0);
-    tunnel.rotation.z = Math.PI / 2;
-    base.add(tunnel, at(dome(0.6, '#cfe8ff', '#e0e0e0'), 2.2, 0, 0));
+    const frame = M('#d8dce4', { metalness: 0.5, roughness: 0.35 }), glassM = M('#cfe8ff', { roughness: 0.05, transparent: true, opacity: 0.45, metalness: 0.1 });
+    const glassDome = (r, x, z) => {
+      base.add(at(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.08, r + 0.12, 0.22, 24), frame), x, 0.11, z));
+      base.add(at(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassM), x, 0.2, z));
+      for (let i = 0; i < 6; i++) {
+        const rib = at(new THREE.Mesh(new THREE.TorusGeometry(r + 0.01, 0.035, 4, 24, Math.PI), frame), x, 0.2, z);
+        rib.rotation.y = (i / 6) * Math.PI;
+        base.add(rib);
+      }
+      const ringH = at(new THREE.Mesh(new THREE.TorusGeometry(r * 0.72, 0.03, 4, 28), frame), x, 0.2 + r * 0.69, z);
+      ringH.rotation.x = Math.PI / 2;
+      base.add(ringH);
+      base.add(at(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.7, r * 0.7, 0.12, 16), M('#6a4a2a')), x, 0.28, z));
+      for (let k = 0; k < 5; k++) base.add(at(new THREE.Mesh(new THREE.SphereGeometry(r * 0.12, 8, 6), M(['#4f9a3f', '#6fbf4f', '#3f8a46'][k % 3])), x + Math.cos(k * 1.3) * r * 0.4, 0.4, z + Math.sin(k * 1.3) * r * 0.4));
+      base.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E('#ffe2a0', 1.6)), x, 0.2 + r * 0.85, z));
+    };
+    glassDome(1.25, 0, 0);
+    glassDome(0.8, 2.6, 0.2);
+    glassDome(0.7, -0.4, 2.3);
+    const tube = (x0, z0, x1, z1) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), t = at(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, len, 12), frame), (x0 + x1) / 2, 0.36, (z0 + z1) / 2);
+      t.rotation.set(0, -Math.atan2(z1 - z0, x1 - x0), Math.PI / 2);
+      base.add(t);
+      for (let k = 1; k < 4; k++) base.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.05), E('#9fd8ff', 1)), x0 + ((x1 - x0) * k) / 4, 0.44, z0 + ((z1 - z0) * k) / 4 + 0.27));
+    };
+    tube(1.2, 0.05, 1.85, 0.15);
+    tube(-0.1, 1.2, -0.3, 1.65);
+    // Luftschleuse mit Warnlicht
+    base.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.6), frame), -1.5, 0.35, -0.3));
+    base.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.04), M('#4a4f58')), -1.81, 0.3, -0.3));
+    base.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), E('#ffb02e', 2)), -1.5, 0.78, -0.3));
+    // Antenne und Wassertank
+    base.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 6), frame), 2.6, 1.6, 0.2));
+    base.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), E('#ff3a4a', 2)), 2.6, 2.42, 0.2));
+    base.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.9, 12), M('#c8c8cc', { metalness: 0.5 })), 1.4, 0.45, -1.4));
     put(base, -2.6, -1);
     if (!modelWorld) scatter(12, () => rockMesh(rr(0.25, 0.7), ['#8a3a1e', '#a0482a', '#6a2a16'][Math.floor(rand() * 3)], rand), 0.5);
     put(flag('#ffd76a'), 0.4, -2.8);
@@ -2514,26 +2561,24 @@ const BUILDERS = {
 
   saturn({ root, scatter, rand, rr, anims, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#d8b880', bands: ['#c8a060', '#e8d0a0', '#b08850', '#f0dcb0'], size: 6, pos: [-30, 3, -44], ring: '220, 190, 140', glow: '#ffd8a0' });
-    // Ring um die Insel
-    const rt = canvasTex(256, 256, (g) => {
-      for (let r = 128; r > 80; r -= 3) {
-        g.strokeStyle = `rgba(255, ${200 + ((r * 13) % 50)}, ${140 + ((r * 7) % 60)}, ${0.35 + ((r * 7) % 10) / 18})`;
-        g.lineWidth = 2.5;
-        g.beginPath();
-        g.arc(128, 128, r, 0, Math.PI * 2);
-        g.stroke();
-      }
-    });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(R + 1.2, R + 3.8, 80), new THREE.MeshBasicMaterial({ map: rt, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    ring.userData.rbx = { color: '#e8d0a0', transparency: 0.35 };
-    ring.rotation.x = -Math.PI / 2 + 0.25;
+    // Ring um die Insel (Werkstatt-Wunsch „prächtiger“): mehrere Bänder in Ocker- und Goldtönen mit einer dunklen
+    // Lücke (wie die Cassini-Teilung), darin viele Brocken und glitzernde Eisstückchen, leicht geneigt
+    const ring = new THREE.Group();
+    const bands = [[R + 1.0, R + 1.7, '#c8a060', 0.25], [R + 1.75, R + 2.6, '#e8d0a0', 0.2], [R + 2.6, R + 2.85, '#5a4a32', 0.6], [R + 2.85, R + 3.9, '#d8b880', 0.25], [R + 3.95, R + 4.6, '#b08850', 0.45]];
+    for (const [r0, r1, c, tr] of bands) {
+      const b = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 96), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1 - tr, side: THREE.DoubleSide, depthWrite: false }));
+      b.userData.rbx = { color: c, transparency: tr };
+      b.rotation.x = -Math.PI / 2;
+      ring.add(b);
+    }
+    ring.rotation.x = 0.25;
     ring.position.y = 0.4;
     root.add(ring);
     const chunks = new THREE.Group();
-    for (let i = 0; i < 24; i++) {
-      const s = rr(0.08, 0.28);
-      const c = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.4), M('#c8a870'));
-      const a = (i / 24) * Math.PI * 2 + rand() * 0.2, r = rr(R + 1.5, R + 3.4);
+    for (let i = 0; i < 70; i++) {
+      const ice = i % 5 === 0, s = ice ? rr(0.06, 0.14) : rr(0.08, 0.32);
+      const c = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(s, 0), rand, s * 0.4), ice ? E('#fff2c8', 0.9) : M(['#c8a870', '#a88a5a', '#e0c890'][i % 3]));
+      const a = (i / 70) * Math.PI * 2 + rand() * 0.2, r = rr(R + 1.1, R + 4.5);
       c.position.set(Math.cos(a) * r, rr(-0.15, 0.15), Math.sin(a) * r);
       chunks.add(c);
     }
@@ -2542,7 +2587,7 @@ const BUILDERS = {
     root.add(chunks);
     anims.push((t) => {
       chunks.rotation.y = t * 0.1;
-      ring.rotation.z = t * 0.05;
+      ring.rotation.y = t * 0.05;
     });
     if (!modelWorld) scatter(9, () => rockMesh(rr(0.3, 0.7), '#b0905a', rand), 0.5);
     scatter(6, () => crystal(rr(0.6, 1.1), '#ffe2a0', rand, 0.8), 0.5);
@@ -2636,6 +2681,14 @@ const BUILDERS = {
     roof.scale.set(1, 1, 0.5);
     roof.position.y = 2.9;
     temple.add(roof);
+    // Schmuck (Werkstatt-Wunsch „alles verbessern“): goldene Dachkante, Statuen an den Ecken, leuchtende Stufen
+    temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.08, 2.2), M('#ffcf4a', { metalness: 0.7, roughness: 0.3 })), 0, 2.58, 0));
+    for (const [x, z] of [[-1.35, 1.0], [1.35, 1.0]]) {
+      temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.35), M('#e8eef2')), x, 0.6, z + 0.3));
+      temple.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.6, 8), M('#f2f6f8')), x, 1.05, z + 0.3));
+      temple.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M('#f2f6f8')), x, 1.45, z + 0.3));
+    }
+    temple.add(at(new THREE.Mesh(new THREE.BoxGeometry(2.72, 0.04, 0.06), E('#5affd8', 1.2)), 0, 0.46, 0.96));
     reserve(-1.4, -1.6, 1.9);
     put(temple, -1.4, -1.6, { rot: false });
     temple.rotation.y = 0.5;
@@ -2643,8 +2696,14 @@ const BUILDERS = {
     const d = dome(1.1, '#9ff3f0', '#c8a040');
     const spire = at(new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.3, 8), E('#ffd76a', 1.2, { metalness: 0.8 })), 0, 0.65, 0);
     d.add(spire);
-    reserve(2.2, 1.4, 1.2);
-    put(d, 2.2, 1.4, { rot: false });
+    reserve(2.2, 1.4, 1.6);
+    // Säulentrommel unter der Kuppel
+    const drum = new THREE.Group();
+    drum.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 0.25, 20), M('#e8eef2')), 0, 0.12, 0));
+    for (let k = 0; k < 8; k++) drum.add(at(column(1.1, '#f2f6f8'), Math.cos((k / 8) * Math.PI * 2) * 1.15, 0.25, Math.sin((k / 8) * Math.PI * 2) * 1.15));
+    drum.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.2, 20), M('#e8eef2')), 0, 1.45, 0));
+    put(drum, 2.2, 1.4, { rot: false });
+    put(d, 2.2, 1.4, { rot: false, sink: -1.55 });
     anims.push((t) => (spire.material.emissiveIntensity = 1 + Math.sin(t * 2) * 0.5));
     // feste Anzahl (vorher mit der Inselfläche vervielfacht: ein Wald aus Säulenstümpfen)
     scatter(8, () => {

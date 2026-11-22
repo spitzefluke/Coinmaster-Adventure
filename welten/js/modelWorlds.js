@@ -1335,7 +1335,7 @@ const NEPTUN = {
 const MARS = {
   landmark: true, // Radarschüssel mit Solarfeld
   keepBase: true, // Rover, Kuppeln, Flagge, Phobos am Himmel
-  baseSpots: [[1.6, 1.2, 1.1], [-2.6, -1, 2.8], [0.4, -2.8, 0.6]],
+  baseSpots: [[1.6, 1.2, 1.1], [-2.0, -0.6, 3.4], [0.4, -2.8, 0.6]],
   build(ctx, kit) {
     const { R, rand, rr } = ctx;
     // wie auf den Bildern der Rover: Staub in helleren und dunkleren Flecken, ein Feld aus kantigen dunklen
@@ -1526,6 +1526,20 @@ const SONNE = {
           if (Math.hypot(x, z) < R - 1.6 && ctx.free(x, z, 0.6)) stand(ctx, model('solarpanel', 2.4), x, z, { rot: a + Math.PI / 2 });
         }
       around(ctx, plant, [['structure_tall', 2.4], ['structure_tall', 2.4], ['space_lights', 2.4]], 4, 5.2);
+      // Solarturm in der Mitte des Kraftwerks (Werkstatt-Wunsch „alle Gebäude verbessern“): Betonschaft mit
+      // Ringplattform, glühender Empfänger oben, Warnlicht; daneben ein Kontrollhaus mit Fensterband
+      const tower = new THREE.Group();
+      const conc = new THREE.MeshStandardMaterial({ color: '#d8c8b8', roughness: 0.8 }), glowM = new THREE.MeshStandardMaterial({ color: '#ffd84a', emissive: '#ffb02e', emissiveIntensity: 2 });
+      const add = (m, x, y, z) => { m.position.set(x, y, z); tower.add(m); return m; };
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.6, 5.2, 12), conc), 0, 2.6, 0);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.14, 16), conc), 0, 4.3, 0);
+      add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), glowM), 0, 5.6, 0);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 12), conc), 0, 6.1, 0);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshStandardMaterial({ color: '#ff3a4a', emissive: '#ff3a4a', emissiveIntensity: 2 })), 0, 6.3, 0);
+      add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.9), conc), 1.4, 0.4, 0.4);
+      add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.05), new THREE.MeshStandardMaterial({ color: '#7ad0ff', emissive: '#7ad0ff', emissiveIntensity: 0.9 })), 1.4, 0.55, 0.86);
+      ctx.put(tower, plant[0], plant[1], { rot: false });
+      ctx.reserve(plant[0], plant[1], 1.4);
     }
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
     rocksOf(ctx, 'sonne');

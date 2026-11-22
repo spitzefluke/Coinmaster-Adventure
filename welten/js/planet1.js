@@ -424,19 +424,56 @@ const LANDMARK = {
     ctx.put(group(...parts), p[0], p[1], { rot: false });
   },
   // Zuckerschloss mit Lolli-Türmen
+  // Zuckerschloss (Werkstatt-Wunsch „Palast verbessern“): Tortensockel mit Zuckergussrand, Hauptbau wie eine
+  // Etagentorte, vier Zuckerstangen-Türme mit Waffeldach und Streuseln, Tor mit Gummibärchen-Wachen,
+  // rosa leuchtende Fenster, Lollis als Fahnen und eine Kirsche obendrauf
   candy(ctx, kit) {
-    const { M, at, group } = kit;
-    const p = ctx.spot(3, 4, 9);
+    const { M, E, at, group } = kit;
+    const p = ctx.spot(4, 4, 9);
     if (!p) return;
-    const parts = [at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 2.6), M('#ffb3dc')), 0, 1.2, 0), at(new THREE.Mesh(new THREE.BoxGeometry(1, 1.4, 0.12), M('#7a4a2a')), 0, 0.7, 1.32)];
+    const parts = [];
+    const add = (m, x, y, z) => (parts.push(at(m, x, y, z)), parts[parts.length - 1]);
+    const icing = M('#fff4fa'), pink = M('#ffb3dc'), choco = M('#7a4428'), glow = E('#ff8ac8', 1.2);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.7, 0.4, 24), choco), 0, 0.2, 0);
+    add(new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 6, 40), icing), 0, 0.42, 0).rotation.x = Math.PI / 2;
+    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2; add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), icing), Math.cos(a) * 3.6, 0.32, Math.sin(a) * 3.6).scale.set(1, 1.6, 1); }
+    // Hauptbau als Etagentorte
+    const tiers = [[2.0, 1.6, '#ffb3dc'], [1.5, 1.3, '#fff0f6'], [1.0, 1.1, '#ffd6ec']];
+    let y = 0.4;
+    for (const [r, h, c] of tiers) {
+      add(new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 24), M(c)), 0, y + h / 2, 0);
+      add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.1, 6, 36), icing), 0, y + h, 0).rotation.x = Math.PI / 2;
+      for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), icing), Math.cos(a) * r, y + h - 0.12, Math.sin(a) * r).scale.set(1, 1.8, 1); }
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + 0.3; const w = add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.06), glow), Math.cos(a) * (r + 0.01), y + h * 0.5, Math.sin(a) * (r + 0.01)); w.rotation.y = -a + Math.PI / 2; }
+      y += h;
+    }
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10), M('#e0203a', { roughness: 0.3 })), 0, y + 0.35, 0);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 5), M('#3a8a3a')), 0.1, y + 0.85, 0);
+    // vier Zuckerstangen-Türme mit Waffeldach und Streuseln, Lolli-Fahnen
     const tops = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a'];
-    [[1.4, 1.4], [-1.4, 1.4], [1.4, -1.4], [-1.4, -1.4]].forEach(([x, z], i) => {
-      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 3.4, 12), M(i % 2 ? '#ffffff' : '#ffd6ec')), x, 1.7, z));
-      parts.push(at(new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.1, 12), M('#ff5fb0')), x, 3.95, z));
-      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8), M(tops[i])), x, 4.75, z));
+    [[2.6, 2.6], [-2.6, 2.6], [2.6, -2.6], [-2.6, -2.6]].forEach(([x, z], i) => {
+      for (let k = 0; k < 8; k++) add(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.5, 14), M(k % 2 ? '#ffffff' : '#ff3a5a')), x, 0.65 + k * 0.5, z);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.16, 14), icing), x, 4.5, z);
+      add(new THREE.Mesh(new THREE.ConeGeometry(0.78, 1.5, 14), M('#e0a860')), x, 5.3, z);
+      for (let k = 0; k < 6; k++) add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.04), M(tops[(i + k) % 4])), x + Math.cos(k * 1.1) * 0.45, 4.95 + (k % 3) * 0.2, z + Math.sin(k * 1.1) * 0.45);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5), icing), x, 6.4, z);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16), M(tops[i])), x, 6.9, z).rotation.x = Math.PI / 2;
+      add(new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.32, 0.06), glow), x * 1.21, 2.5, z * 1.21);
     });
-    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), M('#ff8ac8')), 0, 2.9, 0));
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    // Tor mit Gummibärchen-Wachen
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.3, 0.12), choco), 0, 1.05, 2.02);
+    add(new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 6, 16, Math.PI), M('#ff5fb0')), 0, 1.7, 2.05);
+    for (const sx of [-1, 1]) {
+      const bear = new THREE.Group();
+      const c = M(sx > 0 ? '#ff5a5a' : '#5ad18a', { transparent: true, opacity: 0.85, roughness: 0.2 });
+      bear.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), c), 0, 0.35, 0), at(new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), c), 0, 0.85, 0));
+      for (const ex of [-0.15, 0.15]) bear.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), c), ex, 1.06, 0));
+      bear.position.set(sx * 1.1, 0.4, 2.6);
+      parts.push(bear);
+    }
+    const castle = group(...parts);
+    ctx.put(castle, p[0], p[1], { rot: false });
+    castle.lookAt(0, castle.position.y, 0);
   },
 };
 

@@ -46,102 +46,206 @@ const LANDMARK = {
     parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), E('#ff3a4a', 2)), 1.4, 7.75, 0));
     ctx.put(group(...parts), p[0], p[1], { rot: false });
   },
-  // Eisturm mit schwebenden Ringen
+  // Eisturm (Werkstatt-Wunsch „Licht-Gebäude verbessern“): Sockel mit Stufen, Kranz aus Eiskristallen, hohe
+  // Kristallnadel mit leuchtendem Kern, drei schwebende Lichtringe, Leuchtstreifen und ein Lichtstrahl nach oben
   neptun(ctx, kit) {
     const { M, E, at, group, crystal } = kit;
-    const p = ctx.spot(2.4, 4, 10);
+    const p = ctx.spot(3.2, 4, 10);
     if (!p) return;
-    const spire = crystal(4, '#7ad0ff', ctx.rand, 1.4);
-    const core = at(new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), E('#9fe0ff', 0.7, { transparent: true, opacity: 0.9, roughness: 0.15 })), 0, 3.6, 0);
-    core.scale.set(1, 3.6, 1);
+    const parts = [];
+    const ice = M('#bfe8ff', { roughness: 0.1, transparent: true, opacity: 0.85 }), deep = M('#2a4fa0'), glow = E('#9fe0ff', 1.4);
+    for (let i = 0; i < 3; i++) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(2.6 - i * 0.5, 2.8 - i * 0.5, 0.3, 12), i % 2 ? M('#3a6fd1') : deep), 0, 0.15 + i * 0.3, 0));
+    parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.05, 6, 40), glow), 0, 0.92, 0));
+    parts[parts.length - 1].rotation.x = Math.PI / 2;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, c = crystal(1.2 + (i % 2) * 0.8, i % 2 ? '#7ad0ff' : '#bff0ff', ctx.rand, 1.2);
+      c.position.set(Math.cos(a) * 2.1, 0.9, Math.sin(a) * 2.1);
+      c.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3);
+      parts.push(c);
+    }
+    const spire = crystal(6.5, '#7ad0ff', ctx.rand, 1.6);
+    spire.position.y = 0.9;
+    parts.push(spire);
+    const core = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.9, 0), E('#dff6ff', 1.6, { transparent: true, opacity: 0.95 })), 0, 4.6, 0);
+    core.scale.set(1, 1.8, 1);
+    parts.push(core);
+    for (let i = 0; i < 4; i++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.08, 4.6, 0.08), glow), Math.cos(i * 1.57 + 0.78) * 0.9, 3.2, Math.sin(i * 1.57 + 0.78) * 0.9));
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 14, 10, 1, true), E('#bff0ff', 0.8, { transparent: true, opacity: 0.25 })), 0, 13, 0));
     const rings = new THREE.Group();
     for (let i = 0; i < 3; i++) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.3 + i * 0.35, 0.07, 6, 28), E('#bff0ff', 1.2, { transparent: true, opacity: 0.8 }));
-      ring.rotation.x = Math.PI / 2 + (i - 1) * 0.25;
-      ring.position.y = 2.2 + i * 1.3;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6 + i * 0.45, 0.09, 8, 36), E(i === 1 ? '#7af0ff' : '#bff0ff', 1.3, { transparent: true, opacity: 0.85 }));
+      ring.rotation.x = Math.PI / 2 + (i - 1) * 0.28;
+      ring.position.y = 3.2 + i * 1.5;
       rings.add(ring);
     }
-    const base = at(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.7, 0.5, 10), M('#2a4fa0')), 0, 0.25, 0);
-    ctx.put(group(base, core, spire, rings), p[0], p[1], { rot: false });
-    ctx.anims.push((t) => rings.children.forEach((r, i) => (r.rotation.z = t * (0.4 + i * 0.2) * (i % 2 ? -1 : 1))));
-  },
-  // Radarschüssel der Forschungsstation mit Solarfeld
-  mars(ctx, kit) {
-    const { M, E, at, group } = kit;
-    const p = ctx.spot(2.4, 4, 10);
-    if (!p) return;
-    const white = M('#e8e8ec'), metal = M('#9aa0a8', { metalness: 0.6, roughness: 0.35 });
-    const dish = at(new THREE.Mesh(new THREE.SphereGeometry(1.8, 20, 10, 0, TAU, 0, Math.PI * 0.32), white), 0, 3.4, 0);
-    dish.rotation.x = Math.PI + 0.6;
-    const parts = [
-      at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.6), M('#c8c8cc')), 0, 0.3, 0),
-      at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 3, 10), metal), 0, 1.9, 0),
-      dish,
-      at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), metal), 0, 3.0, 0.75),
-      at(new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), E('#ff3a4a', 2)), 0, 2.6, 1.3),
-    ];
-    parts.at(-2).rotation.x = 0.6;
-    for (let i = 0; i < 3; i++) {
-      const panel = at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.8), M('#1f3a7a', { metalness: 0.5, roughness: 0.25 })), -2.4 + i * 1.35, 0.7, 1.9);
-      panel.rotation.x = -0.5;
-      parts.push(panel, at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 5), metal), -2.4 + i * 1.35, 0.3, 1.9));
-    }
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
-  },
-  // Sternwarte mit Kuppel und Teleskop
-  saturn(ctx, kit) {
-    const { M, E, at, group } = kit;
-    const p = ctx.spot(2.2, 4, 10);
-    if (!p) return;
-    const scope = at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 2.2, 12), M('#3a3d46', { metalness: 0.5 })), 0.5, 3.6, 0);
-    scope.rotation.z = -0.8;
-    const parts = [
-      at(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 2.2, 16), M('#f0e2c4')), 0, 1.1, 0),
-      at(new THREE.Mesh(new THREE.CylinderGeometry(1.62, 1.62, 0.15, 16), M('#b0905a')), 0, 2.25, 0),
-      at(new THREE.Mesh(new THREE.SphereGeometry(1.45, 18, 10, 0, TAU, 0, Math.PI / 2), M('#d8dce4', { metalness: 0.5, roughness: 0.3 })), 0, 2.3, 0),
-      scope,
-      at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.2, 0.12), M('#7a4a2a')), 0, 0.6, 1.58),
-      at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E('#ffe2a0', 2)), 0, 1.5, 1.6),
-    ];
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
-  },
-  // Alien-Tor: zwei Säulen mit leuchtendem Ring und einer schwebenden Kugel
-  alien(ctx, kit) {
-    const { M, E, at, group } = kit;
-    const p = ctx.spot(2.4, 4, 10);
-    if (!p) return;
-    const stone = M('#2e1650');
-    const parts = [];
-    for (const x of [-1.6, 1.6]) {
-      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 4.4, 0.6), stone), x, 2.2, 0));
-      parts.push(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), E('#7aff5a', 1.6)), x, 4.8, 0));
-      for (let y = 0.8; y < 4; y += 1.1) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.1, 0.64), E('#d97aff', 1.2)), x, y, 0));
-    }
-    const ring = at(new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.12, 8, 30), E('#7aff5a', 1.4)), 0, 2.4, 0);
-    const orb = at(new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 10), E('#5affd8', 1.8)), 0, 2.4, 0);
-    parts.push(ring, orb);
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    ctx.put(group(...parts, rings), p[0], p[1], { rot: false });
     ctx.anims.push((t) => {
-      ring.rotation.z = t * 0.7;
-      orb.position.y = 2.4 + Math.sin(t * 1.6) * 0.2;
+      rings.children.forEach((r, i) => (r.rotation.z = t * (0.4 + i * 0.2) * (i % 2 ? -1 : 1)));
+      core.rotation.y = t * 0.6;
     });
   },
-  // Sonnentempel: Säulenkreis mit schwebender Sonnenscheibe
+  // Radarstation (Werkstatt-Wunsch „Satellit verbessern“): Betonsockel mit Treppe, Gittermast, große Schüssel mit
+  // Rippen und Empfänger, Warnleuchten, Kabelkanal zum Kontrollhaus, Solarfeld mit Wechselrichter
+  mars(ctx, kit) {
+    const { M, E, at, group } = kit;
+    const p = ctx.spot(3.4, 4, 10);
+    if (!p) return;
+    const white = M('#e8e8ec'), metal = M('#9aa0a8', { metalness: 0.6, roughness: 0.35 }), dark = M('#4a4f58', { metalness: 0.5 });
+    const parts = [at(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 2.4), M('#b8b4ae')), 0, 0.25, 0)];
+    for (let i = 0; i < 3; i++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.16, 0.3), M('#a8a49e')), 0, 0.08 + i * 0.16, 1.35 + (2 - i) * 0.3));
+    // Gittermast: vier Stützen mit Querstreben
+    for (const [x, z] of [[0.45, 0.45], [-0.45, 0.45], [0.45, -0.45], [-0.45, -0.45]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.6, 0.08), metal), x * (1 - 0.0), 1.8, z));
+    for (let y = 0.9; y < 3.1; y += 0.5) for (const r of [0, Math.PI / 2]) { const b = at(new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.05, 0.05), metal), 0, y, 0); b.rotation.y = r; parts.push(b); }
+    const head = new THREE.Group();
+    head.position.set(0, 3.25, 0);
+    head.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.3, 12), dark), 0, 0, 0));
+    const dish = at(new THREE.Mesh(new THREE.SphereGeometry(2.2, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.3), white), 0, 1.7, 0);
+    dish.rotation.x = Math.PI + 0.7;
+    head.add(dish);
+    for (let i = 0; i < 6; i++) {
+      const rib = at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 2.0), metal), 0, 0.5, 0.35);
+      rib.rotation.set(-0.7 + 0.35, (i / 6) * Math.PI * 2, 0);
+      head.add(rib);
+    }
+    const mast = at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), metal), 0, 1.1, 0.95);
+    mast.rotation.x = 0.7;
+    head.add(mast, at(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), E('#ff3a4a', 2)), 0, 1.75, 1.55));
+    parts.push(head);
+    for (const [x, z] of [[1.1, 1.1], [-1.1, -1.1]]) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), E('#ffb02e', 2)), x, 0.6, z));
+    // Kontrollhaus mit Fenster, Kabelkanal
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 1.0), white), 2.4, 0.5, -0.6));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.05), E('#7ad0ff', 0.9)), 2.4, 0.65, -0.08));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.2), dark), 1.45, 0.05, -0.6));
+    // Solarfeld
+    for (let i = 0; i < 4; i++) {
+      const panel = at(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.75), M('#1f3a7a', { metalness: 0.5, roughness: 0.25 })), -2.6 + i * 1.25, 0.7, 2.2);
+      panel.rotation.x = -0.5;
+      parts.push(panel, at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 5), metal), -2.6 + i * 1.25, 0.3, 2.2));
+      for (let k = -1; k <= 1; k++) { const l = at(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.07, 0.72), M('#c8d0d8')), -2.6 + i * 1.25 + k * 0.36, 0.71, 2.2); l.rotation.x = -0.5; parts.push(l); }
+    }
+    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    ctx.anims.push((t) => (head.rotation.y = t * 0.25));
+  },
+  // Sternwarte (Werkstatt-Wunsch „Auskuckgebäude verbessern“): runder Bau mit Gesims, Kuppel mit offenem Spalt
+  // und großem Teleskop, umlaufender Balkon mit Geländer, Treppe, Fenster und Laternen, Sternkarte am Eingang
+  saturn(ctx, kit) {
+    const { M, E, at, group } = kit;
+    const p = ctx.spot(3.0, 4, 10);
+    if (!p) return;
+    const wall = M('#f0e2c4'), trim = M('#b0905a'), dome = M('#d8dce4', { metalness: 0.5, roughness: 0.3 }), warm = E('#ffe2a0', 1.4);
+    const parts = [
+      at(new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.1, 0.3, 20), M('#c8b890')), 0, 0.15, 0),
+      at(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.7, 2.6, 20), wall), 0, 1.6, 0),
+      at(new THREE.Mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.14, 20), trim), 0, 2.95, 0),
+    ];
+    // Balkon mit Geländer
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), trim), Math.cos(a) * 1.8, 3.2, Math.sin(a) * 1.8)); }
+    parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.03, 4, 40), trim), 0, 3.4, 0));
+    parts[parts.length - 1].rotation.x = Math.PI / 2;
+    // Kuppel aus zwei Hälften mit Spalt, darin das Teleskop
+    for (const sx of [-1, 1]) {
+      const half = at(new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 10, sx > 0 ? 0.12 : Math.PI + 0.12, Math.PI - 0.24, 0, Math.PI / 2), dome), 0, 3.0, 0);
+      half.rotation.y = Math.PI / 2;
+      parts.push(half);
+    }
+    const scope = new THREE.Group();
+    scope.position.set(0, 3.4, 0);
+    const tube = at(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.38, 2.8, 14), M('#3a3d46', { metalness: 0.5 })), 0, 1.0, 0.5);
+    tube.rotation.x = 0.7;
+    scope.add(tube, at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 14), E('#9fd8ff', 1)), 0, 2.08, 1.42));
+    parts.push(scope);
+    // Eingang, Treppe, Fenster, Laternen
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.12), M('#7a4a2a')), 0, 0.95, 1.66));
+    for (let i = 0; i < 3; i++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 0.3), M('#c8b890')), 0, 0.06 + i * 0.1, 2.3 - i * 0.22));
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.5; if (Math.abs(a - Math.PI / 2) < 0.4) continue; const w = at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.06), warm), Math.cos(a) * 1.66, 1.9, Math.sin(a) * 1.66); w.rotation.y = -a + Math.PI / 2; parts.push(w); }
+    for (const sx of [-0.8, 0.8]) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.2, 6), M('#4a4458')), sx, 0.6, 2.1), at(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.18), warm), sx, 1.32, 2.1));
+    // Sternkarte als Schild
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.05), M('#1a1e3a')), 1.2, 1.2, 1.7));
+    for (let i = 0; i < 7; i++) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), E('#ffffff', 2)), 1.2 - 0.38 + ((i * 37) % 76) / 100, 1.2 - 0.25 + ((i * 53) % 50) / 100, 1.73));
+    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    ctx.anims.push((t) => (scope.rotation.y = Math.sin(t * 0.2) * 0.8));
+  },
+  // Alien-Tor (Werkstatt-Wunsch „Kern und Halterung verbessern“): Stufensockel mit Leuchtfugen, zwei geschwungene
+  // Halterungen aus Stein mit Runenbändern und Krallen, dazwischen ein großer Energiekern in zwei gegenläufigen
+  // Ringen, Energiestrahlen von den Halterungen zum Kern
+  alien(ctx, kit) {
+    const { M, E, at, group } = kit;
+    const p = ctx.spot(3.2, 4, 10);
+    if (!p) return;
+    const stone = M('#2e1650'), stoneL = M('#46246e'), rune = E('#7aff5a', 1.4), pink = E('#d97aff', 1.2);
+    const parts = [];
+    for (let i = 0; i < 3; i++) {
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(2.6 - i * 0.45, 2.75 - i * 0.45, 0.28, 8), i % 2 ? stoneL : stone), 0, 0.14 + i * 0.28, 0));
+      parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(2.62 - i * 0.45, 0.035, 4, 8), rune), 0, 0.29 + i * 0.28, 0));
+      parts[parts.length - 1].rotation.x = Math.PI / 2;
+    }
+    for (const sx of [-1, 1]) {
+      // Halterung: drei Blöcke, nach innen geneigt, mit Runenbändern und einer Kralle oben
+      for (let k = 0; k < 3; k++) {
+        const b = at(new THREE.Mesh(new THREE.BoxGeometry(0.75 - k * 0.12, 1.5, 0.75 - k * 0.12), k % 2 ? stoneL : stone), sx * (1.9 - k * 0.22), 1.6 + k * 1.4, 0);
+        b.rotation.z = sx * 0.12 * k;
+        parts.push(b);
+        parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.8 - k * 0.12, 0.1, 0.8 - k * 0.12), k === 1 ? pink : rune), sx * (1.9 - k * 0.22), 1.0 + k * 1.4, 0));
+      }
+      const claw = at(new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 6), stoneL), sx * 1.2, 5.35, 0);
+      claw.rotation.z = sx * 1.1;
+      parts.push(claw);
+      parts.push(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), rune), sx * 1.9, 5.3, 0));
+      const beam = at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), E('#7aff5a', 1.6, { transparent: true, opacity: 0.6 })), sx * 1.15, 3.2, 0);
+      beam.rotation.z = Math.PI / 2;
+      parts.push(beam);
+    }
+    const core = at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), E('#5affd8', 1.9)), 0, 3.2, 0);
+    const shell = at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), E('#b07bff', 0.8, { transparent: true, opacity: 0.35 })), 0, 3.2, 0);
+    const ringA = at(new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 8, 32), rune), 0, 3.2, 0);
+    const ringB = at(new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.06, 8, 32), pink), 0, 3.2, 0);
+    ringB.rotation.x = Math.PI / 2;
+    parts.push(core, shell, ringA, ringB);
+    ctx.put(group(...parts), p[0], p[1], { rot: false });
+    ctx.anims.push((t) => {
+      ringA.rotation.set(t * 0.7, t * 0.4, 0);
+      ringB.rotation.set(Math.PI / 2 + Math.sin(t * 0.5) * 0.4, 0, -t * 0.9);
+      core.position.y = 3.2 + Math.sin(t * 1.6) * 0.15;
+      shell.rotation.y = -t * 0.5;
+    });
+  },
+  // Sonnentempel (Werkstatt-Wunsch „alle Gebäude verbessern“): Stufenplattform mit Glutfugen, Säulenkreis mit
+  // goldenen Kapitellen und Gebälk, Feuerschalen, schwebende Sonnenscheibe mit Strahlenkranz und Ringen
   sonne(ctx, kit) {
     const { M, E, at, group } = kit;
-    const p = ctx.spot(2.6, 4, 10);
+    const p = ctx.spot(3.4, 4, 10);
     if (!p) return;
-    const parts = [at(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.4, 16), M('#7a2a08')), 0, 0.2, 0)];
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU;
-      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 3, 10), M('#c8501a')), Math.cos(a) * 2, 1.9, Math.sin(a) * 2));
-      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), E('#ffb02e', 1)), Math.cos(a) * 2, 3.5, Math.sin(a) * 2));
+    const stone = M('#7a2a08'), col = M('#c8501a'), gold = M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.3 }), ember = E('#ffb02e', 1.3);
+    const parts = [];
+    for (let i = 0; i < 3; i++) {
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(3.0 - i * 0.4, 3.15 - i * 0.4, 0.3, 16), i % 2 ? M('#8a3410') : stone), 0, 0.15 + i * 0.3, 0));
+      parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(3.05 - i * 0.4, 0.04, 4, 32), ember), 0, 0.3 + i * 0.3, 0));
+      parts[parts.length - 1].rotation.x = Math.PI / 2;
     }
-    const sun = at(new THREE.Mesh(new THREE.SphereGeometry(0.9, 18, 12), E('#ffd84a', 2.2)), 0, 3.4, 0);
-    const halo = at(new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.08, 6, 28), E('#ff8a1a', 1.6)), 0, 3.4, 0);
-    parts.push(sun, halo);
-    ctx.put(group(...parts), p[0], p[1], { rot: false });
-    ctx.anims.push((t) => (halo.rotation.y = t * 0.5));
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, x = Math.cos(a) * 2.0, z = Math.sin(a) * 2.0;
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 3.0, 10), col), x, 2.4, z));
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), gold), x, 3.98, z));
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.48), M('#a83a10')), x, 0.97, z));
+    }
+    parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.16, 6, 32), M('#a83a10')), 0, 4.15, 0));
+    parts[parts.length - 1].rotation.x = Math.PI / 2;
+    for (const [x, z] of [[2.9, 0], [-2.9, 0], [0, 2.9], [0, -2.9]]) {
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.25, 10), gold), x, 1.05, z));
+      parts.push(at(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 8), E('#ffd84a', 1.8)), x, 1.42, z));
+    }
+    const sun = at(new THREE.Mesh(new THREE.SphereGeometry(1.0, 20, 14), E('#ffd84a', 2.2)), 0, 5.6, 0);
+    const halo = new THREE.Group();
+    halo.position.set(0, 5.6, 0);
+    for (let i = 0; i < 12; i++) { const r = at(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.8, 4), E(i % 2 ? '#ffb02e' : '#ff8a1a', 1.6)), Math.cos((i / 12) * Math.PI * 2) * 1.55, Math.sin((i / 12) * Math.PI * 2) * 1.55, 0); r.rotation.z = (i / 12) * Math.PI * 2 - Math.PI / 2; halo.add(r); }
+    const ringA = at(new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.07, 6, 32), E('#ff8a1a', 1.6)), 0, 5.6, 0);
+    parts.push(sun, ringA);
+    ctx.put(group(...parts, halo), p[0], p[1], { rot: false });
+    ctx.anims.push((t) => {
+      halo.rotation.y = t * 0.4;
+      halo.rotation.z = t * 0.3;
+      ringA.rotation.set(Math.PI / 2 + Math.sin(t * 0.4) * 0.5, t * 0.5, 0);
+    });
   },
 };
 
