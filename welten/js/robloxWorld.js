@@ -9,6 +9,7 @@ import { worldToParts } from '../../roblox/js/worldParts.js';
 import { skyboxFiles } from './skyboxes.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
+import { TELEPORT_FX } from '../../roblox/js/teleportLuau.js';
 import { WORLDS } from './worlds.js';
 import { skipAnimations } from '../../js/settings.js';
 import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from '../../muenzen/js/mutations.js';
@@ -122,6 +123,8 @@ export function worldLua() {
     const lua = await createLua();
     lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
     lua.call('__addModule', 'WorldFx', worldFxSource({ WORLDS }));
+    lua.call('__addModule', 'TeleportFx', TELEPORT_FX);
+    lua.register('__tpFlash', () => lua.onTeleportFlash?.());
     lua.run(`
       local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
       function __weather(id, instant)
@@ -136,6 +139,14 @@ export function worldLua() {
       function __worldFxReset()
         if worldFx then pcall(worldFx.Destroy) worldFx = nil end
       end
+      -- Teleport-Animation (TeleportFx): Abflug an der Portalscheibe, Ankunft an den Füßen
+      function __tpDepart(px, py, pz, lx, ly, lz, r, g, b, radius)
+        local center = CFrame.lookAt(Vector3.new(px, py, pz), Vector3.new(px + lx, py + ly, pz + lz))
+        require(root.TeleportFx).Depart(center, Color3.new(r, g, b), radius, function() __tpFlash() end)
+      end
+      function __tpArrive(x, y, z, r, g, b)
+        require(root.TeleportFx).Arrive(Vector3.new(x, y, z), Color3.new(r, g, b))
+      end
       function __weatherReset()
         local m = root:FindFirstChild("WeatherFx")
         if m then pcall(function() require(m).Apply("klar", true) end) end
@@ -144,6 +155,23 @@ export function worldLua() {
     return lua;
   })();
   return luaReady;
+}
+
+// Teleport-Animation in einer Welt abspielen (Luau-Modul TeleportFx, wie im Spiel)
+export async function teleportDepart(rw, pos, look, color, radius, onFlash) {
+  const lua = await worldLua();
+  lua.setWorld(rw);
+  lua.onTeleportFlash = onFlash;
+  const c = new THREE.Color(color);
+  lua.call('__tpDepart', pos[0], pos[1], pos[2], look[0], look[1], look[2], c.r, c.g, c.b, radius);
+  return lua;
+}
+export async function teleportArrive(rw, feet, color) {
+  const lua = await worldLua();
+  lua.setWorld(rw);
+  const c = new THREE.Color(color);
+  lua.call('__tpArrive', feet[0], feet[1], feet[2], c.r, c.g, c.b);
+  return lua;
 }
 
 // Umgebung der Welt (WorldFx): Himmel, Fernkulisse, Partikel und Leben, ruhig animiert

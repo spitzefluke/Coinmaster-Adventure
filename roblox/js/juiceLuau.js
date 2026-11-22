@@ -126,8 +126,19 @@ local function onCharacter(character)
 		if v.Y < 0 then fallSpeed = -v.Y elseif humanoid.FloorMaterial ~= Enum.Material.Air then fallSpeed = 0 end
 		-- Teleport: großer Sprung in einem Bild
 		local moved = (root.Position - lastPos).Magnitude
+		local from = lastPos
 		lastPos = root.Position
 		if moved > 150 then
+			-- Teleport-Animation: Abflug am alten Ort, Ankunft am neuen (Farbe der Zielwelt, falls bekannt)
+			if not calm() then
+				local okTp, Tp = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure"):WaitForChild("TeleportFx", 2)) end)
+				if okTp and Tp then
+					local color = Color3.fromRGB(255, 214, 106)
+					local look = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector or Vector3.new(0, 0, -1)
+					Tp.Depart(CFrame.lookAt(from, from - Vector3.new(look.X, 0, look.Z)), color, 5)
+					Tp.Arrive(root.Position - Vector3.new(0, 3, 0), color)
+				end
+			end
 			flash(Color3.fromRGB(255, 244, 214))
 			fovKick(BASE_FOV - 25, BASE_FOV, 0.7)
 			sparks:Emit(few() and 15 or 40)

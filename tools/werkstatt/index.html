@@ -45,7 +45,7 @@
   .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; transition: width .5s ease; }
 
   /* Abläufe: Welten, Deko, Umgebung */
-  .tracks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .tracks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
   .track { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
   .track b { font-size: 15px; }
   .track span { font-size: 12.5px; color: var(--ink-faint); }
@@ -88,6 +88,8 @@
   .tool { padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(13, 11, 22, .72); backdrop-filter: blur(6px); font-size: 13px; font-weight: 600; }
   .tool:hover { border-color: var(--gold); }
   .tool[aria-pressed="true"] { background: var(--gold); color: #2a1c00; border-color: var(--gold); }
+  .tpflash { position: absolute; inset: 0; background: #fff8e6; opacity: 0; pointer-events: none; transition: opacity .22s ease-out; }
+  .tpflash.on { opacity: 1; transition: opacity .12s ease-in; }
   .loading { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13, 11, 22, .55); backdrop-filter: blur(3px); font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
   .loading .coin { width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1b8, var(--gold) 45%, var(--gold-deep)); animation: spin 1.1s linear infinite; }
   @keyframes spin { to { transform: rotateY(360deg); } }
@@ -148,6 +150,7 @@
     <button class="track" role="tab" type="button" data-track="gebaeude"><b>Gebäude</b><span>Häuser, Läden, Portale, Türme, Mauern</span><em id="tp-gebaeude"></em></button>
     <button class="track" role="tab" type="button" data-track="deko"><b>Deko</b><span>Bäume, Büsche, Blumen, Felsen, Kisten …</span><em id="tp-deko"></em></button>
     <button class="track" role="tab" type="button" data-track="umgebung"><b>Umgebung</b><span>Schwebeinseln, Berge, Wolken, Wahrzeichen am Horizont</span><em id="tp-umgebung"></em></button>
+    <button class="track" role="tab" type="button" data-track="portal"><b>Portale</b><span>Portal jeder Welt im Spawn und der Teleport dorthin</span><em id="tp-portal"></em></button>
   </div>
 
   <div class="grid">
@@ -163,11 +166,13 @@
           <button class="tool" id="t-low" type="button">Spielerhöhe</button>
           <button class="tool" id="t-rot" type="button" aria-pressed="true">Drehen</button>
           <button class="tool" id="t-fig" type="button" aria-pressed="false">Figur zum Vergleich</button>
+          <button class="tool" id="t-tp" type="button" hidden>Teleport abspielen</button>
           <span class="sep" aria-hidden="true"></span>
           <button class="tool layer" id="l-geb" type="button" aria-pressed="true">Gebäude</button>
           <button class="tool layer" id="l-deko" type="button" aria-pressed="true">Deko</button>
           <button class="tool layer" id="l-umg" type="button" aria-pressed="true">Umgebung</button>
         </div>
+        <div class="tpflash" id="tpflash"></div>
         <div class="loading" id="loading"><div><div class="coin"></div><span id="loading-text">Engine wird geladen …</span></div></div>
       </div>
 
@@ -221,7 +226,10 @@ try {
   throw e;
 }
 const { WORLDS, planetById, galaxyById } = W;
-const ORDER = WORLDS.filter((w) => !w.soon);
+const ALL = WORLDS.filter((w) => !w.soon);
+// Reihenfolge je Ablauf: die Portale gibt es für jede Welt außer dem Spawn selbst
+const orderOf = (t) => (t === 'portal' ? ALL.filter((w) => !w.hub) : ALL);
+let ORDER = ALL;
 const STUDS = 8;
 
 // ── Fortschritt: geteilte Daten (db), sonst nur in diesem Browser ──
@@ -252,16 +260,17 @@ const TRACKS = {
   welt: { name: 'Insel', short: 'Insel von ', label: 'Was soll sich an der Insel ändern (Boden, Wege, Plätze, Wasser, Form)?', placeholder: 'Zum Beispiel: Die Insel größer, breitere Wege, ein See in der Mitte, mehr Hügel …', layers: { gebaeude: true, deko: true, umgebung: true } },
   gebaeude: { name: 'Gebäude', short: 'Gebäude von ', label: 'Was soll sich an den Gebäuden ändern?', placeholder: 'Zum Beispiel: Der Brunnen größer, die Läden bunter, ein zweiter Turm am Tor …', layers: { gebaeude: true, deko: false, umgebung: false } },
   deko: { name: 'Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { gebaeude: true, deko: true, umgebung: false } },
+  portal: { name: 'Portal', short: 'Portal von ', label: 'Was soll sich am Portal oder an der Teleport-Animation ändern?', placeholder: 'Zum Beispiel: Das Portal größer, der Strudel schneller, eine hellere Lichtsäule bei der Ankunft …', layers: { gebaeude: true, deko: true, umgebung: true } },
   umgebung: { name: 'Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { gebaeude: true, deko: true, umgebung: true } },
 };
 let track = 'welt';
 const docId = (id, t = track) => (t === 'welt' ? id : `${t}-${id}`);
 const approved = (id, t = track) => docs[docId(id, t)]?.status === 'gefaellt';
 const currentIndex = (t = track) => {
-  const i = ORDER.findIndex((w) => !approved(w.id, t));
-  return i < 0 ? ORDER.length : i;
+  const O = orderOf(t), i = O.findIndex((w) => !approved(w.id, t));
+  return i < 0 ? O.length : i;
 };
-const unlocked = (i, t = track) => i <= currentIndex(t) || approved(ORDER[i].id, t);
+const unlocked = (i, t = track) => i <= currentIndex(t) || approved(orderOf(t)[i].id, t);
 let selected = null; // Welt-Id in der Ansicht
 
 // ── Liste ──
@@ -277,8 +286,8 @@ function render() {
   $('prog-text').textContent = cur >= ORDER.length ? `${T.name}: alles abgesegnet` : `${T.name} · gerade dran: ${ORDER[cur].name}`;
   $('prog-num').textContent = `${n} von ${ORDER.length} abgesegnet`;
   for (const t of Object.keys(TRACKS)) {
-    const k = ORDER.filter((w) => approved(w.id, t)).length;
-    $('tp-' + t).textContent = `${k} / ${ORDER.length} abgesegnet`;
+    const O = orderOf(t), k = O.filter((w) => approved(w.id, t)).length;
+    $('tp-' + t).textContent = `${k} / ${O.length} abgesegnet`;
     document.querySelector(`.track[data-track="${t}"]`).setAttribute('aria-selected', String(t === track));
   }
   $('prog-bar').style.width = `${(n / ORDER.length) * 100}%`;
@@ -321,7 +330,10 @@ document.querySelector('.tracks').addEventListener('click', (e) => {
 });
 function setTrack(t, id) {
   if (wishDirty) saveWish();
+  stopTeleport();
   track = t;
+  ORDER = orderOf(t);
+  $('t-tp').hidden = t !== 'portal';
   const T = TRACKS[t];
   $('wish-label').textContent = T.label;
   $('wish').placeholder = T.placeholder;
@@ -329,8 +341,9 @@ function setTrack(t, id) {
   // in jedem Ablauf weiter bei der Welt, die gerade dran ist (oder der gewünschten, wenn sie offen ist)
   const i = id ? ORDER.findIndex((w) => w.id === id) : -1;
   const target = i >= 0 && unlocked(i) ? id : ORDER[Math.min(currentIndex(), ORDER.length - 1)].id;
-  if (target === selected && built) {
+  if (target === selected && built && builtFor === buildTarget(target)) {
     applyLayers();
+    if (t === 'portal') focusPortal(target);
     render();
     try { history.replaceState(null, '', '#' + docId(selected)); } catch {}
   } else show(target);
@@ -468,9 +481,19 @@ function show(id) {
   $('b-models').hidden = true;
   $('w-facts').innerHTML = '';
   try { history.replaceState(null, '', '#' + docId(id)); } catch {}
-
+  stopTeleport();
+  // Ablauf „Portale“: gebaut wird der Spawn, die Kamera fliegt zum Portal dieser Welt
+  const bw = buildTarget(id);
+  if (track === 'portal') {
+    $('w-planet').textContent = `Portal im Spawn · ${g ? g.name + ' · ' + g.title : ''}`;
+    $('w-facts').innerHTML = `<span>Preis <b>${w.price ? w.price.toLocaleString('de-DE') + ' Moneten' : 'gratis'}</b></span><span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span><span>Teleport mit der Farbe <b style="color:${w.accent}">${w.accent}</b></span>`;
+    if (built && builtFor === bw) {
+      focusPortal(id);
+      return;
+    }
+  }
   $('loading').hidden = false;
-  $('loading-text').textContent = `${w.name} wird gebaut …`;
+  $('loading-text').textContent = `${bw.name} wird gebaut …`;
   $('t-fig').setAttribute('aria-pressed', 'false');
   const token = ++building;
   // erst zeichnen lassen (Ladeanzeige), dann bauen: das Bauen blockiert kurz
@@ -485,19 +508,20 @@ function show(id) {
       fxShown = false;
     }
     try {
-      built = RW.buildRobloxWorld(w, { shadows: renderer.shadowMap.enabled });
+      built = RW.buildRobloxWorld(bw, { shadows: renderer.shadowMap.enabled });
+      builtFor = bw;
     } catch (e) {
       console.error(e);
-      $('loading-text').textContent = `${w.name} konnte nicht gebaut werden.`;
+      $('loading-text').textContent = `${bw.name} konnte nicht gebaut werden.`;
       return;
     }
-    CS = (F.islandRadius(w) / 10) * STUDS;
+    CS = (F.islandRadius(bw) / 10) * STUDS;
     controls.maxDistance = 56 * CS;
     const count = built.data.parts.length + built.data.sky.length;
     $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     const wide = Math.round(built.data.meta.radius * 2);
     const nDeko = built.data.parts.filter((p) => p.deko).length, nBau = built.data.parts.filter((p) => p.bau).length, nUmg = built.data.sky.length;
-    $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    if (track !== 'portal') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
     applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
     $('loading').hidden = true;
@@ -506,9 +530,172 @@ function show(id) {
       built.rw.modelsReady.finally(() => token === building && ($('b-models').hidden = true));
     }
     view('home');
+    if (track === 'portal') return focusPortal(id);
     if (!fly) return;
     camera.position.copy(fly.toP).multiplyScalar(1.25); // kurzer Anflug
   }, 30));
+}
+
+// ── Portale und Teleport-Animation ──
+// buildTarget: welche Welt die Ansicht baut (im Ablauf „Portale“ immer der Spawn)
+function buildTarget(id, t = track) {
+  return t === 'portal' ? ALL.find((w) => w.hub) : ALL.find((w) => w.id === id);
+}
+let builtFor = null, portal = null, tp = null;
+// Portalscheibe der Welt im Spawn suchen und davor stellen
+function focusPortal(id) {
+  const disc = built?.data.parts.find((p) => p.name === 'Portal_' + id);
+  if (!disc) { portal = null; return; }
+  const pos = new THREE.Vector3(...disc.pos);
+  // Eingang der Halle (Bereich „portale-…“, der dem Portal am nächsten liegt): von dort sieht man in die Halle
+  const halls = built.data.meta.areas.filter((a) => a.id.startsWith('portale-'));
+  const hall = halls.reduce((b, a) => (Math.hypot(a.pos[0] - pos.x, a.pos[2] - pos.z) < Math.hypot(b.pos[0] - pos.x, b.pos[2] - pos.z) ? a : b), halls[0]);
+  const door = new THREE.Vector3(hall.pos[0], pos.y, hall.pos[2]);
+  const r = disc.rot;
+  let n = new THREE.Vector3(r[2], 0, r[8]).normalize();
+  if (n.dot(door.clone().sub(pos)) < 0) n.negate(); // Vorderseite: zur Hallenmitte und zum Eingang
+  const radius = disc.size ? Math.max(disc.size[0], disc.size[2] ?? 0) / 2 : 6.6;
+  portal = { id, pos, n, door, radius: Math.max(4, Math.min(radius, 9)), feetY: pos.y - 10.3, world: ALL.find((w) => w.id === id) };
+  controls.autoRotate = false;
+  $('t-rot').setAttribute('aria-pressed', 'false');
+  controls.minDistance = 2 * STUDS;
+  // mittig vor dem Portal in der Halle (unter dem Hallenschild, zwischen den Torpfeilern)
+  // Kamera: mehrere Plätze vor dem Portal ausprobieren und den mit freier Sicht nehmen (Teile der Halle,
+  // Rakete oder Brunnen dürfen nicht zwischen Kamera und Portal stehen)
+  const side0 = new THREE.Vector3(-n.z, 0, n.x);
+  const near = built.data.parts.filter((p) => p.size && Math.hypot(p.pos[0] - pos.x, p.pos[2] - pos.z) < 70 && Math.hypot(p.pos[0] - pos.x, p.pos[1] - pos.y, p.pos[2] - pos.z) > 11)
+    .map((p) => ({ c: new THREE.Vector3(...p.pos), r: Math.max(...p.size) * 0.42 }));
+  const blocked = (eye, target) => {
+    const d = target.clone().sub(eye), len = d.length();
+    d.divideScalar(len);
+    let hits = 0;
+    for (const o of near) {
+      const t = Math.max(0, Math.min(len, o.c.clone().sub(eye).dot(d)));
+      if (eye.clone().addScaledVector(d, t).distanceTo(o.c) < o.r) hits += o.r;
+    }
+    return hits;
+  };
+  const cand = (dist, sideOff, up) => pos.clone().addScaledVector(n, dist).addScaledVector(side0, sideOff).add(new THREE.Vector3(0, up, 0));
+  let best = null;
+  for (const dist of [26, 32, 20, 38])
+    for (const sideOff of [0, 12, -12, 22, -22])
+      for (const up of [7, 15]) {
+        const e = cand(dist, sideOff, up), cost = blocked(e, pos) + blocked(e, pos.clone().add(new THREE.Vector3(0, -8, 0))) + Math.abs(sideOff) * 0.05 + up * 0.05;
+        if (!best || cost < best.cost) best = { e, cost, dist, sideOff, up };
+      }
+  portal.view = best;
+  const eye = best.e;
+  fly = { t: 0, fromT: controls.target.clone(), toT: pos.clone().add(new THREE.Vector3(0, -2, 0)), fromP: camera.position.clone(), toP: eye };
+  $('t-tp').textContent = 'Teleport abspielen';
+}
+// Figur ohne Leuchtsäule und Namensschild (die gehören nur zum Größenvergleich)
+function tpFigure(at, faceTo) {
+  const m = RW.addFigure(built.rw, at, faceTo);
+  for (const c of [...m.children]) {
+    if (c.props?.Name === 'Markierung') c.setParent(null);
+    for (const g of [...(c.children || [])]) if (g.ClassName === 'BillboardGui') g.setParent(null);
+  }
+  const parts = m.children.filter((c) => c.props?.CFrame);
+  return { m, parts, base: parts.map((p) => p.props.CFrame.clone()), tr: parts.map((p) => p.props.Transparency || 0) };
+}
+const setProp = (inst, k, v) => (inst.set ? inst.set(k, v) : (inst.props[k] = v));
+function poseFigure(f, offset, fade, lift = 0) {
+  f.parts.forEach((p, i) => {
+    const m = f.base[i].clone();
+    m.elements[12] += offset.x;
+    m.elements[13] += offset.y + lift;
+    m.elements[14] += offset.z;
+    setProp(p, 'CFrame', m);
+    setProp(p, 'Transparency', Math.max(f.tr[i], fade));
+  });
+}
+function stopTeleport() {
+  if (!tp) return;
+  tp.fig?.m.setParent(null);
+  tp = null;
+  $('tpflash').classList.remove('on');
+  $('t-tp').disabled = false;
+}
+$('t-tp').onclick = () => {
+  if (tp?.phase === 'done') return show(selected); // zurück zum Portal
+  if (tp || !portal || !built) return;
+  playTeleport();
+};
+function playTeleport() {
+  const { pos, n, feetY } = portal;
+  const start = pos.clone().addScaledVector(n, 16);
+  const fig = tpFigure([start.x, feetY, start.z], [pos.x, feetY, pos.z]);
+  tp = { phase: 'walk', t: 0, fig, start, end: pos.clone().addScaledVector(n, 3) };
+  $('t-tp').disabled = true;
+  fly = { t: 0, fromT: controls.target.clone(), toT: pos.clone().add(new THREE.Vector3(0, -3, 0)), fromP: camera.position.clone(), toP: portal.view.e.clone().addScaledVector(n, 3).add(new THREE.Vector3(0, 1, 0)) };
+}
+function teleportStep(dt) {
+  if (!tp) return;
+  tp.t += dt;
+  const { pos, n, feetY, radius, world } = portal;
+  if (tp.phase === 'walk') {
+    const k = Math.min(1, tp.t / 1.6);
+    const p = tp.start.clone().lerp(tp.end, k);
+    poseFigure(tp.fig, new THREE.Vector3(p.x - tp.start.x, 0, p.z - tp.start.z), 0, Math.abs(Math.sin(k * 14)) * 0.35);
+    if (k >= 1) {
+      tp.phase = 'depart';
+      tp.t = 0;
+      RW.teleportDepart(built.rw, [pos.x, pos.y, pos.z], [n.x, n.y, n.z], world.accent, radius, () => arrive()).catch((e) => console.error(e));
+    }
+  } else if (tp.phase === 'depart') {
+    // die Figur wird ins Portal gezogen: schwebt hoch zur Scheibe und verblasst
+    const k = Math.min(1, tp.t / 1.1), e = k * k;
+    const p = tp.end.clone().lerp(pos, e);
+    poseFigure(tp.fig, new THREE.Vector3(p.x - tp.start.x, (pos.y - feetY - 3) * e, p.z - tp.start.z), e * 1.02);
+  } else if (tp.phase === 'arrive') {
+    const k = Math.min(1, Math.max(0, (tp.t - 0.35) / 0.9));
+    poseFigure(tp.fig, new THREE.Vector3(0, 0, 0), 1 - k, (1 - k) * 6);
+    if (tp.t > 2.2) {
+      tp.phase = 'done';
+      $('t-tp').disabled = false;
+      $('t-tp').textContent = 'Zurück zum Portal';
+    }
+  }
+}
+// Blitz, dann die Zielwelt bauen und dort ankommen
+function arrive() {
+  if (!tp) return;
+  const target = portal.world;
+  tp.phase = 'flash';
+  $('tpflash').classList.add('on');
+  setTimeout(() => {
+    if (!tp) return;
+    tp.fig.m.setParent(null);
+    lua?.call('__weatherReset');
+    lua?.call('__worldFxReset');
+    built.rw.dispose();
+    fxShown = false;
+    try {
+      built = RW.buildRobloxWorld(target, { shadows: renderer.shadowMap.enabled });
+      builtFor = target;
+    } catch (e) {
+      console.error(e);
+      stopTeleport();
+      return;
+    }
+    CS = (F.islandRadius(target) / 10) * STUDS;
+    controls.maxDistance = 56 * CS;
+    applyLayers();
+    RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
+    const pad = built.data.parts.find((p) => p.name === 'TeleportPad');
+    const spot = pad ? [pad.pos[0], pad.pos[1] + (pad.size?.[1] ?? 1) / 2, pad.pos[2]] : built.data.meta.spot;
+    const out = new THREE.Vector3(spot[0], 0, spot[2]).normalize();
+    tp.fig = tpFigure(spot, [0, spot[1], 0]);
+    poseFigure(tp.fig, new THREE.Vector3(), 1, 6);
+    const look = new THREE.Vector3(spot[0], spot[1] + 6, spot[2]);
+    controls.target.copy(look);
+    camera.position.copy(look).addScaledVector(out, 60).add(new THREE.Vector3(0, 18, 0)).addScaledVector(new THREE.Vector3(-out.z, 0, out.x), 30);
+    fly = null;
+    tp.phase = 'arrive';
+    tp.t = 0;
+    RW.teleportArrive(built.rw, spot, target.accent).catch((e) => console.error(e));
+    requestAnimationFrame(() => $('tpflash').classList.remove('on'));
+  }, 140);
 }
 
 function resize() {
@@ -537,6 +724,7 @@ renderer.setAnimationLoop(() => {
   }
   controls.update();
   camera.updateMatrixWorld();
+  teleportStep(dt);
   if (lua) { lua.setCamera(camera); lua.frame(dt); }
   built.rw.update(dt);
   built.rw.render(renderer, camera);
@@ -548,7 +736,7 @@ controls.target.set(0, 0.6 * STUDS, 0);
 loadLocal();
 function parseHash() {
   const h = location.hash.slice(1);
-  for (const t of ['gebaeude', 'deko', 'umgebung']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
+  for (const t of ['gebaeude', 'deko', 'umgebung', 'portal']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
   return { t: 'welt', id: h };
 }
 const startId = () => {

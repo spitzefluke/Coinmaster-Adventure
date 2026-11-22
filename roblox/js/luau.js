@@ -8,6 +8,7 @@ import { petDataSource, PET_BUILDER, HATCH_FX } from './petLuau.js';
 import { EGG_BUILDER } from './eggLuau.js';
 import { worldFxSource, WORLD_FX_CLIENT } from './worldFxLuau.js';
 import { JUICE_CLIENT } from './juiceLuau.js';
+import { TELEPORT_FX } from './teleportLuau.js';
 import { MUTATION_FX } from './mutationLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
@@ -1872,6 +1873,7 @@ export function moduleSources(data) {
     { name: 'MutationFx', source: MUTATION_FX },
     { name: 'WeatherFx', source: WEATHER_FX },
     { name: 'WorldFx', source: worldFxSource(data) },
+    { name: 'TeleportFx', source: TELEPORT_FX },
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),

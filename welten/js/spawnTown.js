@@ -444,7 +444,8 @@ export function buildSpawnTown(ctx, K) {
       b.position.set(s * 2.6, 0, 1.6);
       g.add(b);
     }
-    for (const [x, z] of [[-2.2, 0.8], [2.2, 0.8]]) g.add(at(roundTree(1.6, '#4f9a3f', rand), x, 0, z));
+    // Bäume seitlich hinter den Torpfeilern (vorher standen sie vor den äußeren Portalen)
+    for (const [x, z] of [[-4.3, 0.2], [4.3, 0.2]]) g.add(at(roundTree(1.6, '#4f9a3f', rand), x, 0, z));
   });
   addArea('portale-p1', 'Heimat-Tor (Planet 1)', ...polar(deg(90), HALL_R - 3.4));
   // Raketenstartplatz (Planet 2)
@@ -499,7 +500,8 @@ export function buildSpawnTown(ctx, K) {
       swirl.push(r);
     }
     anims.push((t) => swirl.forEach((r, i) => (r.rotation.z = t * (1.6 - i * 0.3))));
-    for (const [x, z, c] of [[-2.0, 0.9, '#ff7a8a'], [2.0, 0.9, '#ffb05a']]) g.add(at(crystal(1.2, c, rand, 0.8), x, 0, z));
+    // Kristalle seitlich am Hallenrand (vorher standen sie vor den äußeren Portalen)
+    for (const [x, z, c] of [[-4.2, 0.2, '#ff7a8a'], [4.2, 0.2, '#ffb05a']]) g.add(at(crystal(1.2, c, rand, 0.8), x, 0, z));
     // Planet 4 teilt sich die Halle: goldene Himmelsleiter hinter dem Strudel
     const sky = (byPlanet.p4 || []).length > 0;
     if (sky) {
