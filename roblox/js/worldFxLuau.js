@@ -1808,7 +1808,7 @@ WorldFx.Recipes = R
 
 -- Werkstatt-Wünsche: ruhigere Teilchen (wie Wald und Eis) und Welten ganz ohne schwebende Teilchen
 local CALM = { candy = true, lava = true, neptun = true, sonne = true, quarzfeld = true, smaragdwald = true, jadetempel = true, saphirsee = true, diamantkern = true }
-local NO_MOTES = { opalwolken = true }
+local NO_MOTES = { opalwolken = true, alien = true, goetterthron = true, hoehle = true }
 
 -- Umgebung einer Welt bauen; mitte = Mitte der Insel (Himmelskuppel), eltern = Ordner/Model
 function WorldFx.Apply(worldId, center, parent)

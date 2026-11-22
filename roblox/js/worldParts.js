@@ -731,8 +731,8 @@ const EMIT_TWEAK = {
 // Werkstatt-Wünsche: in diesen Welten wie Wald und Eis weniger, kleinere Teilchen, die langsam schweben,
 // trudeln und sanft pulsieren statt zu flimmern; in NO_PARTICLES gar keine schwebenden Teilchen
 const CALM = new Set(['candy', 'lava', 'neptun', 'sonne', 'quarzfeld', 'smaragdwald', 'jadetempel', 'saphirsee', 'diamantkern']);
-const NO_PARTICLES = new Set(['opalwolken']);
-const LIFE = /Voegel|Schmetterling|Fisch|Wal|Qualle|Vogel/; // Tiere sind keine Partikel im Sinne der Wünsche
+const NO_PARTICLES = new Set(['opalwolken', 'alien', 'goetterthron', 'hoehle']);
+const LIFE = /Voegel|Schmetterling|Fisch|Wal|Qualle|Vogel|Sternschnuppen/; // Tiere und Sternschnuppen am Himmel sind keine schwebenden Partikel
 function calm(e, { pulse = false } = {}) {
   return {
     ...e,
