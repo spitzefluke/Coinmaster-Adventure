@@ -2317,9 +2317,8 @@ const BUILDERS = {
       ig.scale.setScalar(s);
       return ig;
     };
-    put(igloo(1), -1.5, -1, { rot: false });
-    const p2 = spot(1.6, 4, R - 3);
-    if (p2) put(igloo(0.78), p2[0], p2[1]);
+    // keine Iglus mehr (Werkstatt-Wunsch „entferne das Iglu“); igloo() bleibt für später
+    void igloo;
     scatter(9, () => crystal(rr(0.9, 1.6), rand() < 0.5 ? '#8ae6ff' : '#bfe8ff', rand, 0.7), 0.6);
     if (!modelWorld) scatter(7, () => pine(rr(1.6, 2.4), '#e8f4ff', rand), 0.7); // sonst verschneite Modell-Tannen
     // Schneemann

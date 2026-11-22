@@ -941,8 +941,8 @@ function logCabin(ctx, kit, x, z, face) {
 // ── Eis: verschneiter Tannenwald, Wachturm, Zeltlager mit Laternen ──
 const EIS = {
   landmark: true, // Eispalast
-  keepBase: true, // Iglu, Kristalle, Schneemann, gefrorener See
-  baseSpots: [[-1.5, -1, 1.5], [1.8, 1.4, 0.7], [1.6, -2, 1.4]],
+  keepBase: true, // Kristalle, Schneemann, gefrorener See (Iglu entfernt)
+  baseSpots: [[1.8, 1.4, 0.7], [1.6, -2, 1.4]],
   build(ctx, kit) {
     const { R, rr } = ctx;
     place(ctx, 'building_tower_A_blue@eis', 3.6, { rMin: 6, rMax: R - 3, face: [0, 0] });
