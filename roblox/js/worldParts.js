@@ -371,10 +371,12 @@ const FALLS = {
   normal: { color: '#3a9fd8', light: '#e4f6ff', deep: '#2a78b0', material: 'Glass', transparency: 0.2, count: 2, real: true },
   wald: { color: '#2f8fc8', light: '#dcf2ff', deep: '#22648f', material: 'Glass', transparency: 0.2, count: 1, real: true },
   eis: { color: '#9fe8ff', light: '#ffffff', material: 'Ice', transparency: 0.15, count: 1 },
-  lava: { color: '#ff5512', light: '#ffb052', material: 'Neon', transparency: 0, count: 2 },
+  // Lava: glühender Fall im Bogen, unten Rauch und aufsteigende Funken
+  lava: { color: '#ff5a12', light: '#ffd27a', deep: '#c42a06', material: 'Neon', transparency: 0, count: 2, real: true, kind: 'lava' },
   sonne: { color: '#ffa41c', light: '#fff09a', material: 'Neon', transparency: 0, count: 2 },
-  candy: { color: '#ff78c6', light: '#ffd4ee', material: 'SmoothPlastic', transparency: 0, count: 2 },
-  hoehle: { color: '#3ee6ff', light: '#c8fbff', material: 'Neon', transparency: 0, count: 1 },
+  // Candy: dicker Schokoladenfall, fließt langsam, glänzende Streifen, unten Schokospritzer
+  candy: { color: '#6e3a1c', light: '#b0703e', deep: '#3e1d0c', material: 'SmoothPlastic', transparency: 0, count: 2, real: true, kind: 'schoko' },
+  // hoehle: kein Kristallwasser mehr (Werkstatt-Wunsch)
   alien: { color: '#86ff52', light: '#e2ffc8', material: 'Neon', transparency: 0, count: 1 },
 };
 // Wolkenmeer unter der Insel (Einheiten): Grundhöhe und Mulde unter der Insel (gleich in skyShield)
@@ -433,8 +435,11 @@ function waterfalls(out, emitters, built, world) {
 // durchscheinend. Helle Schlieren laufen mit, Partikel strömen sichtbar nach unten, unten steigt Gischt auf.
 function realFalls(out, emitters, built, world, f) {
   const R = built.radius, rand = seededRand(world.id + ':fall');
-  const start = rand() * Math.PI * 2;
-  const VX = 0.85, G = 2.2; // Einheiten/s und Einheiten/s² (nur für die Form der Bahn)
+  const start = built.fallAngle ?? rand() * Math.PI * 2;
+  const kind = f.kind || 'wasser';
+  const VX = kind === 'schoko' ? 0.5 : 0.85, G = 2.2; // Einheiten/s und Einheiten/s² (nur für die Form der Bahn)
+  const GROW = kind === 'schoko' ? 0.2 : kind === 'lava' ? 0.35 : 0.55; // wie stark der Vorhang nach unten breiter wird
+  const thick = kind !== 'wasser'; // Schokolade und Lava sind dick und undurchsichtig
   const mix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString();
   for (let i = 0; i < f.count; i++) {
     const a = start + i * 2.4, ca = Math.cos(a), sa = Math.sin(a);
@@ -471,7 +476,13 @@ function realFalls(out, emitters, built, world, f) {
     // Vorhang: dunklerer Kern hinten, darüber die helle Wasserhaut, außen ein durchscheinender Schleier
     for (let j = 0; j < N; j++) {
       const p0 = path[j], p1 = path[j + 1], k = p1.k;
-      const grow = 1 + k * 0.55;
+      const grow = 1 + k * GROW;
+      if (thick) {
+        // dicker Strang: dunkler Kern, glänzende (Schoko) oder glühende (Lava) Haut, nach unten nur wenig dünner
+        seg(p0, p1, 0, W * grow * 0.9, 0.42 * (1 - k * 0.3), -0.08, { color: kind === 'lava' ? mix(f.deep, f.color, 0.35 + 0.3 * (1 - k)) : f.deep, material: kind === 'lava' ? 'Neon' : 'SmoothPlastic', transparency: 0 });
+        seg(p0, p1, 0, W * grow, 0.12, 0.14, { color: kind === 'lava' ? mix(f.color, f.deep, k * 0.45) : mix(f.color, f.deep, k * 0.3), material: f.material, transparency: kind === 'lava' ? Math.min(0.5, k * 0.35) : 0 });
+        continue;
+      }
       seg(p0, p1, 0, W * grow * 0.86, 0.32 * (1 - k * 0.5), -0.08, { color: mix(f.deep, f.color, 0.3), material: f.material, transparency: Math.min(0.6, f.transparency + k * 0.3) });
       seg(p0, p1, 0, W * grow, 0.14, 0.12, { color: mix(f.color, f.light, 0.25 + 0.35 * k), material: f.material, transparency: Math.min(0.8, f.transparency + 0.1 + k * 0.45) });
       if (k > 0.25) seg(p0, p1, 0, W * grow * 1.35, 0.06, 0.3, { color: f.light, material: 'SmoothPlastic', transparency: Math.min(0.9, 0.55 + k * 0.3) });
@@ -483,25 +494,51 @@ function realFalls(out, emitters, built, world, f) {
       const tr = 0.1 + rand() * 0.35;
       for (let j = j0; j < j1; j++) {
         const k = path[j + 1].k;
-        seg(path[j], path[j + 1], off * (1 + k * 0.55), w * (1 + k * 0.6), 0.04, 0.2 + s * 0.005, { color: f.light, material: 'SmoothPlastic', transparency: Math.min(0.92, tr + k * 0.5) });
+        seg(path[j], path[j + 1], off * (1 + k * GROW), w * (1 + k * 0.6), 0.04, 0.2 + s * 0.005, { color: f.light, material: kind === 'lava' ? 'Neon' : 'SmoothPlastic', transparency: Math.min(0.92, (thick ? tr * 0.6 : tr) + k * (thick ? 0.3 : 0.5)) });
       }
     }
     // weißer Wasserwulst an der Abbruchkante
     out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(R + 0.2, top + 0.02), rot, size: [(W + 0.3) * STUDS, 0.32 * STUDS, 0.7 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.15 });
-    // Gischtwolke am Aufprall: mehrere weiche, durchscheinende Ballen
+    // Gischtwolke am Aufprall: mehrere weiche, durchscheinende Ballen (Schokolade und Lava: keine Gischt)
     const end = path[N];
-    for (let j = 0; j < 7; j++) {
+    for (let j = 0; j < (thick ? 0 : 7); j++) {
       const off = (j - 3) * 0.75 + (rand() - 0.5) * 0.4, s = 1.6 + rand() * 1.4;
       out.push({ shape: 'Ellipsoid', name: 'Wasserfall', pos: at(end.r + (rand() - 0.3) * 1.2, bottom + 0.3 + rand() * 0.6, off), rot, size: [s * STUDS, s * 0.6 * STUDS, s * 0.9 * STUDS], color: f.light, material: 'SmoothPlastic', transparency: 0.35 + rand() * 0.25 });
     }
-    // Partikel: Wasser strömt über die Kante und fällt (Schwerkraft wie die Bahn oben), unten Gischt und Nebel
+    // Partikel: Wasser strömt über die Kante und fällt (Schwerkraft wie die Bahn oben), unten Gischt und Nebel.
+    // Schokolade: dicke Tropfen, unten Spritzer. Lava: glühende Brocken, unten Rauch und aufsteigende Funken.
     const ER = [sa, 0, ca, 0, 1, 0, -ca, 0, sa]; // X quer, Y hoch, Z nach außen
     emitters.push({
-      name: 'Wasserstrom', pos: at(R + 0.25, top + 0.05), rot: ER, size: [W * 0.9 * STUDS, 0.2 * STUDS, 0.3 * STUDS], direction: 'Back',
-      colors: [f.light, mix(f.color, f.light, 0.5)], particleSize: 0.6 * STUDS, sizeEnd: 1.1 * STUDS, rate: 70,
+      name: kind === 'lava' ? 'Lavastrom' : kind === 'schoko' ? 'Schokostrom' : 'Wasserstrom', pos: at(R + 0.25, top + 0.05), rot: ER, size: [W * 0.9 * STUDS, 0.2 * STUDS, 0.3 * STUDS], direction: 'Back',
+      colors: thick ? [f.light, f.color] : [f.light, mix(f.color, f.light, 0.5)], particleSize: (thick ? 0.45 : 0.6) * STUDS, sizeEnd: (thick ? 0.6 : 1.1) * STUDS, rate: thick ? 40 : 70,
       speed: [VX * 0.9 * STUDS, VX * 1.15 * STUDS], lifetime: [tEnd * 0.95, tEnd * 1.05], spread: [4, 4],
-      acceleration: [0, -G * STUDS, 0], squash: 0.9, transparency: [[0, 0.2], [0.7, 0.45], [1, 1]], lightEmission: 0.25, rotSpeed: [0, 0],
+      acceleration: [0, -G * STUDS, 0], squash: 0.9, transparency: thick ? [[0, 0], [0.8, 0.2], [1, 1]] : [[0, 0.2], [0.7, 0.45], [1, 1]],
+      lightEmission: kind === 'lava' ? 1 : kind === 'schoko' ? 0 : 0.25, rotSpeed: [0, 0],
     });
+    if (kind === 'schoko') {
+      emitters.push({
+        name: 'Schokospritzer', pos: at(end.r, bottom + 0.3), rot: ER, size: [W * 1.4 * STUDS, 0.3 * STUDS, 1 * STUDS], direction: 'Top',
+        colors: [f.light, f.color], particleSize: 0.3 * STUDS, sizeEnd: 0.2 * STUDS, rate: 16,
+        speed: [0.8 * STUDS, 1.6 * STUDS], lifetime: [0.8, 1.3], spread: [40, 40], acceleration: [0, -3 * STUDS, 0],
+        transparency: [[0, 0], [0.8, 0.1], [1, 1]], lightEmission: 0,
+      });
+      continue;
+    }
+    if (kind === 'lava') {
+      emitters.push({
+        name: 'Lavarauch', pos: at(end.r, bottom + 0.6), rot: ER, size: [W * 1.6 * STUDS, 0.4 * STUDS, 1.4 * STUDS], direction: 'Top',
+        colors: ['#4a3a36', '#2a2224'], particleSize: 1.4 * STUDS, sizeEnd: 3.4 * STUDS, rate: 10,
+        speed: [0.5 * STUDS, 1.1 * STUDS], lifetime: [3, 5], spread: [30, 30], drag: 0.4,
+        transparency: [[0, 1], [0.15, 0.55], [0.7, 0.8], [1, 1]], lightEmission: 0,
+      });
+      emitters.push({
+        name: 'Lavafunken', pos: at(end.r, bottom + 0.5), rot: ER, size: [W * 1.4 * STUDS, 0.3 * STUDS, 1 * STUDS], direction: 'Top',
+        colors: ['#ffd27a', '#ff5a12'], particleSize: 0.22 * STUDS, sizeEnd: 0.08 * STUDS, rate: 14,
+        speed: [1.2 * STUDS, 2.4 * STUDS], lifetime: [1, 1.8], spread: [35, 35], acceleration: [0, -1.2 * STUDS, 0],
+        transparency: [[0, 0], [0.7, 0.2], [1, 1]], lightEmission: 1,
+      });
+      continue;
+    }
     emitters.push({
       name: 'Gischt', pos: at(end.r, bottom + 0.4), rot: ER, size: [W * 1.6 * STUDS, 0.4 * STUDS, 1.4 * STUDS], direction: 'Top',
       colors: ['#ffffff', f.light], particleSize: 1.1 * STUDS, sizeEnd: 2.6 * STUDS, rate: 18,
@@ -691,9 +728,29 @@ const EMIT_TWEAK = {
     rotSpeed: [0, 0],
   }),
 };
+// Werkstatt-Wünsche: in diesen Welten wie Wald und Eis weniger, kleinere Teilchen, die langsam schweben,
+// trudeln und sanft pulsieren statt zu flimmern; in NO_PARTICLES gar keine schwebenden Teilchen
+const CALM = new Set(['candy', 'lava', 'neptun', 'sonne', 'quarzfeld', 'smaragdwald', 'jadetempel', 'saphirsee', 'diamantkern']);
+const NO_PARTICLES = new Set(['opalwolken']);
+const LIFE = /Voegel|Schmetterling|Fisch|Wal|Qualle|Vogel/; // Tiere sind keine Partikel im Sinne der Wünsche
+function calm(e, { pulse = false } = {}) {
+  return {
+    ...e,
+    rate: Math.max(1, Math.round(e.rate * 0.35)),
+    particleSize: e.particleSize * 0.75, sizeEnd: (e.sizeEnd ?? e.particleSize * 0.8) * 0.75,
+    speed: e.speed.map((v) => v * 0.55), lifetime: e.lifetime.map((v) => v * 1.5),
+    drag: e.drag ?? 0.3, rotSpeed: e.rotSpeed ?? [-60, 60],
+    ...(e.acceleration ? { acceleration: e.acceleration.map((v) => v * 0.5) } : {}),
+    transparency: pulse
+      ? [[0, 1], [0.12, 0.3], [0.3, 0.8], [0.48, 0.3], [0.66, 0.85], [0.84, 0.35], [1, 1]]
+      : [[0, 1], [0.12, 0.3], [0.8, 0.45], [1, 1]],
+  };
+}
 function emitterFor(world, R) {
+  if (NO_PARTICLES.has(world.id)) return null;
   const e = baseEmitter(world, R);
-  return e && EMIT_TWEAK[world.id] ? EMIT_TWEAK[world.id](e, R) : e;
+  if (e && EMIT_TWEAK[world.id]) return EMIT_TWEAK[world.id](e, R);
+  return e && CALM.has(world.id) ? calm(e, { pulse: (FX[world.fx]?.blink || 0) >= 0.8 }) : e;
 }
 function baseEmitter(world, R) {
   const cfg = FX[world.fx];
@@ -827,6 +884,7 @@ export function worldToParts(world) {
   const emitters = emitter ? [emitter] : [];
   waterfalls(parts, emitters, built, world);
   // weitere Partikel der Welt (Schmetterlinge, Vögel, Blätter, Polarlicht …) von Einheiten in Studs
+  const n0 = emitters.length;
   for (const e of built.emitters || [])
     emitters.push({
       name: e.name,
@@ -844,8 +902,17 @@ export function worldToParts(world) {
       ...(e.drag ? { drag: e.drag } : {}),
       ...(e.rotSpeed ? { rotSpeed: e.rotSpeed } : {}),
       ...(e.transparency ? { transparency: e.transparency } : {}),
+      ...(e.rot ? { rot: e.rot } : {}),
+      ...(e.sizeEnd ? { sizeEnd: e.sizeEnd * STUDS } : {}),
+      ...(e.squash ? { squash: e.squash } : {}),
       squares: false,
     });
+  // Werkstatt-Wünsche: weitere Teilchen der Welt ebenso beruhigen oder entfernen (Tiere bleiben)
+  for (let i = emitters.length - 1; i >= n0; i--) {
+    if (LIFE.test(emitters[i].name || '')) continue;
+    if (NO_PARTICLES.has(world.id)) emitters.splice(i, 1);
+    else if (CALM.has(world.id)) emitters[i] = calm(emitters[i]);
+  }
   // Daten für die Vorschau in Studs: Inselradius, Bereiche des Spawns, Platz für die Vergleichsfigur
   const spot = compareSpot(built).multiplyScalar(STUDS);
   const meta = {

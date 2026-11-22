@@ -375,9 +375,56 @@ const OPALWOLKEN = make({
   extra(ctx, kit) {
     const colors = ['#ffe2f6', '#e2f0ff', '#f0ffe8', '#fff2d8'];
     ctx.scatter(12, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 2.6);
-  },
-  emitters(ctx, add) {
-    add('Schimmer', [0, 3, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], ['#ff9ae0', '#5ad8ff', '#fff2a0'], 0.14, 14, [0.1, 0.3], [5, 8], { light: 1 });
+    // kleine Details (Werkstatt-Wunsch): schimmernde Opalsteine mit Farbflecken, Kristallsplitter,
+    // Wolkenblumen und Grasbüschel in Pastell zwischen den Wolkenbuckeln
+    const { rand, rr } = ctx, inner = ctx.R - 2.6;
+    const fleck = ['#ff9ae0', '#5ad8ff', '#a8ffb8', '#fff2a0', '#c8a2ff'];
+    ctx.scatter(22, () => {
+      const g = new THREE.Group(), s0 = rr(0.12, 0.24);
+      const body = kit.at(new THREE.Mesh(new THREE.SphereGeometry(s0, 10, 6), kit.M('#f4eefc', { roughness: 0.15, metalness: 0.1, emissive: '#e8dcff', emissiveIntensity: 0.15 })), 0, s0 * 0.35, 0);
+      body.scale.set(1.25, 0.55, 1);
+      g.add(body);
+      for (let i = 0; i < 3; i++) {
+        const c = fleck[Math.floor(rand() * fleck.length)];
+        const f = kit.at(new THREE.Mesh(new THREE.SphereGeometry(s0 * 0.32, 6, 4), kit.E(c, 0.5)), rr(-0.5, 0.5) * s0, s0 * 0.55, rr(-0.4, 0.4) * s0);
+        f.scale.set(1.2, 0.35, 1);
+        g.add(f);
+      }
+      return g;
+    }, 0.3, 2, inner);
+    ctx.scatter(10, () => {
+      const g = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const c = kit.crystal(rr(0.18, 0.32), fleck[Math.floor(rand() * fleck.length)], rand, 1.2);
+        c.position.set(rr(-0.15, 0.15), 0, rr(-0.15, 0.15));
+        c.rotation.set(rr(-0.4, 0.4), rand() * TAU, rr(-0.4, 0.4));
+        g.add(c);
+      }
+      return g;
+    }, 0.35, 2, inner);
+    const petals = ['#ffd6f0', '#d6ecff', '#e8dcff', '#fff2c8'];
+    ctx.scatter(18, () => {
+      const g = new THREE.Group(), c = petals[Math.floor(rand() * petals.length)], h = rr(0.18, 0.32);
+      g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, h, 5), kit.M('#a8d8b8')), 0, h / 2, 0));
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU;
+        const p = kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 4), kit.M(c, { roughness: 0.6 })), Math.cos(a) * 0.06, h, Math.sin(a) * 0.06);
+        p.scale.set(1, 0.45, 1);
+        g.add(p);
+      }
+      g.add(kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), kit.E('#fff2a0', 0.4)), 0, h + 0.02, 0));
+      return g;
+    }, 0.2, 2, inner);
+    ctx.scatter(16, () => {
+      const g = new THREE.Group(), c = rand() < 0.5 ? '#b8e8c8' : '#d8c8f0';
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU + rand() * 0.5, h = rr(0.14, 0.26);
+        const blade = kit.at(new THREE.Mesh(new THREE.ConeGeometry(0.025, h, 4), kit.M(c)), Math.cos(a) * 0.04, h / 2, Math.sin(a) * 0.04);
+        blade.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+        g.add(blade);
+      }
+      return g;
+    }, 0.18, 2, inner);
   },
   sounds: [['Höhenwind', 'leiser Wind über den Wolken', 0.3]],
 });

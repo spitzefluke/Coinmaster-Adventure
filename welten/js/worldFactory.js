@@ -15,6 +15,7 @@ import { MODEL_WORLDS } from './modelWorlds.js';
 import { SKYBOXES } from './skyboxes.js';
 import { NEW_WORLDS, planet4Before, planet4After } from './planet4.js';
 import { GEM_WORLDS, galaxy2After } from './galaxie2.js';
+import { ribbon } from './detail.js';
 
 const R = 16; // Radius der Insel
 export const ISLAND_RADIUS = R;
@@ -202,6 +203,49 @@ export const FX = {
 };
 
 // ── Welt bauen ──────────────────────────────────────────────────────────────
+
+// Lavafluss vom Fuß des Vulkans bis über die Inselkante (dort stürzt er als Lavafall hinab, worldParts.js):
+// dunkle, erkaltete Kruste am Rand, darin die glühende Lava mit hellem Kern und treibenden Krustenschollen.
+// In Roblox zeigen Partikel, dass die Lava fließt: glühende Tropfen treiben mit der Strömung, Funken steigen auf.
+function lavaRiver(ctx, [x0, z0]) {
+  const { height, shared, reserve, rand, rr } = ctx;
+  const a = Math.atan2(z0, x0), r0 = Math.hypot(x0, z0), r1 = R + 0.2;
+  const pts = [];
+  for (let i = 0; i <= 8; i++) {
+    const k = i / 8, r = r0 + (r1 - r0) * k, w = Math.sin(k * Math.PI * 1.6) * 0.18 * (1 - k * 0.5);
+    pts.push(new THREE.Vector3(Math.cos(a + w) * r, 0, Math.sin(a + w) * r));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  ribbon(ctx, curve, { width: 1.35, thick: 0.1, lift: 0.03, segs: 40, material: M('#2a1e1a', { roughness: 1 }), name: 'Lavakruste' });
+  ribbon(ctx, curve, { width: 0.85, thick: 0.08, lift: 0.055, segs: 40, material: E('#ff4a00', 1.1), name: 'Lava' });
+  ribbon(ctx, curve, { width: 0.26, thick: 0.04, lift: 0.07, segs: 40, material: E('#ffc04a', 1.3), name: 'Lava' });
+  for (let i = 0; i <= 30; i++) {
+    const p = curve.getPoint(i / 30);
+    reserve(p.x, p.z, 0.8);
+  }
+  // treibende Krustenschollen auf der Lava
+  for (let i = 0; i < 9; i++) {
+    const k = 0.06 + (i / 9) * 0.86 + rr(-0.03, 0.03), p = curve.getPoint(k), t = curve.getTangent(k);
+    const off = rr(-0.22, 0.22);
+    const x = p.x - t.z * off, z = p.z + t.x * off;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(rr(0.14, 0.26), 0.04, rr(0.18, 0.34)), M('#3a2a24', { roughness: 1 }));
+    m.position.set(x, height(x, z) + 0.085, z);
+    m.rotation.y = rand() * Math.PI;
+    m.userData.rbx = { name: 'Lavakruste' };
+    ctx.root.add(m);
+  }
+  // Partikel: Glut treibt mit der Strömung (Richtung „Back“ = +Z des gedrehten Halters), Funken steigen auf
+  const em = (shared.emitters = shared.emitters || []);
+  for (let i = 0; i < 4; i++) {
+    const k = 0.1 + i * 0.22, p = curve.getPoint(k), t = curve.getTangent(k).setY(0).normalize();
+    const X = new THREE.Vector3(t.z, 0, -t.x); // quer, so dass X × Y = Z (Strömung)
+    const rot = [X.x, 0, t.x, 0, 1, 0, X.z, 0, t.z];
+    em.push({ name: 'Lavafluss', pos: [p.x, height(p.x, p.z) + 0.1, p.z], size: [0.6, 0.05, 0.4], rot, direction: 'Back', colors: ['#ffd27a', '#ff5a12'], particleSize: 0.16, sizeEnd: 0.1, rate: 6, speed: [0.35, 0.5], lifetime: [2.2, 3], spread: [6, 6], lightEmission: 1, transparency: [[0, 1], [0.15, 0], [0.8, 0.2], [1, 1]] });
+    em.push({ name: 'Lavafunken', pos: [p.x, height(p.x, p.z) + 0.15, p.z], size: [0.6, 0.05, 1.2], rot, direction: 'Top', colors: ['#ffd27a', '#ff6a1a'], particleSize: 0.07, sizeEnd: 0.03, rate: 2, speed: [0.6, 1.1], lifetime: [0.8, 1.4], spread: [25, 25], lightEmission: 1, acceleration: [0, -0.4, 0] });
+  }
+  shared.fallAngle = a; // der erste Lavafall liegt am Ende dieses Flusses
+}
+
 
 export function buildWorld(world, { particles: pScale = 1, shadows = false } = {}) {
   // Inselradius dieser Welt (der Spawn ist größer); die Bausteine außerhalb rechnen weiter mit 16
@@ -508,6 +552,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
     figureSpot,
     areas: shared.areas || [], // Bereiche zum Anfliegen (Spawn)
     emitters: shared.emitters || [], // zusätzliche Partikel (Leben, Himmelseffekte), Webseiten-Einheiten
+    fallAngle: shared.fallAngle, // Winkel des ersten Wasser-/Lavafalls, wenn ein Fluss dorthin führt
     paint: shared.paint || [], // bemalter Boden (Pfade, Plätze): in Roblox färbt terrainSurface die Dreiecke
     sounds: shared.sounds || [], // Plätze für Klänge mit Vorschlag (SoundId setzt man in Roblox)
     update(t, dt) {
@@ -2266,7 +2311,7 @@ const BUILDERS = {
     put(lake, 1.6, -2, { sink: -0.04, rot: false, lay: true });
   },
 
-  lava({ put, scatter, rand, rr, root, anims, world, modelWorld }) {
+  lava({ put, scatter, rand, rr, root, anims, world, modelWorld, height, shared, reserve }) {
     const vol = new THREE.Group();
     const cone = new THREE.Mesh(jitter(new THREE.CylinderGeometry(0.7, 2.4, 2.8, 12, 3, true), rand, 0.25, (x, y) => y > 1.3), M('#2a201c'));
     cone.position.y = 1.4;
@@ -2278,6 +2323,7 @@ const BUILDERS = {
     const flow = new THREE.Mesh(new THREE.TubeGeometry(path, 30, 0.18, 6), E('#ff5000', 1));
     vol.add(flow);
     put(vol, -0.8, -0.6, { rot: false });
+    lavaRiver({ root, height, shared, reserve, rand, rr }, [-0.8 + 3.6, -0.6 - 0.6]);
     const glow = new THREE.PointLight('#ff6a1a', 25, 9 * K, 2);
     glow.position.set(-0.8, 3.4, -0.6);
     root.add(glow);

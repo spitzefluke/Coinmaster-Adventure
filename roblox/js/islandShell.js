@@ -54,7 +54,9 @@ const STYLE = {
   muschelland: { lip: 'plain', hang: ['kelp', 'pearls', 'corals'], rockMat: 'Pebble', rockTint: '#d8b8b0', rockLift: 0.12 },
   atlantis: { lip: 'plain', glow: '#5affd8', hang: ['kelp', 'lavadrips'], rockMat: 'Slate' },
   tiefseegraben: { lip: 'plain', glow: '#3ee6ff', hang: ['kelp'], rockMat: 'Basalt' },
-  wolkenburg: { lip: 'plain', hang: ['clouds'], rockMat: 'Marble', depth: 0.8 },
+  // Wolkenburg (Werkstatt-Wunsch): detailreicher Marmorfels mit mehr Zapfen, Ranken und Leuchtkristallen,
+  // goldene Runen auf dem Fels und sanfte Lichtstrahlen unter der Spitze
+  wolkenburg: { lip: 'plain', hang: ['clouds', 'vines', 'crystals', 'runes'], crystals: ['#ffe7a8', '#bfe8ff', '#fff6dc'], glowCrystals: true, rockMat: 'Marble', rockTint: '#ebe5f6', depth: 0.8, tips: 15, beams: '#fff0c0' },
   engelsgarten: { hang: ['grass', 'vines', 'clouds'], rockMat: 'Marble' },
   goetterthron: { lip: 'plain', hang: ['clouds'], rockMat: 'Marble' },
   quarzfeld: { lip: 'plain', crystals: '#f0ecff', hang: ['crystals'], rockMat: 'Marble' },
@@ -259,7 +261,7 @@ export function islandShell(out, built, world) {
   }
 
   // ── Nebenspitzen: kleinere Zungen hängen außen aus der Unterseite ──
-  const nTips = 8;
+  const nTips = st.tips ?? 8;
   for (let i = 0; i < nTips; i++) {
     const a = (i / nTips) * TAU + rand() * 0.5, t = 0.3 + rand() * 0.35;
     const rr = surf(a, t) * 0.84, y = yAt(t) + 0.6;
@@ -409,8 +411,44 @@ function hangers(out, st, g) {
       const n = 2 + Math.floor(rand() * 3);
       for (let k = 0; k < n; k++) {
         const dir = V(Math.cos(a) * (0.4 + rand() * 0.5), -0.6 - rand() * 0.6, Math.sin(a) * (0.4 + rand() * 0.5)).add(V((rand() - 0.5) * 0.5, 0, (rand() - 0.5) * 0.5));
-        crystal(out, base.clone().add(V((rand() - 0.5) * 0.5, (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.5)), dir, 1.2 + rand() * 2, 0.22 + rand() * 0.18, cc[i % cc.length], rand);
+        crystal(out, base.clone().add(V((rand() - 0.5) * 0.5, (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.5)), dir, 1.2 + rand() * 2, 0.22 + rand() * 0.18, cc[i % cc.length], rand, st.glowCrystals ? 'Neon' : undefined);
       }
+    }
+  }
+  if (kinds.has('runes')) {
+    // goldene Runen: Kreis aus kurzen Leuchtstrichen mit Zeichen darin, flach auf der Felswand
+    const gold = '#ffd76a';
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU + (rand() - 0.5) * 0.25, t = 0.12 + rand() * 0.45;
+      const ca = Math.cos(a), sa = Math.sin(a), r0 = surf(a, t) + 0.3, y0 = yAt(t);
+      const rot = [sa, 0, ca, 0, 1, 0, -ca, 0, sa]; // X quer, Y hoch, Z nach außen
+      const at = (u, v) => g.PL(a, r0, y0 + v).add(V(sa * u, 0, -ca * u)).multiplyScalar(STUDS).toArray();
+      const rad = 0.45 + rand() * 0.2;
+      for (let k = 0; k < 10; k++) {
+        const b = (k / 10) * TAU, u = Math.cos(b) * rad, v = Math.sin(b) * rad;
+        const seg = { shape: 'Block', name: 'Rune', pos: at(u, v), size: [0.07 * STUDS, rad * 0.62 * STUDS, 0.05 * STUDS], color: gold, material: 'Neon', transparency: 0.15 };
+        // Strich tangential am Kreis: um Z (nach außen) drehen
+        const c = Math.cos(b), s2 = Math.sin(b), X = [sa, 0, -ca], Y = [0, 1, 0];
+        const nx = X.map((x, q) => x * c + Y[q] * s2), ny = X.map((x, q) => -x * s2 + Y[q] * c);
+        seg.rot = [nx[0], ny[0], ca, nx[1], ny[1], 0, nx[2], ny[2], sa];
+        out.push(seg);
+      }
+      // Zeichen: senkrechter Strich und zwei schräge Äste
+      out.push({ shape: 'Block', name: 'Rune', pos: at(0, 0), rot, size: [0.07 * STUDS, rad * 1.3 * STUDS, 0.05 * STUDS], color: gold, material: 'Neon', transparency: 0.1 });
+      for (const sgn of [-1, 1]) {
+        const c = Math.cos(0.7 * sgn), s2 = Math.sin(0.7 * sgn), X = [sa, 0, -ca], Y = [0, 1, 0];
+        const nx = X.map((x, q) => x * c + Y[q] * s2), ny = X.map((x, q) => -x * s2 + Y[q] * c);
+        out.push({ shape: 'Block', name: 'Rune', pos: at(sgn * rad * 0.22, rad * 0.25), rot: [nx[0], ny[0], ca, nx[1], ny[1], 0, nx[2], ny[2], sa], size: [0.06 * STUDS, rad * 0.6 * STUDS, 0.05 * STUDS], color: gold, material: 'Neon', transparency: 0.15 });
+      }
+    }
+  }
+  if (st.beams) {
+    // sanfte Lichtstrahlen unter der Spitze: ein leuchtender Kristall, darunter drei durchscheinende Bahnen
+    const tipY = yAt(1.04);
+    out.push({ shape: 'Ball', name: 'Lichtkern', pos: g.PL(0, 0, tipY - 0.6).multiplyScalar(STUDS).toArray(), rot: [1, 0, 0, 0, 1, 0, 0, 0, 1], size: [1.6 * STUDS, 1.6 * STUDS, 1.6 * STUDS], color: st.beams, material: 'Neon', transparency: 0.2 });
+    for (let k = 0; k < 3; k++) {
+      const b = (k / 3) * Math.PI, len = 9 + k * 1.5;
+      out.push({ shape: 'Block', name: 'Lichtstrahl', pos: g.PL(0, 0, tipY - 0.8 - len / 2).multiplyScalar(STUDS).toArray(), rot: [Math.cos(b), 0, Math.sin(b), 0, 1, 0, -Math.sin(b), 0, Math.cos(b)], size: [(1.6 - k * 0.3) * STUDS, len * STUDS, 0.1 * STUDS], color: st.beams, material: 'Neon', transparency: 0.74 + k * 0.05, castShadow: false });
     }
   }
   if (kinds.has('glowvines')) {

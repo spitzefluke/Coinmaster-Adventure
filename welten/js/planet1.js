@@ -39,12 +39,19 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
   shared.coinSpots = shared.coinSpots || [];
   const mat = M(style.color, style.glass ? { roughness: 0.2, metalness: 0.1 } : style.metal ? { metalness: 0.6, roughness: 0.35 } : {});
   const start = rand() * TAU;
+  // wide: breiter, durchgehender Weg, der klar von der Mitte zum Rand führt, mit zwei Randleisten und
+  // Schmuck am Wegrand (deco: 'saeulen' Marmorsäulen mit Goldkappe, 'feuer' Feuerschalen)
+  const wide = !!style.wide, step = wide ? 0.95 : 0.78;
   for (let k = 0; k < 3; k++) {
-    const a0 = start + (k * TAU) / 3, wob = 0.25 + rand() * 0.2, ph = rand() * 6;
-    for (let r = 2.2; r < R - 1.6; r += 0.78) {
+    const a0 = start + (k * TAU) / 3, wob = (0.25 + rand() * 0.2) * (wide ? 0.35 : 1), ph = rand() * 6;
+    let n = 0;
+    for (let r = 2.2; r < R - 1.6; r += step, n++) {
       const a = a0 + Math.sin(r * 0.35 + ph) * wob;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (style.avoid && !ctx.free(x, z, 0.1)) continue; // nicht durch Wahrzeichen hindurch (Atlantis)
+      // hidden: kein sichtbarer Weg (Mars), nur der Platz bleibt frei
+      if (style.hidden) { reserve(x, z, 0.42); continue; }
+      if (wide) { wideTile(ctx, kit, style, mat, x, z, a, n); continue; }
       // Platten etwas dicker, an den Hang gelegt und zur Hälfte eingelassen: liegen satt auf, keine Kante schwebt
       const tile = style.kind === 'stone'
         ? new THREE.Mesh(new THREE.CylinderGeometry(0.34 + rand() * 0.08, 0.38, 0.14, 10), mat)
@@ -73,12 +80,58 @@ export function paths(ctx, kit, style = PATHS[ctx.world.id]) {
       const x = Math.cos(a) * r - Math.sin(a) * side * 1.25, z = Math.sin(a) * r + Math.cos(a) * side * 1.25;
       reserve(x, z, 0.85);
       shared.coinSpots.push([x, z]);
-      if (style.trail) ctx.paint?.(x, z, 1.1, ...style.trail);
-      for (let i = 0; i < 8; i++) {
+      if (style.trail && !style.hidden) ctx.paint?.(x, z, 1.1, ...style.trail);
+      for (let i = 0; i < (style.hidden ? 0 : 8); i++) {
         const b = (i / 8) * TAU, sx = x + Math.cos(b) * 0.7, sz = z + Math.sin(b) * 0.7;
         root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(style.edge || style.pebble || style.color)), sx, height(sx, sz) + 0.03, sz));
       }
     }
+  }
+}
+
+// Platte eines breiten Wegs: 1,6 breit, quer zur Laufrichtung, mit Randleisten links und rechts;
+// jede dritte Platte trägt am Rand abwechselnd links und rechts den Schmuck der Welt
+function wideTile(ctx, kit, style, mat, x, z, a, n) {
+  const { M, E, at } = kit;
+  const { root, height, reserve } = ctx;
+  const W = 1.6, D = 0.92;
+  const tile = new THREE.Mesh(new THREE.BoxGeometry(D, 0.14, W), mat);
+  layOnGround(tile, height, x, z, { yaw: -a, lift: 0.02 });
+  tile.receiveShadow = true;
+  root.add(tile);
+  reserve(x, z, 0.95);
+  if (style.trail) ctx.paint?.(x, z, 1.1, ...style.trail);
+  const sx = -Math.sin(a), sz = Math.cos(a); // quer zum Weg
+  const edgeMat = style.glow ? E(style.glow, 1.3) : M(style.edge || '#ffffff', style.edgeMetal ? { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 } : {});
+  for (const side of [-1, 1]) {
+    const ex = x + sx * side * (W / 2 + 0.04), ez = z + sz * side * (W / 2 + 0.04);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(D + 0.04, 0.1, 0.09), edgeMat);
+    layOnGround(strip, height, ex, ez, { yaw: -a, lift: 0.07 });
+    root.add(strip);
+  }
+  // Fugen: glühend (Sonne) oder fein (Götterthron), quer über die Platte
+  if (style.glow) {
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, W - 0.1), E(style.glow, 1.2));
+    layOnGround(seam, height, x + Math.cos(a) * (D / 2), z + Math.sin(a) * (D / 2), { yaw: -a, lift: 0.075 });
+    root.add(seam);
+  }
+  if (n % 3 !== 1) return;
+  const side = n % 6 === 1 ? 1 : -1;
+  const px = x + sx * side * (W / 2 + 0.45), pz = z + sz * side * (W / 2 + 0.45), y = height(px, pz);
+  reserve(px, pz, 0.35);
+  if (style.deco === 'saeulen') {
+    const marble = M('#f6f1e6'), g = M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 });
+    root.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.42), marble), px, y + 0.07, pz));
+    root.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 1.1, 12), marble), px, y + 0.69, pz));
+    root.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.1, 0.36), g), px, y + 1.29, pz));
+    root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), g), px, y + 1.44, pz));
+  } else if (style.deco === 'feuer') {
+    const iron = M('#2a1a12', { metalness: 0.5, roughness: 0.5 });
+    root.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 8), iron), px, y + 0.3, pz));
+    root.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.14, 0.18, 12), iron), px, y + 0.68, pz));
+    root.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 12), E('#ff7a1a', 1.4)), px, y + 0.76, pz));
+    root.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.42, 8), E('#ffd84a', 1.8)), px, y + 0.98, pz));
+    (ctx.shared.emitters = ctx.shared.emitters || []).push({ name: 'Feuerschale', pos: [px, y + 0.9, pz], size: [0.3, 0.05, 0.3], colors: ['#ffd84a', '#ff6a1a'], particleSize: 0.12, sizeEnd: 0.04, rate: 4, speed: [0.4, 0.8], lifetime: [0.6, 1], spread: [15, 15], direction: 'Top', lightEmission: 1 });
   }
 }
 

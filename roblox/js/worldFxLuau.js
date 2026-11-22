@@ -1543,6 +1543,22 @@ end
 
 -- ── Atmosphäre-Partikel ──
 local function motes(k, opts)
+	if k.NoMotes then return end
+	-- ruhige Welten (Werkstatt-Wünsche): weniger, kleinere Teilchen, die langsam schweben und trudeln
+	if k.Calm then
+		local o = {}
+		for key, v in pairs(opts) do o[key] = v end
+		o.Rate = math.max(2, math.floor((opts.Rate or 20) * 0.4 + 0.5))
+		o.Size0 = (opts.Size0 or 1.2) * 0.75
+		o.Size1 = (opts.Size1 or 0.6) * 0.75
+		o.Speed = (opts.Speed or 1) * 0.5
+		o.Life = (opts.Life or 8) * 1.5
+		o.Drag = opts.Drag or 0.35
+		o.Spin = opts.Spin or 60
+		o.Alpha = math.min(0.6, (opts.Alpha or 0.3) + 0.15)
+		if opts.Acceleration then local a = opts.Acceleration o.Acceleration = V(a.X * 0.5, a.Y * 0.5, a.Z * 0.5) end
+		opts = o
+	end
 	local host = P(k, "Block", opts.Size or V(560, 220, 560), at(k, 0, opts.Y or 40, 0), WHITE, "SmoothPlastic", 1, "Atmosphaere")
 	local e = Instance.new("ParticleEmitter")
 	e.Name = opts.Name or "Atmosphaere"
@@ -1790,6 +1806,10 @@ R.diamantkern = function(k, w) gemSky(k, { hex("#8af0ff"), hex("#e8fdff"), hex("
 
 WorldFx.Recipes = R
 
+-- Werkstatt-Wünsche: ruhigere Teilchen (wie Wald und Eis) und Welten ganz ohne schwebende Teilchen
+local CALM = { candy = true, lava = true, neptun = true, sonne = true, quarzfeld = true, smaragdwald = true, jadetempel = true, saphirsee = true, diamantkern = true }
+local NO_MOTES = { opalwolken = true }
+
 -- Umgebung einer Welt bauen; mitte = Mitte der Insel (Himmelskuppel), eltern = Ordner/Model
 function WorldFx.Apply(worldId, center, parent)
 	local w = WORLDS[worldId]
@@ -1800,7 +1820,7 @@ function WorldFx.Apply(worldId, center, parent)
 	folder.Parent = parent or workspace
 	local seed = 0
 	for i = 1, #worldId do seed = seed * 31 + string.byte(worldId, i) end
-	local k = { Folder = folder, C = center or V(0, 0, 0), R = Random.new(seed % 2147483647), W = w, Updates = {} }
+	local k = { Folder = folder, C = center or V(0, 0, 0), R = Random.new(seed % 2147483647), W = w, Updates = {}, Calm = CALM[worldId], NoMotes = NO_MOTES[worldId] }
 	recipe(k, w)
 	horizon(k, worldId)
 	local start = os.clock()

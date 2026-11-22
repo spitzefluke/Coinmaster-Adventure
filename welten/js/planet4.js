@@ -13,7 +13,7 @@ const PATHS = {
   tiefseegraben: { color: '#3a4652', kind: 'stone', glow: '#5affd8' },
   wolkenburg: { color: '#f4f0ff', kind: 'tile', edge: '#ffd76a' },
   engelsgarten: { color: '#f8f4ea', kind: 'stone' },
-  goetterthron: { color: '#ffe7a8', kind: 'tile', edge: '#fff8e0' },
+  goetterthron: { color: '#fff3d6', kind: 'tile', edge: '#ffcf4a', edgeMetal: true, wide: true, deco: 'saeulen' },
 };
 
 // ── kleine Bausteine ──
