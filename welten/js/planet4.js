@@ -141,6 +141,22 @@ const TIEFSEEGRABEN = {
         rod.add(f);
       }
       parts.push(rod);
+      // noch detaillierter (Werkstatt-Wunsch): hellerer Bauch, Kiemenspalten, leuchtende Bartfäden unter dem Kiefer,
+      // Flossenstrahlen, Narben und Seepocken auf dem Rücken
+      const belly = at(new THREE.Mesh(new THREE.SphereGeometry(1.9, 14, 10, 0, TAU, Math.PI * 0.55, Math.PI * 0.45), M('#3a4658')), 0, 2.55, 0.1);
+      belly.scale.set(1.05, 0.85, 1.25);
+      parts.push(belly);
+      for (const sx of [-1, 1]) {
+        for (let k = 0; k < 3; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.7, 0.08), dark), sx * 2.28, 2.8, 0.6 - k * 0.3));
+        for (let k = 0; k < 4; k++) { const ray = at(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 1.0), M('#4a5468')), sx * 2.5, 2.1 + k * 0.08, -0.2 - k * 0.15); ray.rotation.set(0, sx * 1.2, sx * (0.4 + k * 0.15)); parts.push(ray); }
+      }
+      for (let k = 0; k < 5; k++) {
+        const bf = at(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, 0.8, 4), E('#9ff3f0', 1.1)), -0.6 + k * 0.3, 1.1, 2.6 + Math.abs(k - 2) * -0.1);
+        bf.rotation.x = 0.3;
+        parts.push(bf);
+        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), E('#5affd8', 1.6)), -0.6 + k * 0.3, 0.72, 2.72));
+      }
+      for (let k = 0; k < 12; k++) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), M('#c8c0b0')), rr(-1.2, 1.2), 4.5 + rr(-0.15, 0.1), rr(-1.8, 0.6)));
       const fish = group(...parts);
       put(fish, p[0], p[1], { rot: false });
       fish.lookAt(0, fish.position.y, 0);
@@ -219,6 +235,23 @@ const TIEFSEEGRABEN = {
       stand(ctx, model('chest_gold', 0.8), loot[0], loot[1]);
       around(ctx, loot, [['lantern_standing', 0.9], ['barrel', 3]], 1.4, 2.2);
     }
+    // versunkene Taucherglocke als Forschungsstation (Werkstatt-Wunsch „alle Gebäude verbessern“): Messingglocke
+    // mit Bullaugen, Stützbeine, Lampe und Kabel nach oben
+    {
+      const q = spot(1.6, 4, R - 3);
+      if (q) {
+        const brass = M('#b08a40', { metalness: 0.7, roughness: 0.35 }), port = E('#9ff3f0', 1.2);
+        const bell = new THREE.Group();
+        bell.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 1.6, 16), brass), 0, 1.3, 0));
+        bell.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 8, 0, TAU, 0, Math.PI / 2), brass), 0, 2.1, 0));
+        for (let k = 0; k < 4; k++) { const a = (k / 4) * TAU; const pw = at(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 14), port), Math.cos(a) * 0.92, 1.35, Math.sin(a) * 0.92); pw.rotation.set(0, -a, Math.PI / 2); bell.add(pw); }
+        for (let k = 0; k < 3; k++) { const a = (k / 3) * TAU; bell.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), M('#4a4f58')), Math.cos(a) * 0.9, 0.3, Math.sin(a) * 0.9)); }
+        bell.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 6, 12), brass), 0, 2.85, 0));
+        bell.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4, 4), M('#2a2e36')), 0, 4.9, 0));
+        bell.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), E('#ffe2a0', 1.6)), 0.75, 2.0, 0.3));
+        put(bell, q[0], q[1]);
+      }
+    }
   },
   emitters(ctx, add) {
     // weniger Partikel (Werkstatt-Wunsch „verringere die Partikel“)
@@ -266,6 +299,20 @@ const WOLKENBURG = {
       for (const y of [2.0, 3.6])
         for (const s of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(nz ? 0.45 : 0.05, 0.75, nx ? 0.45 : 0.05), E('#ffd76a', 1)), nx * 1.53 + (nz ? s * 0.7 : 0), y, nz * 1.53 + (nx ? s * 0.7 : 0)));
     for (const y of [1.0, 4.95]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(3.08, 0.12, 3.08), gm), 0, y, 0));
+    // Burg (Werkstatt-Wunsch „Burg verbessern“): Zinnenkranz und Balkon am Bergfried, Zinnenringe an den Türmen,
+    // Wehrgang auf den Mauern, goldene Uhr über dem Tor
+    for (let k = 0; k < 12; k++) {
+      const u = (k % 3) / 3 - 0.33, side = Math.floor(k / 3), nx = [0, 1, 0, -1][side], nz = [1, 0, -1, 0][side];
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), marble2), nx * 1.45 + (nz ? u * 2.6 : 0), 5.2, nz * 1.45 + (nx ? u * 2.6 : 0)));
+    }
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 0.6), marble2), 0, 3.0, 1.8));
+    for (let k = -3; k <= 3; k++) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 5), gm), k * 0.24, 3.25, 2.08));
+    for (const [x, z] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) for (let k = 0; k < 8; k++) { const b = (k / 8) * TAU; parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.32, 0.22), marble), x + Math.cos(b) * 0.92, 4.35, z + Math.sin(b) * 0.92)); }
+    for (const [x, z, w, d] of [[0, -3, 5.4, 0.3], [-3, 0, 0.3, 5.4], [3, 0, 0.3, 5.4]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), M('#c8b8a0')), x, 2.24, z));
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 20), gm), 0, 2.85, 3.3));
+    parts[parts.length - 1].rotation.x = Math.PI / 2;
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.09, 20), M('#fff8e8')), 0, 2.85, 3.31));
+    parts[parts.length - 1].rotation.x = Math.PI / 2;
     for (const [nx, nz] of [[1, 0], [-1, 0]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.7), M('#5a7aff')), nx * 1.55, 3.0, nz));
     for (let k = -2; k <= 2; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.5, 0.06), gm), k * 0.28, 0.85, 3.05));
     for (const y of [0.4, 0.9, 1.4]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.06), gm), 0, y, 3.05));
@@ -317,8 +364,26 @@ const WOLKENBURG = {
       const r0 = R - 1.4, r1 = R + 5.5;
       const len = r1 - r0;
       const bridge = new THREE.Group();
-      for (let k = 0; k < Math.round(len / 0.5); k++) bridge.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.42), gm), 0, Math.sin((k / (len / 0.5)) * Math.PI) * 0.8, k * 0.5));
-      for (const s of [-1, 1]) bridge.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, len), gm), s * 0.58, 0.7, len / 2));
+      // Brücke (Werkstatt-Wunsch „Brücken verbessern“): Bohlen im Bogen abwechselnd Marmor und Gold, Geländer mit
+      // Pfosten, die dem Bogen folgen, Laternen am Anfang, in der Mitte und am Ende, Wolken unter den Enden
+      const nP = Math.round(len / 0.5), arc = (k) => Math.sin((k / nP) * Math.PI) * 0.8;
+      for (let k = 0; k < nP; k++) {
+        bridge.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.44), k % 2 ? gm : marble), 0, arc(k), k * 0.5));
+        for (const sd of [-1, 1]) {
+          bridge.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 5), gm), sd * 0.6, arc(k) + 0.3, k * 0.5));
+          if (k < nP - 1) {
+            const rl = at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.52), gm), sd * 0.6, (arc(k) + arc(k + 1)) / 2 + 0.6, k * 0.5 + 0.25);
+            rl.rotation.x = -Math.atan2(arc(k + 1) - arc(k), 0.5);
+            bridge.add(rl);
+          }
+        }
+        if (k === 0 || k === nP - 1 || k === Math.floor(nP / 2))
+          for (const sd of [-1, 1]) {
+            bridge.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.3, 6), gm), sd * 0.66, arc(k) + 0.65, k * 0.5));
+            bridge.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.18), E('#fff3c4', 1.5)), sd * 0.66, arc(k) + 1.38, k * 0.5));
+          }
+      }
+      for (const kz of [0.3, len - 0.3]) { const c = cloudPuff(kit, rand, 0.7); c.position.set(0, -0.7, kz); bridge.add(c); }
       const x0 = Math.cos(a) * r0, z0 = Math.sin(a) * r0;
       bridge.position.set(x0, height(x0, z0) + 0.1, z0);
       bridge.rotation.y = Math.atan2(Math.cos(a), Math.sin(a));
@@ -383,6 +448,51 @@ const ENGELSGARTEN = {
         jet.material.opacity = 0.45 + Math.sin(t * 2) * 0.15;
       });
     }
+    // mehr Details (Werkstatt-Wunsch „vieles detaillierter“): Engelsstatuen um den Lichtbrunnen, Rosenbögen,
+    // ein Pavillon mit goldener Kuppel und Bänken, Laternen
+    const angel = () => {
+      const g = new THREE.Group();
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.4, 10), marble), 0, 0.2, 0));
+      g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 10), marble), 0, 0.85, 0));
+      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), marble), 0, 1.4, 0));
+      for (const sx of [-1, 1]) { const w = at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.05), marble), sx * 0.28, 1.05, -0.12); w.rotation.set(0.2, sx * 0.5, sx * 0.3); g.add(w); }
+      const h = at(new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.025, 6, 16), E('#fff2a0', 1.6)), 0, 1.65, 0);
+      h.rotation.x = Math.PI / 2;
+      g.add(h);
+      return g;
+    };
+    if (f) for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.4, x = f[0] + Math.cos(a) * 2.6, z = f[1] + Math.sin(a) * 2.6;
+      if (!ctx.free(x, z, 0.3)) continue;
+      const an = angel();
+      put(an, x, z, { rot: false });
+      an.lookAt(f[0], an.position.y, f[1]);
+      ctx.reserve(x, z, 0.5);
+    }
+    for (let i = 0; i < 3; i++) {
+      const q = spot(1.0, 5, R - 3);
+      if (!q) continue;
+      const arch = new THREE.Group();
+      for (const sx of [-0.7, 0.7]) arch.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.1), M('#f2ead8')), sx, 0.9, 0));
+      arch.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.06, 6, 16, Math.PI), M('#f2ead8')), 0, 1.8, 0));
+      for (let k = 0; k < 9; k++) { const b = (k / 8) * Math.PI; arch.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), M(k % 2 ? '#ff7a9a' : '#4f9a3f')), Math.cos(b) * 0.72, 1.8 + Math.sin(b) * 0.72, 0)); }
+      for (const sx of [-0.7, 0.7]) for (let k = 0; k < 4; k++) arch.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M(k % 2 ? '#ffd6e0' : '#5aa84a')), sx, 0.4 + k * 0.4, 0.05));
+      put(arch, q[0], q[1]);
+    }
+    {
+      const q = spot(2.0, 4, R - 3);
+      if (q) {
+        const pav = new THREE.Group();
+        pav.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.8, 0.25, 16), marble), 0, 0.12, 0));
+        for (let k = 0; k < 8; k++) pav.add(at(kit.column(2.0, '#f8f6f0', false), Math.cos((k / 8) * TAU) * 1.45, 0.25, Math.sin((k / 8) * TAU) * 1.45));
+        pav.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.2, 16), marble), 0, 2.35, 0));
+        pav.add(at(new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 10, 0, TAU, 0, Math.PI / 2), gm), 0, 2.45, 0));
+        pav.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), E('#fff2a0', 1.6)), 0, 4.05, 0));
+        for (let k = 0; k < 3; k++) { const sb = at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.35), M('#c8a878')), Math.cos((k / 3) * TAU) * 0.9, 0.55, Math.sin((k / 3) * TAU) * 0.9); sb.rotation.y = -(k / 3) * TAU; pav.add(sb); }
+        put(pav, q[0], q[1], { rot: false });
+        ctx.reserve(q[0], q[1], 2.0);
+      }
+    }
     // Treppen, die ins Nichts führen: am Rand nach außen und oben
     for (let i = 0; i < 2; i++) {
       const a = rand() * TAU;
@@ -396,6 +506,11 @@ const ENGELSGARTEN = {
         }
       }
       stairs.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 6, 24), E('#fff2a0', 1.6)), 0, 4.6, 5.8));
+      // goldenes Geländer mit Laternen an den Treppen
+      for (const sx of [-0.62, 0.62]) for (let k = 0; k < 12; k += 2) {
+        stairs.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), gm), sx, 0.45 + k * 0.32, k * 0.48));
+        if (k % 4 === 0) stairs.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), E('#fff2a0', 1.5)), sx, 0.85 + k * 0.32, k * 0.48));
+      }
       const r0 = R - 3;
       const x0 = Math.cos(a) * r0, z0 = Math.sin(a) * r0;
       stairs.position.set(x0, height(x0, z0), z0);
@@ -461,15 +576,31 @@ const GOETTERTHRON = {
     // Treppe nach vorne
     for (let k = 0; k < 8; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.6), stone), 0, 0.25 + k * 0.5, 4.3 - k * 0.42));
     const top = 4;
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 1.4), gm), 0, top + 0.35, 0));
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 0.3), gm), 0, top + 1.6, -0.6));
-    for (const s of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.6, 1.3), gm), s * 0.95, top + 1, 0));
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.15, 1), M('#c0283a')), 0, top + 0.78, 0.05));
-    const sunDisk = at(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 28), E('#ffe7a8', 1.5)), 0, top + 3.4, -0.7);
+    // Thron (Werkstatt-Wunsch „Thron verbessern“): Podest mit Stufe, Sitz mit rotem Kissen, hohe Lehne mit
+    // gestuftem Giebel und Krone, Armlehnen mit Löwenköpfen, eingesetzte leuchtende Edelsteine, Baldachin auf
+    // vier goldenen Säulen
+    const red = M('#c0283a'), gemR = E('#ff3a5a', 1.4), gemB = E('#5ac8ff', 1.4);
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 2.2), stone2), 0, top + 0.15, 0));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.6, 1.5), gm), 0, top + 0.6, 0));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 1.1), red), 0, top + 1.0, 0.05));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.8, 0.3), gm), 0, top + 2.1, -0.65));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 0.08), red), 0, top + 2.0, -0.48));
+    for (let k = 0; k < 3; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.5 - k * 0.45, 0.3, 0.32), gm), 0, top + 3.65 + k * 0.3, -0.65));
+    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), gemR), 0, top + 4.55, -0.65));
+    for (const [x, y, c] of [[0, 3.2, gemR], [-0.6, 2.6, gemB], [0.6, 2.6, gemB], [0, 1.8, gemB]]) parts.push(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), c), x, top + y, -0.47));
+    for (const s of [-1, 1]) {
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 1.4), gm), s * 1.0, top + 1.2, 0));
+      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), gm), s * 1.0, top + 1.6, 0.7));
+      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), gemR), s * 1.0 + s * 0.0, top + 1.65, 0.9));
+    }
+    for (const [x, z] of [[-1.25, 1.0], [1.25, 1.0], [-1.25, -1.0], [1.25, -1.0]]) parts.push(at(kit.column(3.6, '#ffe7a8', false), x, top + 0.3, z));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.2, 2.4), gm), 0, top + 4.0, 0));
+    parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(1.25, 18, 10, 0, TAU, 0, Math.PI / 2), M('#fff2d0', { metalness: 0.3 })), 0, top + 4.1, 0));
+    const sunDisk = at(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 28), E('#ffe7a8', 1.5)), 0, top + 6.2, -0.7);
     sunDisk.rotation.x = Math.PI / 2;
     parts.push(sunDisk);
     const rays = new THREE.Group();
-    rays.position.set(0, top + 3.4, -0.75);
+    rays.position.set(0, top + 6.2, -0.75);
     for (let k = 0; k < 12; k++) {
       const ray = at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 0.05), E('#ffcf4a', 1.4)), 0, 1.75, 0);
       const piv = new THREE.Group();
@@ -490,15 +621,30 @@ const GOETTERTHRON = {
     put(peak, 0, 0, { rot: false });
     peak.rotation.y = rand() * TAU;
     anims.push((t) => (rays.rotation.z = t * 0.15));
-    // Ring aus goldenen Säulen
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * TAU, r = 7.5;
+    // Ring aus Säulen (Werkstatt-Wunsch „Säulen drumherum verbessern“): Sockel mit Stufe, hohe Marmorsäulen mit
+    // goldenen Kapitellen und Basen, oben je ein leuchtender Edelstein, dazwischen Feuerschalen auf Dreifüßen
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU, r = 7.5;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (!ctx.free(x, z, 0.5)) continue;
-      reserve(x, z, 0.5);
-      const c = kit.column(rr(2.4, 3), '#ffe7a8', i % 4 === 3);
-      c.traverse((o) => o.isMesh && (o.material = gm));
-      put(c, x, z, { rot: false });
+      reserve(x, z, 0.6);
+      const g = new THREE.Group();
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 1.0), stone2), 0, 0.15, 0));
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), gm), 0, 0.4, 0));
+      g.add(at(kit.column(3.2, '#f6eedc', false), 0, 0.5, 0));
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.85), gm), 0, 3.85, 0));
+      g.add(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), E(['#ffcf4a', '#ff5a7a', '#5ac8ff'][i % 3], 1.6)), 0, 4.35, 0));
+      put(g, x, z, { rot: false });
+      if (i % 2) continue;
+      const b = (i + 0.5) / 12 * TAU, bx = Math.cos(b) * r, bz = Math.sin(b) * r;
+      if (!ctx.free(bx, bz, 0.4)) continue;
+      const tri = new THREE.Group();
+      for (let k = 0; k < 3; k++) { const leg = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.1, 5), gm), Math.cos(k * 2.1) * 0.18, 0.55, Math.sin(k * 2.1) * 0.18); leg.rotation.set(Math.sin(k * 2.1) * 0.2, 0, -Math.cos(k * 2.1) * 0.2); tri.add(leg); }
+      tri.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.18, 0.22, 10), gm), 0, 1.15, 0));
+      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 8), E('#ff9a2a', 2)), 0, 1.5, 0);
+      tri.add(fl);
+      anims.push((t) => fl.scale.set(1, 0.8 + Math.abs(Math.sin(t * 6 + i)) * 0.4, 1));
+      put(tri, bx, bz, { rot: false });
     }
     // Tempelruine wie am Olympieion: Säulenhof aus hohen Säulen mit Gebälk (Architrav) obendrauf,
     // daneben umgestürzte Säulentrommeln; Boden aus Marmorplatten und hellem Kalkstein

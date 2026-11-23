@@ -43,10 +43,31 @@ function landmark(ctx, kit, color, { size = 2.4, base = '#6a6488', ring = null, 
   const p = ctx.spot(3.4, 2.5, 7);
   if (!p) return null;
   const parts = [];
-  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.7, 0.8, 8), M(base)), 0, 0.4, 0));
-  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.9, 0.5, 8), M(base)), 0, 1.05, 0));
+  // Podest (Werkstatt-Wunsch „Podest unter dem Diamant verbessern“, alle Edelsteinwelten): drei achteckige
+  // Stufen mit goldenen Kanten und Leuchtfuge in der Steinfarbe, acht Obelisken mit leuchtenden Spitzen,
+  // in der Mitte eine Säule mit Kapitell, über der der Stein schwebt, Runen auf den Stufen
+  const gold = M('#ffcf4a', { metalness: 0.75, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.25 }), glowM = E(color, 1.3);
+  const baseL = '#' + new THREE.Color(base).offsetHSL(0, 0, 0.08).getHexString();
+  for (let i = 0; i < 3; i++) {
+    const r0 = 2.9 - i * 0.6, y = 0.2 + i * 0.4;
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(r0 - 0.08, r0, 0.4, 8), M(i % 2 ? baseL : base)), 0, y, 0));
+    const trim = at(new THREE.Mesh(new THREE.TorusGeometry(r0 - 0.05, 0.05, 4, 8), gold), 0, y + 0.2, 0);
+    trim.rotation.set(Math.PI / 2, 0, Math.PI / 8);
+    parts.push(trim);
+    const glowR = at(new THREE.Mesh(new THREE.TorusGeometry(r0 - 0.04, 0.03, 4, 8), glowM), 0, y - 0.05, 0);
+    glowR.rotation.set(Math.PI / 2, 0, Math.PI / 8);
+    parts.push(glowR);
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + Math.PI / 8, x = Math.cos(a) * 2.55, z = Math.sin(a) * 2.55;
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.18, 1.3, 4), M(baseL)), x, 1.05, z));
+    parts.push(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), glowM), x, 1.85, z));
+  }
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.9, 8), M(baseL)), 0, 1.65, 0));
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.6, 0.25, 8), gold), 0, 2.2, 0));
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.05, 8), glowM), 0, 2.34, 0));
   const gem = brilliant(kit, size, color, 1.1);
-  gem.position.y = 1.3 + size * 1.3 + float;
+  gem.position.y = 2.3 + size * 1.3 + float;
   parts.push(gem);
   let halo = null;
   if (ring) {
@@ -106,19 +127,47 @@ function puff(kit, rand, s, c) {
   }
   return group(...parts);
 }
-// Pagode / Tempel in Stufen
-function temple(kit, tiers, w, stone, roof) {
-  const { M, at, group } = kit;
+// Pagode / Tempel in Stufen (Werkstatt-Wunsch „Jadetempel deutlich verbessern“): Steinsockel mit Treppe,
+// je Stockwerk rote Ecksäulen, Fenster und ein breites Dach mit hochgezogenen goldenen Ecken, rote Laternen an
+// den Dachecken, eine Spitze mit Ringen obendrauf; der große Tempel bekommt zwei Löwenwächter
+function temple(kit, tiers, w, stone, roof, { grand = false } = {}) {
+  const { M, E, at, group } = kit;
   const parts = [];
-  let y = 0;
+  const pillarM = M('#c8302a'), gold = M('#ffcf4a', { metalness: 0.7, roughness: 0.3 }), roofM = M(roof, { metalness: 0.5, roughness: 0.35 }), lamp = E('#ff5a3a', 1.4);
+  parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w * 1.25, 0.35, w * 1.25), M('#c8c0b0')), 0, 0.17, 0));
+  if (grand) for (let k = 0; k < 4; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.4, 0.12, 0.3), M('#c8c0b0')), 0, 0.06 + k * 0.08, w * 0.62 + 0.3 - k * 0.15));
+  let y = 0.35;
   for (let i = 0; i < tiers; i++) {
     const s = w * (1 - i * 0.2);
-    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s, 0.9, s), M(stone)), 0, y + 0.45, 0));
-    const r = at(new THREE.Mesh(new THREE.ConeGeometry(s * 0.82, 0.6, 4), M(roof, { metalness: 0.5, roughness: 0.35 })), 0, y + 1.2, 0);
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s * 0.86, 0.9, s * 0.86), M(stone)), 0, y + 0.45, 0));
+    for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 8), pillarM), cx * s * 0.45, y + 0.45, cz * s * 0.45));
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(nz ? s * 0.3 : 0.04, 0.4, nx ? s * 0.3 : 0.04), E('#ffd98a', 0.7)), nx * s * 0.435, y + 0.5, nz * s * 0.435));
+    const r = at(new THREE.Mesh(new THREE.ConeGeometry(s * 0.88, 0.55, 4), roofM), 0, y + 1.17, 0);
     r.rotation.y = Math.PI / 4;
     parts.push(r);
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(s * 1.24, 0.06, s * 1.24), gold), 0, y + 0.92, 0));
+    for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const tip = at(new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.35, 5), gold), cx * s * 0.62, y + 1.02, cz * s * 0.62);
+      tip.rotation.set(cz * 0.8, 0, -cx * 0.8);
+      parts.push(tip);
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), M('#2a2a2a')), cx * s * 0.6, y + 0.8, cz * s * 0.6));
+      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), lamp), cx * s * 0.6, y + 0.62, cz * s * 0.6));
+    }
     y += 1.5;
   }
+  parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 6), gold), 0, y + 0.1, 0));
+  for (let k = 0; k < 3; k++) parts.push(at(new THREE.Mesh(new THREE.TorusGeometry(0.16 - k * 0.03, 0.025, 4, 12), gold), 0, y - 0.15 + k * 0.25, 0));
+  for (let k = parts.length - 3; k < parts.length; k++) parts[k].rotation.x = Math.PI / 2;
+  parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E('#ffd76a', 1.4)), 0, y + 0.65, 0));
+  if (grand)
+    for (const sx of [-1, 1]) {
+      const lion = new THREE.Group();
+      lion.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), M('#c8c0b0')), 0, 0.15, 0));
+      lion.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.42), M('#5ad8a0')), 0, 0.5, 0));
+      lion.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), M('#5ad8a0')), 0, 0.85, 0.08));
+      lion.position.set(sx * w * 0.3, 0, w * 0.62 + 0.55);
+      parts.push(lion);
+    }
   return group(...parts);
 }
 
@@ -227,17 +276,41 @@ const AMETHYSTGROTTE = make({
   gem: '#a35ae8', gem2: '#ead2ff', base: '#4a2e72', rock: '#3a2458', ring: '#ead2ff',
   extra(ctx, kit) {
     // aufgebrochene Drusen: Halbkugel aus Fels, innen voller Kristalle
-    for (let i = 0; i < 3; i++) {
-      const p = ctx.spot(1.6, 5, ctx.R - 2);
+    // (Werkstatt-Wunsch „Steine verbessern“): größer, außen rauer Fels mit Buckeln, innen eine dunkle
+    // Schale, dicht besetzt mit leuchtenden Kristallen, die zur Mitte zeigen; Kristalle auch am Rand
+    for (let i = 0; i < 4; i++) {
+      const p = ctx.spot(2.4, 5, ctx.R - 2.4);
       if (!p) continue;
-      const shell = kit.at(new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#4a3a5a', { side: THREE.DoubleSide })), 0, 0, 0);
-      shell.rotation.x = -0.9;
-      const g = kit.group(shell);
-      for (let k = 0; k < 6; k++) {
-        const c = kit.crystal(ctx.rr(0.5, 0.9), '#a35ae8', ctx.rand, 1.4);
-        c.position.set((ctx.rand() - 0.5) * 1.4, 0.1, (ctx.rand() - 0.2) * 0.9);
+      const S = ctx.rr(1.7, 2.2);
+      const tilt = -0.85;
+      const shell = kit.at(new THREE.Mesh(new THREE.SphereGeometry(S, 14, 8, 0, TAU, 0, Math.PI / 2), kit.M('#4a3a5a', { side: THREE.DoubleSide })), 0, 0, 0);
+      shell.rotation.x = tilt;
+      const inner = kit.at(new THREE.Mesh(new THREE.SphereGeometry(S * 0.88, 14, 8, 0, TAU, 0, Math.PI / 2), kit.M('#2a1840', { side: THREE.DoubleSide })), 0, 0.02, 0);
+      inner.rotation.x = tilt;
+      const g = kit.group(shell, inner);
+      for (let k = 0; k < 10; k++) {
+        const b = kit.at(new THREE.Mesh(new THREE.DodecahedronGeometry(ctx.rr(0.25, 0.45), 0), kit.M('#5a4a6a')), 0, 0, 0);
+        const a = ctx.rand() * TAU, ph = ctx.rr(0.1, 1.3);
+        const v = new THREE.Vector3(Math.cos(a) * Math.sin(ph), Math.cos(ph), Math.sin(a) * Math.sin(ph)).multiplyScalar(S * 0.98).applyAxisAngle(new THREE.Vector3(1, 0, 0), tilt);
+        if (v.y < 0) continue;
+        b.position.copy(v);
+        g.add(b);
+      }
+      const cols = ['#a35ae8', '#c98bff', '#ead2ff', '#8a3ad8'];
+      for (let k = 0; k < 16; k++) {
+        const a = ctx.rand() * TAU, ph = ctx.rr(0.2, 1.4);
+        const dir = new THREE.Vector3(Math.cos(a) * Math.sin(ph), Math.cos(ph), Math.sin(a) * Math.sin(ph)).applyAxisAngle(new THREE.Vector3(1, 0, 0), tilt);
+        const c = kit.crystal(ctx.rr(0.45, 0.9), cols[k % 4], ctx.rand, 1.6);
+        c.position.copy(dir.clone().multiplyScalar(S * 0.82));
+        c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().negate());
         g.add(c);
       }
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * TAU, c = kit.crystal(ctx.rr(0.5, 0.8), '#c98bff', ctx.rand, 1.6);
+        c.position.set(Math.cos(a) * S * 1.02, 0.05, Math.sin(a) * S * 1.02 * 0.6 + S * 0.25);
+        g.add(c);
+      }
+      g.add(kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), kit.E('#e2b8ff', 1.4, { transparent: true, opacity: 0.6 })), 0, S * 0.35, S * 0.15));
       ctx.put(g, p[0], p[1]);
     }
   },
@@ -293,7 +366,7 @@ const JADETEMPEL = make({
   gem: '#5ad8a0', gem2: '#ffd76a', base: '#3a6a4a', rock: '#5a9a70', ring: '#ffd76a', landmarkSize: 1.8,
   extra(ctx, kit) {
     const p = ctx.spot(3.6, 7, ctx.R - 4);
-    if (p) ctx.put(temple(kit, 4, 5, '#8ad0a0', '#e8b84a'), p[0], p[1]);
+    if (p) ctx.put(temple(kit, 4, 5, '#8ad0a0', '#e8b84a', { grand: true }), p[0], p[1]);
     ctx.scatter(4, () => temple(kit, 2, 1.8, '#8ad0a0', '#e8b84a'), 1.4, 6, ctx.R - 2.6);
     ctx.scatter(10, () => kit.roundTree(ctx.rr(1.6, 2.4), '#4aa86a', ctx.rand), 0.9, 4, ctx.R - 2.6);
   },
@@ -302,28 +375,67 @@ const JADETEMPEL = make({
 const SAPHIRSEE = make({
   gem: '#2a5ae8', gem2: '#cfe0ff', base: '#3a5aa0', rock: '#6a8ad0', ring: '#cfe0ff',
   extra(ctx, kit) {
-    // See mit Saphiren auf dem Grund
-    const p = ctx.spot(3.4, 6, ctx.R - 4) || ctx.spot(3.2, 4, ctx.R - 3.3);
-    if (p) ctx.reserve(p[0], p[1], 3.4);
+    // Saphirsee (Werkstatt-Wunsch „Saphirsee verbessern“): größerer See mit tiefblauer Mitte und hellem Rand,
+    // Ufer aus Steinen, Saphire auf dem Grund, eine Insel mit großem Saphir, ein Holzsteg mit Laterne,
+    // Kristallgruppen am Ufer und Seerosen
+    const p = ctx.spot(4.2, 6, ctx.R - 4.6) || ctx.spot(3.8, 4, ctx.R - 4);
     if (p) {
-      const water = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.12, 24), kit.E('#2a5ae8', 0.25, { transparent: true, opacity: 0.75, roughness: 0.05 })), 0, 0.12, 0);
-      const g = kit.group(water);
-      for (let i = 0; i < 9; i++) {
-        const a = ctx.rand() * TAU, r = ctx.rand() * 2.4;
+      ctx.reserve(p[0], p[1], 4.2);
+      const LR = 3.6;
+      const g = kit.group(
+        kit.at(new THREE.Mesh(new THREE.CylinderGeometry(LR, LR, 0.12, 32), kit.E('#5a8aff', 0.25, { transparent: true, opacity: 0.7, roughness: 0.05 })), 0, 0.12, 0),
+        kit.at(new THREE.Mesh(new THREE.CylinderGeometry(LR * 0.6, LR * 0.6, 0.13, 28), kit.E('#1a3ac8', 0.35, { transparent: true, opacity: 0.8, roughness: 0.05 })), 0, 0.125, 0),
+      );
+      for (let i = 0; i < 22; i++) {
+        const a = (i / 22) * TAU + ctx.rand() * 0.15;
+        const st = kit.rockMesh(ctx.rr(0.18, 0.32), '#8a9ac0', ctx.rand);
+        st.position.set(Math.cos(a) * (LR + 0.1), 0.05, Math.sin(a) * (LR + 0.1));
+        g.add(st);
+      }
+      for (let i = 0; i < 12; i++) {
+        const a = ctx.rand() * TAU, r = ctx.rand() * (LR - 0.6);
         const st = gemStone(kit, 0.16, '#8ab0ff', 1.6);
         st.position.set(Math.cos(a) * r, 0.1, Math.sin(a) * r);
         g.add(st);
       }
-      ctx.put(g, p[0], p[1], { sink: 0.02 });
-      // Kiesufer wie an einem Gletschersee, Eisschollen auf dem Wasser
-      ctx.paint(p[0], p[1], 4.1, '#9ab0d8', 'Pebble');
-      for (let i = 0; i < 5; i++) {
-        const a = ctx.rand() * TAU, r = ctx.rr(0.6, 2.2);
-        const floe = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(ctx.rr(0.3, 0.55), ctx.rr(0.3, 0.55), 0.12, 6), kit.M('#eaf4ff')), p[0] + Math.cos(a) * r, 0, p[1] + Math.sin(a) * r);
-        floe.position.y = ctx.height(floe.position.x, floe.position.z) + 0.16;
-        floe.rotation.y = ctx.rand() * 3;
-        ctx.root.add(floe);
+      // Insel mit großem Saphir
+      const isle = kit.at(new THREE.Mesh(new THREE.DodecahedronGeometry(0.75, 0), kit.M('#6a7aa0')), 0.6, 0.1, -0.5);
+      isle.scale.set(1, 0.45, 1);
+      g.add(isle);
+      const big = gemStone(kit, 0.45, '#2a5ae8', 1.8);
+      big.position.set(0.6, 0.55, -0.5);
+      g.add(big);
+      // Holzsteg mit Laterne
+      const a0 = ctx.rand() * TAU, ca = Math.cos(a0), sa = Math.sin(a0);
+      for (let k = 0; k < 6; k++) {
+        const r = LR + 0.4 - k * 0.42, plank = kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 0.36), kit.M('#8a6440')), ca * r, 0.26, sa * r);
+        plank.rotation.y = -a0 + Math.PI / 2;
+        g.add(plank);
+        if (k % 2 === 0) for (const sd of [-1, 1]) g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 5), kit.M('#6a4a2e')), ca * r - sa * sd * 0.35, 0.15, sa * r + ca * sd * 0.35));
       }
+      const rr2 = LR + 0.4 - 5 * 0.42;
+      g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 5), kit.M('#3a3446')), ca * rr2, 0.65, sa * rr2));
+      g.add(kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.16), kit.E('#cfe0ff', 1.4)), ca * rr2, 1.1, sa * rr2));
+      // Seerosen
+      for (let k = 0; k < 6; k++) {
+        const a = ctx.rand() * TAU, r = ctx.rr(1.2, LR - 0.4);
+        g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 10), kit.M('#3a8a4a')), Math.cos(a) * r, 0.2, Math.sin(a) * r));
+        g.add(kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), kit.M(k % 2 ? '#ffffff' : '#ffd6ec')), Math.cos(a) * r, 0.25, Math.sin(a) * r));
+      }
+      // Kristallgruppen am Ufer
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU + 0.6, cg = new THREE.Group();
+        for (let m = 0; m < 3; m++) {
+          const c = kit.crystal(ctx.rr(0.4, 0.8), m % 2 ? '#cfe0ff' : '#5a8aff', ctx.rand, 1.4);
+          c.position.set(ctx.rr(-0.2, 0.2), 0, ctx.rr(-0.2, 0.2));
+          c.rotation.set(ctx.rr(-0.3, 0.3), 0, ctx.rr(-0.3, 0.3));
+          cg.add(c);
+        }
+        cg.position.set(Math.cos(a) * (LR + 0.6), 0, Math.sin(a) * (LR + 0.6));
+        g.add(cg);
+      }
+      ctx.put(g, p[0], p[1], { sink: 0.02, rot: false });
+      ctx.paint(p[0], p[1], LR + 1.0, '#9ab0d8', 'Pebble');
     }
   },
   emitters(ctx, add) {
@@ -334,19 +446,61 @@ const SAPHIRSEE = make({
 const RUBINVULKAN = make({
   gem: '#e8183a', gem2: '#ff8a9a', base: '#2a1018', rock: '#2a1a20', ring: '#ff4a6a',
   extra(ctx, kit) {
-    // Vulkan mit glühendem Rubinkrater
-    const p = ctx.spot(3.8, 7, ctx.R - 4);
+    // Vulkan (Werkstatt-Wunsch „Vulkan verbessern“): hoher, zerklüfteter Kegel (Fläche für Fläche in Roblox),
+    // glühender Kraterrand, Rubinsee im Krater mit großen Rubinkristallen, glühende Rinnen an den Flanken,
+    // Rubine wachsen aus dem Hang, aktiv mit Rauch und Glut
+    const p = ctx.spot(4.6, 7, ctx.R - 4.6) || ctx.spot(4.2, 5, ctx.R - 4.2);
     if (p) {
-      const cone = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 3.4, 3.6, 10), kit.M('#2a1a20')), 0, 1.8, 0);
-      const crater = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 10), kit.E('#ff3a5a', 2)), 0, 3.62, 0);
-      const g = kit.group(cone, crater);
-      for (let i = 0; i < 4; i++) {
-        const st = gemStone(kit, 0.25, '#e8183a', 1.4);
-        st.position.set((ctx.rand() - 0.5) * 0.8, 3.75, (ctx.rand() - 0.5) * 0.8);
-        g.add(st);
+      const VR = 4.2, VT = 0.95, VH = 6.4;
+      const geo = new THREE.CylinderGeometry(VT, VR, VH, 14, 5, true);
+      const pos = geo.attributes.position;
+      for (let k = 0; k < pos.count; k++) {
+        const y = pos.getY(k);
+        if (y > VH / 2 - 0.05) continue;
+        const n = Math.sin(pos.getX(k) * 3.1 + pos.getZ(k) * 2.3) * 0.25;
+        pos.setXYZ(k, pos.getX(k) * (1 + n * 0.3), y, pos.getZ(k) * (1 + n * 0.3));
+      }
+      geo.computeVertexNormals();
+      const cone = kit.at(new THREE.Mesh(geo, kit.M('#2a1a20')), 0, VH / 2, 0);
+      cone.userData.rbx = { facets: true, facetThick: 0.3, name: 'Vulkan' };
+      const crater = kit.at(new THREE.Mesh(new THREE.CylinderGeometry(VT * 0.85, VT * 0.85, 0.1, 14), kit.E('#ff3a5a', 2)), 0, VH + 0.02, 0);
+      const rim = kit.at(new THREE.Mesh(new THREE.TorusGeometry(VT * 0.92, 0.08, 6, 24), kit.E('#ff6a7a', 1.6)), 0, VH + 0.02, 0);
+      rim.rotation.x = Math.PI / 2;
+      const g = kit.group(cone, crater, rim);
+      for (let i = 0; i < 5; i++) {
+        const c = kit.crystal(ctx.rr(0.6, 1.1), i % 2 ? '#ff4a6a' : '#e8183a', ctx.rand, 1.8);
+        c.position.set(Math.cos(i * 1.3) * 0.35, VH, Math.sin(i * 1.3) * 0.35);
+        c.rotation.set(ctx.rr(-0.4, 0.4), 0, ctx.rr(-0.4, 0.4));
+        g.add(c);
+      }
+      // glühende Rinnen vom Krater zum Fuß
+      const glowM = kit.E('#ff2a4a', 1.3);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU + ctx.rand() * 0.3;
+        for (let k = 0; k < 4; k++) {
+          const t0 = k / 4, t1 = (k + 1) / 4;
+          const pt = (t) => new THREE.Vector3(Math.cos(a) * (VT + (VR - VT) * t + 0.06), VH * (1 - t), Math.sin(a) * (VT + (VR - VT) * t + 0.06));
+          const p0 = pt(t0), p1 = pt(t1), m = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, p0.distanceTo(p1) + 0.04), glowM);
+          m.position.copy(p0).add(p1).multiplyScalar(0.5);
+          m.lookAt(p1);
+          g.add(m);
+        }
+      }
+      // Rubine wachsen aus dem Hang
+      for (let i = 0; i < 8; i++) {
+        const a = ctx.rand() * TAU, t = ctx.rr(0.3, 0.85), r = VT + (VR - VT) * t;
+        const c = kit.crystal(ctx.rr(0.35, 0.6), '#e8183a', ctx.rand, 1.5);
+        c.position.set(Math.cos(a) * r, VH * (1 - t), Math.sin(a) * r);
+        c.rotation.set(Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7);
+        g.add(c);
       }
       ctx.put(g, p[0], p[1], { rot: false });
       ctx.anims.push((t) => (crater.material.emissiveIntensity = 1.6 + Math.sin(t * 1.8) * 0.6));
+      const top = ctx.height(p[0], p[1]) + VH;
+      (ctx.shared.emitters = ctx.shared.emitters || []).push(
+        { name: 'Vulkanrauch', keep: true, pos: [p[0], top + 0.4, p[1]], size: [1.2, 0.2, 1.2], colors: ['#3a2a30', '#5a4048'], particleSize: 1.2, sizeEnd: 3.6, rate: 5, speed: [0.8, 1.3], lifetime: [6, 9], spread: [10, 10], direction: 'Top', lightEmission: 0, drag: 0.08, transparency: [[0, 1], [0.1, 0.4], [0.7, 0.75], [1, 1]] },
+        { name: 'Kraterglut', keep: true, pos: [p[0], top + 0.2, p[1]], size: [1.2, 0.1, 1.2], colors: ['#ffb07a', '#ff3a5a'], particleSize: 0.12, sizeEnd: 0.04, rate: 8, speed: [0.8, 1.6], lifetime: [0.8, 1.5], spread: [20, 20], direction: 'Top', lightEmission: 1 },
+      );
     }
     // glühende Risse im dunklen Boden, verzweigt wie auf einem Lavafeld
     const glow = kit.E('#ff3a5a', 1.4);

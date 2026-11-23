@@ -107,11 +107,32 @@ const LANDMARK = {
       rib.rotation.set(-0.7 + 0.35, (i / 6) * Math.PI * 2, 0);
       head.add(rib);
     }
-    const mast = at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), metal), 0, 1.1, 0.95);
-    mast.rotation.x = 0.7;
-    head.add(mast, at(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), E('#ff3a4a', 2)), 0, 1.75, 1.55));
+    // Schüssel noch detaillierter (Werkstatt-Wunsch): Paneelring am Rand, drei Streben zum Empfängerhorn,
+    // Gegengewicht hinten, Wartungsleiter am Mast, Kabelbündel und Positionslichter am Rand
+    const dishC = new THREE.Vector3(0, 1.7, 0), tiltQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.7, 0, 0));
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, v = new THREE.Vector3(Math.cos(a) * 1.78, -1.25, Math.sin(a) * 1.78).applyQuaternion(tiltQ).add(dishC);
+      const pan = at(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.04, 0.3), i % 2 ? white : M('#d0d4dc')), v.x, v.y, v.z);
+      pan.quaternion.copy(tiltQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -a));
+      head.add(pan);
+      if (i % 4 === 0) head.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), E('#ffb02e', 2)), v.x, v.y + 0.05, v.z));
+    }
+    const horn = new THREE.Vector3(0, 0.1, 1.6).applyQuaternion(tiltQ).add(new THREE.Vector3(0, 1.7, 0));
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2, foot = new THREE.Vector3(Math.cos(a) * 1.2, -0.9, Math.sin(a) * 1.2).applyQuaternion(tiltQ).add(dishC);
+      const mid = foot.clone().add(horn).multiplyScalar(0.5), len = foot.distanceTo(horn);
+      const st = at(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, len, 5), metal), mid.x, mid.y, mid.z);
+      st.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), horn.clone().sub(foot).normalize());
+      head.add(st);
+    }
+    head.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.4, 10), dark), horn.x, horn.y, horn.z));
+    head.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), E('#ff3a4a', 2)), horn.x, horn.y + 0.25, horn.z));
+    head.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.4), dark), 0, 0.2, -0.6));
     parts.push(head);
     for (const [x, z] of [[1.1, 1.1], [-1.1, -1.1]]) parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), E('#ffb02e', 2)), x, 0.6, z));
+    for (let y = 0.7; y < 3.0; y += 0.22) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.03), metal), 0, y, 0.5));
+    for (const sx of [-0.15, 0.15]) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.03, 2.3, 0.03), metal), sx, 1.85, 0.5));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.5, 0.12), M('#2a2e36')), -0.45, 1.75, 0.0));
     // Kontrollhaus mit Fenster, Kabelkanal
     parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 1.0), white), 2.4, 0.5, -0.6));
     parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.05), E('#7ad0ff', 0.9)), 2.4, 0.65, -0.08));

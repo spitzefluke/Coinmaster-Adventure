@@ -1799,9 +1799,30 @@ const LANDMARKS = {
       anchor.rotation.z = Math.PI;
       t.add(anchor, at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.06), M('#4a4f58', { metalness: 0.5 })), -0.8, 0.5, 0.2));
       put(t, w[0] + 2.4, w[1] + 0.6);
+      // mehr Details am Wrack: Kanonen im Sand, ein zweiter, gebrochener Mast mit zerrissenem Segel, Seepocken
+      const extra = new THREE.Group();
+      for (let k = 0; k < 3; k++) {
+        const cn = at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.9, 10), M('#3a3f46', { metalness: 0.5 })), -1.2 + k * 0.5, 0.15, -1.5);
+        cn.rotation.z = Math.PI / 2 + (k - 1) * 0.2;
+        extra.add(cn);
+      }
+      const mast = at(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.2, 8), M('#5a4030')), 1.6, 1.0, -1.0);
+      mast.rotation.z = 0.5;
+      extra.add(mast);
+      const sail = at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 1.1), M('#d8ccb0', { transparent: true, opacity: 0.85 })), 1.95, 1.4, -1.0);
+      sail.rotation.z = 0.5;
+      extra.add(sail);
+      for (let k = 0; k < 10; k++) extra.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), M('#d8d0c0')), -1 + (k % 5) * 0.4, 0.3 + Math.floor(k / 5) * 0.25, 1.2));
+      put(extra, w[0], w[1], { rot: false });
     }
     const c = spot(2.8, 5, 11);
-    if (c) put(coralArch(['#ff7a8a', '#ffb05a', '#b07bff', '#ffe25f']), c[0], c[1]);
+    if (c) {
+      const arch = coralArch(['#ff7a8a', '#ffb05a', '#b07bff', '#ffe25f']);
+      // leuchtende Anemonen und Röhrenschwämme am Bogen
+      for (let k = 0; k < 8; k++) arch.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), E(['#5affd8', '#ff7ae0', '#ffe25f'][k % 3], 1.5)), Math.cos(k * 0.8) * 1.6, 0.2 + (k % 3) * 0.3, Math.sin(k * 0.8) * 0.4));
+      for (let k = 0; k < 4; k++) arch.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6 + k * 0.15, 8, 1, true), M(['#ff9a5a', '#b07bff'][k % 2], { side: THREE.DoubleSide })), -1.4 + k * 0.25, 0.3, 0.5));
+      put(arch, c[0], c[1]);
+    }
   },
   muschelland({ put, spot, anims, rand, root, height }) {
     const h = spot(2.4, 4, 9);
@@ -1822,7 +1843,15 @@ const LANDMARKS = {
       }
     }
     const f = spot(1.6, 5, 11);
-    if (f) put(pearlFountain(anims), f[0], f[1]);
+    if (f) {
+      put(pearlFountain(anims), f[0], f[1]);
+      // Perlenlaternen im Kreis um den Brunnen und ein Tor aus zwei Muscheln (Werkstatt-Wunsch)
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2, x = f[0] + Math.cos(a) * 2.0, z = f[1] + Math.sin(a) * 2.0;
+        root.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.1, 6), M('#e8d8c8')), x, height(x, z) + 0.55, z));
+        root.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), E('#fff2fa', 1.5)), x, height(x, z) + 1.2, z));
+      }
+    }
   },
   atlantis({ put, spot, anims, reserve }) {
     // Palast mit Kristallkuppel, Säulenring und vier Türmen
@@ -1830,6 +1859,27 @@ const LANDMARKS = {
     if (!pal) return;
     put(atlantisPalace(anims), pal[0], pal[1], { rot: false });
     put(runeCircle(anims, 4.6), pal[0], pal[1], { rot: false, sink: -0.02, lay: true });
+    // Palastplatz (Werkstatt-Wunsch „detaillierter und schöner“): Leuchtlaternen aus Muscheln auf Säulen im Kreis,
+    // vier Wächterstatuen mit Dreizack, Banner aus Seetang an goldenen Stangen
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + 0.15, x = pal[0] + Math.cos(a) * 5.1, z = pal[1] + Math.sin(a) * 5.1;
+      const lamp = new THREE.Group();
+      lamp.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 1.6, 8), M('#e8eef2')), 0, 0.8, 0));
+      lamp.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), M('#ffcf4a', { metalness: 0.6 })), 0, 1.6, 0));
+      lamp.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), E('#5affd8', 1.6)), 0, 1.72, 0));
+      put(lamp, x, z, { rot: false });
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.78, x = pal[0] + Math.cos(a) * 4.0, z = pal[1] + Math.sin(a) * 4.0;
+      const st = new THREE.Group();
+      st.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), M('#e8eef2')), 0, 0.25, 0));
+      st.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 1.0, 10), M('#dfe7ec')), 0, 1.0, 0));
+      st.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), M('#dfe7ec')), 0, 1.65, 0));
+      st.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.0, 6), M('#ffcf4a', { metalness: 0.7 })), 0.3, 1.3, 0));
+      for (const dx of [-0.1, 0, 0.1]) st.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.2, 5), M('#ffcf4a', { metalness: 0.7 })), 0.3 + dx, 2.35, 0));
+      put(st, x, z, { rot: false });
+      st.lookAt(pal[0], st.position.y, pal[1]);
+    }
     // Säulenallee Richtung Inselmitte
     const dir = new THREE.Vector2(-pal[0], -pal[1]).normalize();
     for (let i = 1; i <= 4; i++)
