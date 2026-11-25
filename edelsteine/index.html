@@ -8,37 +8,140 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
 <link rel="stylesheet" href="../css/theme.css">
-<link rel="stylesheet" href="../css/liste.css">
-<style>
-  .gem { width: 44px; height: 44px; justify-self: start; border: 2px solid var(--d); background: linear-gradient(135deg, var(--l), var(--m) 45%, var(--d)); box-shadow: 0 0 18px -4px var(--m), inset 0 0 0 6px color-mix(in srgb, var(--l) 35%, transparent); }
-  .gem.cut-rund { border-radius: 50%; }
-  .gem.cut-oval { border-radius: 50%; width: 36px; }
-  .gem:not(.cut-rund):not(.cut-oval) { transform: rotate(45deg) scale(0.78); border-radius: 6px; margin: 4px; }
-</style>
+<link rel="stylesheet" href="css/kristalle.css">
 </head>
 <body>
 <div class="page">
-  <header class="masthead">
-    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Edelsteine</p>
+  <header>
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Juwelnebel</p>
     <h1>Edelsteine</h1>
-    <p class="lede">Im Juwelnebel, der Galaxie hinter der Supernova, findest du Edelsteine statt Münzen: 20 Steine in denselben 10 Seltenheitsstufen, vom Quarz bis zum Herz der Galaxie. Edelsteine verkaufst du für Diamantstaub, die Währung des Juwelnebels: zehnmal so viel, wie eine Münze derselben Stufe an Moneten bringt. Mit Diamantstaub kaufst du die Welten des Juwelnebels und die Edelstein-Taschen. Alle Steine in 3D, die Steinsuche mit ?-Steinen und die Mutationen findest du in der <a href="../schleiferei/">Edelstein-Schleiferei</a>.</p>
+    <p class="lede">Im Juwelnebel, der Galaxie hinter der Supernova, findest du Edelsteine statt Münzen. Hier liegen alle Steine als 3D-Modelle: die <b>20 bekannten</b> und <b>23 neue</b> (darunter 2 Premium-Kristalle), vier pro Seltenheitsstufe, dazu der ?-Stein. Jeder Stein hat einen eigenen Schliff, ein eigenes Material und oft einen eigenen Effekt. Edelsteine verkaufst du für Diamantstaub, die Währung des Juwelnebels. Die ?-Steine brichst und polierst du in der <a href="../schleiferei/">Edelstein-Schleiferei</a>.</p>
   </header>
 
-  <ul id="legend" class="legend" aria-label="Seltenheitsstufen"></ul>
+  <section class="bench" aria-label="Schleiftisch">
+    <div class="stage" id="stage">
+      <canvas id="view" aria-label="3D-Ansicht des gewählten Edelsteins. Antippen poliert den Stein."></canvas>
+      <div class="hud"><div class="hud-l"><span class="pill" id="dust" title="Gesammelter Diamantstaub">◆ 0</span><span class="pill" id="finds" hidden>Funde 0</span></div><span class="pill combo" id="combo">Combo ×1</span></div>
+      <div class="reveal" id="reveal" aria-hidden="true"></div>
+      <div class="stage-bar">
+        <button class="btn primary" id="rebuild" type="button">Neu schleifen</button>
+        <button class="btn" id="spin" type="button" aria-pressed="true">Drehen: an</button>
+        <button class="btn" id="sound" type="button" aria-pressed="true">Ton: an</button>
+        <span class="hint">Antippen zum Polieren · Ziehen zum Drehen</span>
+      </div>
+      <div class="stage-fallback" id="fallback" hidden>Dein Browser kann gerade kein WebGL anzeigen. Die Steckbriefe und die Werkbank funktionieren trotzdem.</div>
+    </div>
 
-  <nav id="filters" class="filters" aria-label="Nach Stufe filtern"></nav>
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tab-info" aria-selected="true" aria-controls="pane-info" type="button">Steckbrief</button>
+        <button class="tab" role="tab" id="tab-bench" aria-selected="false" aria-controls="pane-bench" type="button">Werkbank</button>
+      </div>
 
-  <main id="sections" class="sections"></main>
+      <div class="pane" id="pane-info" role="tabpanel" aria-labelledby="tab-info">
+        <span class="tier-chip" id="i-tier">Normal</span>
+        <div class="name-row"><h3 class="gem-name" id="i-name">Quarz</h3><span class="new-tag" id="i-new" hidden>NEU</span></div>
+        <p class="gem-text" id="i-text"></p>
+        <dl class="facts">
+          <div><dt>Schliff</dt><dd id="i-cut"></dd></div>
+          <div><dt>Material</dt><dd id="i-mat"></dd></div>
+          <div><dt id="i-value-label">Grundwert</dt><dd id="i-value"></dd></div>
+          <div><dt>Chance im ?-Stein</dt><dd id="i-chance"></dd></div>
+          <div class="wide"><dt>Besonderheit</dt><dd id="i-fx"></dd></div>
+          <div class="wide" id="i-weight-row" hidden><dt>Gewicht</dt><dd id="i-weight"></dd></div>
+          <div class="wide"><dt>Farben</dt><dd><span class="swatches" id="i-sw"></span></dd></div>
+        </dl>
+        <div style="display:grid;gap:8px" id="mut-preview">
+          <p class="block-title">Mutation in 3D ansehen</p>
+          <div class="cuts" id="mut-chips"></div>
+          <div class="cuts" id="inc-chips" hidden></div>
+        </div>
+        <div style="display:grid;gap:8px" id="weights-info">
+          <p class="block-title" id="w-title">Gewicht beim Fund</p>
+          <ul class="wtable" id="wtable"></ul>
+        </div>
+        <div style="display:grid;gap:8px" id="mut-info" hidden>
+          <p class="block-title">Mutationen beim Polieren</p>
+          <ul class="wtable" id="muttable"></ul>
+        </div>
+        <div style="display:grid;gap:8px" id="finds-wrap" hidden>
+          <p class="block-title">Deine Funde</p>
+          <ul class="findlog" id="findlog"></ul>
+          <p class="record" id="record"></p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="unveil" type="button" hidden>In der Schleiferei öffnen</button>
+          <button class="btn" id="to-bench" type="button">In der Werkbank bearbeiten</button>
+        </div>
+      </div>
 
-  <section class="masthead" aria-labelledby="bags-title">
-    <h2 id="bags-title" style="margin:0;font:700 var(--step-3)/1 var(--font-display)">Edelstein-Taschen</h2>
-    <p class="lede">50 Taschen nur für Edelsteine, in fünf Stufen. Du kaufst sie der Reihe nach mit Diamantstaub im Shop (Reiter „Taschen“). Die Kapazität sagt, wie viele Edelsteine du gleichzeitig tragen kannst. Das Quarzsäckchen hat jeder von Anfang an.</p>
+      <div class="pane" id="pane-bench" role="tabpanel" aria-labelledby="tab-bench" hidden>
+        <div class="row2">
+          <div class="field"><label for="b-name">Name</label><input type="text" id="b-name" maxlength="28" value="Mein Stein"></div>
+          <div class="field"><label for="b-tier">Stufe</label><select id="b-tier"></select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="b-cut">Schliff</label><select id="b-cut"></select></div>
+          <div class="field"><label for="b-mat">Material</label><select id="b-mat"></select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="b-tex">Oberfläche</label><select id="b-tex"></select></div>
+          <div class="field"><label for="b-fx">Effekt</label><select id="b-fx"></select></div>
+        </div>
+        <div class="colors">
+          <div class="color"><input type="color" id="b-c0" aria-label="Lichtfarbe"><span>Licht</span></div>
+          <div class="color"><input type="color" id="b-c1" aria-label="Grundfarbe"><span>Grundfarbe</span></div>
+          <div class="color"><input type="color" id="b-c2" aria-label="Tiefe"><span>Tiefe</span></div>
+        </div>
+        <div class="field"><label for="b-text">Beschreibung</label><textarea id="b-text" maxlength="140">Frisch aus der Werkbank. Noch hat ihn niemand im Juwelnebel gefunden.</textarea></div>
+        <div class="field"><span class="legend-label">Eintrag für gems.js</span><pre class="code" id="b-code"></pre></div>
+        <div class="actions">
+          <button class="btn primary" id="b-copy" type="button">Eintrag kopieren</button>
+          <button class="btn" id="b-random" type="button">Zufällig</button>
+          <span class="toast" id="b-toast" role="status"></span>
+        </div>
+      </div>
+    </div>
   </section>
-  <div id="bags" class="sections"></div>
 
-  <footer class="foot">Werte in Diamantstaub ohne Welt, Wiedergeburt und Supernova. Beim Fund zählen dazu der Welt-Faktor, die Wiedergeburten, die Supernova und der Skill „Wertvoller Fund“. Drop-Chancen wie bei den Münzen.</footer>
+  <section class="tiers-wrap" id="vitrine" aria-labelledby="v-title" style="display:grid;gap:18px">
+    <div class="vitrine-head">
+      <h2 id="v-title">Vitrine</h2>
+      <div class="filter" role="group" aria-label="Steine filtern">
+        <button class="chip" data-f="alle" aria-pressed="true" type="button">Alle 43</button>
+        <button class="chip" data-f="alt" aria-pressed="false" type="button">Bekannt (20)</button>
+        <button class="chip" data-f="neu" aria-pressed="false" type="button">Neu (23)</button>
+      </div>
+    </div>
+    <div class="tiers" id="tiers"></div>
+  </section>
+
+  <section class="mut-list-wrap" id="mutationen" aria-labelledby="mut-title">
+    <div class="sec-head">
+      <h2 id="mut-title">Mutationen</h2>
+      <p class="lede">Beim Polieren in der Schleiferei wird verdeckt viermal gewürfelt. Ein Kristall bekommt höchstens 2 Mutationen, sichtbar erst am Ende. Ihre Multiplikatoren kommen zum Wert dazu. Klick auf eine Mutation für die 3D-Vorschau.</p>
+    </div>
+    <ul class="mut-list" id="mut-list"></ul>
+  </section>
+
+  <section class="bags" aria-labelledby="bags-title" style="display:grid;gap:18px">
+    <div class="sec-head">
+      <h2 id="bags-title">Edelstein-Taschen</h2>
+      <p class="lede">50 Taschen nur für Edelsteine, in fünf Stufen. Du kaufst sie der Reihe nach mit Diamantstaub im Shop (Reiter „Taschen“). Die Kapazität sagt, wie viele Edelsteine du gleichzeitig tragen kannst. Das Quarzsäckchen hat jeder von Anfang an.</p>
+    </div>
+    <div id="bags" style="display:grid;gap:22px"></div>
+  </section>
+
+  <footer>Grundwert in Diamantstaub: zehnmal der Münzwert der Stufe für einen Splitter, ohne Welt, Wiedergeburt und Supernova. Beim Fund zählen dazu der Welt-Faktor, die Wiedergeburten, die Supernova und der Skill „Wertvoller Fund“. Schwerere Funde aus der Schleiferei bringen mehr: Klein ×2, Mittel ×4, Groß ×8, Riesig ×20, Gigantisch ×100, Mutationen werden miteinander multipliziert. Die ?-Steine, die 23 neuen Steine, die neuen Schliffe und die Mutationen sind ein Vorschlag und noch nicht im Spiel.</footer>
 </div>
 
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="js/vitrine3d.js"></script>
 <script type="module" src="js/main.js"></script>
 <script type="module" src="../js/nav.js"></script>
 </body>
