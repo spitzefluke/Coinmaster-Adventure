@@ -27,7 +27,7 @@ export const BEREICHE = [
   { gruppe: 'Haustiere', titel: 'Haustiere', href: 'haustiere/', status: 'vorschau', alias: 'pets',
     kurz: '99 Pets aus elf Eiern, mit Seltenheit und Drop-Chance.', eckdaten: ['99 Pets', '9 Seltenheiten'] },
   { gruppe: 'Ausrüstung', titel: 'Taschen', href: 'taschen/', status: 'vorschau', alias: 'rucksack kapazitaet',
-    kurz: '99 Rücken-Items vom Kupferbeutel bis zum Unendlichen Münzthron.', eckdaten: ['99 Taschen', '9 Stufen'] },
+    kurz: '99 Rücken-Items in 3D, vom Kupferbeutel bis zum Unendlichen Münzthron.', eckdaten: ['99 Taschen', '9 Stufen', '3D-Vorschau'] },
   { gruppe: 'Ausrüstung', titel: 'Auras', href: 'auren/', status: 'vorschau', alias: 'auren bonus',
     kurz: '50 Auras um den Spieler, jede mit kleinem Bonus.', eckdaten: ['50 Auras', '6 Seltenheiten'] },
   { gruppe: 'Export', titel: 'Roblox Studio', href: 'roblox/', status: 'code', alias: 'export luau installer',

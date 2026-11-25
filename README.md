@@ -23,7 +23,8 @@ Roblox-Engine (`js/rbx/`):
 
 Umgestellt sind bisher Auras, Welten, das Wetter in den Welten, der Spiel-Hintergrund, Münzrollen, der Münzbaumgarten und alle Münzen
 (Münzindex mit Entdeckungs-Animation, Wetter-Seite), Eier mit Schlüpfen
-und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Taschen sind vorerst reine Listen.
+und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere sind vorerst eine reine Liste. Die Taschen haben eine
+eigene 3D-Vorschau mit Three.js (noch nicht mit der Roblox-Engine).
 
 | Bereich | Ordner | Status |
 |---|---|---|
@@ -33,7 +34,7 @@ und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Tasc
 | Münzrollen | `rollen/` | Vorschau |
 | Münzbaumgarten | `garten/` | Vorschau |
 | Haustiere | `haustiere/` | Liste |
-| Taschen | `taschen/` | Liste |
+| Taschen | `taschen/` | Vorschau |
 | Edelsteine | `edelsteine/` | Liste |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
@@ -444,8 +445,28 @@ Beschreibung, Preis und Kapazität (wie viele Münzen man gleichzeitig tragen ka
 
 Die Preise verdoppeln sich etwa alle 4 bis 6 Taschen, die Kapazität wächst etwas langsamer. Ab Gold sind es nicht
 mehr nur Taschen, sondern auch Rüstungen, Flügel, Türme und Kreaturen. Daten: `taschen/js/bags.js`
-(`BAG_TIERS`, `BAGS`, `fmtCoins`). Noch nicht im Spiel: Die Taschen haben noch keine 3D-Modelle und sind
-noch nicht mit dem Inventar verbunden.
+(`BAG_TIERS`, `BAGS`, `fmtCoins`).
+
+**3D-Vorschau:** Oben auf der Seite steht jede Tasche als 3D-Modell auf dem Rücken einer Spielfigur; auf jeder Karte
+öffnet „3D ansehen“ die Tasche dort (Adresse `taschen/#t07` für Nr. 7). Die Modelle stammen aus der Taschen-Werkstatt,
+in der die Admins jede Tasche einzeln überarbeitet haben.
+
+- **Bauen:** Die Tasche entsteht Teil für Teil, rechts oben steht die Zahl der Bauteile. „Alle nacheinander bauen“
+  geht alle 99 durch. Ziehen dreht die Ansicht, das Mausrad zoomt.
+- **Geradeaus laufen:** Die Figur läuft (Arme, Beine, Wippen), der Boden zieht nach hinten weg, die Tasche schwingt
+  nach. Manche Taschen reagieren darauf: Münzen in den Gläsern wackeln, der Umhang weht, der Kometenschweif wächst.
+- **Füllstand:** Regler, „Münzen sammeln“ (Münzen fliegen hinein), „Voll machen“ und „Leeren“. Ist die Tasche voll,
+  erscheint „VOLL!“, Münzen quellen heraus, und jede Tasche hat einen eigenen Text, was passiert, wenn sie voll ist.
+  Nr. 99 wird nie voll.
+- **Dateien:** `taschen/js/3d/` sind klassische Skripte und werden der Reihe nach vor `js/vorschau.js` geladen:
+  `01-core.js` (Baukasten: Materialien mit Strukturen, abgerundete Blöcke, Münzen, Edelsteine, Nähte, Schnallen,
+  Federn, Leuchten, `makeBuilder`, `buildItem`, `WALK`), `02` bis `12` die Grundformen (Beutel, Rucksack, Truhe,
+  Flügel, Kreaturen, Rüstungen, Kanonen …; spätere Dateien ersetzen oder erweitern frühere), `13-recipes.js`
+  (`RECIPES`: Grundform und Einstellungen je Tasche) und `14-fulltext.js` (`FULL_TEXT`: Text bei voller Tasche).
+  `js/vorschau.js` baut Bühne, Figur, Laufen und Füllstand; Three.js r128 kommt von cdnjs. Gestaltung:
+  `taschen/css/vorschau.css`.
+- Noch nicht im Spiel: Die Modelle gibt es nur in der Vorschau (Three.js), noch nicht in Roblox, und die Taschen sind
+  noch nicht mit dem Inventar verbunden.
 
 ## Edelsteine
 
@@ -1166,7 +1187,8 @@ Dann <http://localhost:8000> öffnen.
 - `index.html`, `css/start.css`, `js/start.js` – Startseite (aus Claude Design „Startseite v3“: Himmelsbild hinter dem Kopf, schimmernder Titel, hochzählende Zahlen, Goldfunken, Suche über alle Bereiche mit Taste „/“, Kacheln mit Lichtfleck)
 - `js/settings.js` – gemeinsame Einstellungen (Ton, Grafik, Animationen, Zahlenformat)
 - `haustiere/` – Haustiere: `js/pets.js` (Seltenheiten, Eier, 99 Pets, `rollPet`), `js/main.js` (Liste)
-- `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste)
+- `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste), `js/vorschau.js` (3D-Vorschau),
+  `js/3d/` (Modelle, Rezepte, Voll-Texte), `css/vorschau.css`
 - `edelsteine/` – Edelsteine: `js/gems.js` (20 Steine, Werte), `js/main.js` (Liste)
 - `css/liste.css` – gemeinsame Gestaltung der Listen-Seiten (Haustiere, Taschen)
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
