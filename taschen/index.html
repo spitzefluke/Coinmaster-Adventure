@@ -9,14 +9,63 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
 <link rel="stylesheet" href="../css/theme.css">
 <link rel="stylesheet" href="../css/liste.css">
+<link rel="stylesheet" href="css/vorschau.css">
 </head>
 <body>
 <div class="page">
   <header class="masthead">
     <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Taschen</p>
     <h1>Taschen</h1>
-    <p class="lede">99 Rücken-Items in 9 Stufen, vom zerschlissenen Kupferbeutel bis zum Unendlichen Münzthron. Die Kapazität sagt, wie viele Münzen du gleichzeitig tragen kannst. Ab Gold sind es nicht mehr nur Taschen, sondern auch Rüstungen, Flügel, Türme und Kreaturen.</p>
+    <p class="lede">99 Rücken-Items in 9 Stufen, vom zerschlissenen Kupferbeutel bis zum Unendlichen Münzthron. Die Kapazität sagt, wie viele Münzen du gleichzeitig tragen kannst. Ab Gold sind es nicht mehr nur Taschen, sondern auch Rüstungen, Flügel, Türme und Kreaturen.
+      Jede Tasche gibt es als 3D-Vorschau: Teil für Teil gebaut, beim Laufen und randvoll.</p>
   </header>
+
+  <section class="work" id="vorschau" aria-label="3D-Vorschau">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="3D-Modell der gewählten Tasche, zum Drehen ziehen"></canvas>
+      <div class="hud">
+        <span class="chip" id="tierChip"><i></i><span></span></span>
+        <span class="chip" id="partChip">0 Teile</span>
+      </div>
+      <div class="meter" id="meter" aria-hidden="true"><span class="bar"><span id="meterBar"></span></span><b id="meterText">🪙 0 %</b></div>
+      <div class="fullbanner" id="fullBanner" hidden><b>VOLL!</b><span id="fullBannerCap"></span></div>
+      <div class="buildbar"><span id="buildbar"></span></div>
+    </div>
+    <div class="side">
+      <div class="controls">
+        <button class="btn" id="prev" type="button" aria-label="Vorherige Tasche">‹ Zurück</button>
+        <span class="nrbox" id="nrbox">Nr. 1</span>
+        <button class="btn" id="next" type="button" aria-label="Nächste Tasche">Weiter ›</button>
+        <button class="btn" id="walk" type="button" aria-pressed="false">🚶 Geradeaus laufen</button>
+        <button class="btn" id="rebuild" type="button">Neu bauen</button>
+        <button class="btn primary" id="play" type="button" aria-pressed="false">▶ Alle nacheinander bauen</button>
+      </div>
+      <div class="info">
+        <h2 id="bagName">–</h2>
+        <p class="text" id="bagText"></p>
+        <dl class="vfacts">
+          <div><dt>Preis</dt><dd id="fPrice">–</dd></div>
+          <div><dt>Kapazität</dt><dd id="fCap">–</dd></div>
+          <div><dt>Form</dt><dd id="fForm">–</dd></div>
+          <div><dt>Bauteile</dt><dd id="fParts">–</dd></div>
+        </dl>
+      </div>
+      <div class="fillrow">
+        <label for="fill">Füllstand</label>
+        <input type="range" id="fill" min="0" max="100" step="1" value="0">
+        <span class="filltext" id="fillText">0 Münzen</span>
+        <div class="fillbtns">
+          <button class="btn" id="collect" type="button" aria-pressed="false">🪙 Münzen sammeln</button>
+          <button class="btn" id="fillFull" type="button">Voll machen</button>
+          <button class="btn" id="fillEmpty" type="button">Leeren</button>
+        </div>
+      </div>
+      <div class="fullbox" id="fullBox">
+        <h3 id="fullTitle">Wenn die Tasche voll ist</h3>
+        <p id="fullText"></p>
+      </div>
+    </div>
+  </section>
 
   <ul id="legend" class="legend" aria-label="Stufen"></ul>
 
@@ -27,7 +76,23 @@
   <footer class="foot">Preise und Kapazitäten sind Vorschläge, beides in Münzen. Die Preise verdoppeln sich etwa alle 4 bis 6 Taschen, die Kapazität wächst etwas langsamer.</footer>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/3d/01-core.js"></script>
+<script src="js/3d/02-forms1.js"></script>
+<script src="js/3d/03-forms2.js"></script>
+<script src="js/3d/04-forms3base.js"></script>
+<script src="js/3d/05-forms3.js"></script>
+<script src="js/3d/06-forms4.js"></script>
+<script src="js/3d/07-forms5.js"></script>
+<script src="js/3d/08-forms6.js"></script>
+<script src="js/3d/09-forms7.js"></script>
+<script src="js/3d/10-forms8.js"></script>
+<script src="js/3d/11-forms9.js"></script>
+<script src="js/3d/12-forms10.js"></script>
+<script src="js/3d/13-recipes.js"></script>
+<script src="js/3d/14-fulltext.js"></script>
 <script type="module" src="js/main.js"></script>
+<script type="module" src="js/vorschau.js"></script>
 <script type="module" src="../js/nav.js"></script>
 </body>
 </html>

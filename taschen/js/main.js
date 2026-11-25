@@ -1,4 +1,5 @@
 // Taschen: alle Rücken-Items als Karten, nach Stufe gruppiert, mit Beschreibung, Preis und Kapazität.
+// Der Knopf „3D ansehen“ zeigt die Tasche oben in der Vorschau (js/vorschau.js).
 
 import { BAGS, BAG_TIERS, tierById, fmtCoins } from './bags.js';
 
@@ -32,6 +33,7 @@ function card(b) {
       <div><dt>Preis</dt><dd>${b.price === 0 ? 'Gratis' : fmtCoins(b.price)}</dd></div>
       <div><dt>Kapazität</dt><dd>${capText(b)}</dd></div>
     </dl>
+    <button class="show3d" type="button" data-show="${b.nr}" aria-pressed="false">3D ansehen</button>
   </li>`;
 }
 
