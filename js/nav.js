@@ -1,7 +1,7 @@
 // Gemeinsame Navigation für alle Seiten (Design aus Claude Design: „Navigation“).
 //
 // Breit: Leiste mit gleitender Messing-Markierung für die aktuelle Seite und einer weichen
-// Markierung unter der Maus. Schmal (unter 1640 px, weil die Leiste 14 Einträge hat): Knopf „Menü“, der eine Liste mit großen,
+// Markierung unter der Maus. Schmal (unter 1640 px, weil die Leiste 15 Einträge hat): Knopf „Menü“, der eine Liste mit großen,
 // nummerierten Einträgen ausklappt. Das Münz-Logo dreht sich beim Darüberfahren und Klicken,
 // ein Klick klingt wie eine Münze. Dazu ein „Nach oben“-Knopf.
 //
@@ -22,6 +22,7 @@ const LINKS = [
   { href: 'haustiere/', label: 'Haustiere' },
   { href: 'taschen/', label: 'Taschen' },
   { href: 'edelsteine/', label: 'Edelsteine' },
+  { href: 'schleiferei/', label: 'Schleiferei' },
   { href: 'auren/', label: 'Auras' },
   { href: 'welten/', label: 'Welten' },
   { href: 'wetter/', label: 'Wetter' },

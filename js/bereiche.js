@@ -18,6 +18,8 @@ export const BEREICHE = [
     kurz: 'Elf Wetter mit Mutationen, in 3D auf jeder Welt.', eckdaten: ['11 Wetter', '11 Mutationen'] },
   { gruppe: 'Welt', titel: 'Edelsteine', href: 'edelsteine/', status: 'vorschau', alias: 'juwelnebel diamantstaub taschen',
     kurz: '20 Steine aus dem Juwelnebel, dazu 50 Edelstein-Taschen.', eckdaten: ['20 Steine', '50 Taschen'] },
+  { gruppe: 'Welt', titel: 'Edelstein-Schleiferei', href: 'schleiferei/', status: 'vorschau', alias: 'steinsuche fragezeichen kristalle polieren mutationen einschluss perle',
+    kurz: '?-Steine einsammeln, zerbrechen und polieren. 42 Kristalle in 3D mit Gewicht und Mutationen.', eckdaten: ['42 Kristalle', '12 Mutationen'] },
   { gruppe: 'Garten', titel: 'Münzrollen', href: 'rollen/', status: 'vorschau', alias: 'rollen schaetze',
     kurz: 'Papierrollen aufreißen und Schätze für den Münzbaumgarten gewinnen.', eckdaten: ['5 Rollen', '37 Schätze'] },
   { gruppe: 'Garten', titel: 'Münzbaumgarten', href: 'garten/', status: 'vorschau', alias: 'garten baeume fruechte futter',
