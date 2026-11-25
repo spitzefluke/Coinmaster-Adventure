@@ -35,6 +35,7 @@ und die ganze Spiel-Oberfläche: HUD, Menü und alle Fenster. Haustiere und Tasc
 | Haustiere | `haustiere/` | Liste |
 | Taschen | `taschen/` | Liste |
 | Edelsteine | `edelsteine/` | Liste |
+| Edelstein-Schleiferei | `schleiferei/` | Vorschau |
 | Auras | `auren/` | Vorschau |
 | Welten | `welten/` | Vorschau |
 | Wetter | `wetter/` | Vorschau |
@@ -482,6 +483,27 @@ Im HUD steht er unter den Moneten, sobald man eine Supernova hatte (Attribut `Di
 - **Roblox:** Modul `GemData`. Am Spieler `Gem_<id>` (Anzahl) und `GemValue_<id>` (Gesamtwert), beide werden
   gespeichert. Ein Fund-Skript auf dem Server schreibt sie über das BindableEvent `GemFound`
   (`GemFound:Fire(player, gemId, anzahl, wertProStein)`), verkauft wird über `ShopRemote` (`sellGem`, `sellGems`).
+
+## Edelstein-Schleiferei
+
+`schleiferei/` ist eine eigenständige Vorschau für eine neue Edelstein-Mechanik im Juwelnebel. Sie nutzt eigene Daten
+in der Seite selbst und ändert `edelsteine/js/gems.js` und den Roblox-Export (noch) nicht.
+
+- **Steinsuche:** Auf einer Insel liegen nur ?-Steine (bis zu 7, zufällig verteilt, sie wachsen nach). Die Figur läuft mit
+  WASD, Pfeiltasten oder Tippen auf den Boden und sammelt sie ein. „Stein öffnen“: erst 6 bis 9 Mal klicken zum
+  Zerbrechen, dann durch Reiben polieren. Bis 85 % reibt man an einem Rohklumpen, der bei jedem Stein gleich aussieht;
+  erst dann zeigt sich der Kristall. Die Polierzeit ist für jeden Stein ungefähr gleich und verrät nichts.
+- **42 Kristalle:** die 20 bekannten, 20 neue und 2 Premium-Kristalle (Prismaherz, Mondtränen-Perle in einer
+  Perlmuttmuschel). Jeder hat einen eigenen Schliff, ein eigenes Material und oft einen eigenen Effekt, eine eigene Chance
+  im ?-Stein (Summe 100 %) und einen eigenen Gewichtsbereich in Gramm.
+- **Gewicht:** erst die Klasse (Splitter 50 %, Klein 28 %, Mittel 13 %, Groß 6 %, Riesig 2,5 %, Gigantisch 0,5 %), dann
+  ein Wert im Bereich des Kristalls. Diamantstaub = Grundwert × Klassen-Multiplikator (×1 bis ×100).
+- **12 Mutationen:** beim Öffnen viermal verdeckt gewürfelt, höchstens 2 pro Kristall, sichtbar erst nach dem Polieren:
+  Rissig, Glänzend, Einschluss (eigener Wurf für den Inhalt vom Erdklumpen bis zum Dino-Ei, ×1 bis ×20), Magmakern,
+  Giftkristall, Eisherz, Blitzkristall, Blütenkristall, Regenbogen, Riesenkristall und die Premium-Mutationen Phoenix
+  und Dimensionsriss. Jede hat eigene 3D-Effekte, einen eigenen Auftritt und Klang. Im Steckbrief lässt sich jede
+  Mutation live in 3D auf jeden Kristall setzen.
+- Beutel, Funde und Diamantstaub merkt sich der Browser (`localStorage`). Läuft mit three.js 0.170 (Dispersion).
 
 ## Welten
 
@@ -1118,6 +1140,7 @@ Dann <http://localhost:8000> öffnen.
 - `haustiere/` – Haustiere: `js/pets.js` (Seltenheiten, Eier, 99 Pets, `rollPet`), `js/main.js` (Liste)
 - `taschen/` – Taschen: `js/bags.js` (Stufen, 99 Rücken-Items), `js/main.js` (Liste)
 - `edelsteine/` – Edelsteine: `js/gems.js` (20 Steine, Werte), `js/main.js` (Liste)
+- `schleiferei/` – Edelstein-Schleiferei: Steinsuche, 42 Kristalle und Mutationen in 3D, alles in `index.html`
 - `css/liste.css` – gemeinsame Gestaltung der Listen-Seiten (Haustiere, Taschen)
 - `auren/` – Auras: `js/auras.js` (Daten, Preise, Boni, Grundpaket), `js/auraRoblox.js` (Vorschau mit AuraFx), `js/main.js` (Galerie)
 - `js/rbx/` – Roblox-Engine und Luau im Browser für die 1:1-Vorschau
