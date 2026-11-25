@@ -1,0 +1,170 @@
+/* Checkliste für Admins – baut auf theme.css und liste.css auf. */
+:root {
+  --st-offen: #e8836f;
+  --st-arbeit: #f2b84b;
+  --st-fertig: #6fd391;
+}
+html { min-height: 100%; } /* kurze Seite (nicht angemeldet): Hintergrund nicht wiederholen */
+.cl-sync:empty { display: none; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+code { font: 500 0.875em/1 var(--font-data); color: var(--brass); }
+
+/* Knöpfe */
+.cl-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 16px;
+  border: 1px solid var(--seam); border-radius: 10px; background: var(--velvet-2); color: var(--ink);
+  font: 600 0.875rem/1 var(--font-body); cursor: pointer;
+}
+.cl-btn:hover { border-color: var(--brass); }
+.cl-btn-primary { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }
+.cl-btn-primary:hover { filter: brightness(1.08); }
+.cl-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Anmeldung und Speicherstand */
+.cl-account {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 16px;
+  border: 1px solid var(--seam); border-radius: 14px; background: var(--velvet);
+}
+.cl-who { margin: 0; font-weight: 600; }
+.cl-who b { color: var(--c, var(--brass)); }
+.cl-sync { margin: 0; display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font: 500 0.8125rem/1.3 var(--font-data); }
+.cl-sync::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.cl-sync[data-s="ok"]::before { background: var(--st-fertig); }
+.cl-sync[data-s="offen"]::before, .cl-sync[data-s="speichert"]::before { background: var(--st-arbeit); }
+.cl-sync[data-s="fehler"] { color: var(--st-offen); }
+.cl-sync[data-s="fehler"]::before { background: var(--st-offen); }
+.cl-account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+
+/* Fortschritt */
+.cl-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.cl-card { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--seam); border-radius: 14px; background: var(--velvet); }
+.cl-card h2 { margin: 0; font: 600 0.75rem/1.2 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--c, var(--muted)); }
+.cl-big { margin: 0; font: 700 2rem/1 var(--font-data); font-variant-numeric: tabular-nums; }
+.cl-big small { font-size: 0.9rem; color: var(--muted); font-weight: 500; }
+.cl-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font: 500 0.8125rem/1.3 var(--font-data); color: var(--muted); }
+.cl-counts b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.cl-counts i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--c); }
+.cl-progress { display: flex; height: 8px; overflow: hidden; border-radius: 999px; background: var(--seam); }
+.cl-progress span { display: block; height: 100%; background: var(--c); transition: width 0.3s; }
+
+/* Filter */
+.cl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.cl-search input {
+  min-height: 38px; width: min(260px, 100%); padding: 8px 12px; border: 1px solid var(--seam); border-radius: 999px;
+  background: var(--velvet); color: var(--ink); font: 500 0.875rem/1 var(--font-body);
+}
+.cl-search { flex: 1 1 200px; display: flex; justify-content: flex-end; }
+.cl-search input:focus-visible, .cl-field input:focus-visible, .cl-item select:focus-visible, .cl-details textarea:focus-visible, .cl-details input:focus-visible, .cl-add input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* Gruppen */
+.cl-groups { display: grid; gap: 30px; }
+.cl-group { display: grid; gap: 10px; }
+.cl-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding-bottom: 8px; border-bottom: 1px solid var(--seam); }
+.cl-group-head h2 { margin: 0; font: 700 clamp(1.6rem, 3.4vw, 2.1rem)/1 var(--font-display); }
+.cl-group-head .cl-progress { flex: 1 1 140px; max-width: 260px; align-self: center; }
+.cl-group-meta { margin: 0; color: var(--muted); font: 500 0.8125rem/1.3 var(--font-data); font-variant-numeric: tabular-nums; }
+.cl-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.cl-empty { margin: 0; color: var(--muted); font-size: 0.875rem; }
+
+/* Punkt */
+.cl-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px 14px;
+  padding: 10px 12px; border: 1px solid var(--seam); border-left: 4px solid var(--c); border-radius: 12px; background: var(--velvet);
+}
+.cl-item[data-status="offen"] { --c: var(--st-offen); }
+.cl-item[data-status="arbeit"] { --c: var(--st-arbeit); background: linear-gradient(90deg, color-mix(in srgb, var(--st-arbeit) 7%, var(--velvet)), var(--velvet) 50%); }
+.cl-item[data-status="fertig"] { --c: var(--st-fertig); }
+.cl-item[data-status="fertig"] .cl-title { color: var(--muted); }
+.cl-text { display: grid; gap: 2px; min-width: 0; }
+.cl-title { margin: 0; font: 600 1rem/1.3 var(--font-body); overflow-wrap: anywhere; }
+.cl-meta { margin: 0; color: var(--muted); font: 500 0.75rem/1.3 var(--font-data); }
+.cl-note { margin: 0; color: var(--muted); font-size: 0.875rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Status: drei Knöpfe nebeneinander */
+.cl-status { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--seam); border-radius: 10px; background: var(--vault); }
+.cl-status button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--muted); font: 600 0.8125rem/1 var(--font-body); cursor: pointer;
+}
+/* Kästchen: leer (offen), halb gefüllt (in Arbeit), mit Haken (überarbeitet) */
+.cl-status button b { position: relative; flex: none; width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 5px; }
+.cl-status button[data-s="arbeit"] b { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.cl-status button[data-s="fertig"] b::after {
+  content: ""; position: absolute; left: 4px; top: 0; width: 5px; height: 10px;
+  border: solid currentColor; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.cl-status button:hover:not(:disabled) { color: var(--ink); }
+.cl-status button[aria-pressed="true"] { background: color-mix(in srgb, var(--s) 18%, transparent); color: var(--s); }
+.cl-status button[data-s="offen"] { --s: var(--st-offen); }
+.cl-status button[data-s="arbeit"] { --s: var(--st-arbeit); }
+.cl-status button[data-s="fertig"] { --s: var(--st-fertig); }
+.cl-status button:disabled { cursor: default; }
+
+.cl-who-select {
+  min-height: 36px; padding: 6px 30px 6px 10px; border: 1px solid var(--seam); border-radius: 10px;
+  background: var(--velvet-2); color: var(--ink); font: 600 0.8125rem/1 var(--font-body);
+}
+.cl-who-select[data-empty="true"] { color: var(--muted); }
+.cl-who-select:disabled { opacity: 0.85; }
+.cl-more { min-height: 36px; padding: 6px 12px; }
+
+/* Details: Notiz, Name, Entfernen */
+.cl-details { grid-column: 1 / -1; display: grid; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--seam); }
+.cl-details label { display: grid; gap: 4px; color: var(--muted); font: 600 0.75rem/1.2 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; }
+.cl-details textarea, .cl-details input, .cl-add input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--seam); border-radius: 10px; background: var(--vault); color: var(--ink);
+  font: 400 0.9375rem/1.4 var(--font-body); text-transform: none; letter-spacing: 0;
+}
+.cl-details textarea { min-height: 70px; resize: vertical; }
+.cl-details-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.cl-danger { color: var(--st-offen); }
+.cl-danger:hover { border-color: var(--st-offen); }
+
+.cl-add { display: flex; gap: 8px; }
+.cl-add input { flex: 1; }
+
+/* Anmeldefenster */
+.cl-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0;
+  border: 1px solid var(--seam); border-radius: 16px; background: var(--velvet); color: var(--ink);
+}
+.cl-dialog::backdrop { background: rgb(5 4 8 / 0.7); }
+.cl-dialog form { display: grid; gap: 14px; padding: 22px; }
+.cl-dialog h2 { margin: 0; font: 700 2rem/1 var(--font-display); }
+.cl-muted { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+.cl-names { margin: 0; padding: 0; border: 0; display: grid; gap: 8px; }
+.cl-names legend { margin-bottom: 6px; font-weight: 600; }
+#login-names { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-names label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--seam); border-radius: 10px; cursor: pointer; }
+.cl-names label:has(input:checked) { border-color: var(--brass); background: var(--velvet-2); }
+.cl-field { display: grid; gap: 6px; font-weight: 600; }
+.cl-field input { min-height: 42px; padding: 8px 12px; border: 1px solid var(--seam); border-radius: 10px; background: var(--vault); color: var(--ink); font: 500 0.9375rem/1 var(--font-data); }
+.cl-help { color: var(--muted); font-size: 0.9rem; }
+.cl-help summary { cursor: pointer; color: var(--brass); font-weight: 600; }
+.cl-help ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; }
+.cl-help a { color: var(--brass); }
+.cl-msg { margin: 0; min-height: 1.3em; font-size: 0.9rem; }
+.cl-msg[data-s="fehler"] { color: var(--st-offen); }
+.cl-msg[data-s="ok"] { color: var(--st-fertig); }
+.cl-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-setup { display: grid; gap: 14px; padding: 22px; border-top: 1px solid var(--seam); background: var(--velvet-2); }
+.cl-setup h3 { margin: 0; font: 700 1.5rem/1 var(--font-display); }
+#setup-names { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-spacer { flex: 1; }
+
+.cl-readonly { margin: 0; padding: 12px 14px; border: 1px dashed var(--seam); border-radius: 12px; color: var(--muted); font-size: 0.9375rem; }
+
+@media (max-width: 760px) {
+  /* oben der Name, darunter Status, Zuständigkeit und Details in einer Zeile */
+  .cl-item { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 10px; }
+  .cl-text { grid-column: 1 / -1; grid-row: 1; }
+  .cl-who-select { width: 100%; min-width: 0; }
+  .cl-status button { padding: 6px 9px; }
+  .cl-status button span { display: none; }
+  .cl-more { min-width: 44px; padding: 6px 10px; }
+  .cl-more span { display: none; }
+  .cl-more::after { content: "⋯"; font-size: 1.2rem; line-height: 1; }
+  .cl-account-actions { margin-left: 0; }
+  .cl-search { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .cl-progress span { transition: none; } }

@@ -23,11 +23,11 @@ const AREAS = BEREICHE.map((b) => ({
 
 const grid = $('area-grid');
 function card(b) {
-  const live = b.status !== 'geplant', locked = b.status === 'code';
+  const live = b.status !== 'geplant', locked = b.status === 'code' || b.status === 'admin';
   return `<${live ? `a href="${b.href}"` : 'div'} class="area${live ? '' : ' is-planned'}">
     <span class="area-group">${esc(b.gruppe)}</span>
     <div class="area-top"><h3>${esc(b.titel)}</h3>${live && !locked ? '<span class="area-go" aria-hidden="true">→</span>' : ''}</div>
-    ${locked ? `<span class="area-lock">${LOCK}Nur mit Code</span>` : ''}
+    ${locked ? `<span class="area-lock">${LOCK}${b.status === 'admin' ? 'Für Admins' : 'Nur mit Code'}</span>` : ''}
     <p>${esc(b.kurz)}</p>
     <div class="area-facts">${b.eckdaten.map(esc).join(' · ')}</div>
   </${live ? 'a' : 'div'}>`;

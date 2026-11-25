@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkliste · Coinmaster Adventure</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="../css/liste.css">
+<link rel="stylesheet" href="css/checkliste.css">
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Für Admins</p>
+    <h1>Checkliste</h1>
+    <p class="lede">Was ist schon überarbeitet, was muss noch überarbeitet werden, und wer macht was. Beide Admins sehen dieselbe Liste und melden sich mit ihrem eigenen Code an, den jeder beim ersten Mal selbst festlegt.</p>
+  </header>
+
+  <section class="cl-account" aria-label="Anmeldung und Speichern">
+    <p id="who" class="cl-who"></p>
+    <p id="sync" class="cl-sync" role="status" aria-live="polite"></p>
+    <div class="cl-account-actions">
+      <button id="reload" class="cl-btn" type="button">Neu laden</button>
+      <button id="login-open" class="cl-btn cl-btn-primary" type="button">Anmelden</button>
+    </div>
+  </section>
+
+  <section id="summary" class="cl-summary" aria-label="Fortschritt"></section>
+
+  <section class="cl-tools" aria-label="Filter">
+    <div class="filters" id="status-filter" role="group" aria-label="Nach Status filtern"></div>
+    <div class="filters" id="person-filter" role="group" aria-label="Nach Zuständigkeit filtern"></div>
+    <label class="cl-search"><span class="visually-hidden">Suchen</span><input id="search" type="search" placeholder="Suchen …" autocomplete="off"></label>
+  </section>
+
+  <main id="groups" class="cl-groups" aria-live="off"></main>
+
+  <footer class="foot">Gespeichert in Supabase. Ansehen und bearbeiten nur mit Code; die Tabellen und Funktionen stehen in <code>checkliste/supabase.sql</code>.</footer>
+</div>
+
+<dialog id="login" class="cl-dialog" aria-labelledby="login-title">
+  <form id="login-form" method="dialog">
+    <h2 id="login-title">Anmelden</h2>
+    <p class="cl-muted">Jeder Admin hat seinen eigenen Code. Am Code erkennt die Liste, wer du bist. Er bleibt in diesem Browser gespeichert, bis du dich abmeldest, darum nur auf eigenen Geräten anmelden.</p>
+    <label class="cl-field">Dein Code
+      <input id="login-code" type="password" autocomplete="current-password" spellcheck="false" maxlength="200">
+    </label>
+    <p id="login-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <span class="cl-spacer"></span>
+      <button class="cl-btn" type="button" id="login-cancel">Abbrechen</button>
+      <button class="cl-btn cl-btn-primary" type="submit" id="login-ok">Anmelden</button>
+    </div>
+  </form>
+  <form id="setup-form" class="cl-setup" hidden>
+    <h3>Zum ersten Mal hier?</h3>
+    <p class="cl-muted">Dann leg jetzt deinen eigenen Code fest (mindestens 8 Zeichen, z. B. drei Wörter und eine Zahl). Das geht je Name nur einmal; danach meldest du dich damit an.</p>
+    <fieldset class="cl-names">
+      <legend>Wer bist du?</legend>
+      <div id="setup-names"></div>
+    </fieldset>
+    <label class="cl-field">Neuer Code
+      <input id="setup-code" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <label class="cl-field">Code wiederholen
+      <input id="setup-code2" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <p id="setup-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <span class="cl-spacer"></span>
+      <button class="cl-btn cl-btn-primary" type="submit" id="setup-ok">Code festlegen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="konto" class="cl-dialog" aria-labelledby="konto-title">
+  <form id="konto-form" method="dialog">
+    <h2 id="konto-title">Konto</h2>
+    <p id="konto-who" class="cl-muted"></p>
+    <label class="cl-field">Neuer Code
+      <input id="konto-code" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <label class="cl-field">Code wiederholen
+      <input id="konto-code2" type="password" autocomplete="new-password" spellcheck="false" maxlength="200">
+    </label>
+    <p id="konto-msg" class="cl-msg" role="alert"></p>
+    <div class="cl-dialog-actions">
+      <button class="cl-btn" type="button" id="konto-out">Abmelden</button>
+      <span class="cl-spacer"></span>
+      <button class="cl-btn" type="button" id="konto-close">Schließen</button>
+      <button class="cl-btn cl-btn-primary" type="submit" id="konto-ok">Code ändern</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

@@ -2,7 +2,8 @@
 // Neuer Bereich: Ordner anlegen (z. B. `karte/index.html`) und hier einen Eintrag ergänzen.
 //
 // gruppe: kleine Überschrift auf der Kachel · kurz: ein Satz für die Kachel · alias: weitere Suchwörter
-// status: 'vorschau' = anklickbar, 'code' = anklickbar, aber nur mit Code nutzbar, 'geplant' = Platzhalter ohne Link
+// status: 'vorschau' = anklickbar, 'code' = anklickbar, aber nur mit Code nutzbar, 'admin' = anklickbar, bearbeiten nur
+// für Admins (Checkliste), 'geplant' = Platzhalter ohne Link
 
 export const BEREICHE = [
   { gruppe: 'Spiel', titel: 'Spiel-Oberfläche', href: 'spiel/', status: 'vorschau', alias: 'spiel hud skilltree inventar shop teleport',
@@ -33,4 +34,6 @@ export const BEREICHE = [
     kurz: '50 Auras um den Spieler, jede mit kleinem Bonus.', eckdaten: ['50 Auras', '6 Seltenheiten'] },
   { gruppe: 'Export', titel: 'Roblox Studio', href: 'roblox/', status: 'code', alias: 'export luau installer',
     kurz: 'Alles als Paket für Roblox Studio: Daten, Logik, Modelle und Motive.', eckdaten: ['Installer-Skript', 'ModuleScripts'] },
+  { gruppe: 'Admins', titel: 'Checkliste', href: 'checkliste/', status: 'admin', alias: 'aufgaben todo ueberarbeiten zustaendig axseleins',
+    kurz: 'Was überarbeitet ist, was noch fehlt und wer was macht. Anmelden mit dem eigenen Code.', eckdaten: ['105 Punkte', 'Zuständigkeit'] },
 ];
