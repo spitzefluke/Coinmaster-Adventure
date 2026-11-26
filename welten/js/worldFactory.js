@@ -2000,7 +2000,7 @@ const EXTRAS = {
     if (!modelWorld) scatter(5, () => rockMesh(rr(0.15, 0.3), '#8a8d96', rand), 0.25);
   },
   neptun({ scatter, rand, anims }) {
-    scatter(4, () => geyser(anims, rand), 0.5);
+    scatter(3, () => geyser(anims, rand), 0.5, 2, R - 2.6); // feste Anzahl (vorher mit der Inselfläche etwa 28)
   },
   mars({ scatter }) {
     scatter(4, () => solarPanel(), 0.6, 2, R - 2.6); // feste Anzahl (vorher mit der Inselfläche vervielfacht: 28 Paneele)
@@ -2608,7 +2608,27 @@ const BUILDERS = {
 
   neptun({ scatter, rand, rr, scene, anims, put, modelWorld }) {
     planetBackdrop(scene, { color: '#2a5ad8', bands: ['#4a8aff', '#1a3a9a', '#6aa8ff', '#2a4ab8', '#8ac8ff'], size: 10, pos: [24, 8, -38], glow: '#3a7aff' });
-    scatter(10, () => crystal(rr(1.2, 2.6), rand() < 0.5 ? '#3a9aff' : '#6ac8ff', rand, 1), 0.7);
+    // Eiskristall-Gruppen (Werkstatt-Wunsch „Deko verbessern und etwas verringern“): feste Anzahl statt etwa 70
+    // einzelner Kristalle; je Gruppe ein Reifhügel, ein großer Kristall mit kleineren drumherum und Eissplitter
+    scatter(7, () => {
+      const g = new THREE.Group();
+      const mound = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(0.75, 1), rand, 0.18), M('#dcefff', { roughness: 0.6 }));
+      mound.scale.set(1, 0.3, 1);
+      mound.position.y = 0.05;
+      mound.userData.rbx = { facets: true };
+      g.add(mound);
+      const c = rand() < 0.5 ? '#3a9aff' : '#6ac8ff';
+      const big = crystal(rr(1.6, 2.6), c, rand, 1.1);
+      big.position.y = 0.12;
+      g.add(big);
+      for (let k = 0; k < 3; k++) {
+        const a = rand() * Math.PI * 2, sm = crystal(rr(0.5, 0.9), k % 2 ? '#9fd8ff' : c, rand, 0.9);
+        sm.position.set(Math.cos(a) * 0.65, 0.05, Math.sin(a) * 0.65);
+        sm.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+        g.add(sm);
+      }
+      return g;
+    }, 1.1, 2, R - 2.6);
     if (!modelWorld) scatter(8, () => rockMesh(rr(0.3, 0.6), '#2a4fa0', rand), 0.45);
     // (Sturmwirbel in der Mitte entfernt, Werkstatt-Wunsch)
   },

@@ -339,7 +339,7 @@ function details(ctx, kit) {
     // Fußspuren
     scatter(8, () => at(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 0.3), M('#7a7d86')), 0, 0.01, 0), 0.15);
   } else if (id === 'neptun') {
-    scatter(10, () => crystal(rr(0.3, 0.6), '#9fd8ff', rand, 0.8), 0.2);
+    scatter(4, () => crystal(rr(0.3, 0.6), '#9fd8ff', rand, 0.8), 0.2);
   } else if (id === 'mars') {
     scatter(12, () => rockMesh(rr(0.1, 0.22), ['#8a3a1e', '#a0482a'][Math.floor(rand() * 2)], rand), 0.18);
     // Messsonden mit Lämpchen

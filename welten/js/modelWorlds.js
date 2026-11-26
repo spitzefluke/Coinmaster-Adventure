@@ -1479,7 +1479,8 @@ const NEPTUN = {
     groundPatches(ctx, 14, [['#1e4aa8', 'Glacier'], ['#cfe6ff', 'Snow'], ['#1a2648', 'Pebble'], ['#2f62c8', 'Ice']]);
     // vom Sturm geschliffene Eisrippen, alle in Windrichtung (+X) ausgerichtet
     const inner = R - 2.6;
-    ctx.scatter(12, () => {
+    // etwas weniger Deko (Werkstatt-Wunsch): 8 statt 12 Eisrippen, 4 statt 6 Eisblockgruppen, weniger Technik und Felsen
+    ctx.scatter(8, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 3; i++) {
         const s = rr(0.4, 0.7);
@@ -1492,7 +1493,7 @@ const NEPTUN = {
       return g;
     }, 1.2, 2, inner, { rot: false });
     // Eisblöcke aus klarem, blau leuchtendem Eis mit dunklen Schlieren
-    ctx.scatter(6, () => {
+    ctx.scatter(4, () => {
       const g = new THREE.Group();
       const n = 2 + Math.floor(rand() * 3);
       for (let i = 0; i < n; i++) {
@@ -1503,10 +1504,10 @@ const NEPTUN = {
       }
       return g;
     }, 0.9, 2, inner);
-    scatterModels(ctx, 3, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
+    scatterModels(ctx, 2, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
     scatterModels(ctx, 2, ['structure_tall'], 2.4, 2.4, { gap: 0.9 });
-    scatterModels(ctx, 3, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
-    rocksOf(ctx, 'neptun');
+    scatterModels(ctx, 2, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
+    rocksOf(ctx, 'neptun', 4);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'neptun');
