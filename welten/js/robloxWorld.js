@@ -123,7 +123,7 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
       Size: [[0, e.particleSize], [1, e.sizeEnd ?? e.particleSize * 0.8]],
       Transparency: e.transparency || [[0, 0.1], [0.8, 0.3], [1, 1]],
       Lifetime: e.lifetime, Rate: e.rate, Speed: e.speed, SpreadAngle: e.spread, EmissionDirection: e.direction,
-      LightEmission: e.lightEmission, RotSpeed: e.rotSpeed || [-40, 40], Rotation: e.rotSpeed ? [0, 0] : [0, 360], Texture: 'rbxasset://textures/particles/sparkles_main.dds',
+      LightEmission: e.lightEmission, RotSpeed: e.rotSpeed || [-40, 40], Rotation: e.rotSpeed && e.texture !== 'smoke' ? [0, 0] : [0, 360], Texture: (e.texture === 'smoke' ? 'rbxasset://textures/particles/smoke_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
       ...(e.drag ? { Drag: e.drag } : {}),
       ...(e.squash ? { Squash: [[0, e.squash], [1, e.squash]] } : {}),
       ...(e.acceleration ? { Acceleration: v3(e.acceleration) } : {}),

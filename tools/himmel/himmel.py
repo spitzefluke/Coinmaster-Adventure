@@ -192,6 +192,101 @@ def cave(img, elev, u, cfg, seed):
     img[:] = img * (1 - a[..., None]) + col * a[..., None]
 
 
+# Kristallhöhle (Werkstatt-Wunsch „Höhle: Himmel verbessern“): Tropfsteine in mehreren Schichten von oben und unten,
+# leuchtende Kristalle an den Spitzen, Lichtkante an den Felsen, Leuchtnebel und schwebende Glimmerpunkte.
+# Alles hängt über u (mod 1) von der Richtung ab, darum wiederholt es sich alle 90 Grad ohne Naht.
+def _peaks(rng, n, w, h):
+    return [(rng.random(), rng.uniform(*w), rng.uniform(*h), rng.random()) for _ in range(n)]
+
+
+def _profile(u, peaks, power=1.0):
+    """Höhe je Spalte: Maximum aus spitzen Zacken; dazu, welche Zacke dort am höchsten ist"""
+    best = np.zeros_like(u)
+    who = np.full(u.shape, -1, np.int32)
+    for i, (c, w, h, _) in enumerate(peaks):
+        d = np.abs(((u - c) + 0.5) % 1.0 - 0.5)
+        v = h * np.clip(1 - d / w, 0, 1) ** power
+        m = v > best
+        best = np.where(m, v, best)
+        who = np.where(m, i, who)
+    return best, who
+
+
+def cavern(img, elev, u, cfg, seed):
+    rng = np.random.default_rng(seed)
+    rock = rgb(cfg['rock'])
+    cols = [rgb(c) for c in cfg['crystals']]
+    tex = fbm(u, elev / 40.0, 8, 4, seed + 1, 0.55)
+    glow_acc = np.zeros(elev.shape, np.float32)
+    glow_col = np.zeros(elev.shape + (3,), np.float32)
+    # Schichten von hinten (hell, im Nebel) nach vorn (dunkel)
+    for li, layer in enumerate(cfg['layers']):
+        fog = layer['fog']
+        base = rock * (1 - fog) + rgb(cfg['fogColor']) * fog
+        # Stalagmiten von unten
+        pk = _peaks(rng, layer['n'], layer['w'], layer['h'])
+        h, who = _profile(u, pk, layer.get('power', 1.3))
+        top = layer['base'] + h
+        a = smooth(top + 0.6, top - 0.6, elev)
+        shade = base[None, None, :] * (0.75 + 0.5 * tex[..., None])
+        # Lichtkante oben an der Spitze (Kristallschein)
+        rim = smooth(top - 2.5, top - 0.2, elev) * a * smooth(0.5, 3, h)
+        # Kristall an der Spitze bei manchen Zacken
+        tip = np.zeros(elev.shape, np.float32)
+        tipc = np.zeros(elev.shape + (3,), np.float32)
+        for i, (c, w, hh, r) in enumerate(pk):
+            if r > layer.get('crystal', 0.5):
+                continue
+            m = (who == i)
+            t = smooth(layer['base'] + hh * 0.55, layer['base'] + hh * 0.8, elev) * m * a
+            col = cols[i % len(cols)]
+            tip = np.maximum(tip, t)
+            tipc = np.where((t > 0)[..., None], col[None, None, :], tipc)
+        c = shade * (1 - rim[..., None] * 0.6) + rgb(cfg['rim'])[None, None, :] * rim[..., None] * 0.6 * (1 - fog)
+        c = c * (1 - tip[..., None]) + (tipc * (0.75 + 0.35 * tex[..., None])) * tip[..., None]
+        img[:] = img * (1 - a[..., None]) + c * a[..., None]
+        glow_acc += tip * (1 - fog * 0.5)
+        glow_col += tipc * tip[..., None]
+        # Tropfsteine von oben
+        pk2 = _peaks(rng, layer['n'] + 4, layer['w'], (layer['h'][0] * 0.8, layer['h'][1] * 1.1))
+        h2, who2 = _profile(u, pk2, layer.get('power', 1.3))
+        edge = cfg['ceiling'] - h2 - li * 2
+        a2 = smooth(edge - 0.6, edge + 0.6, elev)
+        rim2 = smooth(edge + 2.5, edge + 0.2, elev) * a2 * smooth(0.5, 3, h2)
+        tip2 = np.zeros(elev.shape, np.float32)
+        tipc2 = np.zeros(elev.shape + (3,), np.float32)
+        for i, (c0, w, hh, r) in enumerate(pk2):
+            if r > layer.get('crystal', 0.5) * 0.6:
+                continue
+            m = (who2 == i)
+            t = smooth(cfg['ceiling'] - hh * 0.55, cfg['ceiling'] - hh * 0.8, elev) * m * a2
+            col = cols[(i + 1) % len(cols)]
+            tip2 = np.maximum(tip2, t)
+            tipc2 = np.where((t > 0)[..., None], col[None, None, :], tipc2)
+        c2 = shade * (1 - rim2[..., None] * 0.5) + rgb(cfg['rim'])[None, None, :] * rim2[..., None] * 0.5 * (1 - fog)
+        c2 = c2 * (1 - tip2[..., None]) + tipc2 * tip2[..., None]
+        img[:] = img * (1 - a2[..., None]) + c2 * a2[..., None]
+        glow_acc += tip2 * (1 - fog * 0.5)
+        glow_col += tipc2 * tip2[..., None]
+    # Leuchten um die Kristalle (weich, in ihrer Farbe)
+    gcol = glow_col / np.maximum(glow_acc[..., None], 1e-4)
+    halo = blur_wrap(np.clip(glow_acc, 0, 1), 14) * cfg.get('halo', 0.9)
+    for k in range(3):
+        img[..., k] = np.clip(img[..., k] + blur_wrap(np.clip(gcol[..., k] * np.clip(glow_acc, 0, 1), 0, 1), 14) * cfg.get('halo', 0.9), 0, 1)
+    # Glimmer: schwebende Leuchtpunkte in Kristallfarben mit weichem Schein
+    dots = np.zeros(elev.shape + (3,), np.float32)
+    H, W = elev.shape
+    for _ in range(cfg.get('motes', 160)):
+        y, x = int(rng.integers(0, H)), int(rng.integers(0, W))
+        if not (-2 < elev[y, x] < 30):
+            continue
+        col = cols[int(rng.integers(0, len(cols)))]
+        r = int(rng.integers(1, 3))
+        dots[max(0, y - r):y + r + 1, max(0, x - r):x + r + 1] = col * rng.uniform(0.6, 1.0)
+    for k in range(3):
+        img[..., k] = np.clip(img[..., k] + dots[..., k] * 0.8 + blur_wrap(dots[..., k], 4) * 1.2, 0, 1)
+
+
 # Regenbogenband rundherum (nur von der Höhe abhängig, darum ohne Naht), weich und durchscheinend
 def rainbow(img, elev, cfg):
     lo, hi = cfg['band']
@@ -320,6 +415,8 @@ def render(name, cfg):
         milky(img, elev, u, cfg['milky'], seed + 91)
     if cfg.get('cave'):
         cave(img, elev, u, cfg['cave'], seed + 77)
+    if cfg.get('cavern'):
+        cavern(img, elev, u, cfg['cavern'], seed + 79)
     if cfg.get('water'):
         water(img, elev, u, cfg['water'], seed + 33)
     if cfg.get('rays'):
@@ -425,13 +522,22 @@ HIMMEL = {
     # Leuchtnebel, darunter Glimmer (Sterne in Kristallfarben)
     'hoehle': {
         'seed': 61,
-        'gradient': [(-5, '#5a3a8a'), (4, '#4a2e7a'), (12, '#2c1e4a'), (30, '#181228'), (90, '#0e0a18')],
-        'below': [(-90, '#2a1e44'), (0, '#5a3a8a')],
-        'clouds': [
-            {'band': (1, 12), 'scale': 4, 'cover': 0.65, 'soft': 0.45, 'light': '#a070f0', 'shadow': '#4a2e7a', 'streaks': True, 'alpha': 0.35, 'blur': 8},
-        ],
-        'stars': 600,
-        'cave': {'rock': '#2a2238', 'vein': '#7ae8ff', 'ceiling': 34, 'reach': 24, 'spikes': 26},
+        'gradient': [(-8, '#3a2466'), (0, '#7a4ad0'), (6, '#5a36a8'), (16, '#2e1e5a'), (34, '#1a1236'), (90, '#120c24')],
+        'below': [(-90, '#1a1236'), (0, '#3a2466')],
+        'glow': {'at': 2, 'width': 7, 'color': '#c070ff', 'strength': 0.55},
+        'nebula': {'band': (-4, 26), 'colors': ['#7a3ad8', '#2ab8e0', '#e05ac8'], 'scale': 3, 'cut': 0.5, 'contrast': 3.0, 'strength': 0.5, 'core': '#e8d8ff', 'coreStrength': 0.15},
+        'cavern': {
+            'rock': '#2a2040', 'fogColor': '#6a48b8', 'rim': '#b8a0ff', 'ceiling': 44,
+            'crystals': ['#7af0ff', '#d07aff', '#ff7ad8', '#8affc8'],
+            'layers': [
+                {'n': 12, 'w': (0.03, 0.07), 'h': (6, 16), 'base': -6, 'fog': 0.6, 'crystal': 0.45, 'power': 1.2},
+                {'n': 9, 'w': (0.025, 0.06), 'h': (8, 22), 'base': -8, 'fog': 0.3, 'crystal': 0.5, 'power': 1.3},
+                {'n': 6, 'w': (0.02, 0.045), 'h': (10, 26), 'base': -10, 'fog': 0.0, 'crystal': 0.6, 'power': 1.4},
+            ],
+            'halo': 0.7, 'motes': 220,
+        },
+        'stars': 300, 'starsFrom': 8,
+        'cave': {'rock': '#2a2238', 'vein': '#7ae8ff', 'ceiling': 60, 'reach': 0, 'spikes': 26},
     },
     # Candy: Zuckerwattehimmel in Pastell, rosa Horizont, Regenbogenband, dicke Zuckerwattewolken in Rosa und Hellblau
     'candy': {

@@ -902,7 +902,9 @@ export function worldToParts(world) {
     // (Felszapfen, Wurzeln, Eiszapfen …)
     if (rbx.sky) {
       const wp = o.getWorldPosition(V(0, 0, 0));
-      if (Math.hypot(wp.x, wp.z) > built.radius + 4 || wp.y > 2) return;
+      // auch nichts mehr neben der Insel: Bäume, Felsen und Kristalle der früheren Nachbarinseln hingen ohne
+      // ihre Insel in der Luft (Werkstatt-Wunsch „Deko auf der Insel platzieren“)
+      if (Math.hypot(wp.x, wp.z) > built.radius + 0.5 || wp.y > 2) return;
     }
     const out = rbx.sky ? sky : parts, n0 = out.length;
     convertMesh(out, o, world);
@@ -952,8 +954,14 @@ export function worldToParts(world) {
       ...(e.keep ? { keep: true } : {}),
       ...(e.sizeEnd ? { sizeEnd: e.sizeEnd * STUDS } : {}),
       ...(e.squash ? { squash: e.squash } : {}),
+      ...(e.texture ? { texture: e.texture } : {}), // 'smoke': weiche Rauchwolke statt Funkeln
       squares: false,
     });
+  // Rauch (Vulkan, Lavafall, Kamin) als weiche Rauchwolke statt als dunkles Funkeln (Werkstatt-Wunsch „Rauch vom
+  // Vulkan verbessern“)
+  for (const e of emitters) if (/rauch/i.test(e.name || '')) e.texture = 'smoke';
+  // der Himmel ist nur ein Bild: keine Sternschnuppen und Vogelschwärme hoch über der Insel
+  for (let i = emitters.length - 1; i >= n0; i--) if (/^(Sternschnuppen|Voegel)$/.test(emitters[i].name || '')) emitters.splice(i, 1);
   // Werkstatt-Wünsche: weitere Teilchen der Welt ebenso beruhigen oder entfernen (Tiere bleiben)
   for (let i = emitters.length - 1; i >= n0; i--) {
     if (LIFE.test(emitters[i].name || '') || emitters[i].keep) continue;

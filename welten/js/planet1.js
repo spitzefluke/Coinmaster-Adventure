@@ -595,7 +595,6 @@ function emitters(ctx) {
     // Polarlicht: der Lichtvorhang aus WorldFx (auroraCurtain); früher hier Leuchtpartikel am Himmel
   } else if (id === 'lava') {
     add('Asche', [0, 0.5, 0], [R * 2, 1, R * 2], ['#5a4a44', '#8a7a70'], 0.3, 14, [0.6, 1.4], [8, 12], { spread: [20, 20] });
-    add('Rauchfahne', [-50, 18, -30], [6, 2, 6], ['#3a302c', '#5a4a44'], 4, 6, [1.5, 3], [8, 12], { spread: [15, 15] });
   } else if (id === 'hoehle') {
     add('Leuchtfalter', [0, 2.5, 0], [R * 2, 4, R * 2], ['#6ae8ff', '#b07bff', '#ff7ae0'], 0.25, 6, [0.2, 0.6], [6, 10], { light: 1 });
   } else if (id === 'candy') {

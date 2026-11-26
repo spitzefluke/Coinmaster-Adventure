@@ -244,10 +244,10 @@ export function worldModel(w, offset = [0, 0, 0]) {
       prop.token('EmissionDirection', NORMAL_ID[e.direction]),
       prop.float('LightEmission', e.lightEmission),
       prop.range('RotSpeed', e.rotSpeed || [-40, 40]),
-      prop.range('Rotation', e.rotSpeed ? [0, 0] : [0, 360]),
+      prop.range('Rotation', e.rotSpeed && e.texture !== 'smoke' ? [0, 0] : [0, 360]),
       ...(e.drag ? [prop.float('Drag', e.drag)] : []),
       ...(e.squash ? [prop.numseq('Squash', [[0, e.squash], [1, e.squash]])] : []),
-      prop.content('Texture', e.squares ? 'rbxasset://textures/particles/sparkles_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds'),
+      prop.content('Texture', (e.texture === 'smoke' ? 'rbxasset://textures/particles/smoke_main.dds' : 'rbxasset://textures/particles/sparkles_main.dds')),
       ...(e.acceleration ? [prop.vec3('Acceleration', e.acceleration)] : []),
     ]);
     fx += part({ shape: 'Block', name: 'Partikelquelle', pos: e.pos, rot: e.rot || ID.x, size: e.size, color: '#ffffff', material: 'SmoothPlastic', transparency: 1, canCollide: false, castShadow: false }, offset, pe);

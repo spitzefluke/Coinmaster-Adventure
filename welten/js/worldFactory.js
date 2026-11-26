@@ -2579,7 +2579,10 @@ const BUILDERS = {
     // aktiv: Rauchsäule, Glut über dem Krater und herausfliegende Lavabrocken (keep: nicht beruhigen)
     const top = height(CX, CZ) + VH;
     (shared.emitters = shared.emitters || []).push(
-      { name: 'Vulkanrauch', keep: true, pos: [CX, top + 0.4, CZ], size: [1.4, 0.2, 1.4], colors: ['#3a302c', '#5a4e48'], particleSize: 1.4, sizeEnd: 4.2, rate: 6, speed: [0.9, 1.5], lifetime: [6, 9], spread: [10, 10], direction: 'Top', lightEmission: 0, drag: 0.08, acceleration: [0.06, 0, 0.03], transparency: [[0, 1], [0.1, 0.35], [0.7, 0.7], [1, 1]] },
+      // Rauchsäule (Werkstatt-Wunsch „Rauch vom Vulkan verbessern“): weiche Rauchwolken statt Funkeln, unten dicht
+      // und dunkel mit Glutschein, nach oben heller, breiter und langsam vom Wind verweht
+      { name: 'Vulkanrauch', keep: true, texture: 'smoke', pos: [CX, top + 0.3, CZ], size: [1.2, 0.2, 1.2], colors: ['#2a2220', '#4a403c', '#8a827e'], particleSize: 1.6, sizeEnd: 6.5, rate: 9, speed: [0.9, 1.4], lifetime: [7, 10], spread: [8, 8], direction: 'Top', lightEmission: 0, drag: 0.12, rotSpeed: [-25, 25], acceleration: [0.12, 0.05, 0.05], transparency: [[0, 1], [0.08, 0.25], [0.6, 0.55], [1, 1]] },
+      { name: 'Rauchglut', keep: true, texture: 'smoke', pos: [CX, top + 0.2, CZ], size: [1.0, 0.1, 1.0], colors: ['#ff7a2a', '#a8381a'], particleSize: 1.2, sizeEnd: 2.4, rate: 5, speed: [0.6, 1], lifetime: [1.4, 2.2], spread: [6, 6], direction: 'Top', lightEmission: 0.7, rotSpeed: [-30, 30], transparency: [[0, 1], [0.15, 0.45], [1, 1]] },
       { name: 'Kraterglut', keep: true, pos: [CX, top + 0.2, CZ], size: [1.6, 0.1, 1.6], colors: ['#ffd27a', '#ff5a12'], particleSize: 0.12, sizeEnd: 0.04, rate: 10, speed: [0.8, 1.8], lifetime: [0.8, 1.6], spread: [20, 20], direction: 'Top', lightEmission: 1 },
       { name: 'Lavabrocken', keep: true, pos: [CX, top + 0.2, CZ], size: [0.8, 0.1, 0.8], colors: ['#ffb02e', '#ff4a00'], particleSize: 0.26, sizeEnd: 0.2, rate: 1.5, speed: [3.4, 5], lifetime: [1.8, 2.6], spread: [28, 28], direction: 'Top', lightEmission: 1, acceleration: [0, -3.6, 0] },
     );
