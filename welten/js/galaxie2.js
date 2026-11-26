@@ -246,7 +246,8 @@ function druse(kit, rand, size, rock, gem, gem2) {
 }
 
 // Welt-Rezept: Farben und was gestreut wird
-function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSize }) {
+// deko: Anzahlen je Welt ({ druse, cluster, rocks, stones }), rockFn/stoneFn ersetzen Fels und Steinchen
+function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSize, deko = {} }) {
   return {
     build(ctx, kit) {
       const { rand, rr, R, scatter } = ctx;
@@ -269,10 +270,11 @@ function make({ gem, gem2, base, ring, rock, extra, emitters, sounds, landmarkSi
       // Muttergestein deutlich dunkler als der Boden, damit die Kristalle davor leuchten
       const hsl = new THREE.Color(rock).getHSL({});
       const matrix = '#' + new THREE.Color().setHSL(hsl.h, hsl.s * 0.5, Math.min(hsl.l, 0.2)).getHexString();
-      scatter(10, () => druse(kit, rand, rr(0.6, 1), matrix, gem, gem2), 1.3, 3, inner);
-      scatter(10, () => cluster(kit, rand, rr(0.8, 1.6), gem, gem2), 0.8, 3, inner);
-      scatter(8, () => kit.rockMesh(rr(0.4, 0.8), rock, rand), 0.7, 3, inner);
-      scatter(14, () => gemStone(kit, rr(0.14, 0.22), rand() < 0.5 ? gem : gem2 || gem, 0.9), 0.3, 2, inner);
+      const n = { druse: 10, cluster: 10, rocks: 8, stones: 14, ...deko };
+      scatter(n.druse, () => druse(kit, rand, rr(0.6, 1), matrix, gem, gem2), 1.3, 3, inner);
+      scatter(n.cluster, () => cluster(kit, rand, rr(0.8, 1.6), gem, gem2), 0.8, 3, inner);
+      scatter(n.rocks, () => (deko.rockFn ? deko.rockFn(kit, rand, rr) : kit.rockMesh(rr(0.4, 0.8), rock, rand)), 0.7, 3, inner);
+      scatter(n.stones, () => (deko.stoneFn ? deko.stoneFn(kit, rand, rr) : gemStone(kit, rr(0.14, 0.22), rand() < 0.5 ? gem : gem2 || gem, 0.9)), 0.3, 2, inner);
     },
     emitters(ctx, add) {
       add('Funkeln', [0, 2, 0], [ctx.R * 2.2, 4, ctx.R * 2.2], [gem, '#ffffff'], 0.14, 16, [0.1, 0.4], [3, 6], { light: 1 });
@@ -356,6 +358,43 @@ const AMETHYSTGROTTE = make({
 });
 const TOPASDUENEN = make({
   gem: '#ffb02e', gem2: '#fff0b8', base: '#c8904a', rock: '#d8a25a', ring: '#fff0b8',
+  // Werkstatt-Wunsch „Steine verbessern“: lose Topase als geschliffene Steine zu dritt in einer kleinen Sandmulde
+  // mit Glanzpunkt; statt glatter Felsen vom Wind gerundete Sandsteinbrocken mit Schichtlinien und Sandfuß
+  deko: {
+    stones: 7,
+    rocks: 6,
+    stoneFn(kit, rand, rr) {
+      const g = new THREE.Group();
+      g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 0.02, 12), kit.M('#e8b860')), 0, 0.01, 0));
+      for (let k = 0; k < 3; k++) {
+        const s0 = rr(0.1, 0.17) * (k ? 0.8 : 1.2), c = ['#ffb02e', '#ffc85a', '#fff0b8'][k];
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(s0, 0), kit.E(c, 0.7, { roughness: 0.1, metalness: 0.2 }));
+        gem.scale.set(1, 1.35, 0.8);
+        gem.position.set(Math.cos(k * 2.1) * 0.16, s0 * 0.9, Math.sin(k * 2.1) * 0.16);
+        gem.rotation.set(rr(-0.3, 0.3), rand() * TAU, rr(-0.3, 0.3));
+        gem.userData.rbx = { facets: true };
+        g.add(gem);
+      }
+      g.add(kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), kit.E('#ffffff', 2)), 0.05, 0.3, 0.05));
+      return g;
+    },
+    rockFn(kit, rand, rr) {
+      const g = new THREE.Group(), s0 = rr(0.45, 0.8);
+      const body = kit.rockMesh(s0, '#d89a52', rand);
+      body.scale.set(1.3, 0.75, 1);
+      g.add(body);
+      for (let k = 0; k < 3; k++) {
+        const band = kit.at(new THREE.Mesh(new THREE.TorusGeometry(s0 * (0.95 - k * 0.15), 0.03, 4, 14), kit.M(['#b8783a', '#f2c88a', '#c88a48'][k])), 0, s0 * (0.2 + k * 0.17), 0);
+        band.rotation.x = Math.PI / 2;
+        band.scale.set(1.3, 1, 1);
+        g.add(band);
+      }
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(s0 * 1.3, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#f2c46a'));
+      foot.scale.y = 0.18;
+      g.add(foot);
+      return g;
+    },
+  },
   extra(ctx, kit) {
     // Topas-Obelisk und Dünenkämme
     const p = ctx.spot(1.2, 6, ctx.R - 3);
@@ -658,14 +697,15 @@ const RUBINVULKAN = make({
 });
 const OPALWOLKEN = make({
   gem: '#ff9ae0', gem2: '#5ad8ff', base: '#d0c8f0', rock: '#e8e2fa', ring: '#5ad8ff',
+  deko: { druse: 6, cluster: 6, rocks: 4, stones: 8 }, // Werkstatt-Wunsch „weniger Deko“
   extra(ctx, kit) {
     const colors = ['#ffe2f6', '#e2f0ff', '#f0ffe8', '#fff2d8'];
-    ctx.scatter(12, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 2.6);
+    ctx.scatter(7, (i) => puff(kit, ctx.rand, ctx.rr(0.8, 1.4), colors[i % colors.length]), 1.2, 4, ctx.R - 2.6);
     // kleine Details (Werkstatt-Wunsch): schimmernde Opalsteine mit Farbflecken, Kristallsplitter,
     // Wolkenblumen und Grasbüschel in Pastell zwischen den Wolkenbuckeln
     const { rand, rr } = ctx, inner = ctx.R - 2.6;
     const fleck = ['#ff9ae0', '#5ad8ff', '#a8ffb8', '#fff2a0', '#c8a2ff'];
-    ctx.scatter(22, () => {
+    ctx.scatter(10, () => {
       const g = new THREE.Group(), s0 = rr(0.12, 0.24);
       const body = kit.at(new THREE.Mesh(new THREE.SphereGeometry(s0, 10, 6), kit.M('#f4eefc', { roughness: 0.15, metalness: 0.1, emissive: '#e8dcff', emissiveIntensity: 0.15 })), 0, s0 * 0.35, 0);
       body.scale.set(1.25, 0.55, 1);
@@ -678,7 +718,7 @@ const OPALWOLKEN = make({
       }
       return g;
     }, 0.3, 2, inner);
-    ctx.scatter(10, () => {
+    ctx.scatter(5, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 3; i++) {
         const c = kit.crystal(rr(0.18, 0.32), fleck[Math.floor(rand() * fleck.length)], rand, 1.2);
@@ -689,7 +729,7 @@ const OPALWOLKEN = make({
       return g;
     }, 0.35, 2, inner);
     const petals = ['#ffd6f0', '#d6ecff', '#e8dcff', '#fff2c8'];
-    ctx.scatter(18, () => {
+    ctx.scatter(8, () => {
       const g = new THREE.Group(), c = petals[Math.floor(rand() * petals.length)], h = rr(0.18, 0.32);
       g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, h, 5), kit.M('#a8d8b8')), 0, h / 2, 0));
       for (let i = 0; i < 5; i++) {
@@ -701,7 +741,7 @@ const OPALWOLKEN = make({
       g.add(kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), kit.E('#fff2a0', 0.4)), 0, h + 0.02, 0));
       return g;
     }, 0.2, 2, inner);
-    ctx.scatter(16, () => {
+    ctx.scatter(7, () => {
       const g = new THREE.Group(), c = rand() < 0.5 ? '#b8e8c8' : '#d8c8f0';
       for (let i = 0; i < 5; i++) {
         const a = (i / 5) * TAU + rand() * 0.5, h = rr(0.14, 0.26);
@@ -716,13 +756,26 @@ const OPALWOLKEN = make({
 });
 const DIAMANTKERN = make({
   gem: '#e8fdff', gem2: '#8af0ff', base: '#5a8aa0', rock: '#9ad0e0', ring: '#8af0ff', landmarkSize: 3,
+  // Werkstatt-Wunsch „Deko verbessern, etwas weniger“: weniger Drusen, Gruppen, Felsen und Steinchen; dafür
+  // geschliffene Diamanten im Brillantschliff auf kleinen Sockeln
+  deko: { druse: 6, cluster: 6, rocks: 4, stones: 6, stoneFn(kit, rand, rr) {
+    const g = new THREE.Group(), s0 = rr(0.14, 0.22);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(s0 * 0.55, s0, s0 * 0.45, 8), kit.E('#e8fdff', 0.8, { transparent: true, opacity: 0.9, roughness: 0.05 }));
+    crown.position.y = s0 * 1.05;
+    const pav = new THREE.Mesh(new THREE.ConeGeometry(s0, s0 * 0.9, 8), kit.E('#bff6ff', 0.8, { transparent: true, opacity: 0.9, roughness: 0.05 }));
+    pav.rotation.x = Math.PI;
+    pav.position.y = s0 * 0.4;
+    crown.userData.rbx = pav.userData.rbx = { facets: true };
+    g.add(crown, pav, kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), kit.E('#ffffff', 2.2)), s0 * 0.3, s0 * 1.35, 0));
+    return g;
+  } },
   extra(ctx, kit) {
     // Kristallbögen
     ctx.scatter(2, () => {
       const arc = kit.at(new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 6, 16, Math.PI), kit.E('#8af0ff', 0.6, { transparent: true, opacity: 0.85 })), 0, 0, 0);
       return kit.group(arc);
     }, 1.6, 6, ctx.R - 2.6);
-    ctx.scatter(8, () => pillar(kit, ctx.rr(1.2, 2.4), '#e8fdff', 0.5), 0.8, 4, ctx.R - 2.6);
+    ctx.scatter(5, () => pillar(kit, ctx.rr(1.2, 2.4), '#e8fdff', 0.5), 0.8, 4, ctx.R - 2.6);
   },
   emitters(ctx, add) {
     add('Lichtstrahlen', [0, 0.5, 0], [ctx.R * 1.6, 1, ctx.R * 1.6], ['#e8fdff', '#8af0ff'], 0.18, 8, [1, 2], [3, 5], { spread: [6, 6], light: 1 });
