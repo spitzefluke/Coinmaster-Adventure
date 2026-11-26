@@ -65,109 +65,132 @@ const TIEFSEEGRABEN = {
   build(ctx, kit) {
     const { M, E, at, group } = kit;
     const { rand, rr, R, anims, put, spot, scatter } = ctx;
-    // Anglerfisch (Werkstatt-Wunsch, dritte Runde: „größer, gefährlicher, Leuchtangel, echtere Form“): wie der
-    // echte Tiefsee-Anglerfisch fast kugelrund mit riesigem Kopf, das Maul weit offen und schräg nach oben, der
-    // Unterkiefer schiebt sich weit vor; lange, unregelmäßige, nach innen gebogene Fangzähne (unten auch außen
-    // über der Lippe), winzige glühende Augen, fleckige, warzige Haut, kleine Brustflossen, ein Fächerschwanz.
-    // Die Angel wächst aus der Stirn und biegt sich in hohem Bogen vor das Maul; am Ende der Köder mit hellem
-    // Kern, Lichthof, Leuchtfäden und einem Lichtschein auf dem Boden
+    // Anglerfisch nach den Vorlagebildern (Werkstatt-Wunsch, vierte Runde): seitlich schmaler, ovaler Körper, der
+    // über dem Boden schwebt; breites, offenes Maul mit langen, durchscheinenden Nadelzähnen oben und unten, der
+    // Unterkiefer etwas vorgeschoben, darunter ein Bart aus feinen Fäden; große runde Augen mit blauem Schimmer;
+    // gesprenkelte, warzige Haut; ein Stachelkamm auf dem Rücken, große Fächerflossen mit Strahlen (Rücken,
+    // Brust, Schwanz); die Angel wächst aus der Stirn, biegt sich nach vorn und hängt mit dem hellen türkisen
+    // Köder vor dem Maul; Schatten und Lichtschein auf dem Boden
     const p = spot(5.2, 3, 9);
     if (p) {
-      const skin = M('#1c1a22'), skin2 = M('#2a2630'), spotM = M('#3a3440'), dark = M('#07060a'), toothM = M('#f4efe2', { roughness: 0.35 }), eyeM = E('#c8ff7a', 2.2);
+      const skin = M('#232226'), skin2 = M('#2e2c30'), speck = M('#7a786e'), dark = M('#05050a'), toothM = M('#e8f0f0', { transparent: true, opacity: 0.85, roughness: 0.2, emissive: '#9fd8d8', emissiveIntensity: 0.15 });
+      const finM = M('#3a3a40', { side: THREE.DoubleSide, transparent: true, opacity: 0.8 }), rayM = M('#5a5a62');
       const parts = [];
-      const S = 1.35; // größer als vorher
-      const add = (m, x, y, z) => { m.position.set(x * S, y * S, z * S); m.scale.multiplyScalar(S); parts.push(m); return m; };
-      // Körper: fast kugelrund, hinten schmaler
-      const body = add(new THREE.Mesh(new THREE.SphereGeometry(2.6, 22, 16), skin), 0, 2.9, -0.2);
-      body.scale.set(S * 1.0, S * 0.95, S * 1.05);
-      const rear = add(new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 10), skin), 0, 2.8, -2.6);
-      rear.scale.set(S * 0.85, S * 0.9, S * 1.1);
-      // fleckige, warzige Haut
-      for (let k = 0; k < 34; k++) {
-        const a = rand() * TAU, b = rr(-0.5, 1.3), r = 2.62;
-        const x = Math.cos(a) * Math.cos(b) * r, y = 2.9 + Math.sin(b) * r * 0.95, z = -0.2 + Math.sin(a) * Math.cos(b) * r * 1.05;
-        if (z > 1.2 && y < 3.6) continue; // nicht ins Maul
-        const m = add(new THREE.Mesh(new THREE.SphereGeometry(k % 3 ? rr(0.1, 0.2) : rr(0.3, 0.5), 6, 4), k % 3 ? skin2 : spotM), x, y, z);
-        if (!(k % 3)) m.scale.y *= 0.35;
+      const S = 1.35, L = 1.4; // Größe; L: so hoch schwebt er
+      const add = (m, x, y, z) => { m.position.set(x * S, (y + L) * S, z * S); m.scale.multiplyScalar(S); parts.push(m); return m; };
+      // Fächerflosse: Haut als Kreisausschnitt, darauf Strahlen von der Wurzel zum Rand
+      const fan = (r, a0, arc, n) => {
+        const g = new THREE.Group();
+        g.add(new THREE.Mesh(new THREE.CircleGeometry(r, 16, a0, arc), finM));
+        for (let k = 0; k <= n; k++) {
+          const a = a0 + (k / n) * arc, ray = new THREE.Mesh(new THREE.BoxGeometry(0.035, r * 1.05, 0.035), rayM);
+          ray.position.set(Math.cos(a) * r * 0.52, Math.sin(a) * r * 0.52, 0);
+          ray.rotation.z = a - Math.PI / 2;
+          g.add(ray);
+        }
+        return g;
+      };
+      // Körper: seitlich schmal, oval, hinten spitz zulaufend
+      const body = add(new THREE.Mesh(new THREE.SphereGeometry(2.5, 22, 16), skin), 0, 2.9, -0.1);
+      body.scale.set(S * 0.78, S * 0.95, S * 1.1);
+      const rear = add(new THREE.Mesh(new THREE.SphereGeometry(1.3, 14, 10), skin), 0, 3.0, -2.5);
+      rear.scale.set(S * 0.6, S * 0.85, S * 1.2);
+      // gesprenkelte, warzige Haut
+      for (let k = 0; k < 70; k++) {
+        const a = rand() * TAU, b = rr(-0.6, 1.3), r = 2.52;
+        const x = Math.cos(a) * Math.cos(b) * r * 0.78, y = 2.9 + Math.sin(b) * r * 0.95, z = -0.1 + Math.sin(a) * Math.cos(b) * r * 1.1;
+        if (z > 1.3 && y < 3.6 && y > 1.8) continue; // nicht ins Maul
+        const big = k % 5 === 0;
+        add(new THREE.Mesh(new THREE.SphereGeometry(big ? rr(0.12, 0.2) : rr(0.03, 0.06), 5, 4), big ? skin2 : speck), x, y, z);
       }
-      // offenes Maul: dunkler Rachen, weit vorgeschobener Unterkiefer
-      const throat = add(new THREE.Mesh(new THREE.SphereGeometry(1.9, 16, 12), dark), 0, 2.55, 1.15);
-      throat.scale.set(S * 1.05, S * 0.8, S * 0.8);
-      add(new THREE.Mesh(new THREE.SphereGeometry(1.15, 12, 8), E('#3a8a7a', 0.3)), 0, 2.5, 1.0);
-      const jaw = add(new THREE.Mesh(new THREE.SphereGeometry(2.5, 18, 10, 0, TAU, Math.PI / 2, Math.PI / 2), skin), 0, 2.15, 0.9);
-      jaw.scale.set(S * 1.08, S * 0.85, S * 1.45);
-      // Fangzähne: unregelmäßig lang, nach innen gebogen; einige untere stehen außen über der Oberlippe
-      for (let i = 0; i < 17; i++) {
-        const t = -1.25 + (i / 16) * 2.5, len = rr(0.5, 1.35) * (Math.abs(t) < 0.6 ? 1.15 : 0.85);
-        const up = add(new THREE.Mesh(new THREE.ConeGeometry(0.08 + len * 0.05, len, 5), toothM), Math.sin(t) * 1.95, 3.0, 1.35 + Math.cos(t) * 1.6);
-        up.rotation.set(Math.PI - 0.5, 0, Math.sin(t) * 0.25);
-        const lenL = rr(0.7, 1.7) * (Math.abs(t) < 0.7 ? 1.1 : 0.85);
-        const lo = add(new THREE.Mesh(new THREE.ConeGeometry(0.1 + lenL * 0.05, lenL, 5), toothM), Math.sin(t) * 2.2, 2.0 + lenL * 0.4, 2.1 + Math.cos(t) * 1.75);
-        lo.rotation.set(-0.45 + (i % 4 === 0 ? 0.7 : 0), 0, -Math.sin(t) * 0.2);
+      // Maul: breiter dunkler Rachen, Ober- und Unterkiefer als Wülste, der untere etwas weiter vorn
+      const throat = add(new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 10), dark), 0, 2.55, 2.0);
+      throat.scale.set(S * 1.5, S * 0.75, S * 0.55);
+      const upper = add(new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 8, 0, TAU, 0, Math.PI / 2), skin), 0, 3.05, 1.75);
+      upper.scale.set(S * 1.02, S * 0.28, S * 0.55);
+      const lower = add(new THREE.Mesh(new THREE.SphereGeometry(1.7, 16, 8, 0, TAU, Math.PI / 2, Math.PI / 2), skin), 0, 2.0, 1.95);
+      lower.scale.set(S * 1.0, S * 0.32, S * 0.62);
+      const mouthArc = (t, w, d, z0) => [Math.sin(t) * w, z0 + Math.cos(t) * d];
+      for (let i = 0; i < 19; i++) {
+        const t = -1.3 + (i / 18) * 2.6, mid = 1 - Math.abs(t) / 1.3;
+        const [ux, uz] = mouthArc(t, 1.55, 0.75, 1.85);
+        const lenU = (0.45 + mid * 0.65) * rr(0.75, 1.15);
+        const up = add(new THREE.Mesh(new THREE.ConeGeometry(0.06 + lenU * 0.04, lenU, 5), toothM), ux, 3.0 - lenU * 0.45, uz);
+        up.rotation.set(Math.PI + 0.15, 0, -Math.sin(t) * 0.15);
+        const [lx, lz] = mouthArc(t, 1.62, 0.85, 2.05);
+        const lenL = (0.5 + mid * 0.75) * rr(0.75, 1.15);
+        const lo = add(new THREE.Mesh(new THREE.ConeGeometry(0.07 + lenL * 0.04, lenL, 5), toothM), lx, 2.05 + lenL * 0.45, lz);
+        lo.rotation.set(-0.2, 0, Math.sin(t) * 0.15);
       }
-      // winzige, glühende Augen oben am Kopf
+      // Bart aus feinen Fäden unter dem Unterkiefer
+      for (let k = 0; k < 20; k++) {
+        const t = -1.25 + (k / 19) * 2.5, [x, z] = mouthArc(t, 1.5, 0.8, 1.9), len = rr(0.35, 0.9);
+        const f = add(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.006, len, 3), M('#9aa8a0', { emissive: '#5a7a70', emissiveIntensity: 0.2 })), x, 1.72 - len / 2, z);
+        f.rotation.set(rr(-0.15, 0.25), 0, rr(-0.15, 0.15));
+      }
+      // große runde Augen mit blauem Schimmer und Glanzpunkt
       for (const sx of [-1, 1]) {
-        add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), M('#0e0c12')), sx * 1.15, 4.45, 1.35);
-        add(new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), eyeM), sx * 1.2, 4.5, 1.55);
-        // kleine Brustflosse mit Strahlen
-        const fin = new THREE.Group();
-        fin.add(new THREE.Mesh(new THREE.CircleGeometry(0.9, 10, 0, Math.PI), M('#2e2a36', { side: THREE.DoubleSide, transparent: true, opacity: 0.92 })));
-        for (let k = 0; k < 5; k++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.9, 0.03), M('#4a4454')); r.position.set(Math.cos((k / 4) * Math.PI) * 0.45, Math.sin((k / 4) * Math.PI) * 0.45, 0); r.rotation.z = (k / 4) * Math.PI - Math.PI / 2; fin.add(r); }
-        const f = add(fin, sx * 2.55, 2.2, -0.6);
-        f.rotation.set(0, sx * 1.3, sx * 0.5);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.46, 14, 10), M('#3a3a42')), sx * 1.38, 4.15, 1.25);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 10), M('#0a1420', { roughness: 0.1, metalness: 0.3, emissive: '#1a3a5a', emissiveIntensity: 0.4 })), sx * 1.5, 4.18, 1.35);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), E('#dff4ff', 1.6)), sx * 1.68, 4.3, 1.5);
       }
-      // weiche Rückenflosse und Fächerschwanz mit Strahlen
-      const dorsal = add(new THREE.Mesh(new THREE.CircleGeometry(0.8, 10, 0, Math.PI), M('#2e2a36', { side: THREE.DoubleSide })), 0, 4.2, -2.4);
-      dorsal.rotation.y = Math.PI / 2;
-      const tail = new THREE.Group();
-      tail.add(new THREE.Mesh(new THREE.CircleGeometry(1.5, 14, Math.PI * 0.6, Math.PI * 0.8), M('#2e2a36', { side: THREE.DoubleSide, transparent: true, opacity: 0.95 })));
-      for (let k = 0; k < 7; k++) { const a = Math.PI * 0.6 + (k / 6) * Math.PI * 0.8, r = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.5, 0.04), M('#4a4454')); r.position.set(Math.cos(a) * 0.75, Math.sin(a) * 0.75, 0); r.rotation.z = a - Math.PI / 2; tail.add(r); }
-      const tl = add(tail, 0, 2.8, -4.0);
-      tl.rotation.set(0, Math.PI / 2, Math.PI);
-      // Leuchtpunkte an den Flanken
-      for (const sx of [-1, 1]) for (let k = 0; k < 6; k++) add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), E('#5affd8', 1.3)), sx * (2.5 - Math.abs(k - 2.5) * 0.08), 2.3 + (k % 2) * 0.35, 0.8 - k * 0.6);
-      // Angel aus der Stirn: hoher Bogen nach vorn über das Maul
-      const rodPts = [[0, 4.7, 1.0], [0, 6.4, 1.2], [0, 7.4, 2.6], [0, 7.0, 4.2], [0, 5.9, 5.0]].map(([x, y, z]) => new THREE.Vector3(x * S, y * S, z * S));
-      const rodCurve = new THREE.CatmullRomCurve3(rodPts);
-      const rod = new THREE.Mesh(new THREE.TubeGeometry(rodCurve, 20, 0.08 * S, 6), skin2);
-      parts.push(rod);
+      // Stachelkamm auf dem Rücken (wie in der ersten Vorlage) und Rückenflosse
+      for (let k = 0; k < 14; k++) {
+        const z = 0.9 - k * 0.3, h = 0.55 + Math.sin((k / 13) * Math.PI) * 0.9;
+        const sp = add(new THREE.Mesh(new THREE.ConeGeometry(0.05, h, 4), skin2), 0, 5.2 - Math.abs(k - 5) * 0.08 + h / 2 - 0.25, z);
+        sp.rotation.x = -0.45;
+      }
+      const dorsal = add(fan(1.2, 0, Math.PI * 0.75, 7), 0, 4.6, -2.3);
+      dorsal.rotation.y = -Math.PI / 2;
+      // große Brustflossen und Fächerschwanz
+      const fins = [];
+      for (const sx of [-1, 1]) {
+        const f = add(fan(1.3, -Math.PI * 0.45, Math.PI * 0.9, 8), sx * 1.9, 2.7, -0.4);
+        f.rotation.set(0, sx * (Math.PI / 2 + 0.5), 0);
+        if (sx < 0) f.scale.x *= -1;
+        fins.push(f);
+      }
+      const tail = add(fan(1.7, Math.PI * 0.62, Math.PI * 0.76, 9), 0, 3.0, -3.3);
+      tail.rotation.set(0, Math.PI / 2, 0);
+      // Angel aus der Stirn: nach vorn gebogen, der Köder hängt vor dem Maul
+      const rodPts = [[0, 5.3, 1.3], [0, 6.6, 1.9], [0, 6.9, 3.2], [0, 6.0, 4.3], [0, 4.6, 4.7]].map(([x, y, z]) => new THREE.Vector3(x * S, (y + L) * S, z * S));
+      parts.push(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rodPts), 22, 0.07 * S, 6), M('#4a4a50')));
       const tip = rodPts[rodPts.length - 1];
       const lure = new THREE.Group();
       lure.position.copy(tip);
-      const escaM = E('#7affe8', 2.6), bulb = new THREE.Mesh(new THREE.SphereGeometry(0.42 * S, 16, 12), M('#2a6a64', { emissive: '#3affd8', emissiveIntensity: 0.9 }));
-      bulb.position.y = -0.35 * S;
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.24 * S, 12, 8), escaM);
-      core.position.y = -0.4 * S;
-      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.9 * S, 14, 10), E('#5affd8', 0.6, { transparent: true, opacity: 0.18 }));
-      halo.position.y = -0.4 * S;
-      lure.add(bulb, core, halo);
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * TAU, f = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, 0.9 * S, 4), E('#9ff3f0', 1.3));
-        f.position.set(Math.cos(a) * 0.22 * S, -0.95 * S, Math.sin(a) * 0.22 * S);
-        f.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
-        lure.add(f);
-        const d = new THREE.Mesh(new THREE.SphereGeometry(0.05 * S, 6, 4), escaM);
-        d.position.set(Math.cos(a) * 0.38 * S, -1.38 * S, Math.sin(a) * 0.38 * S);
-        lure.add(d);
-      }
-      const light = new THREE.PointLight('#5affd8', 18, 9 * S, 2);
-      light.position.y = -0.4 * S;
-      lure.add(light);
+      const escaM = E('#bffcff', 3.0);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.34 * S, 16, 12), M('#3ad8e8', { emissive: '#3affe8', emissiveIntensity: 1.6, transparent: true, opacity: 0.9 }));
+      bulb.position.y = -0.3 * S;
+      bulb.scale.y = 1.25;
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.17 * S, 12, 8), escaM);
+      core.position.y = -0.34 * S;
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.85 * S, 14, 10), E('#5affe8', 0.7, { transparent: true, opacity: 0.2 }));
+      halo.position.y = -0.34 * S;
+      const light = new THREE.PointLight('#5affe8', 22, 10 * S, 2);
+      light.position.y = -0.34 * S;
+      lure.add(bulb, core, halo, light);
       parts.push(lure);
-      // Lichtschein des Köders auf dem Boden vor dem Maul
-      const glowDisc = new THREE.Mesh(new THREE.CylinderGeometry(1.8 * S, 1.8 * S, 0.02, 24), E('#5affd8', 0.35, { transparent: true, opacity: 0.35 }));
-      glowDisc.position.set(0, 0.03, 5.0 * S);
-      parts.push(glowDisc);
+      // Schatten unter dem Fisch und Lichtschein des Köders auf dem Boden
+      const shadow = new THREE.Mesh(new THREE.CylinderGeometry(2.4 * S, 2.4 * S, 0.02, 24), M('#05070a', { transparent: true, opacity: 0.45 }));
+      shadow.position.set(0, 0.03, -0.2 * S);
+      shadow.scale.z = 1.3;
+      const glowDisc = new THREE.Mesh(new THREE.CylinderGeometry(1.6 * S, 1.6 * S, 0.02, 24), E('#5affe8', 0.35, { transparent: true, opacity: 0.3 }));
+      glowDisc.position.set(0, 0.04, 4.7 * S);
+      parts.push(shadow, glowDisc);
       const fish = group(...parts);
       put(fish, p[0], p[1], { rot: false });
       fish.lookAt(0, fish.position.y, 0);
       const y0 = fish.position.y;
+      const body3 = parts.filter((m) => m !== shadow && m !== glowDisc);
       anims.push((t) => {
-        lure.rotation.x = Math.sin(t * 0.9) * 0.18;
-        lure.rotation.z = Math.sin(t * 0.6) * 0.12;
-        core.material.emissiveIntensity = 2.2 + Math.sin(t * 2.4) * 1.0;
-        halo.material.opacity = 0.14 + Math.sin(t * 2.4) * 0.06;
-        fish.position.y = y0 + Math.sin(t * 0.5) * 0.15;
+        const bob = Math.sin(t * 0.5) * 0.18;
+        for (const m of body3) m.position.y += bob - (m.userData.bob || 0), (m.userData.bob = bob);
+        lure.rotation.x = Math.sin(t * 0.9) * 0.15;
+        lure.rotation.z = Math.sin(t * 0.6) * 0.1;
+        core.material.emissiveIntensity = 2.6 + Math.sin(t * 2.4) * 1.0;
+        halo.material.opacity = 0.16 + Math.sin(t * 2.4) * 0.06;
+        fins.forEach((f, i) => (f.rotation.z = Math.sin(t * 1.6 + i * Math.PI) * 0.15));
+        void y0;
       });
     }
     // Schlote (Black Smoker) mit glühender Spitze
