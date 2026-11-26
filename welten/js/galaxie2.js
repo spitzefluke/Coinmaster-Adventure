@@ -9,6 +9,7 @@ const TAU = Math.PI * 2;
 
 // ── kleine Bausteine ──
 // Geschliffener Edelstein: Würfel auf der Spitze (in Roblox ein gedrehter Block) mit Leuchten
+const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
 function gemStone(kit, s, c, glow = 0.6) {
   const { E, at } = kit;
   const m = at(new THREE.Mesh(new THREE.BoxGeometry(s * 1.2, s * 1.2, s * 1.2), E(c, glow, { transparent: true, opacity: 0.9, roughness: 0.15, metalness: 0.1 })), 0, s * 1.05, 0);
@@ -153,6 +154,23 @@ function temple(kit, tiers, w, stone, roof, { grand = false } = {}) {
       parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), M('#2a2a2a')), cx * s * 0.6, y + 0.8, cz * s * 0.6));
       parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), lamp), cx * s * 0.6, y + 0.62, cz * s * 0.6));
     }
+    if (grand) {
+      // noch detaillierter (Werkstatt-Wunsch „große Pagode nochmal“): umlaufender Balkon mit rotem Geländer,
+      // Windglocken an den Dachecken, Firstschmuck und je Seite ein goldenes Schild über dem Fenster
+      const bal = s * 0.5 + 0.12;
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(bal * 2, 0.07, bal * 2), M('#8a5a3a')), 0, y + 0.04, 0));
+      for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(nz ? bal * 2 : 0.05, 0.05, nx ? bal * 2 : 0.05), pillarM), nx * bal, y + 0.32, nz * bal));
+        for (let k = -2; k <= 2; k++) parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.04), pillarM), nx * bal + (nz ? k * bal * 0.45 : 0), y + 0.18, nz * bal + (nx ? k * bal * 0.45 : 0)));
+        parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(nz ? s * 0.22 : 0.03, 0.14, nx ? s * 0.22 : 0.03), gold), nx * s * 0.44, y + 0.8, nz * s * 0.44));
+      }
+      for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4), gold), cx * s * 0.66, y + 0.82, cz * s * 0.66));
+        parts.push(at(new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 8), gold), cx * s * 0.66, y + 0.62, cz * s * 0.66));
+        parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), gold), cx * s * 0.66, y + 0.53, cz * s * 0.66));
+      }
+      parts.push(at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), gold), 0, y + 1.47, 0));
+    }
     y += 1.5;
   }
   parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 6), gold), 0, y + 0.1, 0));
@@ -167,7 +185,24 @@ function temple(kit, tiers, w, stone, roof, { grand = false } = {}) {
       lion.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), M('#5ad8a0')), 0, 0.85, 0.08));
       lion.position.set(sx * w * 0.3, 0, w * 0.62 + 0.55);
       parts.push(lion);
+      // Steinlaterne neben jedem Löwen
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.3), M('#b8b0a0')), sx * w * 0.52, 0.06, w * 0.62 + 0.6));
+      parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), M('#b8b0a0')), sx * w * 0.52, 0.37, w * 0.62 + 0.6));
+      parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 0.26), E('#ffcf7a', 0.9)), sx * w * 0.52, 0.74, w * 0.62 + 0.6));
+      const cap = at(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.2, 4), M('#a8a090')), sx * w * 0.52, 0.96, w * 0.62 + 0.6);
+      cap.rotation.y = Math.PI / 4;
+      parts.push(cap);
     }
+  if (grand) {
+    // Tor (Paifang) vor der Treppe und ein Räucherkessel aus Bronze
+    const gz = w * 0.62 + 1.6;
+    for (const sx of [-1, 1]) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 1.9, 8), pillarM), sx * w * 0.35, 0.95, gz));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w * 0.95, 0.14, 0.18), pillarM), 0, 1.75, gz));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(w * 1.1, 0.1, 0.3), roofM), 0, 1.98, gz));
+    parts.push(at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.04), gold), 0, 1.75, gz + 0.1));
+    parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.3, 10), M('#8a6a3a', { metalness: 0.6 })), 0, 0.2, gz - 0.6));
+    for (let k = 0; k < 3; k++) parts.push(at(new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 4), E('#ffb05a', 0.8)), (k - 1) * 0.06, 0.48, gz - 0.6));
+  }
   return group(...parts);
 }
 
@@ -331,7 +366,7 @@ const TOPASDUENEN = make({
       return kit.group(d);
     }, 1.4, 5, ctx.R - 2.6);
     // Sandrippeln quer zum Wind
-    ctx.scatter(10, () => {
+    ctx.scatter(8, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 4; i++) {
         const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), kit.M('#f2c46a'));
@@ -342,6 +377,45 @@ const TOPASDUENEN = make({
       }
       return g;
     }, 1.2, 3, ctx.R - 2.6, { rot: false });
+    // Deko natürlicher und passender (Werkstatt-Wunsch „Deko verbessern“): vom Wind geschliffene, geschichtete
+    // Sandsteinfelsen in Gruppen, Topas-Kristallgruppen auf Sandhügeln, halb eingesunkene Topas-Geoden,
+    // trockene Wüstensträucher und Dünengras
+    const { rand, rr } = ctx, inner = ctx.R - 2.6, bands = ['#b8783a', '#d89a52', '#e8b46a', '#f2c88a'];
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      g.add(kit.strataRock(rr(0.7, 1.0), bands, rand));
+      for (let k = 0; k < 2; k++) g.add(kit.at(kit.strataRock(rr(0.3, 0.45), bands, rand), Math.cos(k * 2.4) * 1.1, 0, Math.sin(k * 2.4) * 1.1));
+      return g;
+    }, 1.4, 3, inner);
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      const mound = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 6, 0, TAU, 0, Math.PI / 2), kit.M('#f2c46a'));
+      mound.scale.y = 0.35;
+      g.add(mound, kit.at(cluster(kit, rand, rr(0.9, 1.3), '#ffb02e', '#fff0b8'), 0, 0.1, 0));
+      return g;
+    }, 0.9, 3, inner);
+    ctx.scatter(3, () => {
+      const g = new THREE.Group();
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8, 0, TAU, 0, Math.PI / 2), kit.M('#a8784a'));
+      shell.scale.y = 0.6;
+      g.add(shell, kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.03, 14), kit.M('#5a3a1a')), 0, 0.3, 0));
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * TAU, c = gemStone(kit, 0.09, k % 2 ? '#ffb02e' : '#fff0b8', 1.3);
+        c.position.set(Math.cos(a) * 0.25, 0.33, Math.sin(a) * 0.25);
+        g.add(c);
+      }
+      return g;
+    }, 0.6, 3, inner);
+    ctx.scatter(6, () => kit.bush(rr(0.22, 0.34), pick(rand, ['#8a7a3a', '#9a8a48', '#7a6a32']), rand), 0.4, 2, inner);
+    ctx.scatter(8, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 6; k++) {
+        const h = rr(0.25, 0.45), blade = kit.at(new THREE.Mesh(new THREE.ConeGeometry(0.02, h, 3), kit.M('#c8b060')), rr(-0.15, 0.15), h / 2, rr(-0.15, 0.15));
+        blade.rotation.set(rr(-0.4, 0.4), 0, rr(-0.4, 0.4));
+        g.add(blade);
+      }
+      return g;
+    }, 0.3, 2, inner);
   },
   emitters(ctx, add) {
     add('Goldstaub', [0, 1, 0], [ctx.R * 2.2, 1, ctx.R * 2.2], ['#ffd76a', '#fff0b8'], 0.12, 10, [0.6, 1.2], [4, 6], { spread: [10, 80] });
@@ -368,7 +442,65 @@ const JADETEMPEL = make({
     const p = ctx.spot(3.6, 7, ctx.R - 4);
     if (p) ctx.put(temple(kit, 4, 5, '#8ad0a0', '#e8b84a', { grand: true }), p[0], p[1]);
     ctx.scatter(4, () => temple(kit, 2, 1.8, '#8ad0a0', '#e8b84a'), 1.4, 6, ctx.R - 2.6);
-    ctx.scatter(10, () => kit.roundTree(ctx.rr(1.6, 2.4), '#4aa86a', ctx.rand), 0.9, 4, ctx.R - 2.6);
+    // Deko passend zum Tempel (Werkstatt-Wunsch „Deko passender“): Kirschbäume in Rosa, Bambushaine,
+    // Steinlaternen und ein Koi-Teich mit roter Bogenbrücke statt runder Laubbäume
+    const { rand, rr } = ctx, inner = ctx.R - 2.6;
+    ctx.scatter(5, () => {
+      const t = kit.roundTree(rr(1.8, 2.4), pick(rand, ['#ffb8d8', '#ffc8e0', '#ffa8cc']), rand);
+      for (let k = 0; k < 5; k++) t.add(kit.at(new THREE.Mesh(new THREE.CircleGeometry(0.12, 6), kit.M('#ffc8e0', { side: THREE.DoubleSide })), rr(-0.8, 0.8), 0.02, rr(-0.8, 0.8))).children.at(-1).rotation.x = -Math.PI / 2;
+      return t;
+    }, 1.0, 4, inner);
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      for (let k = 0; k < 7; k++) {
+        const h = rr(1.6, 2.8), x = rr(-0.45, 0.45), z = rr(-0.45, 0.45);
+        for (let j = 0; j < 4; j++) g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, h / 4 - 0.03, 6), kit.M(j % 2 ? '#7ab84a' : '#6aa83a')), x, (j + 0.5) * (h / 4), z));
+        const leaf = kit.at(new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 5), kit.M('#4a9a3a')), x, h + 0.1, z);
+        g.add(leaf);
+      }
+      return g;
+    }, 0.8, 3, inner);
+    ctx.scatter(4, () => {
+      const g = new THREE.Group(), st = kit.M('#b8b0a0');
+      g.add(kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.14, 0.4), st), 0, 0.07, 0));
+      g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.6, 6), st), 0, 0.44, 0));
+      g.add(kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.32), kit.E('#ffcf7a', 0.9)), 0, 0.88, 0));
+      const cap = kit.at(new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.24, 4), st), 0, 1.14, 0);
+      cap.rotation.y = Math.PI / 4;
+      g.add(cap, kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), st), 0, 1.3, 0));
+      return g;
+    }, 0.5, 3, inner);
+    const pond = ctx.spot(2.2, 4, inner - 1);
+    if (pond) {
+      ctx.reserve(pond[0], pond[1], 2.1);
+      const g = new THREE.Group(), PR = 1.7;
+      g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(PR, PR, 0.1, 28), kit.M('#3a8ab0', { roughness: 0.05, transparent: true, opacity: 0.85 })), 0, 0.06, 0));
+      for (let k = 0; k < 18; k++) {
+        const a = (k / 18) * TAU, r = kit.rockMesh(rr(0.16, 0.26), '#8a8a7a', rand);
+        r.position.set(Math.cos(a) * (PR + 0.1), 0, Math.sin(a) * (PR + 0.1));
+        g.add(r);
+      }
+      for (let k = 0; k < 5; k++) {
+        const koi = kit.at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), kit.M(k % 2 ? '#ff7a2a' : '#ffffff')), rr(-1, 1), 0.1, rr(-1, 1));
+        koi.scale.set(0.6, 0.4, 1.6);
+        koi.rotation.y = rand() * TAU;
+        g.add(koi);
+      }
+      for (let k = 0; k < 4; k++) g.add(kit.at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.02, 10), kit.M('#4a9a3a')), rr(-1.1, 1.1), 0.12, rr(-1.1, 1.1)));
+      // rote Bogenbrücke quer über den Teich
+      const red = kit.M('#c8302a');
+      for (let k = 0; k <= 8; k++) {
+        const t = k / 8, x = -PR - 0.2 + t * (PR * 2 + 0.4), y = 0.15 + Math.sin(t * Math.PI) * 0.55;
+        g.add(kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.8), kit.M('#8a5a3a')), x, y, 0));
+        if (k % 2 === 0) for (const sz of [-1, 1]) g.add(kit.at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), red), x, y + 0.2, sz * 0.4));
+      }
+      for (const sz of [-1, 1]) {
+        const curve = new THREE.CatmullRomCurve3(Array.from({ length: 9 }, (_, k) => new THREE.Vector3(-PR - 0.2 + (k / 8) * (PR * 2 + 0.4), 0.55 + Math.sin((k / 8) * Math.PI) * 0.55, sz * 0.4)));
+        g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.03, 5), red));
+      }
+      ctx.put(g, pond[0], pond[1]);
+      g.userData.deko = true;
+    }
   },
   sounds: [['Gong', 'ferner Tempelgong', 0.25], ['Wind', 'sanfter Bergwind', 0.3]],
 });
