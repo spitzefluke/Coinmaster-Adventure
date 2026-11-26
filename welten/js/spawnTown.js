@@ -477,7 +477,34 @@ export function buildSpawnTown(ctx, K) {
       items: (g, D) => [[-1, 0.95], [0, 0.95], [1, 0.95], [-0.5, 1.65], [0.5, 1.65]].forEach(([x, y]) => {
         for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), M('#ffcf4a', { metalness: 0.7, roughness: 0.3 })), x, y + k * 0.055, -D / 2 + 0.32));
       }) },
+    // Taschen-Laden (Werkstatt-Wunsch „Taschenshop“): Edelstein-Taschen in wachsender Größe im Regal,
+    // eine große Tasche mit Diamant vor der Tür
+    { a: 150, id: 'taschen', name: 'Taschen-Laden', sub: 'Edelstein-Taschen', wall: '#eaf4ff', roof: '#2a5ab0', accent: '#3a8ae8',
+      items: (g, D) => ['#c98a4b', '#8a9aa8', '#e8c060', '#5ad1ff', '#b07bff'].forEach((c, i) => {
+        const b = gemBag(c, 0.18 + i * 0.03);
+        b.position.set(-1.25 + i * 0.62, i < 5 ? 0.86 : 1.6, -D / 2 + 0.34);
+        g.add(b);
+      }) },
   ];
+  // Edelstein-Tasche: Beutel mit Zugband und Knoten, vorne ein leuchtender Edelstein
+  function gemBag(c, s) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(s, 14, 10), M(c, { roughness: 0.8 }));
+    body.scale.set(1, 0.9, 0.85);
+    body.position.y = s * 0.9;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.32, s * 0.5, s * 0.4, 10), M(c, { roughness: 0.8 }));
+    neck.position.y = s * 1.75;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.36, s * 0.36, s * 0.1, 10), M('#e8c060', { metalness: 0.6 }));
+    band.position.y = s * 1.62;
+    const top = new THREE.Mesh(new THREE.ConeGeometry(s * 0.45, s * 0.4, 8), M(c, { roughness: 0.8 }));
+    top.position.y = s * 2.1;
+    top.rotation.x = Math.PI;
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(s * 0.3, 0), E('#7ae8ff', 0.9));
+    gem.position.set(0, s * 0.95, s * 0.82);
+    gem.scale.z = 0.5;
+    g.add(body, neck, band, top, gem);
+    return g;
+  }
   // Markthalle (Werkstatt-Wunsch „weniger Gebäude“): Eier-Laden, Boost-Labor, Robux-Palast und Haustier-Hof
   // als vier Theken unter einem Dach; die Bereiche (userData.area) bleiben je Theke erhalten
   const MARKET = new Set(['eier', 'boosts', 'robux', 'haustiere']);
@@ -494,6 +521,16 @@ export function buildSpawnTown(ctx, K) {
         house.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.9, 10), M('#e8c060', { metalness: 0.6 })), x, 4.05, -1.2));
       }
     }
+    if (s.id === 'taschen') {
+      // große Tasche mit Diamant vor der Tür, zwei Laternen
+      const big = gemBag('#3a6ad8', 0.55);
+      big.position.set(-1.6, 0, 2.0);
+      house.add(big);
+      const d = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), E('#9ff0ff', 1.2));
+      d.position.set(1.6, 0.95, 2.0);
+      d.userData.spin = 0.8;
+      house.add(d, at(new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, 0.55, 10), M('#e8dfcc')), 1.6, 0.28, 2.0));
+    }
     if (s.id === 'haustiere') {
       // Gehege mit Haustieren vor dem Hof
       for (let i = 0; i < 3; i++) {
@@ -506,6 +543,33 @@ export function buildSpawnTown(ctx, K) {
     placeAt(house, deg(s.a), SHOP_R, 2.7);
     house.userData.area = s.id;
     addArea(s.id, s.name, ...polar(deg(s.a), SHOP_R - 2.6));
+  }
+  // Event-Podest (Werkstatt-Wunsch „Platz für Event-Shops“): ein leeres rundes Podest mit drei Stufen,
+  // Goldkanten, vier Fahnenmasten mit leeren Bannern und einem Schild – hier kommt der Shop des nächsten Events hin
+  {
+    const g = new THREE.Group();
+    const gold = M('#e8c060', { metalness: 0.6, roughness: 0.35 });
+    [[2.6, 0.16, '#d8cfbc'], [2.15, 0.32, '#e8dfcc'], [1.7, 0.48, '#f2ece0']].forEach(([r, y, c]) => {
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(r, r + 0.05, 0.16, 32), M(c)), 0, y - 0.08, 0));
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.06, r + 0.06, 0.04, 32), gold), 0, y, 0));
+    });
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.02, 32), E('#ffe7a8', 0.35)), 0, 0.5, 0));
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4, x = Math.cos(a) * 2.35, z = Math.sin(a) * 2.35;
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.6, 8), gold), x, 1.4, z));
+      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), gold), x, 2.75, z));
+      const banner = at(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.9, 0.5), M(['#d84a8a', '#3a8ae8', '#2aa860', '#e0a030'][i])), x, 2.1, z);
+      banner.rotation.y = -a;
+      banner.position.x += Math.cos(a + Math.PI / 2) * 0.27;
+      banner.position.z += Math.sin(a + Math.PI / 2) * 0.27;
+      g.add(banner);
+    }
+    const sign = signBoard('Event-Shop', { w: 2.2, h: 0.55, bg: '#2a2232', fg: '#ffe7a8', sub: 'Bald hier: das nächste Event' });
+    sign.position.set(0, 0.85, 2.75);
+    g.add(sign);
+    placeAt(g, deg(120), SHOP_R, 2.8);
+    g.userData.area = 'event';
+    addArea('event', 'Event-Podest', ...polar(deg(120), SHOP_R - 2.8));
   }
   function marketHall(list) {
     const g = new THREE.Group();

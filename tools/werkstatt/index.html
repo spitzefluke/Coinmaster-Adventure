@@ -45,7 +45,14 @@
   .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; transition: width .5s ease; }
 
   /* Abläufe: Welten, Deko, Umgebung */
-  .tracks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .tracks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  /* Ablauf „Spawn“: echte Spiel-UI (Roblox-ScreenGui, Luau im Browser) unter der 3D-Ansicht */
+  .uiwrap { display: grid; gap: 8px; }
+  .uihead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+  .uihead span { font-size: 13px; color: var(--ink-faint); }
+  .uibox { position: relative; height: min(600px, 74vh); border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 10%, #3a3060, #15111f); }
+  .uibox .rbx-ui { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .uibox .uiload { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-faint); font-size: 14px; }
   .track { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
   .track b { font-size: 15px; }
   .track span { font-size: 12.5px; color: var(--ink-faint); }
@@ -154,6 +161,7 @@
     <button class="track" role="tab" type="button" data-track="deko"><b>Deko</b><span>Bäume, Büsche, Blumen, Felsen, Kisten …</span><em id="tp-deko"></em></button>
     <button class="track" role="tab" type="button" data-track="umgebung"><b>Umgebung</b><span>Schwebeinseln, Berge, Wolken, Wahrzeichen am Horizont</span><em id="tp-umgebung"></em></button>
     <button class="track" role="tab" type="button" data-track="portal"><b>Portale</b><span>Portal jeder Welt im Spawn und der Teleport dorthin</span><em id="tp-portal"></em></button>
+    <button class="track" role="tab" type="button" data-track="spawn"><b>Spawn</b><span>Jedes Gebäude im Spawn und die UI, die dort aufgeht</span><em id="tp-spawn"></em></button>
   </div>
 
   <div class="grid">
@@ -177,6 +185,11 @@
         </div>
         <div class="tpflash" id="tpflash"></div>
         <div class="loading" id="loading"><div><div class="coin"></div><span id="loading-text">Engine wird geladen …</span></div></div>
+      </div>
+
+      <div class="uiwrap" id="uiwrap" hidden>
+        <div class="uihead"><span id="ui-note">So geht die Spiel-UI an diesem Gebäude auf – die echte Roblox-Oberfläche, bedienbar (Käufe sind in der Vorschau aus).</span><button class="btn" id="ui-again" type="button">Fenster nochmal öffnen</button></div>
+        <div class="uibox" id="uibox"><div class="uiload" id="uiload">Spiel-UI wird geladen …</div></div>
       </div>
 
       <div class="review">
@@ -231,7 +244,38 @@ try {
 const { WORLDS, planetById, galaxyById } = W;
 const ALL = WORLDS.filter((w) => !w.soon);
 // Reihenfolge je Ablauf: die Portale gibt es für jede Welt außer dem Spawn selbst
-const orderOf = (t) => (t === 'portal' ? ALL.filter((w) => !w.hub) : ALL);
+// Ablauf „Spawn“: jedes Gebäude und jeder Platz im Spawn einzeln (area = Bereich-Id aus spawnTown.js)
+const SPAWN_ITEMS = [
+  ['Shops', '#f2c14e', [
+    ['eier', 'Eier-Laden', 'Theke in der Markthalle: Eier für Haustiere kaufen.'],
+    ['boosts', 'Boost-Labor', 'Theke in der Markthalle: Glück, EP und Wetter verstärken.'],
+    ['robux', 'Robux-Palast', 'Theke in der Markthalle: Angebote und VIP-Pass.'],
+    ['haustiere', 'Haustier-Hof (Pet-Shop)', 'Theke in der Markthalle: Haustiere ausrüsten und pflegen.'],
+    ['taschen', 'Taschen-Laden', 'Neu: Edelstein-Taschen der Reihe nach mit Diamantstaub kaufen.'],
+    ['verkaufen', 'Verkaufs-Kontor', 'Münzen gegen Moneten verkaufen.'],
+    ['event', 'Event-Podest', 'Neu: leerer Platz für den Shop des nächsten Events.'],
+  ]],
+  ['Plätze und Anzeigen', '#5ad1ff', [
+    ['marktplatz', 'Marktplatz mit Brunnen', 'Hier starten alle Spieler.', 'spawn'],
+    ['ranglisten', 'Ranglisten (Ruhmeshalle)', 'Die Besten des Servers.'],
+    ['index', 'Münzindex', 'Das Sammelbuch aller Münzen.'],
+    ['belohnung', 'Tägliche Belohnung', 'Im Belohnungs-Haus: jeden Tag ein Geschenk.'],
+    ['codes', 'Codes', 'Im Belohnungs-Haus: Codes einlösen.'],
+    ['gruppe', 'Gruppen-Belohnung', 'Im Belohnungs-Haus: Bonus für Gruppenmitglieder.'],
+    ['quests', 'Quest-Brett', 'Im Belohnungs-Haus: Tagesaufgaben.'],
+  ]],
+  ['Aktivitäten', '#8cff7a', [
+    ['schluepfen', 'Ei-Schlüpfplatz', 'Eier ausbrüten.'],
+    ['vip', 'VIP-Lounge', 'Nur für VIPs.'],
+    ['obby', 'Obby-Turm', 'Hochspringen bis zur Truhe.'],
+  ]],
+  ['Portal-Hallen', '#c48bff', [
+    ['portale-p1', 'Heimat-Tor (Planet 1)', 'Portale zu den Welten des Heimatplaneten.'],
+    ['portale-p2', 'Raketenstartplatz (Planet 2)', 'Portale zu den Welten im Weltraum.'],
+    ['portale-p3', 'Tiefsee-Strudel und Himmelsleiter', 'Portale zu Tiefsee, Himmel und Milchstraße.'],
+  ]],
+].flatMap(([group, color, items]) => items.map(([id, name, text, area]) => ({ id, name, text, area: area || id, group, color, spawnItem: true })));
+const orderOf = (t) => (t === 'spawn' ? SPAWN_ITEMS : t === 'portal' ? ALL.filter((w) => !w.hub) : ALL);
 let ORDER = ALL;
 const STUDS = 8;
 
@@ -264,6 +308,7 @@ const TRACKS = {
   gebaeude: { name: 'Gebäude', short: 'Gebäude von ', label: 'Was soll sich an den Gebäuden ändern?', placeholder: 'Zum Beispiel: Der Brunnen größer, die Läden bunter, ein zweiter Turm am Tor …', layers: { gebaeude: true, deko: false, umgebung: false } },
   deko: { name: 'Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { gebaeude: true, deko: true, umgebung: false } },
   portal: { name: 'Portal', short: 'Portal von ', label: 'Was soll sich am Portal oder an der Teleport-Animation ändern?', placeholder: 'Zum Beispiel: Das Portal größer, der Strudel schneller, eine hellere Lichtsäule bei der Ankunft …', layers: { gebaeude: true, deko: true, umgebung: true } },
+  spawn: { name: 'Spawn', short: 'Spawn: ', label: 'Was soll sich an diesem Gebäude oder an seiner UI ändern?', placeholder: 'Zum Beispiel: Der Laden größer, im Fenster mehr Angebote, die Kaufen-Knöpfe grün, ein Countdown für das Event …', layers: { gebaeude: true, deko: true, umgebung: false } },
   umgebung: { name: 'Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { gebaeude: true, deko: true, umgebung: true } },
 };
 let track = 'welt';
@@ -282,6 +327,7 @@ let selected = null; // Welt-Id in der Ansicht
 
 // ── Liste ──
 function groupName(w) {
+  if (w.spawnItem) return { name: w.group, color: w.color };
   if (w.planet === 'hub') return { name: 'Treffpunkt', color: '#f2c14e' };
   const p = planetById[w.planet];
   return { name: `${p.name} · ${p.title}`, color: p.color };
@@ -346,6 +392,7 @@ function setTrack(t, id) {
   track = t;
   ORDER = orderOf(t);
   $('t-tp').hidden = t !== 'portal';
+  $('uiwrap').hidden = t !== 'spawn';
   const T = TRACKS[t];
   $('wish-label').textContent = T.label;
   $('wish').placeholder = T.placeholder;
@@ -356,6 +403,7 @@ function setTrack(t, id) {
   if (target === selected && built && builtFor === buildTarget(target)) {
     applyLayers();
     if (t === 'portal') focusPortal(target);
+    if (t === 'spawn') focusArea(target);
     render();
     try { history.replaceState(null, '', '#' + docId(selected)); } catch {}
   } else show(target);
@@ -501,12 +549,12 @@ function show(id) {
   const w = ORDER.find((x) => x.id === id);
   const i = ORDER.indexOf(w);
   render();
-  const g = w.planet === 'hub' ? null : planetById[w.planet];
+  const g = w.planet === 'hub' || w.spawnItem ? null : planetById[w.planet];
   const gal = g?.galaxy ? galaxyById[g.galaxy] : null;
   $('w-planet').textContent = g ? `${gal ? gal.name + ' · ' : ''}${g.name} · ${g.title}` : 'Treffpunkt aller Spieler';
   $('w-name').textContent = w.name;
   $('w-text').textContent = w.text || '';
-  $('b-pos').textContent = `Welt ${i + 1} von ${ORDER.length}`;
+  $('b-pos').textContent = `${w.spawnItem ? 'Bereich' : 'Welt'} ${i + 1} von ${ORDER.length}`;
   $('b-parts').textContent = '';
   $('b-models').hidden = true;
   $('w-facts').innerHTML = '';
@@ -514,6 +562,14 @@ function show(id) {
   stopTeleport();
   // Ablauf „Portale“: gebaut wird der Spawn, die Kamera fliegt zum Portal dieser Welt
   const bw = buildTarget(id);
+  if (track === 'spawn') {
+    $('w-planet').textContent = `Spawn · ${w.group}`;
+    showUi(w.area);
+    if (built && builtFor === bw) {
+      focusArea(id);
+      return;
+    }
+  }
   if (track === 'portal') {
     $('w-planet').textContent = `Portal im Spawn · ${g ? g.name + ' · ' + g.title : ''}`;
     $('w-facts').innerHTML = `<span>Preis <b>${w.price ? w.price.toLocaleString('de-DE') + ' Moneten' : 'gratis'}</b></span><span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span><span>Teleport mit der Farbe <b style="color:${w.accent}">${w.accent}</b></span>`;
@@ -551,7 +607,7 @@ function show(id) {
     $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     const wide = Math.round(built.data.meta.radius * 2);
     const nDeko = built.data.parts.filter((p) => p.deko).length, nBau = built.data.parts.filter((p) => p.bau).length, nUmg = built.data.sky.length;
-    if (track !== 'portal') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    if (track !== 'portal' && track !== 'spawn') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
     applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
     $('loading').hidden = true;
@@ -561,6 +617,7 @@ function show(id) {
     }
     view('home');
     if (track === 'portal') return focusPortal(id);
+    if (track === 'spawn') return focusArea(id);
     if (!fly) return;
     camera.position.copy(fly.toP).multiplyScalar(1.25); // kurzer Anflug
   }, 30));
@@ -569,8 +626,42 @@ function show(id) {
 // ── Portale und Teleport-Animation ──
 // buildTarget: welche Welt die Ansicht baut (im Ablauf „Portale“ immer der Spawn)
 function buildTarget(id, t = track) {
-  return t === 'portal' ? ALL.find((w) => w.hub) : ALL.find((w) => w.id === id);
+  return t === 'portal' || t === 'spawn' ? ALL.find((w) => w.hub) : ALL.find((w) => w.id === id);
 }
+// Ablauf „Spawn“: Kamera zum Gebäude des Bereichs (der Bereichspunkt liegt vor dem Eingang, zur Platzmitte hin)
+function focusArea(id) {
+  const item = SPAWN_ITEMS.find((x) => x.id === id);
+  const a = item && built?.data.meta.areas.find((x) => x.id === item.area);
+  if (!a) return;
+  controls.autoRotate = false;
+  $('t-rot').setAttribute('aria-pressed', 'false');
+  controls.minDistance = 2 * STUDS;
+  const pos = new THREE.Vector3(...a.pos);
+  const out = new THREE.Vector3(pos.x, 0, pos.z);
+  if (out.lengthSq() < 1) out.set(0, 0, 1);
+  out.normalize();
+  const hall = item.area.startsWith('portale-'), far = item.area === 'spawn' ? 0 : hall ? 30 : 18, back = hall ? 120 : 82;
+  const target = pos.clone().addScaledVector(out, far).add(new THREE.Vector3(0, 14, 0));
+  const eye = item.area === 'spawn' ? new THREE.Vector3(90, 85, 150) : pos.clone().addScaledVector(out, -back).add(new THREE.Vector3(0, back * 0.55, 0)).addScaledVector(new THREE.Vector3(-out.z, 0, out.x), back * 0.25);
+  fly = { t: 0, fromT: controls.target.clone(), toT: target, fromP: camera.position.clone(), toP: eye };
+  const n = built.data.parts.filter((p) => p.area === item.area).length;
+  $('w-facts').innerHTML = n ? `<span>Gebäude <b>${n.toLocaleString('de-DE')}</b> Teile</span>` : '';
+}
+// echte Spiel-UI (spiel/js/uiDemo.js) einmal starten, dann je Bereich das passende Fenster öffnen
+let uiDemo = null, uiLoading = null, uiArea = null;
+function showUi(area) {
+  uiArea = area;
+  if (uiDemo) return uiDemo.show(area);
+  uiLoading ||= import('./spiel/js/uiDemo.js').then((m) => m.createUiDemo($('uibox'))).then((d) => {
+    uiDemo = d;
+    $('uiload').remove();
+    uiDemo.show(uiArea);
+  }).catch((e) => {
+    console.error(e);
+    $('uiload').textContent = 'Die Spiel-UI konnte nicht geladen werden.';
+  });
+}
+$('ui-again').onclick = () => uiArea && (uiDemo ? uiDemo.show(uiArea) : showUi(uiArea));
 let builtFor = null, portal = null, tp = null;
 // Portalscheibe der Welt im Spawn suchen und davor stellen
 function focusPortal(id) {
@@ -766,7 +857,7 @@ controls.target.set(0, 0.6 * STUDS, 0);
 loadLocal();
 function parseHash() {
   const h = location.hash.slice(1);
-  for (const t of ['gebaeude', 'deko', 'umgebung', 'portal']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
+  for (const t of ['gebaeude', 'deko', 'umgebung', 'portal', 'spawn']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
   return { t: 'welt', id: h };
 }
 const startId = () => {

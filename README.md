@@ -1200,6 +1200,11 @@ Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte ko
 erst wenn eine Welt gefällt, wird die nächste freigeschaltet. Je Welt kann man Änderungswünsche notieren; sie liegen
 in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt und Ablauf mit `status`, `wish`, `reply`; Ids: `<welt>` für die Insel, `gebaeude-<welt>`, `deko-<welt>`, `umgebung-<welt>`, `portal-<welt>`). Die Vorschau trennt dafür vier Ebenen: Insel (Boden, flache Wege und Plätze), Gebäude, Deko (alles Gestreute) und Umgebung (Kulisse).
 
+Der Ablauf **Spawn** hat einen Punkt je Gebäude oder Platz im Spawn (Ids `spawn-<bereich>`: Shops mit Taschen-Laden und
+Event-Podest, Plätze und Anzeigen, Aktivitäten, Portal-Hallen). Die Kamera fliegt zum Gebäude, darunter läuft die echte
+Spiel-UI (`spiel/js/uiDemo.js`: dieselbe Roblox-ScreenGui wie auf der Seite „Spiel“, mit Beispiel-Spielstand) und öffnet
+das Fenster, das im Spiel an diesem Gebäude aufgeht; Käufe sind dort aus.
+
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem
 Luau-Modul `TeleportFx` (`roblox/js/teleportLuau.js`): Abflug mit Lichtstrudel, eingesaugten Funken, kreisenden

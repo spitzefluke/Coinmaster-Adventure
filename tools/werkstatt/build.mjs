@@ -61,7 +61,7 @@ function walk(rel) {
   }
   write(rel, (AFTER[rel] || ((x) => x))(rewrite(rel, src)));
 }
-for (const entry of ['welten/js/robloxWorld.js', 'welten/js/worlds.js', 'welten/js/worldFactory.js', 'js/settings.js']) walk(entry);
+for (const entry of ['welten/js/robloxWorld.js', 'welten/js/worlds.js', 'welten/js/worldFactory.js', 'js/settings.js', 'spiel/js/uiDemo.js']) walk(entry); // uiDemo: Spiel-UI im Ablauf „Spawn“
 
 // Zusätze aus three (examples/jsm)
 const jsm = (p) => fs.readFileSync(path.join(THREE_DIR, 'examples/jsm', p), 'utf8');
