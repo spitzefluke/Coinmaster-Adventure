@@ -77,6 +77,9 @@
   .chip.now { background: var(--gold); color: #2a1c00; font-weight: 600; }
   .chip.wait { background: color-mix(in srgb, var(--wait) 16%, transparent); color: var(--wait); }
   .chip.lock { color: var(--ink-faint); border: 1px solid var(--lock); }
+  .chip.check { background: color-mix(in srgb, var(--gold) 20%, transparent); color: var(--gold); border: 1px solid var(--gold); }
+  .done.check { background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); }
+  .done.work { background: color-mix(in srgb, var(--wait) 12%, transparent); color: var(--wait); }
 
   /* Bühne */
   .stage { display: grid; gap: 14px; min-width: 0; }
@@ -265,12 +268,16 @@ const TRACKS = {
 };
 let track = 'welt';
 const docId = (id, t = track) => (t === 'welt' ? id : `${t}-${id}`);
-const approved = (id, t = track) => docs[docId(id, t)]?.status === 'gefaellt';
+// Status je Abschnitt: offen → (Wunsch abschicken) inarbeit → (Claude setzt um) fertig → (prüfen) gefaellt;
+// aus „fertig“ mit einem neuen Wunsch wieder „inarbeit“. Ab „inarbeit“ ist der nächste Abschnitt frei.
+const statusOf = (id, t = track) => docs[docId(id, t)]?.status || 'offen';
+const approved = (id, t = track) => statusOf(id, t) === 'gefaellt';
+const passed = (id, t = track) => statusOf(id, t) !== 'offen';
 const currentIndex = (t = track) => {
-  const O = orderOf(t), i = O.findIndex((w) => !approved(w.id, t));
+  const O = orderOf(t), i = O.findIndex((w) => !passed(w.id, t));
   return i < 0 ? O.length : i;
 };
-const unlocked = (i, t = track) => i <= currentIndex(t) || approved(orderOf(t)[i].id, t);
+const unlocked = (i, t = track) => i <= currentIndex(t) || passed(orderOf(t)[i].id, t);
 let selected = null; // Welt-Id in der Ansicht
 
 // ── Liste ──
@@ -283,7 +290,8 @@ function render() {
   const cur = currentIndex();
   const n = ORDER.filter((w) => approved(w.id)).length;
   const T = TRACKS[track];
-  $('prog-text').textContent = cur >= ORDER.length ? `${T.name}: alles abgesegnet` : `${T.name} · gerade dran: ${ORDER[cur].name}`;
+  const nWork = ORDER.filter((w) => statusOf(w.id) === 'inarbeit').length, nCheck = ORDER.filter((w) => statusOf(w.id) === 'fertig').length;
+  $('prog-text').textContent = (cur >= ORDER.length ? `${T.name}: alle durchgesehen` : `${T.name} · gerade dran: ${ORDER[cur].name}`) + (nWork ? ` · ${nWork} in Arbeit` : '') + (nCheck ? ` · ${nCheck} zu prüfen` : '');
   $('prog-num').textContent = `${n} von ${ORDER.length} abgesegnet`;
   for (const t of Object.keys(TRACKS)) {
     const O = orderOf(t), k = O.filter((w) => approved(w.id, t)).length;
@@ -302,8 +310,12 @@ function render() {
     const d = docs[docId(w.id)] || {};
     const open = unlocked(i);
     let chip;
-    if (approved(w.id)) chip = '<span class="chip ok">gefällt</span>';
-    else if (i === cur) chip = waiting(d) ? '<span class="chip wait">Wunsch offen</span>' : '<span class="chip now">dran</span>';
+    const st = statusOf(w.id);
+    void d;
+    if (st === 'gefaellt') chip = '<span class="chip ok">gefällt</span>';
+    else if (st === 'inarbeit') chip = '<span class="chip wait">in Arbeit</span>';
+    else if (st === 'fertig') chip = '<span class="chip check">prüfen</span>';
+    else if (i === cur) chip = '<span class="chip now">dran</span>';
     else chip = '<span class="chip lock">später</span>';
     html += `<button class="w" type="button" data-id="${w.id}" data-i="${i}" aria-current="${w.id === selected}" aria-disabled="${!open}"><span class="n">${i + 1}</span><span class="name">${esc(w.name)}</span>${chip}</button>`;
   });
@@ -318,7 +330,7 @@ $('list').addEventListener('click', (e) => {
   if (!b) return;
   const i = +b.dataset.i;
   if (!unlocked(i)) {
-    toast(`Erst „${TRACKS[track].short}${ORDER[currentIndex()].name}“ absegnen, dann geht es weiter.`);
+    toast(`Erst bei „${TRACKS[track].short}${ORDER[currentIndex()].name}“ einen Wunsch abschicken oder absegnen, dann geht es weiter.`);
     return;
   }
   show(ORDER[i].id);
@@ -356,14 +368,21 @@ function renderJudge() {
   const i = ORDER.findIndex((w) => w.id === selected), w = ORDER[i], d = docs[docId(selected)] || {};
   const T = TRACKS[track];
   if (!wishDirty && document.activeElement !== $('wish')) $('wish').value = d.wish || '';
-  $('save-state').textContent = waiting(d) ? 'Gespeichert. Claude setzt es beim nächsten Mal um.' : d.wish ? 'Gespeichert.' : '';
+  const st = statusOf(selected);
+  $('save-state').textContent = d.wish ? (st === 'inarbeit' ? 'Abgeschickt – Claude setzt es um.' : 'Gespeichert.') : '';
   $('reply').hidden = !d.reply;
   $('reply-text').textContent = d.reply || '';
   const next = ORDER[i + 1];
-  if (approved(selected)) {
-    $('verdict').innerHTML = `<div class="done">✓ ${T.name} von ${esc(w.name)} gefällt dir</div><div class="row" style="margin-top:8px">${next ? `<button class="btn primary" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : ''}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
+  const nextBtn = next ? `<button class="btn" id="go-next" type="button">Weiter zu ${esc(next.name)}</button>` : '';
+  const sendLabel = `Wunsch abschicken${next ? ` – weiter zu ${esc(next.name)}` : ''}`;
+  if (st === 'gefaellt') {
+    $('verdict').innerHTML = `<div class="done">✓ ${T.name} von ${esc(w.name)} gefällt dir</div><div class="row" style="margin-top:8px">${nextBtn.replace('class="btn"', 'class="btn primary"')}<button class="btn" id="reopen" type="button">Doch nochmal überarbeiten</button></div>`;
+  } else if (st === 'inarbeit') {
+    $('verdict').innerHTML = `<div class="done work">⏳ In Arbeit – Claude setzt deinen Wunsch um. Du kannst schon weitermachen.</div><div class="row" style="margin-top:8px">${nextBtn.replace('class="btn"', 'class="btn primary"')}<button class="btn" id="withdraw" type="button">Wunsch zurückziehen</button></div><div class="hint" style="margin-top:6px">Du kannst den Wunsch oben noch ergänzen, er wird mitgespeichert.</div>`;
+  } else if (st === 'fertig') {
+    $('verdict').innerHTML = `<div class="done check">★ Fertig – bitte prüfen</div><div class="row" style="margin-top:8px"><button class="btn primary" id="approve" type="button">Gefällt mir${next ? ` – weiter zu ${esc(next.name)}` : ''}</button><button class="btn" id="send" type="button">Neuen Wunsch abschicken</button></div><div class="hint" style="margin-top:6px">Gefällt dir etwas noch nicht? Schreib oben einen neuen Wunsch und schick ihn ab.</div>`;
   } else {
-    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="approve" type="button">${T.name} gefällt mir${next ? ` – weiter zu ${esc(next.name)}` : ''}</button></div><div class="hint" style="margin-top:6px">${next ? `Erst danach wird im Ablauf „${T.name}“ ${esc(next.name)} freigeschaltet.` : 'Das ist die letzte Welt.'}</div>`;
+    $('verdict').innerHTML = `<div class="row"><button class="btn primary" id="send" type="button">${sendLabel}</button><button class="btn" id="approve" type="button">Gefällt mir so${next ? ' – weiter' : ''}</button></div><div class="hint" style="margin-top:6px">Mit einem Wunsch wird der Abschnitt „in Arbeit“ gesetzt und ${next ? esc(next.name) + ' ist sofort frei' : 'das ist die letzte Welt'}.</div>`;
   }
 }
 $('verdict').addEventListener('click', async (e) => {
@@ -374,6 +393,17 @@ $('verdict').addEventListener('click', async (e) => {
     toast(`${TRACKS[track].short}${ORDER[i].name} ist abgesegnet.`);
     const next = ORDER[i + 1];
     if (next) show(next.id);
+  } else if (e.target.id === 'send') {
+    const v = $('wish').value.trim();
+    if (!v) { toast('Schreib zuerst oben deinen Wunsch.'); $('wish').focus(); return; }
+    wishDirty = false;
+    const i = ORDER.findIndex((w) => w.id === selected);
+    await writeDoc(docId(selected), { status: 'inarbeit', wish: v, wishAt: Date.now(), welt: selected, ablauf: track });
+    toast(`${TRACKS[track].short}${ORDER[i].name} ist jetzt in Arbeit.`);
+    const next = ORDER[i + 1];
+    if (next) show(next.id);
+  } else if (e.target.id === 'withdraw') {
+    writeDoc(docId(selected), { status: 'offen' });
   } else if (e.target.id === 'reopen') {
     writeDoc(docId(selected), { status: 'offen' });
   } else if (e.target.id === 'go-next') {
@@ -386,7 +416,7 @@ function saveWish() {
   wishDirty = false;
   const d = docs[docId(selected)] || {};
   if (v === (d.wish || '')) return Promise.resolve();
-  return writeDoc(docId(selected), { status: d.status === 'gefaellt' ? 'gefaellt' : 'offen', wish: v, wishAt: Date.now(), welt: selected, ablauf: track });
+  return writeDoc(docId(selected), { status: d.status || 'offen', wish: v, wishAt: Date.now(), welt: selected, ablauf: track });
 }
 $('wish').addEventListener('input', () => {
   wishDirty = true;
