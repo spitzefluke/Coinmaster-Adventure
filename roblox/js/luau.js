@@ -1794,6 +1794,7 @@ local function setSky(box, on)
 end
 
 local current = nil
+local nightShown = false
 local function apply(folder)
 	for _, v in ipairs(folder:GetChildren()) do
 		if v:IsA("ValueBase") then
@@ -1822,9 +1823,84 @@ local function apply(folder)
 			atm[key] = source[key]
 		end
 	end
+	-- Farbstimmung der Welt (kräftigere Farben, Farbstich)
+	local farbe = folder:FindFirstChildOfClass("ColorCorrectionEffect")
+	local cc = Lighting:FindFirstChild("CoinmasterFarbe")
+	if farbe then
+		if not cc then
+			cc = Instance.new("ColorCorrectionEffect")
+			cc.Name = "CoinmasterFarbe"
+			cc.Parent = Lighting
+		end
+		cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = farbe.Saturation, farbe.Contrast, farbe.Brightness, farbe.TintColor
+	elseif cc then
+		cc:Destroy()
+	end
 	local box = folder:FindFirstChild("Himmelsbild")
 	local seite = box and box:FindFirstChild("Seite")
 	setSky(box, seite ~= nil and seite.Value > 0)
+	nightShown = false
+end
+
+-- Tag-Nacht-Wechsel (Ordner „Nacht“ im Licht der Welt): lange Tagphase in der Stimmung der Welt,
+-- Abenddämmerung, Nacht mit Nachtlicht und Nachthimmel (falls hochgeladen), Morgendämmerung.
+-- Gleicher Verlauf wie dayNightAt in welten/js/skyboxes.js
+local function dayNightAt(p, dayClock)
+	local function s(t) return t * t * (3 - 2 * t) end
+	if p < 0.55 then return dayClock, 0 end
+	if p < 0.65 then local t = (p - 0.55) / 0.1; return dayClock + (24 - dayClock) * t, s(t) end
+	if p < 0.9 then return (p - 0.65) / 0.25 * 4, 1 end
+	local t = (p - 0.9) / 0.1
+	return 4 + (dayClock - 4) * t, 1 - s(t)
+end
+local function val(f, name, default)
+	local v = f and f:FindFirstChild(name)
+	if v then return v.Value end
+	return default
+end
+local function dayNight(folder)
+	local n = folder:FindFirstChild("Nacht")
+	if not n then return end
+	local dauer = val(n, "Dauer", 720)
+	local dayClock = val(folder, "ClockTime", 14)
+	local clock, k = dayNightAt((os.clock() / dauer) % 1, dayClock)
+	Lighting.ClockTime = clock % 24
+	Lighting.Brightness = val(folder, "Brightness", 2) + (val(n, "Brightness", 1) - val(folder, "Brightness", 2)) * k
+	for _, key in ipairs({ "Ambient", "OutdoorAmbient", "FogColor" }) do
+		Lighting[key] = val(folder, key, Color3.new(0.5, 0.5, 0.5)):Lerp(val(n, key, Color3.new(0.2, 0.2, 0.3)), k)
+	end
+	local src = folder:FindFirstChildOfClass("Atmosphere")
+	local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+	if src and atm then
+		atm.Color = src.Color:Lerp(val(n, "AtmosphereColor", src.Color), k)
+		atm.Decay = src.Decay:Lerp(val(n, "AtmosphereDecay", src.Decay), k)
+		atm.Haze = src.Haze + (val(n, "AtmosphereHaze", src.Haze) - src.Haze) * k
+		atm.Glare = src.Glare * (1 - k)
+	end
+	local bloomSrc = folder:FindFirstChildOfClass("BloomEffect")
+	local bloom = Lighting:FindFirstChild("CoinmasterBloom")
+	if bloomSrc and bloom then
+		bloom.Intensity = bloomSrc.Intensity + (val(n, "BloomIntensity", bloomSrc.Intensity) - bloomSrc.Intensity) * k
+		bloom.Threshold = bloomSrc.Threshold + (val(n, "BloomThreshold", bloomSrc.Threshold) - bloomSrc.Threshold) * k
+	end
+	-- Himmelsbild: ab der halben Dämmerung das Nachtbild (wenn hochgeladen)
+	local box = folder:FindFirstChild("Himmelsbild")
+	local sky = Lighting:FindFirstChild("CoinmasterSky")
+	local wantNight = k > 0.5 and val(box, "NachtSeite", 0) > 0
+	if sky and box and wantNight ~= nightShown then
+		nightShown = wantNight
+		local prefix = wantNight and "Nacht" or ""
+		local function asset(name)
+			local id = val(box, prefix .. name, 0)
+			return id > 0 and ("rbxassetid://" .. tostring(id)) or nil
+		end
+		local side = asset("Seite")
+		if side then
+			sky.SkyboxBk, sky.SkyboxFt, sky.SkyboxLf, sky.SkyboxRt = side, side, side, side
+			sky.SkyboxUp = asset("Oben") or side
+			sky.SkyboxDn = asset("Unten") or side
+		end
+	end
 end
 
 local elapsed = 0
@@ -1857,6 +1933,11 @@ RunService.Heartbeat:Connect(function(dt)
 		current = best
 		apply(best)
 	end
+end)
+
+-- Tag-Nacht-Wechsel: jedes Bild weich weiterführen (nur Welten mit Ordner „Nacht“)
+RunService.RenderStepped:Connect(function()
+	if current and current.Parent then dayNight(current) end
 end)
 `;
 

@@ -178,6 +178,7 @@
           <button class="tool" id="t-rot" type="button" aria-pressed="true">Drehen</button>
           <button class="tool" id="t-fig" type="button" aria-pressed="false">Figur zum Vergleich</button>
           <button class="tool" id="t-tp" type="button" hidden>Teleport abspielen</button>
+          <button class="tool" id="t-dn" type="button" aria-pressed="false" hidden>Tag-Nacht</button>
           <span class="sep" aria-hidden="true"></span>
           <button class="tool layer" id="l-geb" type="button" aria-pressed="true">Gebäude</button>
           <button class="tool layer" id="l-deko" type="button" aria-pressed="true">Deko</button>
@@ -611,6 +612,10 @@ function show(id) {
     if (track !== 'portal' && track !== 'spawn') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Himmel <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
     applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
+    // Tag-Nacht-Wechsel: nur Welten mit Nachthimmel; der Knopf spielt einen Tag in 40 Sekunden ab
+    $('t-dn').hidden = !built.data.lighting?.nacht;
+    $('t-dn').setAttribute('aria-pressed', 'false');
+    dayNight = null;
     $('loading').hidden = true;
     if (built.rw.modelsReady) {
       $('b-models').hidden = false;
@@ -738,6 +743,14 @@ function stopTeleport() {
   $('tpflash').classList.remove('on');
   $('t-tp').disabled = false;
 }
+// Tag-Nacht abspielen (in der Vorschau ein ganzer Tag in 40 Sekunden, im Spiel 12 Minuten)
+let dayNight = null;
+$('t-dn').onclick = (e) => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  dayNight = on ? { t: 0.5 } : null; // Start kurz vor der Abenddämmerung
+  if (!on && built) { RW.applyLighting(built.rw, built.data.lighting); }
+};
 $('t-tp').onclick = () => {
   if (tp?.phase === 'done') return show(selected); // zurück zum Portal
   if (tp || !portal || !built) return;
@@ -847,6 +860,10 @@ renderer.setAnimationLoop(() => {
   controls.update();
   camera.updateMatrixWorld();
   teleportStep(dt);
+  if (dayNight && built) {
+    dayNight.t = (dayNight.t + dt / 40) % 1;
+    RW.applyDayNight(built.rw, built.data.lighting, dayNight.t);
+  }
   if (lua) { lua.setCamera(camera); lua.frame(dt); }
   built.rw.update(dt);
   built.rw.render(renderer, camera);

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { RbxWorld, Inst, rgb, hexColor } from '../../js/rbx/engine.js';
 import { createLua } from '../../js/rbx/lua.js';
 import { worldToParts } from '../../roblox/js/worldParts.js';
-import { skyboxFiles } from './skyboxes.js';
+import { skyboxFiles, dayNightAt } from './skyboxes.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
 import { TELEPORT_FX } from '../../roblox/js/teleportLuau.js';
@@ -52,6 +52,28 @@ export function applyLighting(rw, L) {
     if (!sky) sky = inst('Sky', {}, rw.lighting);
     Object.assign(sky.props, { SkyboxBk: url(f.seite), SkyboxFt: url(f.seite), SkyboxLf: url(f.seite), SkyboxRt: url(f.seite), SkyboxUp: url(f.oben), SkyboxDn: url(f.unten), CelestialBodiesShown: L.himmel.sun });
   } else if (sky) sky.setParent(null);
+}
+
+// Tag-Nacht-Wechsel in der Vorschau (gleicher Verlauf wie das Licht-Skript in Roblox): phase 0..1 eines Tages.
+// Liefert den Nachtanteil (0 Tag … 1 Nacht).
+export function applyDayNight(rw, L, phase) {
+  if (!L.nacht) return 0;
+  const { clock, night: k } = dayNightAt(phase, L.ClockTime);
+  const P = rw.lighting.props, N = L.nacht;
+  const mix = (a, b) => hexColor('#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString());
+  P.ClockTime = clock % 24;
+  P.Brightness = L.Brightness + (N.Brightness - L.Brightness) * k;
+  P.Ambient = mix(L.Ambient, N.Ambient);
+  P.OutdoorAmbient = mix(L.OutdoorAmbient, N.OutdoorAmbient);
+  P.FogColor = mix(L.FogColor, N.FogColor);
+  const atm = rw.lighting.children.find((c) => c.ClassName === 'Atmosphere');
+  if (atm) Object.assign(atm.props, { Color: mix(L.atmosphere.Color, N.atmosphere.Color), Decay: mix(L.atmosphere.Decay, N.atmosphere.Decay), Glare: L.atmosphere.Glare * (1 - k), Haze: L.atmosphere.Haze + (N.atmosphere.Haze - L.atmosphere.Haze) * k });
+  const sky = rw.lighting.children.find((c) => c.ClassName === 'Sky');
+  if (sky && L.himmel?.night) {
+    const f = skyboxFiles(L.himmel.id, k > 0.5), url = (p) => new URL('../../' + p, import.meta.url).href;
+    if (sky.props.SkyboxBk !== url(f.seite)) Object.assign(sky.props, { SkyboxBk: url(f.seite), SkyboxFt: url(f.seite), SkyboxLf: url(f.seite), SkyboxRt: url(f.seite), SkyboxUp: url(f.oben), SkyboxDn: url(f.unten) });
+  }
+  return k;
 }
 
 // Baut die Welt in einer Roblox-Engine-Welt; gibt { rw, data } zurück

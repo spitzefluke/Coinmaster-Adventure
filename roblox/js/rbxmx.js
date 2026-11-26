@@ -138,6 +138,32 @@ function lightFolder(L) {
           value('NumberValue', 'Unten', 0),
           value('BoolValue', 'Sonne', H.sun),
           value('StringValue', 'Dateien', `himmel/${H.id}/seite.jpg, himmel/${H.id}/oben.jpg, himmel/${H.id}/unten.jpg (im Welten-ZIP)`),
+          // Nachtbild für den Tag-Nacht-Wechsel (himmel/<welt>/nacht/…)
+          ...(H.night
+            ? [value('NumberValue', 'NachtSeite', 0), value('NumberValue', 'NachtOben', 0), value('NumberValue', 'NachtUnten', 0), value('StringValue', 'NachtDateien', `himmel/${H.id}/nacht/seite.jpg, himmel/${H.id}/nacht/oben.jpg, himmel/${H.id}/nacht/unten.jpg (im Welten-ZIP)`)]
+            : []),
+        ].join(''),
+      )
+    : '';
+  // Farbstimmung (kräftigere Farben, Farbstich) und Tag-Nacht-Wechsel (Ordner „Nacht“ mit dem Nachtlicht)
+  const farbe = L.farbe
+    ? item('ColorCorrectionEffect', [prop.string('Name', 'Farbe'), prop.float('Saturation', L.farbe.Saturation), prop.float('Contrast', L.farbe.Contrast), prop.float('Brightness', L.farbe.Brightness), prop.color3('TintColor', L.farbe.TintColor)])
+    : '';
+  const N = L.nacht;
+  const nacht = N
+    ? folder(
+        'Nacht',
+        [
+          value('NumberValue', 'Dauer', N.seconds),
+          value('NumberValue', 'Brightness', N.Brightness),
+          value('Color3Value', 'Ambient', N.Ambient),
+          value('Color3Value', 'OutdoorAmbient', N.OutdoorAmbient),
+          value('Color3Value', 'FogColor', N.FogColor),
+          value('Color3Value', 'AtmosphereColor', N.atmosphere.Color),
+          value('Color3Value', 'AtmosphereDecay', N.atmosphere.Decay),
+          value('NumberValue', 'AtmosphereHaze', N.atmosphere.Haze),
+          value('NumberValue', 'BloomIntensity', N.bloom.Intensity),
+          value('NumberValue', 'BloomThreshold', N.bloom.Threshold),
         ].join(''),
       )
     : '';
@@ -145,6 +171,8 @@ function lightFolder(L) {
     'Licht',
     atmosphere +
       bloom +
+      farbe +
+      nacht +
       himmel +
       [
         value('NumberValue', 'ClockTime', L.ClockTime),

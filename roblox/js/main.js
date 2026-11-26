@@ -207,12 +207,13 @@ document.getElementById('download-worlds').addEventListener('click', async (e) =
     const glb = await fetch(new URL('../../assets/modelle/bibliothek.glb', import.meta.url)).then((r) => r.arrayBuffer());
     files.push({ name: 'welten/bibliothek.glb', data: new Uint8Array(glb) });
     // Himmelsbilder (Skybox) der Welten, die schon eines haben
-    const { SKYBOXES, skyboxFiles } = await import('../../welten/js/skyboxes.js');
+    const { SKYBOXES, NIGHT_SKY, skyboxFiles } = await import('../../welten/js/skyboxes.js');
     for (const id of Object.keys(SKYBOXES))
-      for (const [part, file] of Object.entries(skyboxFiles(id))) {
-        const img = await fetch(new URL('../../' + file, import.meta.url)).then((r) => r.arrayBuffer());
-        files.push({ name: `welten/himmel/${id}/${part}.jpg`, data: new Uint8Array(img) });
-      }
+      for (const night of NIGHT_SKY[id] ? [false, true] : [false])
+        for (const [part, file] of Object.entries(skyboxFiles(id, night))) {
+          const img = await fetch(new URL('../../' + file, import.meta.url)).then((r) => r.arrayBuffer());
+          files.push({ name: `welten/himmel/${id}/${night ? 'nacht/' : ''}${part}.jpg`, data: new Uint8Array(img) });
+        }
     files.push({
       name: 'welten/LIESMICH.txt',
       data: new TextEncoder().encode(`Coinmaster Adventure · Welten für Roblox Studio
@@ -252,6 +253,12 @@ HIMMELSBILDER (gemalter Himmel mit Wolken) – je Welt einmal:
      Welt_<Name> > Licht > Himmelsbild > Seite, Oben, Unten (NumberValue).
   Das Skript CoinmasterWorldLighting zeigt dann in dieser Welt das Himmelsbild und blendet die
   einfarbige Himmelskuppel aus. Solange die IDs 0 sind, bleibt die Kuppel.
+
+TAG-NACHT-WECHSEL (Spawn, Normal, Wald, Stadt, Eis, Candy, Wolkenburg, Engelsgarten, Götterthron):
+  Diese Welten haben zusätzlich welten/himmel/<welt>/nacht/ mit seite.jpg, oben.jpg und unten.jpg.
+  Die drei Nachtbilder genauso hochladen und eintragen bei Licht > Himmelsbild > NachtSeite, NachtOben,
+  NachtUnten. Ein ganzer Tag dauert 12 Minuten (Licht > Nacht > Dauer, in Sekunden); das Licht wird
+  dabei weich zum Nachtlicht und zurück überblendet, nachts erscheint der Nachthimmel.
 
 Maßstab: 1 Einheit der Webseite = 8 Studs, eine Insel ist rund 256 Studs breit.
 Animationen (UFO, Fische, Wasser) sind in Studio noch nicht dabei, die Teile stehen in ihrer Grundhaltung.

@@ -1582,10 +1582,115 @@ local function motes(k, opts)
 end
 
 -- ── Rezepte je Welt: Himmel, Leben, Partikel und Farbstimmung (die Fernkulisse baut horizon) ──
+-- ── Werkstatt-Wunsch „Himmel bei jeder Welt sehr stark verbessern“ (bunt und verspielt, Tag-Nacht-Wechsel) ──
+-- Nachtanteil aus der Uhrzeit (0 am Tag, 1 nachts, weich in der Dämmerung). Welten ohne Tag-Nacht-Wechsel
+-- haben eine feste Uhrzeit, dort ändert sich nichts.
+local function nightAmount()
+	local c = Lighting.ClockTime
+	if c >= 7 and c <= 17.5 then return 0 end
+	if c > 17.5 and c < 19.5 then return (c - 17.5) / 2 end
+	if c > 5 and c < 7 then return 1 - (c - 5) / 2 end
+	return 1
+end
+-- Teile nur am Tag (night = false) oder nur nachts (night = true) zeigen
+local function byTime(k, parts, night)
+	local base = {}
+	for i, p in ipairs(parts) do base[i] = p.Transparency end
+	anim(k, function()
+		local n = nightAmount()
+		local show = night and n or 1 - n
+		for i, p in ipairs(parts) do p.Transparency = 1 - (1 - base[i]) * show end
+	end)
+end
+-- Sonne mit Strahlenkranz, der sich langsam dreht (verspielter Stil); dayNight: nachts ausblenden
+local function bigSun(k, az, el, color, size, glow, dayNight)
+	local parts = collect(k, function()
+		sun(k, az, el, color, size, glow)
+		local pos = skyPos(k, az, el, 556)
+		local face = CFrame.lookAt(pos, k.C)
+		local rays = collect(k, function()
+			for i = 0, 15 do
+				local a = i / 16 * TAU
+				local len = size * (i % 2 == 0 and 1.0 or 0.6)
+				P(k, "Block", V(size * 0.1, len, 1), face * CFrame.Angles(0, 0, a) * CFrame.new(0, size * 0.78 + len / 2, 0), (glow or color):Lerp(WHITE, 0.3), "Neon", 0.5, "Sonnenstrahl")
+			end
+		end)
+		local list = offsets(rays, face)
+		anim(k, function(t)
+			local cf = face * CFrame.Angles(0, 0, t * 0.06)
+			for _, o in ipairs(list) do o.Part.CFrame = cf * o.Offset end
+		end)
+	end)
+	if dayNight then byTime(k, parts, false) end
+	return parts
+end
+-- Mond nur in der Nacht (Welten mit Tag-Nacht-Wechsel)
+local function nightMoon(k, az, el, color, size)
+	byTime(k, collect(k, function() moon(k, az, el, color, size) end), true)
+end
+-- Sterne nur in der Nacht
+local function nightStars(k, n, colors)
+	byTime(k, collect(k, function() stars(k, n, colors, 0.12) end), true)
+end
+-- Planet mit Streifen, Schein und Ring, dreht sich langsam
+local function planet(k, az, el, size, color, bands, ringColor, tilt)
+	local pos = skyPos(k, az, el, 560)
+	local cf = CFrame.lookAt(pos, k.C) * CFrame.Angles(0.45, 0, tilt or 0.35)
+	local parts = collect(k, function()
+		P(k, "Ball", V(size, size, size), cf, color, "SmoothPlastic", 0, "Planet")
+		for i, c in ipairs(bands or {}) do
+			local y = (i / (#bands + 1) - 0.5) * size * 0.85
+			local d = math.sqrt(math.max(0, (size / 2) ^ 2 - y * y)) * 2 * 1.015
+			P(k, "Cyl", V(d, size * 0.07, d), cf * CFrame.new(0, y, 0), c, "SmoothPlastic", 0, "Planetenband")
+		end
+		P(k, "Ball", V(size, size, size) * 1.3, cf, color:Lerp(WHITE, 0.4), "Neon", 0.88, "Planetenschein")
+		if ringColor then
+			for i = 0, 59 do
+				local a = i / 60 * TAU
+				P(k, "Block", V(size * 0.14, size * 0.015, size * 0.55), cf * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, size * 1.08), i % 7 == 0 and ringColor:Lerp(WHITE, 0.3) or ringColor, "SmoothPlastic", 0.2, "Planetenring")
+			end
+		end
+	end)
+	local list = offsets(parts, cf)
+	anim(k, function(t)
+		local c2 = cf * CFrame.Angles(0, t * 0.02, 0)
+		for _, o in ipairs(list) do o.Part.CFrame = c2 * o.Offset end
+	end)
+	return parts
+end
+-- Sternschnuppen: alle paar Sekunden zieht eine leuchtende Spur über den Himmel; nightOnly: nur nachts
+local function shootingStars(k, color, every, nightOnly)
+	local head = P(k, "Ball", V(4, 4, 4), CFrame.new(k.C), color or WHITE, "Neon", 1, "Sternschnuppe")
+	local tail = P(k, "Block", V(1.4, 1.4, 70), CFrame.new(k.C), color or WHITE, "Neon", 1, "Sternschnuppe")
+	local start, dir, t0 = nil, nil, -1000
+	anim(k, function(t)
+		if t - t0 > every + 1.4 then
+			t0 = t + rnd(k, 0, every * 0.6)
+			local az, el = rnd(k, 0, TAU), rnd(k, 0.35, 0.8)
+			start = skyPos(k, az, el, 520)
+			dir = skyPos(k, az + rnd(k, 0.3, 0.6), el - rnd(k, 0.15, 0.3), 520) - start
+		end
+		local u = (t - t0) / 1.4
+		local vis = (u >= 0 and u <= 1) and (nightOnly and nightAmount() or 1) or 0
+		if start and vis > 0 then
+			local pos = start + dir * u
+			local cf = CFrame.lookAt(pos, pos + dir)
+			head.CFrame, tail.CFrame = cf, cf * CFrame.new(0, 0, 35)
+			head.Transparency = 1 - vis * (1 - u * 0.5)
+			tail.Transparency = 1 - vis * 0.75 * (1 - u)
+		else
+			head.Transparency, tail.Transparency = 1, 1
+		end
+	end)
+end
+
 local R = {}
 
 R.spawn = function(k, w)
-	sun(k, -0.9, 0.55, hex("#fff3c4"), 44, hex("#ffe08a"))
+	bigSun(k, -0.9, 0.55, hex("#fff3c4"), 48, hex("#ffe08a"), true)
+	nightMoon(k, 0.8, 0.5, hex("#e8f0ff"), 50)
+	nightStars(k, 140, { WHITE, hex("#cfe0ff"), hex("#ffe8c8") })
+	shootingStars(k, hex("#fff6d0"), 7, true)
 	-- Wolken malt das Himmelsbild (assets/himmel/spawn); hier nur wenige, durchscheinende
 	cloudBank(k, 5, WHITE, 0.35, 100, 170)
 	balloons(k, 4, { hex("#ff5a5a"), hex("#ffd76a"), hex("#5ad1ff"), hex("#7dff8a") })
@@ -1595,7 +1700,10 @@ R.spawn = function(k, w)
 end
 
 R.normal = function(k, w)
-	sun(k, -0.6, 0.6, hex("#fff6d0"), 46, hex("#ffe9a0"))
+	bigSun(k, -0.6, 0.6, hex("#fff6d0"), 50, hex("#ffe9a0"), true)
+	nightMoon(k, 1.0, 0.55, hex("#eef4ff"), 52)
+	nightStars(k, 140, { WHITE, hex("#cfe0ff") })
+	shootingStars(k, WHITE, 7, true)
 	-- Wolken malt das Himmelsbild (assets/himmel/normal); hier nur ein paar zarte, durchscheinende
 	cloudBank(k, 5, WHITE, 0.35, 90, 170)
 	birds(k, 2, hex("#3a3a48"))
@@ -1605,7 +1713,10 @@ R.normal = function(k, w)
 end
 
 R.wald = function(k, w)
-	sun(k, 0.8, 0.5, hex("#f6ffd8"), 38, hex("#e0ffb0"))
+	bigSun(k, 0.8, 0.5, hex("#f6ffd8"), 42, hex("#e0ffb0"), true)
+	nightMoon(k, -0.9, 0.5, hex("#e8fff0"), 46)
+	nightStars(k, 110, { WHITE, hex("#d9ffda") })
+	shootingStars(k, hex("#e8ffe0"), 8, true)
 	birds(k, 1, hex("#3a2a20"))
 	butterflies(k, 3, { hex("#d9ff7a"), hex("#fff27a") })
 	-- vereinzelte Blätter, die langsam taumelnd sinken (Luftwiderstand bremst, der Wind treibt sie seitlich)
@@ -1614,7 +1725,10 @@ R.wald = function(k, w)
 end
 
 R.stadt = function(k, w)
-	sun(k, 0.2, 0.18, hex("#ffc27a"), 70, hex("#ff9a5a"))
+	bigSun(k, 0.2, 0.18, hex("#ffc27a"), 74, hex("#ff9a5a"), true)
+	nightMoon(k, -1.0, 0.45, hex("#ffe8f0"), 48)
+	nightStars(k, 130, { WHITE, hex("#ffd8e8") })
+	shootingStars(k, hex("#ffe0f0"), 7, true)
 	-- Wolken malt das Himmelsbild (assets/himmel/stadt); hier nur wenige, durchscheinende
 	cloudBank(k, 5, hex("#ffd2b0"), 0.35, 100, 170)
 	airship(k, hex("#d8d4e0"))
@@ -1624,7 +1738,10 @@ R.stadt = function(k, w)
 end
 
 R.eis = function(k, w)
-	sun(k, -1.2, 0.3, hex("#f4fbff"), 40, hex("#d8f0ff"))
+	bigSun(k, -1.2, 0.3, hex("#f4fbff"), 44, hex("#d8f0ff"), true)
+	nightMoon(k, 0.6, 0.55, hex("#eaf6ff"), 54)
+	nightStars(k, 160, { WHITE, hex("#cfeeff") })
+	shootingStars(k, hex("#d8f4ff"), 6, true)
 	auroraCurtain(k, HELD + 1.3, 2.3, 150)
 	-- Wolken und Polarlicht malt auch das Himmelsbild (assets/himmel/eis); hier nur wenige Wolkenbänke
 	cloudBank(k, 4, hex("#eef8ff"), 0.35, 60, 120)
@@ -1635,7 +1752,8 @@ R.eis = function(k, w)
 end
 
 R.lava = function(k, w)
-	moon(k, 0.9, 0.42, hex("#ff8a5a"), 46)
+	moon(k, 0.9, 0.42, hex("#ff8a5a"), 52)
+	shootingStars(k, hex("#ff8a3a"), 4) -- glühende Meteore
 	bats(k, 2, hex("#1a1214"))
 	motes(k, { Name = "Asche", Texture = "", Colors = { hex("#5a5050"), hex("#8a7a70") }, Rate = 18, Size0 = 0.9, Size1 = 0.7, Speed = 2, Direction = Enum.NormalId.Bottom, Spread = 25, Acceleration = V(1, 0, 0), Y = 160, Size = V(500, 10, 500), Light = 0, Alpha = 0.2, Life = 16 })
 	grade(k, hex("#ff9a6a"), 0.1, 0.08)
@@ -1649,7 +1767,10 @@ R.hoehle = function(k, w)
 end
 
 R.candy = function(k, w)
-	sun(k, -0.4, 0.55, hex("#fff6fb"), 44, hex("#ffd0ea"))
+	bigSun(k, -0.4, 0.55, hex("#fff6fb"), 48, hex("#ffd0ea"), true)
+	nightMoon(k, 0.9, 0.5, hex("#ffe0f4"), 52)
+	nightStars(k, 150, { hex("#ffd0f4"), hex("#d8f0ff"), hex("#fff2a0") })
+	shootingStars(k, hex("#ffc8f0"), 5, true)
 	-- Zuckerwatte und schwebende Inseln kommen aus dem Himmelsbild und modelWorlds.js; hier nur wenige Wolken
 	cloudBank(k, 5, hex("#ffd8f0"), 0.2, 90, 160)
 	birds(k, 2, hex("#ff7ac8"), 1.8, hex("#7ad0ff"))
@@ -1666,12 +1787,16 @@ R.mond = function(k, w)
 	space(k, w)
 	satellite(k)
 	comet(k, hex("#9fd8ff"), 0.5)
+	planet(k, HELD - 1.2, 0.45, 70, hex("#c87a5a"), { hex("#e8a07a"), hex("#a85a3a") }, hex("#d8c0a0"), 0.5)
+	shootingStars(k, hex("#cfe8ff"), 4)
 	motes(k, { Name = "Sternenstaub", Colors = { WHITE, hex("#cfe0ff") }, Rate = 10, Size0 = 0.7, Speed = 0.3, Alpha = 0.3 })
 	grade(k, hex("#c8d4ff"), -0.05, 0.06)
 end
 
 R.neptun = function(k, w)
 	space(k, w, { WHITE, hex("#9fd8ff") })
+	planet(k, HELD + 1.0, 0.5, 46, hex("#cfd8e8"), { hex("#b8c4d8") }, nil, 0.2) -- Triton
+	shootingStars(k, hex("#9fd8ff"), 5)
 	aurora(k, { hex("#5aa8ff"), hex("#7af0ff"), hex("#3a6aff") }, HELD - 1.6, 2.4, 170)
 	comet(k, hex("#7af0ff"), 0.6)
 	motes(k, { Name = "Eiskristalle", Colors = { hex("#9fd8ff"), WHITE }, Rate = 18, Size0 = 0.8, Speed = 4, Spread = 30, Direction = Enum.NormalId.Left, Alpha = 0.3, Life = 10 })
@@ -1681,6 +1806,8 @@ end
 R.mars = function(k, w)
 	space(k, w, { hex("#ffd8c8"), WHITE })
 	satellite(k)
+	planet(k, HELD - 0.8, 0.6, 22, hex("#8a7a6a"), { hex("#6a5a4a") }) -- Deimos
+	shootingStars(k, hex("#ffd0b0"), 6)
 	-- Staubschleier malt das Himmelsbild (assets/himmel/mars)
 	motes(k, { Name = "Staubwind", Texture = "", Colors = { hex("#d8653a"), hex("#ff9b6a") }, Rate = 24, Size0 = 1, Size1 = 0.8, Speed = 5, Spread = 15, Direction = Enum.NormalId.Left, Light = 0, Alpha = 0.35, Life = 10 })
 	grade(k, hex("#ffb08a"), 0.05, 0.06)
@@ -1689,12 +1816,19 @@ end
 R.saturn = function(k, w)
 	space(k, w)
 	satellite(k)
+	planet(k, HELD + 1.1, 0.55, 40, hex("#e8e0d0"), { hex("#c8b8a0") }, nil, 0.1) -- Titan
+	shootingStars(k, hex("#ffe8b0"), 5)
 	motes(k, { Name = "Goldstaub", Colors = { hex("#ffe2a0"), WHITE }, Rate = 12, Size0 = 0.8, Speed = 0.4, Alpha = 0.3 })
 	grade(k, hex("#ffe0a8"), 0.05, 0.05)
 end
 
 R.alien = function(k, w)
 	space(k, w, { WHITE, hex("#c8ffd8"), hex("#e8c8ff") })
+	-- zwei Sonnen in Grün und Violett
+	bigSun(k, -0.7, 0.4, hex("#b8ff8a"), 46, hex("#7aff5a"))
+	bigSun(k, -0.1, 0.62, hex("#e8b8ff"), 34, hex("#b07bff"))
+	planet(k, HELD + 0.9, 0.35, 64, hex("#5a2a8a"), { hex("#7aff5a"), hex("#3a1a60"), hex("#5affd8") }, hex("#d97aff"), 0.6)
+	shootingStars(k, hex("#7aff5a"), 4)
 	nebula(k, { hex("#7aff5a"), hex("#b07bff"), hex("#5affd8") }, 4)
 	jellies(k, 7, { hex("#7aff5a"), hex("#d97aff"), hex("#5affd8") })
 	comet(k, hex("#7aff5a"), 0.45)
@@ -1703,6 +1837,8 @@ R.alien = function(k, w)
 end
 
 R.sonne = function(k, w)
+	bigSun(k, HELD + 0.3, 0.32, hex("#fff6c0"), 120, hex("#ffb02e"))
+	shootingStars(k, hex("#ffd84a"), 3) -- Sonneneruptionen
 	motes(k, { Name = "Funken", Colors = { hex("#fff2a0"), hex("#ff6a1a") }, Rate = 26, Size0 = 1.1, Size1 = 0.2, Speed = 6, Spread = 25, Y = -60, Size = V(500, 10, 500), Alpha = 0.15, Life = 7 })
 	grade(k, hex("#ffc070"), 0.08, 0.08)
 end
@@ -1744,7 +1880,10 @@ R.tiefseegraben = function(k, w)
 end
 
 R.wolkenburg = function(k, w)
-	sun(k, -0.5, 0.5, hex("#fff8e8"), 46, hex("#ffe8b0"))
+	bigSun(k, -0.5, 0.5, hex("#fff8e8"), 50, hex("#ffe8b0"), true)
+	nightMoon(k, 0.9, 0.55, hex("#f0f4ff"), 56)
+	nightStars(k, 150, { WHITE, hex("#e0e8ff") })
+	shootingStars(k, WHITE, 6, true)
 	cloudBank(k, 12, WHITE, 0, 0, 160)
 	birds(k, 2, hex("#ffffff"), 2, hex("#ffe7a8"))
 	balloons(k, 2, { hex("#ffd76a"), hex("#ffffff") })
@@ -1753,7 +1892,10 @@ R.wolkenburg = function(k, w)
 end
 
 R.engelsgarten = function(k, w)
-	sun(k, 0.6, 0.55, hex("#fffaf0"), 50, hex("#fff2c0"))
+	bigSun(k, 0.6, 0.55, hex("#fffaf0"), 54, hex("#fff2c0"), true)
+	nightMoon(k, -0.8, 0.55, hex("#fff8e8"), 54)
+	nightStars(k, 170, { hex("#fff0b0"), WHITE })
+	shootingStars(k, hex("#fff0b0"), 5, true)
 	cloudBank(k, 9, hex("#fff6e8"), 0.1, 10, 150)
 	butterflies(k, 8, { hex("#ffffff"), hex("#ffd76a"), hex("#e8d0ff") })
 	birds(k, 1, hex("#ffffff"), 2.2, hex("#fff2c0"))
@@ -1762,7 +1904,10 @@ R.engelsgarten = function(k, w)
 end
 
 R.goetterthron = function(k, w)
-	sun(k, HELD + 0.7, 0.08, hex("#ffb05a"), 80, hex("#ff8a3a"))
+	bigSun(k, HELD + 0.7, 0.08, hex("#ffb05a"), 84, hex("#ff8a3a"), true)
+	nightMoon(k, HELD - 0.6, 0.5, hex("#ffe8c8"), 58)
+	nightStars(k, 170, { hex("#ffe8a0"), WHITE, hex("#e8c8ff") })
+	shootingStars(k, hex("#ffe7a8"), 5, true)
 	cloudBank(k, 12, hex("#ffd8a8"), 0, -60, 60)
 	comet(k, hex("#ffe7a8"), 0.55)
 	birds(k, 1, hex("#ffe7a8"), 2.4, hex("#ffcf4a"))
@@ -1774,6 +1919,8 @@ end
 -- Wenige, große Formen: Sterne, zwei bis drei Nebel, ein Komet oder Mond, feiner Glitzerstaub und eine leichte Tönung.
 local function gemSky(k, colors, opts)
 	opts = opts or {}
+	shootingStars(k, colors[1]:Lerp(WHITE, 0.5), opts.Shooting or 5)
+	if opts.Planet then planet(k, opts.Planet[1], opts.Planet[2], opts.Planet[3], colors[2], { colors[1], colors[3] }, opts.Planet[4] and colors[1]:Lerp(WHITE, 0.4) or nil, 0.45) end
 	stars(k, opts.Stars or 140, { WHITE, colors[1]:Lerp(WHITE, 0.6), colors[2]:Lerp(WHITE, 0.5) }, 0.08)
 	nebula(k, colors, opts.Nebula or 3)
 	if opts.Moon then moon(k, opts.Moon[1], opts.Moon[2], opts.Moon[3], opts.Moon[4]) end
@@ -1781,28 +1928,28 @@ local function gemSky(k, colors, opts)
 	motes(k, { Name = "Glitzer", Colors = { WHITE, colors[1]:Lerp(WHITE, 0.4) }, Rate = opts.Motes or 12, Size0 = 0.7, Speed = 0.3, Alpha = 0.3 })
 	grade(k, colors[1]:Lerp(WHITE, 0.55), 0.04, 0.05)
 end
-R.quarzfeld = function(k, w) gemSky(k, { hex("#d8ccff"), hex("#c98bff"), hex("#ffffff") }, { Comet = 0.55 }) end
-R.amethystgrotte = function(k, w) gemSky(k, { hex("#c98bff"), hex("#8a4ad8"), hex("#ff8ae0") }, { Nebula = 4 }) end
+R.quarzfeld = function(k, w) gemSky(k, { hex("#d8ccff"), hex("#c98bff"), hex("#ffffff") }, { Comet = 0.55, Planet = { HELD - 1.0, 0.5, 60, true } }) end
+R.amethystgrotte = function(k, w) gemSky(k, { hex("#c98bff"), hex("#8a4ad8"), hex("#ff8ae0") }, { Nebula = 4, Planet = { HELD + 1.0, 0.45, 70, true } }) end
 R.topasduenen = function(k, w)
-	sun(k, -0.6, 0.18, hex("#ffd27a"), 70, hex("#ffb02e"))
+	bigSun(k, -0.6, 0.18, hex("#ffd27a"), 74, hex("#ffb02e"))
 	gemSky(k, { hex("#ffc46a"), hex("#ff8a3a"), hex("#fff0b8") }, { Stars = 60, Nebula = 2 })
 end
 R.smaragdwald = function(k, w)
 	aurora(k, { hex("#3ee08a"), hex("#b4ffd6"), hex("#5affd8") }, HELD - 1.4, 2.2, 160)
-	gemSky(k, { hex("#7ae8b0"), hex("#1ec870"), hex("#d9ff7a") }, { Nebula = 2 })
+	gemSky(k, { hex("#7ae8b0"), hex("#1ec870"), hex("#d9ff7a") }, { Nebula = 2, Planet = { HELD - 1.2, 0.5, 56 } })
 end
 R.jadetempel = function(k, w)
 	cloudBank(k, 8, hex("#e8f6e0"), 0.15, 20, 140)
 	gemSky(k, { hex("#d8f0c0"), hex("#8ad0a0"), hex("#ffd76a") }, { Stars = 50, Nebula = 1 })
 end
 R.saphirsee = function(k, w) gemSky(k, { hex("#4a8aff"), hex("#2a5ae8"), hex("#cfe0ff") }, { Moon = { 0.9, 0.42, hex("#cfe0ff"), 60 }, Comet = 0.6 }) end
-R.rubinvulkan = function(k, w) gemSky(k, { hex("#ff4a6a"), hex("#a8183a"), hex("#ffb07a") }, { Nebula = 3, Motes = 18 }) end
+R.rubinvulkan = function(k, w) gemSky(k, { hex("#ff4a6a"), hex("#a8183a"), hex("#ffb07a") }, { Nebula = 3, Motes = 18, Shooting = 3, Planet = { HELD + 1.1, 0.5, 66, true } }) end
 R.opalwolken = function(k, w)
 	cloudBank(k, 10, hex("#ffe2f6"), 0.1, 10, 150)
 	rainbow(k, HELD + 1.2, 600, 240)
 	gemSky(k, { hex("#ff9ae0"), hex("#5ad8ff"), hex("#fff2a0") }, { Stars = 40, Nebula = 2 })
 end
-R.diamantkern = function(k, w) gemSky(k, { hex("#8af0ff"), hex("#e8fdff"), hex("#c84ad8") }, { Stars = 200, Nebula = 3, Comet = 0.5 }) end
+R.diamantkern = function(k, w) gemSky(k, { hex("#8af0ff"), hex("#e8fdff"), hex("#c84ad8") }, { Stars = 200, Nebula = 3, Comet = 0.5, Shooting = 3, Planet = { HELD - 0.9, 0.55, 64, true } }) end
 
 WorldFx.Recipes = R
 

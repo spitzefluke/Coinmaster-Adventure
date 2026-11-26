@@ -254,14 +254,62 @@ def caustics(shape, seed, scale=24):
     return np.clip(1 - np.abs(n / 1.5 - 0.5) * 9, 0, 1)
 
 
+# Bunter Nebel (Weltraum, Juwelnebel): mehrere farbige Wolkenfelder, die sich überlagern, mit hellen Kernen.
+# Wie alle Seitenmotive nur bis etwa 33 Grad Höhe (darüber nahtlos Verlauf)
+def nebula(img, elev, u, cfg, seed):
+    lo, hi = cfg['band']
+    band = smooth(lo - 4, lo + 6, elev) * (1 - smooth(hi - 8, hi, elev))
+    for i, c in enumerate(cfg['colors']):
+        n = fbm(u, elev / 40.0 * 2.5, cfg.get('scale', 3) + i, 5, seed + i * 31, 0.58)
+        a = np.clip((n - cfg.get('cut', 0.48)) * cfg.get('contrast', 3.2), 0, 1) ** 1.4 * band * cfg.get('strength', 0.7)
+        a = blur_wrap(a, 3)[..., None]
+        img[:] = np.clip(img * (1 - a * 0.6) + rgb(c)[None, None, :] * a, 0, 1)
+    # helle Kerne
+    core = np.clip((fbm(u, elev / 40.0 * 3, 5, 4, seed + 99, 0.5) - 0.62) * 5, 0, 1) * band
+    img[:] = np.clip(img + rgb(cfg.get('core', '#ffffff'))[None, None, :] * (blur_wrap(core, 2) * cfg.get('coreStrength', 0.2))[..., None], 0, 1)
+
+
+# Leuchtband am Horizont (Sonnenuntergang, Glut, Lichtschein): nur von der Höhe abhängig
+def glow(img, elev, cfg):
+    h0, w = cfg['at'], cfg['width']
+    a = np.exp(-((elev - h0) / w) ** 2) * cfg.get('strength', 0.6)
+    img[:] = np.clip(img * (1 - a[..., None] * 0.5) + rgb(cfg['color'])[None, None, :] * a[..., None], 0, 1)
+
+
+# Glitzersterne: große Sterne mit vier Strahlen (verspielter Stil); nur unterhalb von 33 Grad auf den Seiten
+def sparkles(img, elev, cfg, seed, cap=False):
+    rng = np.random.default_rng(seed)
+    H, W = elev.shape
+    n = cfg.get('count', 30)
+    col = rgb(cfg.get('color', '#ffffff'))
+    for _ in range(n):
+        y, x = int(rng.integers(8, H - 8)), int(rng.integers(8, W - 8))
+        if not cap and not (cfg.get('from', 6) < elev[y, x] < 31):
+            continue
+        r = int(rng.integers(3, cfg.get('size', 9)))
+        b = rng.uniform(0.5, 1.0)
+        for d in range(-r, r + 1):
+            k = (1 - abs(d) / (r + 1)) ** 2 * b
+            for yy, xx in ((y + d, x), (y, x + d)):
+                if 0 <= yy < H and 0 <= xx < W:
+                    img[yy, xx] = np.clip(img[yy, xx] + col * k, 0, 1)
+        img[max(0, y - 1):y + 2, max(0, x - 1):x + 2] = np.clip(img[max(0, y - 1):y + 2, max(0, x - 1):x + 2] + col * b * 0.6, 0, 1)
+
+
 def render(name, cfg):
-    out = os.path.join(ROOT, 'assets', 'himmel', name)
+    # „welt@nacht“ landet in assets/himmel/<welt>/nacht/ (Nachtbild für den Tag-Nacht-Wechsel)
+    welt, _, var = name.partition('@')
+    out = os.path.join(ROOT, 'assets', 'himmel', welt, *([var] if var else []))
     os.makedirs(out, exist_ok=True)
     seed = abs(hash(name)) % 10000 if 'seed' not in cfg else cfg['seed']
 
     # Seiten
     elev, u = side_dirs()
     img = gradient(elev, cfg['gradient'])
+    if cfg.get('glow'):
+        glow(img, elev, cfg['glow'])
+    if cfg.get('nebula'):
+        nebula(img, elev, u, cfg['nebula'], seed + 21)
     if cfg.get('aurora'):
         aurora(img, elev, u, cfg['aurora'], seed + 55)
     if cfg.get('rainbow'):
@@ -274,11 +322,15 @@ def render(name, cfg):
         cave(img, elev, u, cfg['cave'], seed + 77)
     if cfg.get('water'):
         water(img, elev, u, cfg['water'], seed + 33)
+    if cfg.get('rays'):
+        water(img, elev, u, cfg['rays'], seed + 35)  # Lichtstrahlen vom Himmel (wie unter Wasser, nur in Gold)
     for i, layer in enumerate(cfg.get('clouds', [])):
         clouds(img, elev, u, layer, seed + 101 * (i + 1))
     if cfg.get('stars'):
         st = stars(elev.shape, cfg['stars'] * 0.25, seed + 7, cfg.get('starBright', 1.0)) * smooth(cfg.get('starsFrom', 5), cfg.get('starsFrom', 5) + 20, elev)
         img = np.clip(img + st[..., None], 0, 1)
+    if cfg.get('sparkles'):
+        sparkles(img, elev, cfg['sparkles'], seed + 13)
     Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'seite.jpg'), quality=90)
 
     # Oben: nur Verlauf (und Sterne)
@@ -297,6 +349,8 @@ def render(name, cfg):
         top = rgb(cfg['cave']['rock'])[None, None, :] * (0.8 + 0.2 * np.clip(rr, 0, 1)[..., None])
     if cfg.get('stars'):
         top = np.clip(top + stars(e.shape, cfg['stars'] * 0.4, seed + 9, cfg.get('starBright', 1.0))[..., None], 0, 1)
+    if cfg.get('sparkles') and cfg['sparkles'].get('top', True):
+        sparkles(top, e, {**cfg['sparkles'], 'count': cfg['sparkles'].get('count', 30) // 2}, seed + 17, cap=True)
     Image.fromarray((np.clip(top, 0, 1) * 255).astype(np.uint8)).save(os.path.join(out, 'oben.jpg'), quality=90)
 
     # Unten: Horizontfarbe zur Tiefe hin dunkler (liegt hinter dem Meer, sieht man kaum)
@@ -507,6 +561,150 @@ HIMMEL = {
         ],
     },
 }
+
+
+# ── Werkstatt-Wunsch „Himmel bei jeder Welt sehr stark verbessern“ (bunt und verspielt, Tag-Nacht-Wechsel) ──
+# Haufenwolken knackiger (weichere Kanten nur noch knapp), Verläufe etwas kräftiger
+for _cfg in HIMMEL.values():
+    for _l in _cfg.get('clouds', []):
+        if not _l.get('streaks'):
+            _l['soft'] = min(_l.get('soft', 0.08), 0.05)
+            _l['blur'] = min(_l.get('blur', 2.0), 1.3)
+HIMMEL['normal']['glow'] = {'at': 1, 'width': 7, 'color': '#fff6e0', 'strength': 0.35}
+HIMMEL['spawn']['glow'] = {'at': 2, 'width': 8, 'color': '#ffd890', 'strength': 0.4}
+HIMMEL['stadt']['glow'] = {'at': 2, 'width': 6, 'color': '#ffe070', 'strength': 0.55}
+HIMMEL['candy']['sparkles'] = {'count': 26, 'color': '#ffffff', 'size': 8, 'top': False}
+HIMMEL['eis']['sparkles'] = {'count': 30, 'color': '#e8f8ff', 'size': 7}
+HIMMEL['mond']['nebula'] = {'band': (-4, 30), 'colors': ['#2a3a8a', '#5a2a7a'], 'strength': 0.35}
+HIMMEL['mond']['sparkles'] = {'count': 40, 'color': '#e8f0ff', 'size': 8, 'from': -2}
+HIMMEL['neptun']['sparkles'] = {'count': 24, 'color': '#cfeeff', 'size': 7}
+HIMMEL['mars']['nebula'] = {'band': (6, 32), 'colors': ['#8a2a3a', '#c86a2a'], 'strength': 0.3}
+HIMMEL['saturn']['sparkles'] = {'count': 36, 'color': '#fff0c8', 'size': 8, 'from': -2}
+HIMMEL['alien']['nebula'] = {'band': (-4, 32), 'colors': ['#7aff5a', '#ff5ad8', '#5affd8'], 'strength': 0.45}
+HIMMEL['alien']['sparkles'] = {'count': 40, 'color': '#d8ffd0', 'size': 8, 'from': -2}
+HIMMEL['sonne']['glow'] = {'at': 0, 'width': 10, 'color': '#ffffff', 'strength': 0.5}
+HIMMEL['korallenriff']['sparkles'] = {'count': 20, 'color': '#e8ffff', 'size': 6, 'top': False}
+HIMMEL['atlantis']['nebula'] = {'band': (-4, 30), 'colors': ['#0a8a8a', '#3a4ab8'], 'strength': 0.3}
+HIMMEL['lava']['glow'] = {'at': 0, 'width': 8, 'color': '#ffb050', 'strength': 0.45}
+HIMMEL['hoehle']['sparkles'] = {'count': 34, 'color': '#c8a8ff', 'size': 7, 'top': False}
+
+HIMMEL.update({
+    # Tiefseegraben: fast schwarzes Tiefenwasser, ganz schwache Lichtschimmer von oben, Leuchtplankton und
+    # biolumineszente Schleier in Türkis und Violett
+    'tiefseegraben': {
+        'seed': 191,
+        'gradient': [(-5, '#010812'), (8, '#02101e'), (25, '#04182c'), (55, '#062436'), (90, '#0a3448')],
+        'below': [(-90, '#000408'), (0, '#010812')],
+        'nebula': {'band': (-4, 30), 'colors': ['#0a5a5a', '#2a1a6a'], 'strength': 0.35},
+        'water': {'light': '#5affd8', 'shafts': 8, 'strength': 0.12, 'from': 6, 'to': 30, 'topLight': 0.25},
+        'stars': 1800, 'starBright': 1.6, 'starsFrom': -4,
+        'sparkles': {'count': 30, 'color': '#7affe8', 'size': 6, 'from': -4, 'top': False},
+    },
+    # Wolkenburg: strahlender Himmel hoch über einem Wolkenmeer, goldener Saum am Horizont, dicke weiße Türme
+    'wolkenburg': {
+        'seed': 201,
+        'gradient': [(-5, '#fff6e6'), (4, '#ffeccf'), (12, '#d6ecff'), (30, '#8ac4f6'), (60, '#4a98ea'), (90, '#2e7ade')],
+        'below': [(-90, '#f0e8ff'), (0, '#fff6e6')],
+        'glow': {'at': 2, 'width': 6, 'color': '#ffe8a8', 'strength': 0.45},
+        'clouds': [
+            {'band': (-3, 9), 'scale': 5, 'cover': 0.78, 'soft': 0.05, 'light': '#ffffff', 'shadow': '#d8d8f4', 'stretch': 1.6, 'blur': 1.3},
+            {'band': (8, 27), 'scale': 6, 'cover': 0.55, 'soft': 0.05, 'light': '#ffffff', 'shadow': '#b8c8ec', 'stretch': 2.2, 'blur': 1.3},
+            {'band': (22, 35), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#ffffff', 'shadow': '#eef4ff', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+    },
+    # Engelsgarten: himmlisches Licht, warmes Weiß-Gold am Horizont, Rosa und Flieder darüber, goldene
+    # Lichtstrahlen fallen durch weiche Wolken, Glitzern
+    'engelsgarten': {
+        'seed': 211,
+        'gradient': [(-5, '#fffaf0'), (6, '#fff2d6'), (16, '#ffe2c8'), (30, '#f6cce6'), (55, '#d8c4f6'), (90, '#b8c8ff')],
+        'below': [(-90, '#f4e8ff'), (0, '#fffaf0')],
+        'glow': {'at': 3, 'width': 9, 'color': '#fff4c0', 'strength': 0.5},
+        'rays': {'light': '#fff2b0', 'shafts': 12, 'strength': 0.28, 'from': 4, 'to': 30},
+        'clouds': [
+            {'band': (2, 18), 'scale': 5, 'cover': 0.6, 'soft': 0.05, 'light': '#fffdf6', 'shadow': '#f2d4e8', 'stretch': 2.0, 'blur': 1.3},
+            {'band': (18, 34), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#fff8e8', 'shadow': '#f4e4f4', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+        'sparkles': {'count': 30, 'color': '#fff4c0', 'size': 8, 'top': False},
+    },
+    # Götterthron: prächtiger goldener Abend über den Gipfeln; leuchtendes Gold am Horizont, Rosa, Violett,
+    # golden angestrahlte Wolkentürme, Strahlen, oben erste Sterne
+    'goetterthron': {
+        'seed': 221,
+        'gradient': [(-5, '#ffe6a0'), (4, '#ffc46a'), (12, '#ff9a7a'), (24, '#d87ab8'), (44, '#7a5ac8'), (90, '#2a2a72')],
+        'below': [(-90, '#e8a060'), (0, '#ffe6a0')],
+        'glow': {'at': 1, 'width': 6, 'color': '#fff2b0', 'strength': 0.6},
+        'rays': {'light': '#ffe8a0', 'shafts': 14, 'strength': 0.3, 'from': 2, 'to': 26},
+        'clouds': [
+            {'band': (4, 22), 'scale': 5, 'cover': 0.58, 'soft': 0.05, 'light': '#ffe0a0', 'shadow': '#a8608a', 'stretch': 2.2, 'blur': 1.3},
+            {'band': (20, 35), 'scale': 8, 'cover': 0.45, 'soft': 0.35, 'light': '#ffc8a0', 'shadow': '#c88ab8', 'streaks': True, 'alpha': 0.45, 'blur': 4},
+        ],
+        'stars': 700,
+    },
+})
+
+
+# Juwelnebel (Galaxie 2): Nebel in den Farben des Edelsteins, Milchstraße, Glitzersterne
+def gem_sky(seed, horizon, top, colors, *, bright=False, stars=1800):
+    mid = '#' + ''.join(f'{int((int(horizon[i:i + 2], 16) + int(top[i:i + 2], 16)) / 2):02x}' for i in (1, 3, 5))
+    return {
+        'seed': seed,
+        'gradient': [(-5, horizon), (8, horizon), (22, mid), (50, top), (90, top)],
+        'below': [(-90, top), (0, horizon)],
+        'glow': {'at': 2, 'width': 8, 'color': colors[-1], 'strength': 0.35},
+        'nebula': {'band': (-4, 32), 'colors': colors[:3], 'strength': 0.4 if bright else 0.55},
+        'milky': {'band': (12, 34), 'color': colors[1], 'strength': 0.3, 'wave': 12, 'stars': 2500},
+        'stars': 0 if bright else stars, 'starBright': 1.8, 'starsFrom': -2,
+        'sparkles': {'count': 46, 'color': colors[-1], 'size': 9, 'from': -2},
+    }
+
+
+HIMMEL.update({
+    'quarzfeld': gem_sky(231, '#d8ccff', '#1a1438', ['#c8b8ff', '#ffffff', '#8a7ae8', '#f4f0ff']),
+    'amethystgrotte': gem_sky(241, '#8a4ad8', '#12062a', ['#a35ae8', '#ead2ff', '#d84ab8', '#ead2ff']),
+    'topasduenen': gem_sky(251, '#ffc46a', '#2a1206', ['#ffb02e', '#fff0b8', '#ff7a3a', '#fff0b8'], bright=True),
+    'smaragdwald': gem_sky(261, '#7ae8b0', '#061e12', ['#1ec870', '#b4ffd6', '#2ad8c8', '#b4ffd6']),
+    'jadetempel': gem_sky(271, '#d8f0c0', '#10301c', ['#5ad8a0', '#ffd76a', '#8ae8c8', '#fff4c8'], bright=True),
+    'saphirsee': gem_sky(281, '#4a8aff', '#040c2a', ['#2a5ae8', '#cfe0ff', '#5a3ae8', '#cfe0ff']),
+    'rubinvulkan': gem_sky(291, '#ff4a6a', '#1e040a', ['#e8183a', '#ff8a9a', '#ff6a2a', '#ffc8d0']),
+    'opalwolken': gem_sky(301, '#ffe2f6', '#3a5ad8', ['#ff9ae0', '#5ad8ff', '#fff2a0', '#ffffff'], bright=True),
+    'diamantkern': gem_sky(311, '#8af0ff', '#02060e', ['#8af0ff', '#e8fdff', '#c84ad8', '#ffffff']),
+})
+HIMMEL['opalwolken']['clouds'] = [{'band': (2, 20), 'scale': 5, 'cover': 0.55, 'soft': 0.05, 'light': '#fff6fc', 'shadow': '#c8b8f0', 'stretch': 2.0, 'blur': 1.3}]
+
+
+# Nachthimmel für die Welten mit Tag-Nacht-Wechsel (assets/himmel/<welt>/nacht/)
+def night(seed, horizon, top, cloud_light, cloud_shadow, **extra):
+    cfg = {
+        'seed': seed,
+        'gradient': [(-5, horizon), (6, horizon), (18, '#1e2a5a'), (40, '#121a40'), (90, top)],
+        'below': [(-90, top), (0, horizon)],
+        'milky': {'band': (14, 34), 'color': '#c8d0ff', 'strength': 0.35, 'wave': 10, 'stars': 3500},
+        'stars': 2200, 'starBright': 2.2, 'starsFrom': 0,
+        'sparkles': {'count': 40, 'color': '#f0f4ff', 'size': 8, 'from': 2},
+        'clouds': [
+            {'band': (4, 20), 'scale': 6, 'cover': 0.48, 'soft': 0.05, 'light': cloud_light, 'shadow': cloud_shadow, 'stretch': 2.2, 'blur': 1.3},
+            {'band': (20, 34), 'scale': 8, 'cover': 0.4, 'soft': 0.35, 'light': cloud_light, 'shadow': cloud_shadow, 'streaks': True, 'alpha': 0.3, 'blur': 4},
+        ],
+    }
+    cfg.update(extra)
+    return cfg
+
+
+NIGHT = {
+    'spawn': night(17, '#3a4a8a', '#060a20', '#8a9ad8', '#2a3466', glow={'at': 1, 'width': 6, 'color': '#6a7ad8', 'strength': 0.35}),
+    'normal': night(27, '#34488a', '#050a22', '#8a9cd8', '#26325e'),
+    'wald': night(29, '#24485a', '#04101a', '#7aa8b8', '#1e3a44', aurora={'band': (16, 36), 'colors': ['#5affb8', '#3a8aff'], 'strength': 0.35, 'streaks': 24, 'wave': 10}),
+    'stadt': night(39, '#5a3a7a', '#0a0620', '#b88ac8', '#3a2a5a', glow={'at': 1, 'width': 5, 'color': '#ff9a6a', 'strength': 0.35}),
+    'eis': night(43, '#1a3a6a', '#03081c', '#9ac0e8', '#1e3460', aurora={'band': (12, 38), 'colors': ['#4affa8', '#c86aff'], 'strength': 1.0, 'streaks': 30, 'wave': 14}),
+    'candy': night(73, '#6a4aa8', '#140a30', '#e8b8f0', '#5a3a8a', sparkles={'count': 60, 'color': '#ffd0f4', 'size': 9, 'from': 2},
+                   milky={'band': (14, 34), 'color': '#ffb8ec', 'strength': 0.4, 'wave': 10, 'stars': 3000}),
+    'wolkenburg': night(203, '#3a4a9a', '#060a24', '#c8d4ff', '#4a5aa0'),
+    'engelsgarten': night(213, '#4a3a8a', '#0a0624', '#e8d0ff', '#4a3a7a', sparkles={'count': 60, 'color': '#fff0b0', 'size': 9, 'from': 2},
+                          milky={'band': (14, 34), 'color': '#fff0c8', 'strength': 0.4, 'wave': 10, 'stars': 3000}),
+    'goetterthron': night(223, '#4a2a6a', '#08041c', '#d8b0e8', '#4a2a6a', sparkles={'count': 54, 'color': '#ffe8a0', 'size': 9, 'from': 2}),
+}
+for _w, _c in NIGHT.items():
+    HIMMEL[_w + '@nacht'] = _c
 
 if __name__ == '__main__':
     names = list(HIMMEL) if sys.argv[1:] == ['alle'] else sys.argv[1:]

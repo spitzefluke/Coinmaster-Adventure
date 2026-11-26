@@ -7,7 +7,7 @@
 //
 // Ergebnis: { name, parts, lights, emitter, sky } mit Teilen in Studs (1 Einheit = STUDS).
 
-import { SKYBOXES } from '../../welten/js/skyboxes.js';
+import { SKYBOXES, NIGHT_SKY, DAY_NIGHT_SECONDS } from '../../welten/js/skyboxes.js';
 import * as THREE from 'three';
 import { buildWorld, FX, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
 import { islandShell } from './islandShell.js';
@@ -801,8 +801,46 @@ export function worldLighting(world) {
     // Neon und Lava leuchten weich nach (nur in Roblox; die Vorschau zeigt kein Bloom)
     bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },
     // Himmelsbild (Skybox) der Welt, falls gemalt (welten/js/skyboxes.js)
-    himmel: SKYBOXES[world.id] ? { id: world.id, sun: SKYBOXES[world.id].sun !== false } : null,
+    himmel: SKYBOXES[world.id] ? { id: world.id, sun: SKYBOXES[world.id].sun !== false, night: !!NIGHT_SKY[world.id] } : null,
+    ...worldLook(world, night),
   };
+}
+
+// Farbstimmung je Welt (Werkstatt-Wunsch „Himmel sehr stark verbessern“, bunt und verspielt): Uhrzeit passend
+// zum gemalten Himmel, kräftigere Farben (ColorCorrection), warmer oder kühler Farbstich; für Welten mit
+// Tag-Nacht-Wechsel das Nachtlicht
+const LOOK = {
+  spawn: { clock: 15.2, sat: 0.18, tint: '#fff4e6' },
+  normal: { clock: 13.5, sat: 0.16, tint: '#fbfdff' },
+  wald: { clock: 9.5, sat: 0.16, tint: '#f6fff0' },
+  stadt: { clock: 17.6, sat: 0.22, tint: '#ffeadc' },
+  eis: { clock: 15.6, sat: 0.12, tint: '#eef6ff' },
+  candy: { clock: 14, sat: 0.26, tint: '#fff0fa' },
+  lava: { sat: 0.2, tint: '#fff0e0' },
+  hoehle: { sat: 0.22, tint: '#f4ecff' },
+  wolkenburg: { clock: 12.5, sat: 0.16, tint: '#fffaf0' },
+  engelsgarten: { clock: 13, sat: 0.16, tint: '#fff8e8' },
+  goetterthron: { clock: 17.8, sat: 0.22, tint: '#fff0d8' },
+};
+function worldLook(world, night) {
+  const L = LOOK[world.id] || {};
+  const out = {
+    farbe: { Saturation: L.sat ?? 0.2, Contrast: 0.06, Brightness: 0.01, TintColor: L.tint || '#ffffff' },
+  };
+  if (L.clock && !night) out.ClockTime = L.clock;
+  const N = NIGHT_SKY[world.id];
+  if (N) {
+    out.nacht = {
+      seconds: DAY_NIGHT_SECONDS,
+      Brightness: 1.1,
+      Ambient: '#3a4670',
+      OutdoorAmbient: '#5a68a0',
+      FogColor: N.horizon,
+      atmosphere: { Color: N.horizon, Decay: N.top, Glare: 0, Haze: 1.4 },
+      bloom: { Intensity: 0.8, Threshold: 1.1 },
+    };
+  }
+  return out;
 }
 
 // Platz neben der Teleport-Plattform für die Vergleichsfigur (in Webseiten-Einheiten)

@@ -73,8 +73,15 @@ write('vendor/BufferGeometryUtils.js', rewrite('vendor/BufferGeometryUtils.js', 
 // Artifacts liefern keine .glb aus: die Bytes als Base64-Text; models.js lädt den Text und gibt die Bytes
 // direkt an GLTFLoader.parseAsync (keine weiteren Abrufe, auch keine data:-Adressen)
 write('assets/modelle/bibliothek.glb.txt', fs.readFileSync(path.join(ROOT, 'assets/modelle/bibliothek.glb')).toString('base64'));
-for (const d of fs.readdirSync(path.join(ROOT, 'assets/himmel')))
-  for (const f of fs.readdirSync(path.join(ROOT, 'assets/himmel', d))) write(`assets/himmel/${d}/${f}`, fs.readFileSync(path.join(ROOT, 'assets/himmel', d, f)));
+// Himmelsbilder samt Unterordnern (nacht/ für den Tag-Nacht-Wechsel)
+const copyDir = (rel) => {
+  for (const f of fs.readdirSync(path.join(ROOT, rel))) {
+    const r = `${rel}/${f}`;
+    if (fs.statSync(path.join(ROOT, r)).isDirectory()) copyDir(r);
+    else write(r, fs.readFileSync(path.join(ROOT, r)));
+  }
+};
+copyDir('assets/himmel');
 
 // Seite
 fs.copyFileSync(path.join(ROOT, 'tools/werkstatt/index.html'), path.join(OUT, 'index.html'));

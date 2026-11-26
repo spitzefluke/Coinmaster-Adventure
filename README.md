@@ -1200,6 +1200,15 @@ Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte ko
 erst wenn eine Welt gefällt, wird die nächste freigeschaltet. Je Welt kann man Änderungswünsche notieren; sie liegen
 in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt und Ablauf mit `status`, `wish`, `reply`; Ids: `<welt>` für die Insel, `gebaeude-<welt>`, `deko-<welt>`, `umgebung-<welt>`, `portal-<welt>`). Die Vorschau trennt dafür vier Ebenen: Insel (Boden, flache Wege und Plätze), Gebäude, Deko (alles Gestreute) und Umgebung (Kulisse).
 
+Himmel (Werkstatt-Wunsch „Himmel bei jeder Welt sehr stark verbessern“, bunt und verspielt): alle 30 Welten haben ein
+gemaltes Himmelsbild (`tools/himmel/himmel.py`, dazu Nebel, Leuchtbänder, Glitzersterne, Lichtstrahlen), eine
+Farbstimmung (ColorCorrection, Uhrzeit je Welt) und in `WorldFx` Sonnen mit drehendem Strahlenkranz, Planeten mit
+Streifen und Ringen, Sternschnuppen und Kometen. **Tag-Nacht-Wechsel** auf Spawn, Normal, Wald, Stadt, Eis, Candy,
+Wolkenburg, Engelsgarten und Götterthron: ein Tag dauert 12 Minuten (Tag in der Stimmung der Welt, Abenddämmerung,
+Nacht, Morgendämmerung; `dayNightAt` in `welten/js/skyboxes.js`, im Spiel das Skript CoinmasterWorldLighting mit dem
+Ordner „Licht > Nacht“), nachts ein eigenes Nachtbild (`assets/himmel/<welt>/nacht/`), Mond, Sterne und
+Sternschnuppen. In der Werkstatt spielt der Knopf „Tag-Nacht“ einen Tag in 40 Sekunden ab.
+
 Es gibt keine Umgebung mehr (Werkstatt-Wunsch): keine Nachbar- und Schwebeinseln, keine Berge, Felsen und
 Wahrzeichen am Horizont, kein Meer und keine Wolkenwand. Jede Welt hat nur ihren eigenen Himmel: Himmelsbild,
 Licht und Nebel, Himmelskörper (`userData.rbx.celestial`) und Himmelseffekte aus `WorldFx` (Sterne, Polarlicht,

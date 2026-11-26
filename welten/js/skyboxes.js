@@ -33,7 +33,50 @@ export const SKYBOXES = {
   atlantis: { sun: false },
   spawn: { sun: true, sea: ['#fff4e2', '#ffeacc', '#fff8ee'], wall: { low: ['#ffe6c4', '#ffdcb8'], mid: ['#fff0dc', '#ffe8d0'], top: ['#fff8ec', '#fff2e2'] } },
   wald: { sun: true, sea: ['#eef6ea', '#e2eedd', '#f6faf2'], wall: { low: ['#d6e8d2', '#cfe2cc'], mid: ['#eef6e8', '#e4f0de'], top: ['#f6fbf0', '#eef6e8'] } },
+  // Werkstatt-Wunsch „Himmel sehr stark verbessern“: jetzt alle Welten mit eigenem Himmelsbild
+  tiefseegraben: { sun: false },
+  wolkenburg: { sun: true },
+  engelsgarten: { sun: true },
+  goetterthron: { sun: true },
+  quarzfeld: { sun: false },
+  amethystgrotte: { sun: false },
+  topasduenen: { sun: false },
+  smaragdwald: { sun: false },
+  jadetempel: { sun: false },
+  saphirsee: { sun: false },
+  rubinvulkan: { sun: false },
+  opalwolken: { sun: false },
+  diamantkern: { sun: false },
 };
 
+// Tag-Nacht-Wechsel (Werkstatt-Wunsch): Welten auf der Oberfläche haben zusätzlich ein Nachtbild
+// (assets/himmel/<welt>/nacht/) und Nachtlicht. horizon/top: Farben des Nachthimmels für Nebel und Atmosphere.
+export const NIGHT_SKY = {
+  spawn: { horizon: '#3a4a8a', top: '#060a20' },
+  normal: { horizon: '#34488a', top: '#050a22' },
+  wald: { horizon: '#24485a', top: '#04101a' },
+  stadt: { horizon: '#5a3a7a', top: '#0a0620' },
+  eis: { horizon: '#1a3a6a', top: '#03081c' },
+  candy: { horizon: '#6a4aa8', top: '#140a30' },
+  wolkenburg: { horizon: '#3a4a9a', top: '#060a24' },
+  engelsgarten: { horizon: '#4a3a8a', top: '#0a0624' },
+  goetterthron: { horizon: '#4a2a6a', top: '#08041c' },
+};
+export const DAY_NIGHT_SECONDS = 720; // ein ganzer Tag dauert 12 Minuten
+
+// Verlauf eines Tages: lange Tagphase in der gemalten Stimmung der Welt (Uhrzeit dayClock), Abenddämmerung
+// (Sonne geht unter), Nacht mit Nachthimmel, Morgendämmerung. phase 0..1 → { clock, night (0 Tag … 1 Nacht) }
+export function dayNightAt(phase, dayClock) {
+  const p = ((phase % 1) + 1) % 1, s = (t) => t * t * (3 - 2 * t);
+  if (p < 0.55) return { clock: dayClock, night: 0 };
+  if (p < 0.65) { const t = (p - 0.55) / 0.1; return { clock: dayClock + (24 - dayClock) * t, night: s(t) }; }
+  if (p < 0.9) return { clock: ((p - 0.65) / 0.25) * 4, night: 1 };
+  const t = (p - 0.9) / 0.1;
+  return { clock: 4 + (dayClock - 4) * t, night: 1 - s(t) };
+}
+
 // Pfade relativ zur Wurzel der Webseite
-export const skyboxFiles = (id) => ({ seite: `assets/himmel/${id}/seite.jpg`, oben: `assets/himmel/${id}/oben.jpg`, unten: `assets/himmel/${id}/unten.jpg` });
+export const skyboxFiles = (id, night = false) => {
+  const d = `assets/himmel/${id}${night ? '/nacht' : ''}`;
+  return { seite: `${d}/seite.jpg`, oben: `${d}/oben.jpg`, unten: `${d}/unten.jpg` };
+};
