@@ -1969,16 +1969,13 @@ function WorldFx.Apply(worldId, center, parent)
 	for i = 1, #worldId do seed = seed * 31 + string.byte(worldId, i) end
 	local k = { Folder = folder, C = center or V(0, 0, 0), R = Random.new(seed % 2147483647), W = w, Updates = {}, Calm = CALM[worldId], NoMotes = NO_MOTES[worldId] }
 	recipe(k, w)
-	-- keine Wahrzeichen und Schichten am Horizont mehr (Werkstatt-Wunsch „keine Umgebung, nur ein angepasster
-	-- Himmel“): es bleiben Licht, Himmelskörper, Sterne, Polarlicht, Wolken und das Leben in der Luft
-	local start = os.clock()
-	local connection = RunService.Heartbeat:Connect(function()
-		local t = os.clock() - start
-		for _, u in ipairs(k.Updates) do u(t) end
-	end)
+	-- Werkstatt-Wunsch „Objekte bei jedem Himmel entfernen, nur ein Bild“: der Himmel ist nur noch das
+	-- Himmelsbild (Skybox) mit Licht und Farbstimmung. Sonne, Mond, Planeten, Sterne, Polarlicht, Wolken,
+	-- Vögel, Fische und Teilchen werden nicht gebaut; es bleibt nur die Farbstimmung (k.Grade).
+	folder:ClearAllChildren()
+	k.Updates = {}
 	local handle = { Folder = folder }
 	function handle.Destroy()
-		connection:Disconnect()
 		if k.Grade then k.Grade:Destroy() end
 		folder:Destroy()
 	end

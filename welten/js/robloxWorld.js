@@ -91,7 +91,7 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
   // mit Himmelsbild ist die Kuppel ausgeblendet (in Roblox macht das das Licht-Skript)
   const hideDome = !!data.lighting?.himmel;
   for (const p of data.parts) (p.text ? signs : p.deko ? deko : p.bau ? bau : plain).push(p);
-  for (const p of data.sky) if (p.name === 'Himmelskuppel') { if (!hideDome) plain.push(p); } else (p.text ? signs : around).push(p);
+  for (const p of data.sky) if (p.name === 'Himmelskuppel' || p.name === 'Horizont') { if (!hideDome) plain.push(p); } else (p.text ? signs : around).push(p);
   rw.addStaticParts(plain);
   const layers = { gebaeude: rw.addStaticParts(bau), deko: rw.addStaticParts(deko), umgebung: rw.addStaticParts(around) };
   // Schilder sind einzelne Teile (Schrift): je Ebene merken, die Werkstatt hängt sie zum Ausblenden ab

@@ -1785,7 +1785,7 @@ local function setSky(box, on)
 		local himmel = f.Parent and f.Parent:FindFirstChild("Himmel")
 		if himmel then
 			for _, p in ipairs(himmel:GetChildren()) do
-				if p.Name == "Himmelskuppel" and p:IsA("BasePart") then
+				if (p.Name == "Himmelskuppel" or p.Name == "Horizont") and p:IsA("BasePart") then
 					p.LocalTransparencyModifier = on and 1 or 0
 				end
 			end

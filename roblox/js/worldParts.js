@@ -897,9 +897,10 @@ export function worldToParts(world) {
     }
     if (skip || rbx.kind === 'ground' || rbx.kind === 'underside' || rbx.name === 'Rand') return;
     if (o.material.blending === THREE.AdditiveBlending) return; // Lichtstrahlen, Strahl unter dem UFO
-    // … und keine Kulisse (Schwebeinseln, Berge, Felsen, ferne Modelle). Es bleiben die Himmelskörper
-    // (Planeten, Monde, Ringe) und was direkt unter der Insel hängt (Felszapfen, Wurzeln, Eiszapfen …)
-    if (rbx.sky && !rbx.celestial) {
+    // … und keine Kulisse (Schwebeinseln, Berge, Felsen, ferne Modelle) und keine Himmelskörper (Planeten,
+    // Monde, Ringe): der Himmel ist nur das Himmelsbild. Es bleibt, was direkt unter der Insel hängt
+    // (Felszapfen, Wurzeln, Eiszapfen …)
+    if (rbx.sky) {
       const wp = o.getWorldPosition(V(0, 0, 0));
       if (Math.hypot(wp.x, wp.z) > built.radius + 4 || wp.y > 2) return;
     }

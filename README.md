@@ -1210,9 +1210,14 @@ Ordner „Licht > Nacht“), nachts ein eigenes Nachtbild (`assets/himmel/<welt>
 Sternschnuppen. In der Werkstatt spielt der Knopf „Tag-Nacht“ einen Tag in 40 Sekunden ab.
 
 Es gibt keine Umgebung mehr (Werkstatt-Wunsch): keine Nachbar- und Schwebeinseln, keine Berge, Felsen und
-Wahrzeichen am Horizont, kein Meer und keine Wolkenwand. Jede Welt hat nur ihren eigenen Himmel: Himmelsbild,
-Licht und Nebel, Himmelskörper (`userData.rbx.celestial`) und Himmelseffekte aus `WorldFx` (Sterne, Polarlicht,
-Wolken, Leben in der Luft). Was direkt unter der Insel hängt, bleibt. Der Werkstatt-Ablauf dazu heißt **Himmel**
+Wahrzeichen am Horizont, kein Meer und keine Wolkenwand. Jede Welt hat nur ihren eigenen Himmel. Was direkt unter
+der Insel hängt, bleibt.
+
+**Der Himmel ist nur ein Bild** (Werkstatt-Wunsch „Objekte bei jedem Himmel entfernen“): Himmelsbild (Skybox, nachts
+das Nachtbild) mit Licht, Nebel und Farbstimmung. Keine Himmelskörper mehr (`userData.rbx.celestial` wird beim Export
+verworfen) und `WorldFx.Apply` baut keine Teile mehr (Sonnen, Monde, Planeten, Sterne, Polarlicht, Wolken, Vögel,
+Fische, Teilchen); es bleibt nur seine Farbstimmung. Kuppel und Horizont-Ring blendet das Licht-Skript aus, sobald die
+Bild-IDs eingetragen sind. Die Absätze oben zu Sonnen, Planeten und Sternschnuppen gelten damit nicht mehr. Der Werkstatt-Ablauf dazu heißt **Himmel**
 (Doc-Ids weiter `umgebung-<welt>`).
 
 Der Ablauf **Spawn** hat einen Punkt je Gebäude oder Platz im Spawn (Ids `spawn-<bereich>`: Shops mit Taschen-Laden und
