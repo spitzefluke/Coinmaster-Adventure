@@ -423,7 +423,7 @@ export function buildWorld(world, { particles: pScale = 1, shadows = false } = {
   // Spawn: ein Portal pro Welt, Farbe des Planeten
   if (world.hub) ctx.portals = WORLDS.filter((w) => !w.hub).map((w) => ({ world: w, color: planetById[w.planet].color }));
   ctx.modelWorld = MODEL_WORLDS[world.id] || NEW_WORLDS[world.id] || GEM_WORLDS[world.id] || null;
-  const kit = { M, E, at, group, signBoard, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
+  const kit = { M, E, at, group, signBoard, trunk, pine, roundTree, bush, rockMesh, mushroom, flower, flowerPatch, fern, mossMound, fallenLog, fountain, snowPine, snowDrift, coneFacets, gummyBear, gumdrop, lollipop, crater, moonRock, rockArch, butte, brainCoral, seaweed, crystal, coral, scallop, conch, starfish, column };
   LANDMARKS[world.id]?.(ctx); // große Wahrzeichen zuerst, solange Platz ist
   planet1Before(ctx, kit); // Planet 1: Wahrzeichen und Wege mit Münz-Lichtungen
   planet2Before(ctx, kit); // Planet 2 ebenso
@@ -914,17 +914,65 @@ function gumdrop(c) {
   m.scale.y = 1.3;
   return group(m);
 }
-// Krater: Wall aus zwei schrägen Ringen (außen flach ansteigend, innen steiler abfallend), dunklerer Boden.
-// In Roblox Flächen aus Keilen (vorher Ringe aus Zylindern, die wie Zahnräder aussahen)
+// Krater (Werkstatt-Wunsch „Krater schöner“): unregelmäßiger Wall (außen flach, innen steil), dunklerer Boden,
+// bei großen ein Zentralberg, hellere Auswurf-Strahlen sternförmig nach außen und Brocken auf dem Wall.
+// In Roblox Flächen aus Keilen
 function crater(r, c, rand) {
-  const wall = M(c), inner = M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.06).getHexString());
-  const out = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 1.45, r * 0.16, 10, 1, true), rand, r * 0.06), wall);
-  out.position.y = r * 0.08;
-  const ins = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 0.6, r * 0.16, 10, 1, true), rand, r * 0.05), inner);
-  ins.position.y = r * 0.08;
-  const floor = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.64, r * 0.64, 0.03, 14), M('#' + new THREE.Color(c).offsetHSL(0, 0, -0.1).getHexString()));
+  const col = new THREE.Color(c), tone = (l) => '#' + col.clone().offsetHSL(0, 0, l).getHexString();
+  const wall = M(c), inner = M(tone(-0.07));
+  const out = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 1.5, r * 0.2, 16, 1, true), rand, r * 0.08), wall);
+  out.position.y = r * 0.1;
+  const ins = new THREE.Mesh(jitter(new THREE.CylinderGeometry(r * 0.95, r * 0.55, r * 0.22, 16, 1, true), rand, r * 0.06), inner);
+  ins.position.y = r * 0.09;
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.6, r * 0.6, 0.03, 16), M(tone(-0.12)));
   floor.position.y = 0.01;
-  return group(out, ins, floor);
+  const g = group(out, ins, floor);
+  if (r > 1.4) {
+    const peak = new THREE.Mesh(jitter(new THREE.ConeGeometry(r * 0.2, r * 0.22, 7), rand, r * 0.05), M(tone(-0.04)));
+    peak.position.y = r * 0.1;
+    peak.userData.rbx = { facets: true };
+    g.add(peak);
+  }
+  const rays = 6 + Math.floor(rand() * 3), rayM = M(tone(0.1));
+  for (let i = 0; i < rays; i++) {
+    const a = (i / rays) * Math.PI * 2 + rand() * 0.4, len = r * (0.8 + rand() * 1.0);
+    const ray = new THREE.Mesh(new THREE.BoxGeometry(len, 0.02, r * (0.1 + rand() * 0.08)), rayM);
+    const d = r * 1.45 + len / 2;
+    ray.position.set(Math.cos(a) * d, 0.012, Math.sin(a) * d);
+    ray.rotation.y = -a;
+    g.add(ray);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = rand() * Math.PI * 2, s = r * (0.08 + rand() * 0.06);
+    const rock = rockMesh(s, tone(-0.02 + rand() * 0.06), rand);
+    rock.position.set(Math.cos(a) * r * 1.15, r * 0.12, Math.sin(a) * r * 1.15);
+    g.add(rock);
+  }
+  return g;
+}
+// Mondfelsen (Werkstatt-Wunsch „Felsen schöner“): kantiger, halb eingesunkener Brocken mit kleinen Einschlagkratern,
+// hellem Staub obendrauf und einem Staubring am Fuß
+function moonRock(s, rand, c = ['#8a8d96', '#9a9da6', '#7f828b'][Math.floor(rand() * 3)]) {
+  const body = new THREE.Mesh(jitter(new THREE.IcosahedronGeometry(s, 1), rand, s * 0.32), M(c));
+  body.scale.set(1, 0.62, 1);
+  body.position.y = s * 0.22;
+  if (s >= 0.4) body.userData.rbx = { facets: true };
+  const dust = new THREE.Mesh(new THREE.SphereGeometry(s * 0.72, 9, 4, 0, Math.PI * 2, 0, Math.PI / 2), M('#c4c6ce'));
+  dust.scale.y = 0.35;
+  dust.position.y = s * 0.5;
+  const apron = new THREE.Mesh(new THREE.CylinderGeometry(s * 1.35, s * 1.45, 0.02, 12), M('#a9abb3'));
+  apron.position.y = 0.01;
+  const g = group(apron, body, dust);
+  const pits = s >= 0.3 ? 2 + Math.floor(rand() * 2) : 0;
+  for (let i = 0; i < pits; i++) {
+    const a = rand() * Math.PI * 2, e = 0.6 + rand() * 0.5;
+    const pit = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.13, s * 0.09, 0.03, 8), M('#5a5d66'));
+    pit.position.set(Math.cos(a) * Math.sin(e) * s * 0.92, s * 0.22 + Math.cos(e) * s * 0.6, Math.sin(a) * Math.sin(e) * s * 0.92);
+    pit.lookAt(pit.position.x * 2, pit.position.y * 2 - s * 0.22, pit.position.z * 2);
+    pit.rotateX(Math.PI / 2);
+    g.add(pit);
+  }
+  return g;
 }
 function flag(c) {
   const pole = at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), M('#dddddd', { metalness: 0.6 })), 0, 0.9, 0);
@@ -1943,8 +1991,8 @@ const EXTRAS = {
   },
   candy({ scatter, rand }) {
     const cols = ['#ff9ad5', '#bfe8ff', '#fff2a0', '#c8a2ff', '#a8ffb8'];
-    scatter(5, (i) => cupcake(cols[i % cols.length]), 0.45);
-    scatter(4, (i) => iceCream(cols[(i + 2) % cols.length]), 0.35);
+    scatter(3, (i) => cupcake(cols[i % cols.length]), 0.45, 1, R - 2.6); // feste Anzahl
+    scatter(2, (i) => iceCream(cols[(i + 2) % cols.length]), 0.35, 1, R - 2.6);
   },
   mond({ put, spot, scatter, rand, rr, modelWorld }) {
     const p = spot(0.6);
@@ -2524,10 +2572,12 @@ const BUILDERS = {
   candy({ put, scatter, rand, rr, modelWorld }) {
     const cols = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a', '#b07bff', '#ff8a3d'];
     // deutlich weniger Süßigkeiten verstreut (Werkstatt-Wunsch „Deko verringern“)
-    scatter(3, (i) => lollipop(cols[i % cols.length], rand), 0.8, 1, R - 1);
-    scatter(2, () => candyCane(), 0.7);
-    scatter(2, () => donut(['#ff9ad5', '#7a4a2a', '#bfe8ff'][Math.floor(rand() * 3)]), 0.6);
-    scatter(5, (i) => gumdrop(cols[i % cols.length]), 0.3);
+    // feste Anzahl (rMax unter R - 2.5: nicht mit der Inselfläche vervielfachen, sonst etwa das Siebenfache)
+    const rm = R - 2.6;
+    scatter(3, (i) => lollipop(cols[i % cols.length], rand), 0.8, 1, rm);
+    scatter(2, () => candyCane(), 0.7, 1, rm);
+    scatter(2, () => donut(['#ff9ad5', '#7a4a2a', '#bfe8ff'][Math.floor(rand() * 3)]), 0.6, 1, rm);
+    scatter(4, (i) => gumdrop(cols[i % cols.length]), 0.3, 1, rm);
     if (!modelWorld) scatter(5, () => {
       // Zuckerwatte-Baum (sonst Bäume als Modelle in Zuckerfarben)
       return roundTree(rr(1.4, 2), ['#ffc2e2', '#c2e8ff', '#e2c2ff'][Math.floor(rand() * 3)], rand);
@@ -2537,12 +2587,12 @@ const BUILDERS = {
   mond({ put, scatter, spot, rand, rr, scene, modelWorld }) {
     planetBackdrop(scene, { color: '#2a6ad1', bands: ['#3fae5a', '#ffffff55', '#2f8a4a', '#ffffff40'], size: 6, pos: [-20, 5, -32], glow: '#4a8aff' });
     // wenige, dafür große Krater (feste Anzahl: nicht mit der Inselfläche vervielfachen)
-    for (let i = 0; i < 9; i++) {
-      const r = rr(0.9, 2), p = spot(r * 1.4, 2, R - 2.6);
+    for (let i = 0; i < 7; i++) {
+      const r = rr(1.0, 2.2), p = spot(r * 1.5, 2, R - 2.8);
       if (p) put(crater(r, '#a0a3ac', rand), p[0], p[1], { lay: true, sink: 0.02 });
     }
     put(flag('#ffd76a'), 0.6, 0.4);
-    if (!modelWorld) scatter(8, () => rockMesh(rr(0.2, 0.45), '#9a9da6', rand), 0.35);
+    if (!modelWorld) scatter(8, () => moonRock(rr(0.2, 0.45), rand), 0.35);
     // Mondlandefähre
     const lander = new THREE.Group();
     lander.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.6, 8), M('#e8c86a', { metalness: 0.5, roughness: 0.4 })), 0, 0.8, 0));

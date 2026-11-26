@@ -568,7 +568,7 @@ function details(ctx, kit) {
     scatter(4, () => mushroom(rr(0.18, 0.32), ['#6ae8ff', '#b07bff', '#ff7ae0'][Math.floor(rand() * 3)], rand, true), 0.2);
   } else if (id === 'candy') {
     const cols = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a', '#b07bff'];
-    scatter(8, (i) => at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M(cols[i % 5])), 0, 0.1, 0), 0.12);
+    scatter(3, (i) => at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M(cols[i % 5])), 0, 0.1, 0), 0.12);
   }
 }
 

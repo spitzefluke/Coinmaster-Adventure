@@ -1245,9 +1245,9 @@ const CANDY = {
       around(ctx, vc, [['fence_wood_straight@candy', 2.2], ['fence_wood_straight@candy', 2.2]], 2.2, 2.8);
     }
     // deutlich weniger Deko, dafür in Gruppen (Werkstatt-Wunsch)
-    scatterModels(ctx, 2, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
-    grove(ctx, 2, 3, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { radius: 2.0 });
-    scatterModels(ctx, 2, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
+    scatterModels(ctx, 1, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
+    grove(ctx, 1, 3, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { radius: 2.0 });
+    scatterModels(ctx, 1, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
     // wie in einem Süßwarenladen: Zuckergussflecken in Minze, Zitrone und Himbeere, Gummibären,
     // Gummidrops in Gruppen, Marshmallow-Türme, Lakritzschnecken
     const { rr } = ctx, inner = R - 2.6;
@@ -1255,13 +1255,13 @@ const CANDY = {
       const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
       ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.2), pick(rand, ['#c8f4e0', '#fff2b8', '#ffc0dc', '#d8e4ff']), 'SmoothPlastic');
     }
-    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 3).forEach((c) => {
+    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 2).forEach((c) => {
       const p = ctx.spot(0.8, 4, inner);
       if (!p) return;
       ctx.reserve(p[0], p[1], 0.8);
       ctx.put(kit.gummyBear(rr(1.1, 1.6), c), p[0], p[1]);
     });
-    ctx.scatter(4, () => {
+    ctx.scatter(2, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 5; i++) {
         const d = kit.gumdrop(pick(rand, ['#ff4a7a', '#ffb02e', '#5ad84a', '#7ac8ff', '#c87aff', '#ffe23a']));
@@ -1271,7 +1271,7 @@ const CANDY = {
       }
       return g;
     }, 0.6, 2, inner);
-    ctx.scatter(3, () => {
+    ctx.scatter(1, () => {
       const g = new THREE.Group();
       const n = 2 + Math.floor(rand() * 3);
       for (let i = 0; i < n; i++) {
@@ -1282,7 +1282,7 @@ const CANDY = {
       }
       return g;
     }, 0.4, 2, inner);
-    ctx.scatter(2, () => {
+    ctx.scatter(1, () => {
       const g = new THREE.Group();
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 20), new THREE.MeshStandardMaterial({ color: '#1e1a20', roughness: 0.4 }));
       const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.2, 12), new THREE.MeshStandardMaterial({ color: '#ff5fb0' }));
@@ -1391,26 +1391,29 @@ const MOND = {
     if (base) station(ctx, base, ['basemodule_A', 'basemodule_E', 'basemodule_garage']);
     // Regolith in helleren und dunkleren Flecken, Findlinge, Reifenspuren des Mondautos
     groundPatches(ctx, 14, [['#c2c4ca', 'Slate'], ['#8e9098', 'Rock'], ['#a8aab2', 'Sand']]);
-    boulders(ctx, kit, ['#9a9da6', '#8a8d96', '#a8abb2'], 3);
+    // große Mondfindlinge (statt der kantigen Paket-Felsen): halb eingesunken, mit Staubring und Bruchstücken
+    for (let i = 0; i < 3; i++) {
+      const p = ctx.spot(2, 3, R - 3);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], 1.6);
+      const g = kit.moonRock(ctx.rr(1.0, 1.5), ctx.rand);
+      for (let k = 0; k < 3; k++) {
+        const f = kit.moonRock(ctx.rr(0.25, 0.45), ctx.rand), a = ctx.rand() * TAU, d = ctx.rr(1.3, 1.8);
+        f.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+        g.add(f);
+      }
+      ctx.put(g, p[0], p[1]);
+    }
     tracks(ctx, '#7a7d86', { n: 2, len: 16 });
     const pad = place(ctx, 'landingpad_large', 2.6, { rMin: 4, rMax: R - 3 });
     if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
     const solar = clearing(ctx, 3, 4, R - 3);
     if (solar) around(ctx, solar, [['solarpanel', 2.6], ['solarpanel', 2.6], ['solarpanel', 2.6], ['space_lights', 2.4]], 1.4, 2.4);
     scatterModels(ctx, 3, ['cargo_A_stacked', 'cargo_B_stacked', 'spacetruck'], 2.4, 2.8, { gap: 0.9 });
-    rocksOf(ctx, 'mond');
     // Mond-Deko (Werkstatt-Wunsch „deutlich verbessern“): Gesteinsbrocken in Gruppen mit hellerer Oberseite,
     // Messinstrumente der Astronauten (Seismometer, Antenne, Laserspiegel), kleine Fahnen, Fußspuren
     const { rand, rr } = ctx;
-    groveOf(ctx, 4, 4, () => {
-      const g = new THREE.Group();
-      const s0 = rr(0.18, 0.4), rock = kit.rockMesh(s0, pick(rand, ['#8a8d96', '#9a9da6', '#7a7d86']), rand);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(s0 * 0.7, 8, 4, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#c8cad2', roughness: 1, flatShading: true }));
-      cap.position.y = s0 * 0.45;
-      cap.scale.y = 0.4;
-      g.add(rock, cap);
-      return g;
-    }, { radius: 1.2, size: 0.35 });
+    groveOf(ctx, 5, 4, (k) => kit.moonRock(k === 0 ? rr(0.4, 0.6) : rr(0.15, 0.32), rand), { radius: 1.2, size: 0.4 });
     const metal = new THREE.MeshStandardMaterial({ color: '#c8c8cc', metalness: 0.6, roughness: 0.35 }), gold = new THREE.MeshStandardMaterial({ color: '#e8c86a', metalness: 0.6, roughness: 0.35 });
     const instrument = (k) => {
       const g = new THREE.Group();
