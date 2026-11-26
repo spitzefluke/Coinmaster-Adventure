@@ -25,7 +25,7 @@ const BASE = { PLAZA: 8.5, SHOP_R: 12, RING_IN: 14.8, RING_OUT: 16.4, OUTER_R: 1
 const ROAD_W = 3.0; // Breite der Boulevards
 
 export function buildSpawnTown(ctx, K) {
-  const { put, reserve, root, anims, rand, rr, scatter, height, shared, scene, lights, R } = ctx;
+  const { put, reserve, free, root, anims, rand, rr, scatter, height, shared, scene, lights, R } = ctx;
   const { M, E, at, signBoard, column, lamp, chest, bench, roundTree, bush, flowerPatch, crystal, portalArch, leaderboard, rankRows, coinStatue, indexBook, codesTerminal, eggIcon, potionIcon, canvasTex, dotTex } = K;
   const y0 = height(0, 0);
   const S = R / 24;
@@ -219,7 +219,37 @@ export function buildSpawnTown(ctx, K) {
         d.position.set(Math.cos(a) * r, 1.4 + Math.sin(k * Math.PI) * 1.3 - k * 0.9, Math.sin(a) * r);
       }),
     );
+    // prächtiger (Werkstatt-Wunsch „Platz und Brunnen“): äußeres Becken mit Goldrand, Stufe rundherum, vier
+    // Figuren auf dem Rand, die eine Münze hochhalten, acht Wasserstrahlen vom Rand zur Mitte
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.75, 0.18, 48), M('#c8bfa8')), 0, 0.09, 0));
+    for (const [r0, r1, h, c] of [[3.35, 3.45, 0.42, '#d8d0c0'], [3.45, 3.5, 0.08, '#c8a040']]) {
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(r1, r1, h, 48, 1, true), M(c, c === '#c8a040' ? { metalness: 0.6, side: THREE.DoubleSide } : { side: THREE.DoubleSide }));
+      ring.position.y = c === '#c8a040' ? 0.46 : 0.21;
+      g.add(ring);
+      void r0;
+    }
+    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.08, 6, 48), M('#c8a040', { metalness: 0.6 })), 0, 0.44, 0)).children.at(-1).rotation.x = Math.PI / 2;
+    g.add(at(new THREE.Mesh(new THREE.RingGeometry(2.62, 3.32, 48), M('#3a8ac8', { roughness: 0.1, emissive: '#1a5a98', emissiveIntensity: 0.3, side: THREE.DoubleSide })), 0, 0.36, 0)).children.at(-1).rotation.x = -Math.PI / 2;
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * TAU + Math.PI / 4, fig = new THREE.Group();
+      fig.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.3, 10), M('#d8d0c0')), 0, 0.15, 0));
+      fig.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.75, 10), M('#e8e0d0')), 0, 0.68, 0));
+      fig.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), M('#e8e0d0')), 0, 1.15, 0));
+      fig.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.06), M('#e8e0d0')), 0.12, 1.3, 0));
+      fig.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.03, 16), M('#ffcf4a', { metalness: 0.7, emissive: '#b8860b', emissiveIntensity: 0.4 })), 0.12, 1.55, 0)).children.at(-1).rotation.x = Math.PI / 2;
+      fig.position.set(Math.cos(a) * 3.4, 0.42, Math.sin(a) * 3.4);
+      fig.lookAt(0, 0.42, 0);
+      g.add(fig);
+    }
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU + Math.PI / 8;
+      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M('#c8a040', { metalness: 0.6 })), Math.cos(a) * 3.38, 0.5, Math.sin(a) * 3.38));
+    }
     put(g, 0, 0, { rot: false, sink: -0.08 });
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU + Math.PI / 8, x = Math.cos(a) * 3.3, z = Math.sin(a) * 3.3;
+      (shared.emitters = shared.emitters || []).push({ name: 'Wasserstrahl', pos: [x, y0 + 0.6, z], size: [0.1, 0.1, 0.1], colors: ['#d8f4ff', '#9fdcff'], particleSize: 0.12, rate: 18, speed: [2.0, 2.3], lifetime: [0.7, 0.8], spread: [6, 6], direction: 'Top', lightEmission: 0.3, acceleration: [-x * 0.9, -6, -z * 0.9] });
+    }
     // in Roblox: Fontäne aus Wasserpartikeln (die Tropfen oben gibt es nur auf der Webseite), dazu Gischt im Becken
     const em = (shared.emitters = shared.emitters || []);
     em.push({ name: 'Fontaene', pos: [0, y0 + 2.75, 0], size: [0.6, 0.2, 0.6], colors: ['#d8f4ff', '#9fdcff'], particleSize: 0.22, rate: 60, speed: [2.2, 2.8], lifetime: [0.9, 1.2], spread: [28, 28], direction: 'Top', lightEmission: 0.3, acceleration: [0, -6, 0] });
@@ -308,6 +338,33 @@ export function buildSpawnTown(ctx, K) {
     anims.push((t) => (pivot.rotation.y = Math.sin(t * 2 + ph) * 0.35));
     return g;
   }
+  // Dachfläche mit Ziegelreihen (Werkstatt-Wunsch „jedes Gebäude genauer“): die Fläche selbst plus Reihen aus
+  // dunkleren Ziegelleisten, parallel zum First, und ein Firstbalken
+  function tiledRoof(g, w, d, h, color, { slope = 0.6, rows = 5 } = {}) {
+    const dark = M('#' + new THREE.Color(color).offsetHSL(0, 0, -0.08).getHexString()), base = M(color);
+    for (const sz of [-1, 1]) {
+      const sl = new THREE.Group();
+      sl.position.set(0, h + 0.45, sz * d * 0.26);
+      sl.rotation.x = sz * slope;
+      sl.add(new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.14, d * 0.62), base));
+      for (let k = 0; k < rows; k++) sl.add(at(new THREE.Mesh(new THREE.BoxGeometry(w + 0.52, 0.05, 0.06), dark), 0, 0.09, -d * 0.29 + ((k + 0.5) * d * 0.58) / rows));
+      g.add(sl);
+    }
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.12, 0.16), dark), 0, h + 0.78, 0));
+  }
+  // Fenster mit Rahmen und Fensterbank an den Seitenwänden (x = ±w/2), warm beleuchtet
+  function sideWindows(g, w, d, h, { n = 2, y = 0.55 } = {}) {
+    const frame = M('#f4ecdc'), glass = E('#ffe2a0', 0.9);
+    lampMats.push(glass);
+    for (const sx of [-1, 1])
+      for (let k = 0; k < n; k++) {
+        const z = -d / 2 + ((k + 0.5) * d) / n, x = sx * (w / 2 + 0.06);
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.04, h * 0.32, 0.5), glass), x, h * y, z));
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.62), frame), x, h * y + h * 0.17, z));
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.66), frame), x + sx * 0.02, h * y - h * 0.17, z));
+        g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.06, h * 0.32, 0.04), frame), x, h * y, z));
+      }
+  }
   // Details am Gebäude (Werkstatt-Wunsch „mehr Details überall“): Laternen an der Vorderseite, Blumenkübel,
   // optional ein Steinsockel; w und d in lokalen Einheiten der Gruppe, Vorderseite +z
   function dress(g, w, d, { plinth = false, lanterns = true, planters = true } = {}) {
@@ -345,13 +402,11 @@ export function buildSpawnTown(ctx, K) {
       g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 0.25), trimM), s * 1.0, 0.65, D / 2 + 0.05));
     }
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(W, 0.6, 0.2), wallM), 0, H - 0.3, D / 2));
-    // Satteldach
-    for (const sz of [-1, 1]) {
-      const slope = new THREE.Mesh(new THREE.BoxGeometry(W + 0.5, 0.14, D * 0.62), roofM);
-      slope.rotation.x = sz * 0.6;
-      slope.position.set(0, H + 0.45, sz * D * 0.26);
-      g.add(slope);
-    }
+    // Satteldach mit Ziegelreihen, Fenster an den Seiten, Eckquader aus Stein
+    tiledRoof(g, W, D, H, roof);
+    void roofM;
+    sideWindows(g, W, D, H);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (let k = 0; k < 4; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.3, 0.26), M(k % 2 ? '#c8bca4' : '#b0a48c')), sx * (W / 2), 0.2 + k * 0.62, sz * (D / 2)));
     // Giebeldreiecke als Stufen
     for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, D * (0.8 - i * 0.26)), wallM), sx * (W / 2), H + 0.14 + i * 0.28, 0));
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.0, 0.35), M('#8a5a4a')), W * 0.3, H + 0.8, -0.4));
@@ -465,13 +520,16 @@ export function buildSpawnTown(ctx, K) {
       g.add(at(column(HH - 0.4, '#efe8db'), x, 0.18, HD / 2 - 0.1));
     }
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.2, 0.5, 0.35), stoneD), 0, HH - 0.05, HD / 2 - 0.1));
-    // Satteldach mit Gesims und Laterne obenauf
-    for (const sz of [-1, 1]) {
-      const sl = new THREE.Mesh(new THREE.BoxGeometry(HW + 0.6, 0.16, HD * 0.62), roofM);
-      sl.rotation.x = sz * 0.55;
-      sl.position.set(0, HH + 0.75, sz * HD * 0.27);
-      g.add(sl);
-    }
+    // Satteldach mit Ziegelreihen, Gesims und Laterne obenauf; Fenster in den Seitenwänden, Stufen vorne,
+    // Schachbrettboden aus hellen und dunklen Platten
+    const roofG = new THREE.Group();
+    roofG.position.y = 0.3;
+    tiledRoof(roofG, HW + 0.1, HD, HH, '#b0402e', { slope: 0.55, rows: 6 });
+    g.add(roofG);
+    void roofM;
+    sideWindows(g, HW, HD, HH, { n: 2 });
+    for (let k = 0; k < 3; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW * 0.6, 0.1, 0.35), M('#d8cfbc')), 0, 0.05 + k * 0.06, HD / 2 + 0.55 - k * 0.15));
+    for (let ix = 0; ix < 10; ix++) for (let iz = 0; iz < 4; iz++) if ((ix + iz) % 2) g.add(at(new THREE.Mesh(new THREE.BoxGeometry((HW - 0.6) / 10, 0.02, (HD - 0.6) / 4), M('#9a8a72')), -HW / 2 + 0.3 + ((ix + 0.5) * (HW - 0.6)) / 10, 0.19, -HD / 2 + 0.3 + ((iz + 0.5) * (HD - 0.6)) / 4));
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), stone), 0, HH + 1.75, 0));
     g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.95, 0.9, 4), roofM), 0, HH + 2.6, 0)).children.at(-1).rotation.y = Math.PI / 4;
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), gold), 0, HH + 3.15, 0));
@@ -516,6 +574,11 @@ export function buildSpawnTown(ctx, K) {
           pp.position.set(-0.6 + k * 0.6, 0, 1.4);
           st.add(pp);
         }
+      // Warenkisten und Körbe neben der Theke
+      for (const sx of [-1, 1]) {
+        st.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), M('#8a6440')), sx * 1.15, 0.15, 0.9));
+        for (let k = 0; k < 3; k++) st.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), M([sh.accent, '#ffd76a', '#ffffff'][k])), sx * 1.15 + (k - 1) * 0.12, 0.36, 0.9));
+      }
       st.userData.area = sh.id;
       g.add(st);
       stalls.push([st, sh]);
@@ -607,6 +670,18 @@ export function buildSpawnTown(ctx, K) {
     const book = indexBook();
     lib.add(book);
     lib.add(at(new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.2, 0.16, 24), M('#b8ae9c')), 0, 0.08, 0));
+    // Bücherregale zwischen den Säulen, Bodenmosaik, Stufen zum Eingang
+    for (let i = 0; i < 8; i++) {
+      if (i === 2) continue;
+      const a = ((i + 0.5) / 8) * TAU, sh = new THREE.Group();
+      sh.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.25), M('#6b4a2e')), 0, 0.76, 0));
+      for (let r = 0; r < 3; r++) for (let b = 0; b < 5; b++) sh.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.28, 0.2), M(['#c8302a', '#2a6ac8', '#2aa860', '#e0a030', '#7a3ab0'][(b + r) % 5])), -0.32 + b * 0.16, 0.4 + r * 0.38, 0.04));
+      sh.position.set(Math.cos(a) * 1.55, 0, Math.sin(a) * 1.55);
+      sh.rotation.y = -a - Math.PI / 2;
+      lib.add(sh);
+    }
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * TAU; const m = at(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.02, 0.1), M(k % 2 ? '#c8a040' : '#5aa8b8')), Math.cos(a) * 0.75, 0.17, Math.sin(a) * 0.75); m.rotation.y = -a; lib.add(m); }
+    for (let k = 0; k < 3; k++) lib.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.3), M('#c8bca4')), 0, 0.04 + k * 0.05, 2.35 - k * 0.15));
     dress(lib, 3.4, 3.4, { planters: true });
     lib.scale.setScalar(1.15);
     const o = placeAt(lib, deg(240), SHOP_R, 2.4);
@@ -626,6 +701,16 @@ export function buildSpawnTown(ctx, K) {
     for (let i = 0; i <= 4; i++) g.add(at(column(HH - 0.3, '#fff8ea'), -HW / 2 + 0.25 + (i * (HW - 0.5)) / 4, 0.18, HD / 2 - 0.1));
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.3, 0.32, HD + 0.3), roofM), 0, HH + 0.1, 0));
     g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW + 0.36, 0.1, HD + 0.36), trim), 0, HH - 0.08, 0));
+    // Brüstung mit Goldkugeln auf dem Dach, Wimpelkette vorne, Bodenmuster, Seitenfenster
+    for (let k = 0; k <= 8; k++) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M('#ffcf4a', { metalness: 0.7 })), -HW / 2 + (k * HW) / 8, HH + 0.38, HD / 2 + 0.1));
+    for (let k = 0; k < 14; k++) {
+      const x = -HW / 2 + 0.3 + (k * (HW - 0.6)) / 13, sag = Math.sin((k / 13) * Math.PI) * 0.35;
+      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.26, 3), M(['#ff5aa5', '#ffd76a', '#5ad1ff', '#8cff7a'][k % 4])), x, HH - 0.45 - sag, HD / 2 + 0.05);
+      fl.rotation.x = Math.PI;
+      g.add(fl);
+    }
+    for (let k = 0; k < 6; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(HW / 6 - 0.05, 0.02, HD - 0.4), M(k % 2 ? '#e8dcc0' : '#d0c4a8')), -HW / 2 + ((k + 0.5) * HW) / 6, 0.19, 0));
+    sideWindows(g, HW, HD, HH);
     const big = signBoard('Belohnungen', { w: 3.6, h: 0.75, bg: '#e0a030', fg: '#ffffff', sub: 'Täglich · Codes · Gruppe · Quests' });
     big.position.set(0, HH + 0.75, HD / 2 + 0.05);
     g.add(big);
@@ -842,6 +927,15 @@ export function buildSpawnTown(ctx, K) {
     sg.position.set(0, 2.6, -0.4);
     g.add(sg);
     g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.4, 0.14, 32, 1, false, Math.PI * 0.5, Math.PI), M('#b8ae9c')), 0, 0.07, 1.9));
+    // Mitte: Nest aus Zweigen mit großem goldenem Ei, darüber ein Bogen mit Lichtern
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * TAU, tw = at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 5), M('#8a6440')), Math.cos(a) * 0.55, 0.25, Math.sin(a) * 0.55 + 1.6); tw.rotation.set(Math.PI / 2, 0, a); g.add(tw); }
+    const bigEgg = eggIcon('#ffe14a');
+    bigEgg.scale.setScalar(1.1);
+    bigEgg.position.set(0, 0.3, 1.6);
+    g.add(bigEgg);
+    anims.push((tt) => (bigEgg.rotation.z = Math.sin(tt * 3) * 0.08));
+    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.08, 6, 24, Math.PI), M('#c8801a')), 0, 0.2, 1.6));
+    for (let k = 0; k <= 8; k++) { const b = (k / 8) * Math.PI; const l = E(['#ffd89a', '#b49cff', '#4ff0e0'][k % 3], 1.4); lampMats.push(l); g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), l), Math.cos(b) * 2.0, 0.2 + Math.sin(b) * 2.0, 1.65)); }
     dress(g, 5.2, 3.6, { planters: false });
     placeAt(g, deg(30), OUTER_R, 2.8).userData.area = 'schluepfen';
     addArea('schluepfen', 'Ei-Schlüpfplatz', ...polar(deg(30), OUTER_R - 1.6));
@@ -862,6 +956,19 @@ export function buildSpawnTown(ctx, K) {
     sg.position.set(0, 2.0, -1.4);
     g.add(sg);
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), E('#ffd76a', 0.9)), 0, 1.1, -1.0));
+    // Baldachin auf vier goldenen Pfosten, Palmen in Kübeln, goldene Scheinwerfer, Leuchtkante
+    for (const [x, z] of [[-1.9, -1.4], [1.9, -1.4], [-1.9, 1.4], [1.9, 1.4]]) g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 2.6, 8), M('#ffd76a', { metalness: 0.7 })), x, 1.3, z));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.08, 3.1), M('#5a1a3a')), 0, 2.62, 0));
+    for (let k = 0; k < 12; k++) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.04), M(k % 2 ? '#5a1a3a' : '#ffd76a')), -1.9 + ((k + 0.5) * 3.8) / 12, 2.45, 1.57));
+    const vipGlow = E('#ffd76a', 1.3);
+    lampMats.push(vipGlow);
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.04, 0.06), vipGlow), 0, 0.14, 1.62));
+    for (const sx of [-1, 1]) {
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 0.4, 10), M('#3a2a1a')), sx * 2.4, 0.2, 1.2));
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.4, 6), M('#8a6440')), sx * 2.4, 1.1, 1.2));
+      for (let k = 0; k < 5; k++) { const lf = at(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.03, 0.18), M('#3f9a44')), sx * 2.4 + Math.cos(k * 1.25) * 0.3, 1.8, 1.2 + Math.sin(k * 1.25) * 0.3); lf.rotation.set(0, -k * 1.25, -0.4); g.add(lf); }
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.3, 10), M('#ffd76a', { metalness: 0.7 })), sx * 1.7, 2.4, -1.2));
+    }
     dress(g, 4.2, 3.2);
     placeAt(g, deg(210), OUTER_R, 2.6).userData.area = 'vip';
     addArea('vip', 'VIP-Lounge', ...polar(deg(210), OUTER_R - 1.8));
@@ -880,6 +987,12 @@ export function buildSpawnTown(ctx, K) {
     const top = chest(anims);
     top.position.set(0, 7.0, -0.5);
     g.add(top);
+    // Startbogen unten, leuchtende Checkpoint-Platten, Plattform mit Geländer oben
+    for (const sx of [-0.7, 0.7]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.6, 0.16), M('#2a2232')), sx + 1.7, 0.8, -0.5));
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.3, 0.2), M('#8cff7a')), 1.7, 1.65, -0.5));
+    for (let i = 3; i < 12; i += 4) { const a = i * 0.75; const cp = E('#8cff7a', 1.2); lampMats.push(cp); g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.04, 0.82), cp), Math.cos(a) * 1.7, 0.4 + i * 0.55 + 0.11, Math.sin(a) * 1.7 - 0.5)); }
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 16), M('#9a907e')), 0, 6.95, -0.5));
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * TAU; g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 5), M('#ffd76a', { metalness: 0.7 })), Math.cos(a) * 1.05, 7.25, Math.sin(a) * 1.05 - 0.5)); }
     const sg = signBoard('Obby', { w: 1.6, h: 0.5, bg: '#2a2232', fg: '#8cff7a', sub: 'Oben wartet eine Truhe' });
     sg.position.set(0, 1.1, 1.6);
     g.add(sg);
@@ -1002,6 +1115,97 @@ export function buildSpawnTown(ctx, K) {
         c.rotation.set(0, -a + t * 0.8, Math.PI / 2);
       });
     }
+  }
+
+  // ── Platz und Straßen genauer (Werkstatt-Wunsch „Platz und Brunnen“, „Straßen und Leben“) ──
+  {
+    // Ringe im Pflaster um das Brunnenbecken und am Platzrand
+    for (const [r0, r1, c] of [[3.85 * 1, 4.05, '#b89a5e'], [PLAZA - 1.1, PLAZA - 0.95, '#c8a86a']]) {
+      const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 96), M(c, { roughness: 0.6 }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = y0 + 0.086;
+      m.userData.rbx = { color: c };
+      root.add(m);
+    }
+    // Bäume hinter den Bänken, Blumenbeete zwischen den Bänken
+    for (let i = 0; i < 8; i++) {
+      const a = deg(22.5 + i * 45), [x, z] = polar(a, 7.75 * S + 0.95);
+      root.add(at(roundTree(1.5, ['#4f9a3f', '#5fae4f'][i % 2], rand), x, height(x, z), z));
+      reserve(x, z, 0.7);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = deg(45 + i * 90), [x, z] = polar(a, 7.75 * S + 0.2);
+      const bed = new THREE.Group();
+      bed.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.95, 0.3, 20), M('#c8bca4')), 0, 0.15, 0));
+      bed.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.06, 20), M('#5a3a22')), 0, 0.3, 0));
+      const fp = flowerPatch(['#ff5f8f', '#ffd23f', '#ffffff', '#a86bff'], rand, 8);
+      fp.position.y = 0.32;
+      bed.add(fp);
+      bed.add(at(bush(0.35, '#4fb04a', rand), 0, 0.32, 0));
+      put(bed, x, z, { rot: false });
+      reserve(x, z, 1.0);
+    }
+    // Tauben in kleinen Gruppen auf dem Platz (picken auf der Webseite)
+    for (let gI = 0; gI < 4; gI++) {
+      const a = deg(70 + gI * 90), [cx, cz] = polar(a, 8.4 * S);
+      for (let k = 0; k < 4; k++) {
+        const bird = new THREE.Group();
+        bird.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), M('#8a8f9a')), 0, 0.1, 0));
+        bird.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), M('#5a6070')), 0, 0.18, 0.08));
+        bird.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 4), M('#e0a030')), 0, 0.18, 0.15)).children.at(-1).rotation.x = Math.PI / 2;
+        const x = cx + Math.cos(k * 1.7) * 0.5, z = cz + Math.sin(k * 1.7) * 0.5;
+        bird.position.set(x, y0 + 0.08, z);
+        bird.rotation.y = k * 1.3;
+        root.add(bird);
+        const ph = gI * 3 + k;
+        anims.push((tt) => (bird.children[1].position.y = 0.18 - Math.max(0, Math.sin(tt * 4 + ph)) * 0.06));
+      }
+    }
+    // Boulevards: Bäume und Blumenkübel zwischen den Laternen, Wimpelketten quer über die Straße
+    const roadEnd2 = HALL_R - 2.2;
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * TAU, ca = Math.cos(a), sa = Math.sin(a);
+      for (let d = PLAZA + 2.3, n = 0; d < roadEnd2 - 1; d += 2.6, n++) {
+        for (const side of [-1, 1]) {
+          const off = ROAD_W / 2 + 1.0, x = ca * d - sa * side * off, z = sa * d + ca * side * off;
+          if (!free(x, z, 0.55)) continue;
+          if (n % 2) {
+            const pl = new THREE.Group();
+            pl.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.55), M('#9a6a4a')), 0, 0.2, 0));
+            pl.add(at(bush(0.3, '#4fb04a', rand), 0, 0.4, 0));
+            root.add(at(pl, x, height(x, z), z));
+          } else root.add(at(roundTree(1.4, '#4f9a3f', rand), x, height(x, z), z));
+          reserve(x, z, 0.55);
+        }
+        if (n % 2 === 0) {
+          const cols = ['#ff5aa5', '#ffd76a', '#5ad1ff', '#8cff7a', '#c48bff'];
+          for (let f = 0; f <= 8; f++) {
+            const o = -ROAD_W / 2 - 0.35 + (f * (ROAD_W + 0.7)) / 8, sag = Math.sin((f / 8) * Math.PI) * 0.4;
+            const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.24, 3), M(cols[f % cols.length])), ca * (d - 1.3) - sa * o, y0 + 1.45 - sag, sa * (d - 1.3) + ca * o);
+            fl.rotation.x = Math.PI;
+            root.add(fl);
+          }
+        }
+      }
+    }
+    // Marktstände mit Händlern an den Boulevards zur Raketen- und Tiefsee-Halle
+    const goods = [['#ff5a3a', '#ffd23f', '#8cff7a'], ['#c8302a', '#ffe7a8', '#ffb05a'], ['#5ad1ff', '#ffffff', '#b07bff'], ['#ffcf4a', '#f2c14e', '#e0a030']];
+    let gi = 0;
+    for (const k of [2, 3])
+      for (const side of [-1, 1]) {
+        const a = (k / 4) * TAU, ca = Math.cos(a), sa = Math.sin(a), d = PLAZA + 3.6, off = ROAD_W / 2 + 1.9;
+        const x = ca * d - sa * side * off, z = sa * d + ca * side * off;
+        if (!free(x, z, 1.0)) continue;
+        reserve(x, z, 1.1);
+        const st = new THREE.Group(), cl = goods[gi++ % goods.length];
+        st.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.6), M('#8a5a3a')), 0, 0.35, 0.2));
+        for (const sx of [-0.65, 0.65]) st.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), M('#6b4a2e')), sx, 0.9, 0.45));
+        for (let f = 0; f < 4; f++) { const aw = at(new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.05, 0.9), M(f % 2 ? cl[0] : '#ffffff')), -0.57 + f * 0.38, 1.82, 0.2); aw.rotation.x = 0.25; st.add(aw); }
+        for (let f = 0; f < 9; f++) st.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), M(cl[f % 3])), -0.5 + (f % 5) * 0.25, 0.78, 0.1 + Math.floor(f / 5) * 0.18));
+        st.add(at(npc(cl[0]), 0, 0, -0.35));
+        const o = put(st, x, z, { rot: false });
+        o.lookAt(ca * d, o.position.y, sa * d);
+      }
   }
 
   // ── Grün ──
