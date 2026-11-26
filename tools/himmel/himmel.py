@@ -287,6 +287,207 @@ def cavern(img, elev, u, cfg, seed):
         img[..., k] = np.clip(img[..., k] + dots[..., k] * 0.8 + blur_wrap(dots[..., k], 4) * 1.2, 0, 1)
 
 
+# Unterwasserwelten (Werkstatt-Wunsch „Tiefsee: jede Welt dunkler, Himmel deutlich verbessern“): Silhouetten am
+# Meeresgrund in mehreren Nebelschichten (Korallen, Riesenmuscheln, Tang, Ruinen, Schluchtwände), dazu Fischschwärme,
+# Quallen, Luftblasen, Leuchtpunkte und glühende Schlote. Gerechnet in Grad (X = Richtung, 0..90 und wiederholt,
+# Y = Höhe), damit die Formen rund sind; alles bleibt unter 32 Grad (Naht zum Bild oben).
+def _wrapdx(X, c):
+    return (X - c + 45.0) % 90.0 - 45.0
+
+
+def _over(img, a, col):
+    a = np.clip(a, 0, 1)[..., None]
+    img[:] = img * (1 - a) + np.asarray(col, np.float32)[None, None, :] * a if np.ndim(col) == 1 else img * (1 - a) + col * a
+
+
+def _fogcol(c, fogc, f):
+    return rgb(c) * (1 - f) + rgb(fogc) * f
+
+
+def undersea(img, elev, u, cfg, seed):
+    rng = np.random.default_rng(seed)
+    X, Y = u * 90.0, elev
+    fogc = cfg['fog']
+    glowA = np.zeros(elev.shape, np.float32)
+    glowC = np.zeros(elev.shape + (3,), np.float32)
+
+    def add_glow(a, c):
+        nonlocal glowA, glowC
+        glowA = glowA + a
+        glowC = glowC + rgb(c)[None, None, :] * a[..., None]
+
+    for layer in cfg.get('layers', []):
+        f = layer['fog']
+        kind = layer['kind']
+        base = layer.get('base', -4)
+        n = layer.get('n', 10)
+        cols = layer.get('colors', ['#203040'])
+        tex = fbm(u, elev / 40.0, 10, 3, seed + int(f * 100), 0.6)
+        if kind in ('mounds', 'cliffs'):
+            # runde Korallenhügel / zackige Schluchtwände
+            best = np.full(elev.shape, -99.0, np.float32)
+            who = np.full(elev.shape, -1, np.int32)
+            for i in range(n):
+                c, w, h = rng.uniform(0, 90), rng.uniform(*layer['w']), rng.uniform(*layer['h'])
+                d = np.abs(_wrapdx(X, c)) / w
+                if kind == 'mounds':
+                    v = base + h * np.sqrt(np.clip(1 - d * d, 0, 1)) - 99 * (d >= 1)
+                else:
+                    v = base + h * np.clip(1 - d, 0, 1) ** 0.6 - 99 * (d >= 1)
+                m = v > best
+                best = np.where(m, v, best)
+                who = np.where(m, i, who)
+            if kind == 'cliffs':
+                best = best + (fbm(u, np.zeros_like(elev), 40, 3, seed + 5, 0.6) - 0.5) * layer.get('rough', 3)
+            a = np.maximum(smooth(best + 0.4, best - 0.4, Y), smooth(base + 0.4, base - 0.4, Y))
+            col = np.zeros(elev.shape + (3,), np.float32)
+            for i in range(n):
+                col = np.where((who == i)[..., None], _fogcol(cols[i % len(cols)], fogc, f)[None, None, :], col)
+            # unter dem Fuß der Hügel: einheitlicher Grund (Sand oder Fels), nach unten dunkler; sonst entstünden Streifen
+            floor = _fogcol(layer.get('floor', '#8a7a68'), fogc, f)
+            fl = smooth(base + 0.5, base - 1.5, Y)[..., None]
+            col = col * (1 - fl) + floor[None, None, :] * fl * (0.6 + 0.4 * np.clip((Y + 30) / 30, 0, 1))[..., None]
+            col = col * (0.82 + 0.3 * tex[..., None])
+            # Lichtkante oben (Licht von der Oberfläche)
+            rim = smooth(best - 1.2, best - 0.1, Y) * a * (best > base + 0.3) * (Y > base)
+            col = col + rgb(layer.get('rim', '#ffffff'))[None, None, :] * (rim * layer.get('rimStrength', 0.25) * (1 - f))[..., None]
+            _over(img, a, col)
+            # Korallenzweige auf den Hügeln
+            if layer.get('branches'):
+                for i in range(layer['branches']):
+                    c = rng.uniform(0, 90)
+                    col_i = _fogcol(rng.choice(cols), fogc, f * 0.9)
+                    top = base + rng.uniform(*layer['h']) * 0.9
+                    for k in range(3):
+                        bx = c + rng.uniform(-1.2, 1.2)
+                        bh = rng.uniform(2.5, 5.0)
+                        y0 = top - 2
+                        t = np.clip((Y - y0) / bh, 0, 1)
+                        xc = bx + np.sin(t * 3 + k) * 0.6 * t
+                        wdt = 0.35 * (1 - t * 0.6)
+                        a2 = (np.abs(_wrapdx(X, xc)) < wdt) * (Y > y0) * (Y < y0 + bh)
+                        tip = smooth(y0 + bh - 0.8, y0 + bh - 0.2, Y) * a2
+                        _over(img, a2.astype(np.float32), col_i * 0.9 + 0.1 * rgb('#ffffff'))
+                        add_glow(tip * layer.get('tipGlow', 0) , '#ffffff')
+        elif kind == 'kelp':
+            for i in range(n):
+                c = rng.uniform(0, 90)
+                H = rng.uniform(*layer['h'])
+                ph, fr, amp = rng.uniform(0, 6.3), rng.uniform(0.15, 0.3), rng.uniform(0.4, 1.2)
+                t = np.clip((Y - base) / H, 0, 1)
+                xc = c + np.sin(Y * fr + ph) * amp * t
+                wdt = layer.get('width', 0.45) * (1 - t * 0.5)
+                a = ((np.abs(_wrapdx(X, xc)) < wdt) & (Y > base) & (Y < base + H)).astype(np.float32)
+                _over(img, a, _fogcol(cols[i % len(cols)], fogc, f) * (0.85 + 0.25 * tex[..., None]))
+        elif kind == 'shells':
+            # Riesenmuscheln: Fächer mit Rippen, Perle in der Mitte
+            for i in range(n):
+                c, r = rng.uniform(0, 90), rng.uniform(*layer['h'])
+                dx, dy = _wrapdx(X, c), Y - base
+                d = np.sqrt(dx * dx + dy * dy)
+                ang = np.arctan2(dy, dx)
+                a = ((d < r) & (dy > 0)).astype(np.float32)
+                ribs = 0.8 + 0.25 * np.cos(ang * 14)
+                col = _fogcol(cols[i % len(cols)], fogc, f)[None, None, :] * ribs[..., None] * (0.85 + 0.25 * (d / r))[..., None]
+                _over(img, a, col)
+                if layer.get('pearls'):
+                    pd = np.sqrt(dx * dx + (dy - r * 0.18) ** 2)
+                    pa = smooth(r * 0.12, r * 0.09, pd)
+                    _over(img, pa, _fogcol('#fff4fb', fogc, f * 0.5))
+                    add_glow(pa * 0.8, '#ffd8f0')
+        elif kind == 'ruins':
+            # Säulen (manche abgebrochen) und Tempel mit Giebel, leuchtende Runen
+            for i in range(n):
+                c = rng.uniform(0, 90)
+                if rng.random() < layer.get('temple', 0.3):
+                    w, H = rng.uniform(6, 10), rng.uniform(*layer['h'])
+                    dx = _wrapdx(X, c)
+                    cols_a = np.zeros(elev.shape, np.float32)
+                    for k in range(5):
+                        cx = -w / 2 + w * k / 4
+                        cols_a = np.maximum(cols_a, ((np.abs(dx - cx) < 0.45) & (Y > base) & (Y < base + H)).astype(np.float32))
+                    beam = ((np.abs(dx) < w / 2 + 0.6) & (Y > base + H) & (Y < base + H + 0.9)).astype(np.float32)
+                    roof = ((Y > base + H + 0.9) & (Y < base + H + 0.9 + (w / 2 + 0.6 - np.abs(dx)) * 0.4)).astype(np.float32)
+                    step = ((np.abs(dx) < w / 2 + 1.2) & (Y > base - 1) & (Y < base + 0.5)).astype(np.float32)
+                    a = np.maximum.reduce([cols_a, beam, roof, step])
+                    _over(img, a, _fogcol(cols[0], fogc, f) * (0.85 + 0.25 * tex[..., None]))
+                    rune = ((np.abs(dx) < 1.2) & (np.abs(Y - (base + H + 1.6)) < 0.25)).astype(np.float32)
+                    add_glow(rune * 1.5, layer.get('glow', '#5affd8'))
+                    _over(img, rune, rgb(layer.get('glow', '#5affd8')))
+                else:
+                    H = rng.uniform(*layer['h']) * (0.4 if rng.random() < 0.4 else 1)
+                    dx = _wrapdx(X, c)
+                    shaft = (np.abs(dx) < 0.55) & (Y > base) & (Y < base + H)
+                    cap = (np.abs(dx) < 0.9) & (Y > base + H) & (Y < base + H + 0.6)
+                    a = (shaft | cap).astype(np.float32)
+                    _over(img, a, _fogcol(cols[i % len(cols)], fogc, f) * (0.8 + 0.3 * tex[..., None]))
+                    rune = ((np.abs(dx) < 0.2) & (np.abs(Y - (base + H * 0.6)) < 0.5)).astype(np.float32) * (rng.random() < 0.6)
+                    add_glow(rune * 1.2, layer.get('glow', '#5affd8'))
+        elif kind == 'vents':
+            # glühende Schlote am Grund
+            for i in range(n):
+                c = rng.uniform(0, 90)
+                dx = _wrapdx(X, c)
+                H = rng.uniform(*layer['h'])
+                a = ((np.abs(dx) < (1.2 - (Y - base) / H * 0.8)) & (Y > base) & (Y < base + H)).astype(np.float32)
+                _over(img, a, _fogcol(cols[0], fogc, f))
+                g = np.exp(-((dx / 1.2) ** 2 + ((Y - base - H) / 1.5) ** 2))
+                add_glow(g * 1.4, layer.get('glow', '#ff7a2a'))
+                # Rauchfahne
+                sm = np.exp(-(dx / (0.8 + (Y - base - H) * 0.12)) ** 2) * smooth(base + H, base + H + 2, Y) * (1 - smooth(base + H + 6, base + H + 16, Y))
+                _over(img, sm * 0.5, _fogcol('#3a4048', fogc, 0.5))
+    # Fischschwärme
+    for s_ in range(cfg.get('schools', 0)):
+        cx, cy = rng.uniform(0, 90), rng.uniform(6, 26)
+        col = _fogcol(cfg.get('fishColor', '#203848'), fogc, rng.uniform(0.2, 0.6))
+        dirn = rng.choice([-1, 1])
+        for _ in range(int(rng.integers(12, 28))):
+            fx, fy = cx + rng.normal(0, 3), cy + rng.normal(0, 1.4)
+            dx, dy = _wrapdx(X, fx), Y - fy
+            body = (dx / 0.55) ** 2 + (dy / 0.22) ** 2 < 1
+            tail = (dirn * dx < -0.4) & (dirn * dx > -0.8) & (np.abs(dy) < (-(dirn * dx) - 0.4) * 0.6)
+            _over(img, (body | tail).astype(np.float32), col)
+    # Quallen
+    for _ in range(cfg.get('jellies', 0)):
+        cx, cy = rng.uniform(0, 90), rng.uniform(4, 26)
+        r = rng.uniform(0.8, 1.8)
+        c = rng.choice(cfg.get('jellyColors', ['#ff9ad5']))
+        dx, dy = _wrapdx(X, cx), Y - cy
+        dome = ((dx / r) ** 2 + (dy / (r * 0.75)) ** 2 < 1) & (dy > 0)
+        tent = np.zeros(elev.shape, bool)
+        for k in range(5):
+            tx = -r * 0.7 + r * 1.4 * k / 4
+            tent |= (np.abs(dx - tx - np.sin((dy) * 2 + k) * 0.15) < 0.07) & (dy < 0) & (dy > -r * 2.2)
+        _over(img, dome.astype(np.float32) * 0.75, rgb(c) * 0.8 + 0.2)
+        _over(img, tent.astype(np.float32) * 0.6, rgb(c))
+        add_glow(dome.astype(np.float32) * 0.9, c)
+    # Luftblasen in Säulen
+    for _ in range(cfg.get('bubbles', 0)):
+        cx = rng.uniform(0, 90)
+        for k in range(int(rng.integers(6, 14))):
+            by = rng.uniform(-2, 30)
+            bx = cx + np.sin(by * 0.5) * 0.6
+            r = rng.uniform(0.12, 0.35)
+            d = np.sqrt(_wrapdx(X, bx) ** 2 + (Y - by) ** 2)
+            ring = smooth(r - 0.06, r, d) * (1 - smooth(r, r + 0.05, d))
+            _over(img, ring * 0.7, rgb('#e8ffff'))
+    # Leuchtplankton
+    for _ in range(cfg.get('plankton', 0)):
+        y, x = int(rng.integers(0, N)), int(rng.integers(0, N))
+        if not (-3 < elev[y, x] < 31):
+            continue
+        c = rgb(rng.choice(cfg.get('planktonColors', ['#7affe8'])))
+        glowA[y, x] += 2.5
+        glowC[y, x] += c * 2.5
+        img[y, x] = np.clip(img[y, x] + c, 0, 1)
+    # Leuchten weich zeichnen
+    if glowA.max() > 0:
+        gcol = glowC / np.maximum(glowA[..., None], 1e-4)
+        ga = np.clip(glowA, 0, 1.5)
+        for k in range(3):
+            img[..., k] = np.clip(img[..., k] + blur_wrap(np.clip(gcol[..., k] * ga / 1.5, 0, 1), 6) * cfg.get('glow', 0.9) + blur_wrap(np.clip(gcol[..., k] * ga / 1.5, 0, 1), 1.2) * 0.5, 0, 1)
+
+
 # Regenbogenband rundherum (nur von der Höhe abhängig, darum ohne Naht), weich und durchscheinend
 def rainbow(img, elev, cfg):
     lo, hi = cfg['band']
@@ -417,6 +618,8 @@ def render(name, cfg):
         cave(img, elev, u, cfg['cave'], seed + 77)
     if cfg.get('cavern'):
         cavern(img, elev, u, cfg['cavern'], seed + 79)
+    if cfg.get('undersea'):
+        undersea(img, elev, u, cfg['undersea'], seed + 83)
     if cfg.get('water'):
         water(img, elev, u, cfg['water'], seed + 33)
     if cfg.get('rays'):
@@ -626,34 +829,69 @@ HIMMEL = {
             {'band': (8, 26), 'scale': 6, 'cover': 0.55, 'soft': 0.4, 'light': '#ffd84a', 'shadow': '#e05a10', 'streaks': True, 'alpha': 0.5, 'blur': 4},
         ],
     },
-    # Korallenriff: warmes, klares Wasser; oben hell türkis mit Lichtnetz der Oberfläche, Lichtstrahlen fallen schräg herab,
-    # zum Horizont tiefes Blau; ein paar Planktonpünktchen (Sterne in hellem Türkis)
+    # Tiefsee (Werkstatt-Wunsch „jede weitere Welt dunkleres Wasser, Himmel deutlich verbessern“): Korallenriff hell
+    # und sonnig, Muschelland etwas tiefer, Atlantis tiefblau, Tiefseegraben fast schwarz (unten bei HIMMEL.update)
+    # Korallenriff: klares, sonniges Flachwasser; kräftige Lichtstrahlen, bunte Korallenhügel in drei Nebelschichten,
+    # Fischschwärme und Luftblasen
     'korallenriff': {
         'seed': 163,
-        'gradient': [(-5, '#0a4a7a'), (6, '#127aa8'), (20, '#2ab0c8'), (45, '#6ad8e8'), (90, '#bff8ff')],
-        'below': [(-90, '#06304e'), (0, '#0a4a7a')],
-        'water': {'light': '#e8ffff', 'shafts': 18, 'strength': 0.4, 'from': 2, 'to': 22},
-        'stars': 400,
+        'gradient': [(-6, '#1a7aa8'), (4, '#2aa8d0'), (16, '#4ac8e0'), (34, '#8ae4f0'), (90, '#d8fcff')],
+        'below': [(-90, '#0a5a88'), (0, '#1a7aa8')],
+        'glow': {'at': 26, 'width': 14, 'color': '#e8ffff', 'strength': 0.25},
+        'undersea': {
+            'fog': '#2aa8d0',
+            'layers': [
+                {'kind': 'mounds', 'n': 16, 'w': (3, 7), 'h': (3, 7), 'base': -3, 'fog': 0.7, 'colors': ['#ff8aa8', '#ffb05a', '#c87aff', '#5ad8a0'], 'floor': '#e8d8a8'},
+                {'kind': 'mounds', 'n': 12, 'w': (2.5, 6), 'h': (4, 9), 'base': -5, 'fog': 0.45, 'colors': ['#ff6a8a', '#ffa03a', '#b05aff', '#3ac888', '#ffd84a'], 'branches': 14, 'floor': '#e0cc98'},
+                {'kind': 'kelp', 'n': 14, 'h': (6, 16), 'base': -6, 'fog': 0.3, 'colors': ['#2a8a5a', '#3aa060']},
+                {'kind': 'mounds', 'n': 8, 'w': (2, 5), 'h': (5, 11), 'base': -8, 'fog': 0.15, 'colors': ['#e84a6a', '#ff8a2a', '#9a3ae8', '#ffc83a'], 'branches': 10, 'rimStrength': 0.4, 'floor': '#d8c08a'},
+            ],
+            'schools': 7, 'fishColor': '#1a4a6a', 'bubbles': 10, 'plankton': 80, 'planktonColors': ['#ffffff', '#e8ffff'], 'glow': 0.4,
+        },
+        'water': {'light': '#ffffff', 'shafts': 16, 'strength': 0.6, 'from': -2, 'to': 24},
+        'stars': 200,
     },
-    # Muschelland: perlmuttfarbenes Wasser; oben helles Rosa-Weiß mit Lichtnetz, Lichtstrahlen in zartem Rosa,
-    # zum Horizont Türkis bis Blau, Perlenglitzern
+    # Muschelland: tieferes Türkisblau mit Perlmuttschimmer; Riesenmuscheln mit leuchtenden Perlen, Tangwald,
+    # Lichtstrahlen in zartem Rosa
     'muschelland': {
         'seed': 173,
-        'gradient': [(-5, '#1a5a8a'), (6, '#2a8ab0'), (18, '#5ab8d0'), (34, '#a8b8e0'), (60, '#e0a8d0'), (90, '#f0b8dc')],
-        'below': [(-90, '#124a72'), (0, '#1a5a8a')],
-        'water': {'light': '#ffd8f0', 'shafts': 16, 'strength': 0.35, 'from': 2, 'to': 22, 'topLight': 0.5},
-        'stars': 500,
+        'gradient': [(-6, '#0e5078'), (4, '#16729a'), (16, '#2a90b4'), (32, '#6aa8d0'), (60, '#b8a8d8'), (90, '#d8a8d0')],
+        'below': [(-90, '#083a5a'), (0, '#0e5078')],
+        'glow': {'at': 4, 'width': 8, 'color': '#ffb8e0', 'strength': 0.2},
+        'undersea': {
+            'fog': '#16729a',
+            'layers': [
+                {'kind': 'mounds', 'n': 14, 'w': (4, 9), 'h': (2, 5), 'base': -3, 'fog': 0.7, 'colors': ['#e8c8a0', '#d8b090'], 'floor': '#d8c0a0'},
+                {'kind': 'kelp', 'n': 26, 'h': (8, 22), 'base': -4, 'fog': 0.55, 'colors': ['#2a6a5a', '#3a7a5a'], 'width': 0.5},
+                {'kind': 'shells', 'n': 7, 'h': (2.5, 5), 'base': -3, 'fog': 0.35, 'colors': ['#ffd8ec', '#f4c8e0', '#ffe8d0'], 'pearls': True},
+                {'kind': 'kelp', 'n': 12, 'h': (10, 26), 'base': -8, 'fog': 0.2, 'colors': ['#1a5a4a', '#2a6a4a'], 'width': 0.6},
+                {'kind': 'shells', 'n': 4, 'h': (4, 7), 'base': -7, 'fog': 0.12, 'colors': ['#ffc8e4', '#ffe0f0'], 'pearls': True},
+            ],
+            'schools': 4, 'fishColor': '#0e3a5a', 'bubbles': 8, 'plankton': 160, 'planktonColors': ['#ffe8f8', '#ffffff'], 'glow': 0.6,
+        },
+        'water': {'light': '#ffd8f0', 'shafts': 14, 'strength': 0.4, 'from': 0, 'to': 24, 'topLight': 0.5},
+        'stars': 300,
     },
-    # Atlantis: tiefes, geheimnisvolles Wasser; oben schwach türkis leuchtende Oberfläche, wenige kräftige Lichtstrahlen,
-    # zum Horizont fast schwarzblau; Leuchtplankton in Türkis
+    # Atlantis: tiefblaues, dämmriges Wasser; versunkene Säulen und Tempel mit leuchtenden Runen, Quallen,
+    # wenige schwache Lichtstrahlen, viel Leuchtplankton
     'atlantis': {
         'seed': 181,
-        'gradient': [(-5, '#04203a'), (6, '#063050'), (20, '#0a5070'), (45, '#1a8a98'), (90, '#3ac8c0')],
-        'below': [(-90, '#021428'), (0, '#04203a')],
-        'water': {'light': '#7affe8', 'shafts': 10, 'strength': 0.45, 'from': 2, 'to': 22, 'topLight': 0.6},
-        'stars': 900,
-        'starBright': 1.6,
-        'starsFrom': -2,
+        'gradient': [(-6, '#031a32'), (4, '#062a48'), (16, '#0a3a5a'), (40, '#14607a'), (90, '#2a8a98')],
+        'below': [(-90, '#010c1a'), (0, '#031a32')],
+        'nebula': {'band': (-4, 30), 'colors': ['#0a6a7a', '#2a3a98'], 'strength': 0.25},
+        'undersea': {
+            'fog': '#062a48',
+            'layers': [
+                {'kind': 'mounds', 'n': 12, 'w': (5, 10), 'h': (2, 5), 'base': -3, 'fog': 0.7, 'colors': ['#2a4a60'], 'floor': '#3a5a68'},
+                {'kind': 'ruins', 'n': 12, 'h': (4, 9), 'base': -2, 'fog': 0.55, 'colors': ['#5a7a88', '#4a6a7a'], 'temple': 0.25, 'glow': '#5affd8'},
+                {'kind': 'ruins', 'n': 8, 'h': (6, 13), 'base': -5, 'fog': 0.3, 'colors': ['#7a98a4', '#6a8894'], 'temple': 0.35, 'glow': '#5affd8'},
+                {'kind': 'kelp', 'n': 10, 'h': (6, 14), 'base': -6, 'fog': 0.25, 'colors': ['#1a4a40']},
+            ],
+            'jellies': 9, 'jellyColors': ['#ff9ad5', '#5affd8', '#b07bff'], 'bubbles': 5,
+            'plankton': 500, 'planktonColors': ['#5affd8', '#7ad0ff', '#b07bff'], 'glow': 1.0,
+        },
+        'water': {'light': '#7affe8', 'shafts': 9, 'strength': 0.25, 'from': 4, 'to': 26, 'topLight': 0.35},
+        'stars': 500, 'starBright': 1.2, 'starsFrom': -2,
     },
     # Spawn: warmer, goldener Nachmittag; oben klares Blau, zum Horizont Pfirsich und Gold, Haufenwolken golden angestrahlt
     'spawn': {
@@ -689,8 +927,6 @@ HIMMEL['saturn']['sparkles'] = {'count': 36, 'color': '#fff0c8', 'size': 8, 'fro
 HIMMEL['alien']['nebula'] = {'band': (-4, 32), 'colors': ['#7aff5a', '#ff5ad8', '#5affd8'], 'strength': 0.45}
 HIMMEL['alien']['sparkles'] = {'count': 40, 'color': '#d8ffd0', 'size': 8, 'from': -2}
 HIMMEL['sonne']['glow'] = {'at': 0, 'width': 10, 'color': '#ffffff', 'strength': 0.5}
-HIMMEL['korallenriff']['sparkles'] = {'count': 20, 'color': '#e8ffff', 'size': 6, 'top': False}
-HIMMEL['atlantis']['nebula'] = {'band': (-4, 30), 'colors': ['#0a8a8a', '#3a4ab8'], 'strength': 0.3}
 HIMMEL['lava']['glow'] = {'at': 0, 'width': 8, 'color': '#ffb050', 'strength': 0.45}
 HIMMEL['hoehle']['sparkles'] = {'count': 34, 'color': '#c8a8ff', 'size': 7, 'top': False}
 
@@ -699,12 +935,23 @@ HIMMEL.update({
     # biolumineszente Schleier in Türkis und Violett
     'tiefseegraben': {
         'seed': 191,
-        'gradient': [(-5, '#010812'), (8, '#02101e'), (25, '#04182c'), (55, '#062436'), (90, '#0a3448')],
-        'below': [(-90, '#000408'), (0, '#010812')],
-        'nebula': {'band': (-4, 30), 'colors': ['#0a5a5a', '#2a1a6a'], 'strength': 0.35},
-        'water': {'light': '#5affd8', 'shafts': 8, 'strength': 0.12, 'from': 6, 'to': 30, 'topLight': 0.25},
-        'stars': 1800, 'starBright': 1.6, 'starsFrom': -4,
-        'sparkles': {'count': 30, 'color': '#7affe8', 'size': 6, 'from': -4, 'top': False},
+        'gradient': [(-6, '#000308'), (6, '#01070f'), (20, '#020c18'), (50, '#041420'), (90, '#061c2a')],
+        'below': [(-90, '#000204'), (0, '#000308')],
+        'nebula': {'band': (-4, 30), 'colors': ['#063a3a', '#1a0e4a'], 'strength': 0.3},
+        'undersea': {
+            'fog': '#01070f',
+            'layers': [
+                {'kind': 'cliffs', 'n': 10, 'w': (6, 14), 'h': (14, 30), 'base': -6, 'fog': 0.55, 'colors': ['#0e1a26'], 'floor': '#0a121a', 'rough': 4, 'rim': '#2affd8', 'rimStrength': 0.15},
+                {'kind': 'vents', 'n': 6, 'h': (2, 5), 'base': -4, 'fog': 0.3, 'colors': ['#141a20'], 'glow': '#ff7a2a'},
+                {'kind': 'cliffs', 'n': 7, 'w': (4, 9), 'h': (8, 20), 'base': -10, 'fog': 0.15, 'colors': ['#060c12'], 'floor': '#04080c', 'rough': 5, 'rim': '#5affd8', 'rimStrength': 0.2},
+                {'kind': 'vents', 'n': 4, 'h': (3, 6), 'base': -7, 'fog': 0.1, 'colors': ['#0a0e12'], 'glow': '#5affd8'},
+            ],
+            'jellies': 12, 'jellyColors': ['#5affd8', '#ff7ae0', '#7ad0ff', '#b07bff'],
+            'plankton': 900, 'planktonColors': ['#5affd8', '#7ad0ff', '#ff7ae0'], 'glow': 1.2,
+        },
+        'water': {'light': '#5affd8', 'shafts': 8, 'strength': 0.06, 'from': 8, 'to': 30, 'topLight': 0.12},
+        'stars': 1400, 'starBright': 1.4, 'starsFrom': -4,
+        'sparkles': {'count': 24, 'color': '#7affe8', 'size': 6, 'from': -4, 'top': False},
     },
     # Wolkenburg: strahlender Himmel hoch über einem Wolkenmeer, goldener Saum am Horizont, dicke weiße Türme
     'wolkenburg': {

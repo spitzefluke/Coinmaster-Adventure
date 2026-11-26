@@ -1217,7 +1217,13 @@ der Insel hängt, bleibt.
 das Nachtbild) mit Licht, Nebel und Farbstimmung. Keine Himmelskörper mehr (`userData.rbx.celestial` wird beim Export
 verworfen) und `WorldFx.Apply` baut keine Teile mehr (Sonnen, Monde, Planeten, Sterne, Polarlicht, Wolken, Vögel,
 Fische, Teilchen); es bleibt nur seine Farbstimmung. Kuppel und Horizont-Ring blendet das Licht-Skript aus, sobald die
-Bild-IDs eingetragen sind. Die Absätze oben zu Sonnen, Planeten und Sternschnuppen gelten damit nicht mehr. Der Werkstatt-Ablauf dazu heißt **Himmel**
+Bild-IDs eingetragen sind. Die Absätze oben zu Sonnen, Planeten und Sternschnuppen gelten damit nicht mehr.
+
+**Tiefsee** (Planet 3): Das Wasser wird von Welt zu Welt dunkler, von Korallenriff (hell, sonnig) über Muschelland und
+Atlantis bis zum fast schwarzen Tiefseegraben: Himmelsbilder (Maler `undersea` in `tools/himmel/himmel.py` mit
+Korallenhügeln, Riesenmuscheln, Tang, versunkenen Säulen und Tempeln, Schluchtwänden mit glühenden Schloten,
+Fischschwärmen, Quallen und Leuchtplankton) und Licht (`LOOK[...].light` in `roblox/js/worldParts.js`: Helligkeit,
+Umgebungslicht, Nebelfarbe und -weite, Atmosphäre). Die Höhle hat den Maler `cavern` (Kristallhöhle). Der Werkstatt-Ablauf dazu heißt **Himmel**
 (Doc-Ids weiter `umgebung-<welt>`).
 
 Der Ablauf **Spawn** hat einen Punkt je Gebäude oder Platz im Spawn (Ids `spawn-<bereich>`: Shops mit Taschen-Laden und

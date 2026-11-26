@@ -788,6 +788,7 @@ export function worldLighting(world) {
   const lum = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b;
   const night = lum < 0.2;
   const dim = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
+  const look = worldLook(world, night);
   return {
     ClockTime: night ? 0.5 : 14,
     Brightness: night ? 1.2 : 2.6,
@@ -802,7 +803,8 @@ export function worldLighting(world) {
     bloom: { Intensity: night ? 0.7 : 0.45, Size: 24, Threshold: night ? 1.2 : 1.6 },
     // Himmelsbild (Skybox) der Welt, falls gemalt (welten/js/skyboxes.js)
     himmel: SKYBOXES[world.id] ? { id: world.id, sun: SKYBOXES[world.id].sun !== false, night: !!NIGHT_SKY[world.id] } : null,
-    ...worldLook(world, night),
+    ...look,
+    atmosphere: { Density: world.water ? 0.55 : night ? 0.4 : 0.42, Offset: 0.08, Color: horizon, Decay: top, Glare: night ? 0 : 0.25, Haze: world.water ? 2.6 : 1.8, ...look.atmosphere },
   };
 }
 
@@ -821,6 +823,12 @@ const LOOK = {
   wolkenburg: { clock: 12.5, sat: 0.16, tint: '#fffaf0' },
   engelsgarten: { clock: 13, sat: 0.16, tint: '#fff8e8' },
   goetterthron: { clock: 17.8, sat: 0.22, tint: '#fff0d8' },
+  // Tiefsee (Werkstatt-Wunsch „jede weitere Welt dunkleres Wasser“): Licht, Nebel und Wasserfarbe werden von Welt zu
+  // Welt dunkler und blauer, der Nebel rückt näher (passend zu den Himmelsbildern)
+  korallenriff: { sat: 0.2, tint: '#eafcff', light: { Brightness: 2.4, Ambient: '#5a7c8a', OutdoorAmbient: '#8abccc', FogColor: '#2aa8d0', FogStart: 140, FogEnd: 950, atmosphere: { Color: '#2aa8d0', Decay: '#8ae4f0', Density: 0.5, Haze: 2.2 } } },
+  muschelland: { sat: 0.18, tint: '#e4f2ff', light: { Brightness: 1.8, Ambient: '#4a6478', OutdoorAmbient: '#6a90aa', FogColor: '#16729a', FogStart: 120, FogEnd: 800, atmosphere: { Color: '#16729a', Decay: '#6aa8d0', Density: 0.55, Haze: 2.5 } } },
+  atlantis: { sat: 0.16, tint: '#d4e6ff', light: { Brightness: 1.25, Ambient: '#2c4258', OutdoorAmbient: '#3c5a78', FogColor: '#062a48', FogStart: 100, FogEnd: 640, atmosphere: { Color: '#062a48', Decay: '#14607a', Density: 0.6, Haze: 2.8 } } },
+  tiefseegraben: { sat: 0.14, tint: '#c4d6f0', light: { Brightness: 0.75, Ambient: '#1a2638', OutdoorAmbient: '#22344a', FogColor: '#01070f', FogStart: 70, FogEnd: 480, atmosphere: { Color: '#01070f', Decay: '#041420', Density: 0.66, Haze: 3 } } },
 };
 function worldLook(world, night) {
   const L = LOOK[world.id] || {};
@@ -828,6 +836,7 @@ function worldLook(world, night) {
     farbe: { Saturation: L.sat ?? 0.2, Contrast: 0.06, Brightness: 0.01, TintColor: L.tint || '#ffffff' },
   };
   if (L.clock && !night) out.ClockTime = L.clock;
+  if (L.light) Object.assign(out, L.light);
   const N = NIGHT_SKY[world.id];
   if (N) {
     out.nacht = {
