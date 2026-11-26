@@ -1507,7 +1507,37 @@ const NEPTUN = {
     scatterModels(ctx, 2, ['windturbine_tall', 'windturbine_low'], 2.4, 2.8, { rMin: 4, gap: 0.8 });
     scatterModels(ctx, 2, ['structure_tall'], 2.4, 2.4, { gap: 0.9 });
     scatterModels(ctx, 2, ['containers_B', 'cargo_B', 'space_lights'], 2.6, 2.6, { gap: 1 });
-    rocksOf(ctx, 'neptun', 4);
+    // Runde 2 (Werkstatt-Wunsch „Felsen schöner, mehr Eis-Details“): eigene blaue Eisfelsen mit Reifkappe statt
+    // Paket-Felsen, gefrorene Pfützen mit Reifrand, Frostrisse im Boden, Schneewehen
+    groveOf(ctx, 4, 3, (k) => kit.moonRock(k === 0 ? rr(0.55, 0.8) : rr(0.2, 0.38), rand, pick(rand, ['#2a4fa0', '#3a62c0', '#24448e']), { dust: '#eaf6ff', apron: '#cfe6ff', pit: '#1a3070' }), { radius: 1.2, size: 0.5 });
+    const iceM = new THREE.MeshStandardMaterial({ color: '#bfe6ff', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.8 });
+    for (let i = 0; i < 4; i++) {
+      const p = ctx.spot(1.0, 3, inner);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], 0.9);
+      const g = new THREE.Group(), r = rr(0.6, 0.9);
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.12, r + 0.16, 0.03, 18), new THREE.MeshStandardMaterial({ color: '#f2faff' })));
+      const ice = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.04, 18), iceM);
+      ice.position.y = 0.02;
+      g.add(ice);
+      ctx.put(g, p[0], p[1], { lay: true, sink: 0 });
+      g.userData.deko = true;
+    }
+    const crackM = new THREE.MeshStandardMaterial({ color: '#e8f6ff', emissive: '#9fd8ff', emissiveIntensity: 0.5 });
+    for (let c = 0; c < 6; c++) {
+      const p0 = ctx.spot(0.4, 3, inner);
+      if (!p0) continue;
+      let [x, z] = p0, a = rand() * TAU;
+      for (let s = 0; s < 5; s++) {
+        const len = rr(0.4, 0.8), nx = x + Math.cos(a) * len, nz = z + Math.sin(a) * len;
+        if (Math.hypot(nx, nz) > inner) break;
+        const crack = new THREE.Mesh(new THREE.BoxGeometry(len, 0.03, 0.05), crackM);
+        layOnGround(crack, ctx.height, (x + nx) / 2, (z + nz) / 2, { yaw: -a, lift: 0.01 });
+        ctx.root.add(crack);
+        x = nx; z = nz; a += rr(-0.9, 0.9);
+      }
+    }
+    ctx.scatter(5, () => kit.snowDrift(rr(0.6, 1.0), rand), 0.8, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'neptun');
@@ -1528,7 +1558,7 @@ const MARS = {
     // Steinen in allen Größen, kleine Sandrippeln, Reifenspuren
     groundPatches(ctx, 16, [['#d07a4a', 'Sand'], ['#9a4426', 'Ground'], ['#b8603a', 'Sand'], ['#7a3a22', 'Slate']]);
     const inner = R - 2.6;
-    ctx.scatter(16, () => {
+    ctx.scatter(10, () => {
       const g = new THREE.Group();
       const n = 2 + Math.floor(rand() * 4);
       for (let i = 0; i < n; i++) {
@@ -1563,7 +1593,18 @@ const MARS = {
     const pad = place(ctx, 'landingpad_small', 2.6, { rMin: 4, rMax: R - 3 });
     if (pad) stand(ctx, model('lander_B', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
-    rocksOf(ctx, null, 9);
+    // geschichtete Marsfelsen in Gruppen (Werkstatt-Wunsch „Deko deutlich verbessern“) statt vieler Paket-Felsen,
+    // dazu kleine Einschlagkrater mit hellem Staubring
+    groveOf(ctx, 4, 3, (k) => kit.strataRock(k === 0 ? rr(0.7, 1.0) : rr(0.3, 0.5), ['#7a3a22', '#a0482a', '#c4683a', '#d8885a'], rand), { radius: 1.3, size: 0.7 });
+    rocksOf(ctx, null, 3);
+    for (let i = 0; i < 4; i++) {
+      const p = ctx.spot(1.2, 3, inner);
+      if (!p) continue;
+      ctx.reserve(p[0], p[1], 1);
+      const c = kit.crater(rr(0.7, 1.1), '#b8603a', rand);
+      ctx.put(c, p[0], p[1], { lay: true, sink: 0.02 });
+      c.userData.deko = true;
+    }
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, null);
@@ -1586,7 +1627,7 @@ const SATURN = {
       around(ctx, hub, [['cargodepot_A', 2.6], ['cargodepot_B', 2.6], ['cargodepot_C', 2.6], ['containers_A', 2.6], ['containers_C', 2.6]], 4.2, 5.4);
     }
     scatterModels(ctx, 2, ['structure_low', 'space_lights'], 2.4, 2.6, { gap: 0.9 });
-    rocksOf(ctx, 'saturn');
+    rocksOf(ctx, 'saturn', 3);
     // erst nach Handelsposten und Sternwarte (die brauchen Platz)
     // Sandsteinwüste wie im Colorado-Plateau: ein großer Felsbogen, geschichtete Tafelfelsen in Ocker- und
     // Rosttönen, glatte Sandsteinplatten (Slickrock), Sandrippeln und zähe Wüstensträucher
@@ -1601,7 +1642,9 @@ const SATURN = {
       arch.rotation.y = -Math.atan2(archAt[1], archAt[0]) - Math.PI / 2;
     }
     ctx.scatter(5, () => kit.butte(rr(1.6, 3.2), rr(0.6, 1), bands, rand), 1.2, 3, inner);
-    ctx.scatter(9, () => {
+    // geschichtete Sandsteinfelsen in Gruppen (Werkstatt-Wunsch „Deko verbessern“)
+    groveOf(ctx, 3, 3, (k) => kit.strataRock(k === 0 ? rr(0.7, 1.0) : rr(0.3, 0.5), bands, rand), { radius: 1.3, size: 0.7 });
+    ctx.scatter(6, () => {
       const m = kit.rockMesh(rr(0.6, 1), pick(rand, ['#d8a868', '#c88a52']), rand);
       m.scale.set(rr(1.6, 2.4), 0.35, rr(1.2, 1.8));
       return m;
@@ -1617,7 +1660,7 @@ const SATURN = {
       }
       return g;
     }, 1.2, 2, inner, { rot: false });
-    ctx.scatter(10, () => kit.bush(rr(0.18, 0.3), pick(rand, ['#6a7a3a', '#7a8a48', '#5a6a32']), rand), 0.35, 2, inner);
+    ctx.scatter(8, () => kit.bush(rr(0.18, 0.3), pick(rand, ['#6a7a3a', '#7a8a48', '#5a6a32']), rand), 0.35, 2, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'saturn');
@@ -1672,7 +1715,7 @@ const ALIEN = {
       return g;
     }, 1.3, 3, inner);
     // Polster aus Leuchtmoos
-    ctx.scatter(12, () => {
+    ctx.scatter(8, () => {
       const m = kit.mossMound(rr(0.4, 0.7), pick(rand, ['#2a8a7a', '#3a9a5a', '#5a3a9a']), rand);
       m.children[0].material = new THREE.MeshStandardMaterial({ color: m.children[0].material.color, emissive: m.children[0].material.color, emissiveIntensity: 0.35, flatShading: true });
       return m;
@@ -1685,7 +1728,14 @@ const ALIEN = {
     }
     const pad = place(ctx, 'landingpad_small', 2.6, { rMin: 4, rMax: R - 3 });
     if (pad) stand(ctx, model('lander_A', 2.6), pad.position.x, pad.position.z, { sink: -1.2 });
-    rocksOf(ctx, 'alien');
+    rocksOf(ctx, 'alien', 3);
+    // Leuchtkristall-Säulen: gedrehte Kristalle in Violett und Türkis, die von innen pulsieren
+    ctx.scatter(4, () => {
+      const g = new THREE.Group();
+      g.add(kit.crystal(rr(2.0, 3.0), pick(rand, ['#d97aff', '#5affd8']), rand, 1.4));
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.02, 14), new THREE.MeshStandardMaterial({ color: '#7affd8', emissive: '#5affd8', emissiveIntensity: 0.6, transparent: true, opacity: 0.6 })));
+      return g;
+    }, 0.9, 3, inner);
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'alien');
@@ -1700,7 +1750,7 @@ const SONNE = {
   landmark: true, // Sonnentempel
   keepBase: true, // Sonne am Himmel, Sonnenbögen, Dampf, Glutkristalle
   baseSpots: [[2.4, 1.6, 1.6], [-2.6, 1.2, 1.6], [1, -3, 1.6], [-1.6, -2.8, 1.6]],
-  build(ctx) {
+  build(ctx, kit) {
     const { R } = ctx;
     // Sonnenkraftwerk: Reihen von Solarpaneelen und zwei Masten
     const plant = clearing(ctx, 5, 5, R - 4);
@@ -1728,7 +1778,7 @@ const SONNE = {
       ctx.reserve(plant[0], plant[1], 1.4);
     }
     scatterModels(ctx, 2, ['roofmodule_solarpanels'], 2.6, 2.6, { gap: 0.9 });
-    rocksOf(ctx, 'sonne');
+    rocksOf(ctx, 'sonne', 3);
     // Sonnenoberfläche: Granulation in Orange und Rot, dunkle Sonnenflecken mit hellerem Hof,
     // leuchtende Plasmaadern und Büschel aus Spikulen (dünne, glühende Plasmastrahlen)
     const { rand, rr } = ctx, inner = R - 2.6;
@@ -1752,7 +1802,9 @@ const SONNE = {
         x = nx; z = nz; a += rr(-0.8, 0.8);
       }
     }
-    ctx.scatter(7, () => {
+    // Glutbrocken in Gruppen (Werkstatt-Wunsch „Deko verbessern, etwas weniger“)
+    groveOf(ctx, 3, 3, (k) => kit.emberRock(k === 0 ? rr(0.6, 0.85) : rr(0.25, 0.4), rand), { radius: 1.2, size: 0.6 });
+    ctx.scatter(5, () => {
       const g = new THREE.Group();
       const mat = new THREE.MeshStandardMaterial({ color: '#ffd84a', emissive: '#ff9a1a', emissiveIntensity: 1.4 });
       for (let i = 0; i < 6; i++) {
@@ -1849,7 +1901,7 @@ const KORALLENRIFF = {
   build(ctx, kit) {
     const { R, rr } = ctx;
     // Riffstöcke mit Tischkorallen, Hirnkorallen, Geweihkorallen und Fächern; dazwischen Sand mit Schutt
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
       const s = rr(1.1, 1.7), p = ctx.spot(s * 1.5, 3, R - 3) || ctx.spot(s * 1.1, 3, R - 3);
       if (!p) continue;
       ctx.reserve(p[0], p[1], s * 1.4);
@@ -1862,8 +1914,8 @@ const KORALLENRIFF = {
       stand(ctx, model('chest_gold', 0.85), loot[0], loot[1]);
       around(ctx, loot, [['barrel_large', 0.6], ['crates_stacked', 0.6], ['trunk_large_A', 0.7], ['barrel', 3]], 1.4, 2.4);
     }
-    seaweedBeds(ctx, 5);
-    seaRocks(ctx);
+    seaweedBeds(ctx, 3);
+    seaRocks(ctx, 4);
   },
   backdrop(ctx) {
     // Umgebung: schwebende Riff-Felsen mit Seetang, Felsunterseite in Meeresfarben, Seetang hängt vom Rand
@@ -1881,7 +1933,7 @@ const MUSCHELLAND = {
     // Sandboden wie am Strand bei Ebbe: warme und kühle Sandflecken, lange Rippeln quer zur Strömung,
     // Felsgruppen mit Seepocken (kleine helle Kegel)
     groundPatches(ctx, 12, [['#f2dcb8', 'Sand'], ['#e0c8a0', 'Sand'], ['#d8d0c0', 'Pebble']]);
-    ctx.scatter(12, () => {
+    ctx.scatter(8, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 5; i++) {
         const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), new THREE.MeshStandardMaterial({ color: '#ead4ac', flatShading: true }));
@@ -1893,7 +1945,7 @@ const MUSCHELLAND = {
       g.rotation.y = 0.4;
       return g;
     }, 1.4, 2, R - 2.6, { rot: false });
-    ctx.scatter(5, () => {
+    ctx.scatter(4, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 3; i++) {
         const rock = kit.rockMesh(rr(0.45, 0.75), pick(rand, ['#7a8890', '#6a7680']), rand);
@@ -1910,8 +1962,8 @@ const MUSCHELLAND = {
     // Felsentor aus Stein mit Laternen davor
     const gate = place(ctx, 'arch', 0.75, { rMin: 5, rMax: R - 3, face: [0, 0] });
     if (gate) around(ctx, [gate.position.x, gate.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.7]], 2.4, 3.2);
-    seaweedBeds(ctx, 4);
-    seaRocks(ctx, 8);
+    seaweedBeds(ctx, 3);
+    seaRocks(ctx, 4);
   },
   backdrop(ctx) {
     // Umgebung: schwebende Muschelfelsen, Felsunterseite in Meeresfarben, Perlenschnüre am Rand
@@ -1930,7 +1982,7 @@ const ATLANTIS = {
     // herabgestürzte Blöcke, alte Pflasterflächen im Sand
     groundPatches(ctx, 10, [['#c8d4d8', 'Marble'], ['#d8d0b8', 'Sand'], ['#a8b8b8', 'Pebble']]);
     const stone = ['#d8e0e2', '#c8d2d6', '#e6ecee'], algae = '#4a8a5a';
-    for (let w = 0; w < 6; w++) {
+    for (let w = 0; w < 4; w++) {
       const len = Math.round(rr(4, 7)), p = ctx.spot(len * 0.35 + 0.5, 4, R - 3);
       if (!p) continue;
       ctx.reserve(p[0], p[1], len * 0.35);
@@ -1960,14 +2012,13 @@ const ATLANTIS = {
       ctx.put(g, p[0], p[1]);
     }
     // Ruinenfeld: Säulen (manche verziert), Trümmer, ein Tor mit Gitter, ein Schrein mit Laternen
-    scatterModels(ctx, 6, ['pillar', 'pillar_decorated', 'column'], 0.7, 0.85, { rMin: 4, gap: 0.9 });
-    scatterModels(ctx, 4, ['rubble_half', 'rubble_large'], 0.35, 0.5, { rMin: 4, gap: 0.8 });
+    scatterModels(ctx, 4, ['pillar', 'pillar_decorated', 'column'], 0.7, 0.85, { rMin: 4, gap: 0.9 });
+    scatterModels(ctx, 3, ['rubble_half', 'rubble_large'], 0.35, 0.5, { rMin: 4, gap: 0.8 });
     const gate = place(ctx, 'arch_gate', 0.75, { rMin: 6, rMax: R - 3, face: [0, 0] });
-    const shrine = place(ctx, 'shrine', 0.9, { rMin: 4, rMax: R - 3, face: [0, 0] });
-    if (shrine) around(ctx, [shrine.position.x, shrine.position.z], [['lantern_standing', 0.9], ['lantern_standing', 0.9], ['chest_gold', 0.75]], 1.6, 2.4);
+    // der kleine Schrein mit Laternen ist weg (Werkstatt-Wunsch „ein kleines Gebäude weniger“)
     void gate;
-    seaweedBeds(ctx, 3);
-    seaRocks(ctx, 5);
+    seaweedBeds(ctx, 2);
+    seaRocks(ctx, 3);
   },
   backdrop(ctx) {
     // Umgebung: schwebende Ruinenfelsen mit Säulen, Felsunterseite, leuchtende Runensteine am Rand

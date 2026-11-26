@@ -341,20 +341,21 @@ function details(ctx, kit) {
   } else if (id === 'neptun') {
     scatter(4, () => crystal(rr(0.3, 0.6), '#9fd8ff', rand, 0.8), 0.2);
   } else if (id === 'mars') {
-    scatter(12, () => rockMesh(rr(0.1, 0.22), ['#8a3a1e', '#a0482a'][Math.floor(rand() * 2)], rand), 0.18);
+    // feste Anzahlen (vorher mit der Inselfläche etwa siebenfach)
+    scatter(10, () => rockMesh(rr(0.1, 0.22), ['#8a3a1e', '#a0482a'][Math.floor(rand() * 2)], rand), 0.18, 2, ctx.R - 2.6);
     // Messsonden mit Lämpchen
     scatter(3, () => {
       const g = new THREE.Group();
       g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 5), M('#c8c8cc')), 0, 0.35, 0));
       g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), E('#7aff5a', 2)), 0, 0.74, 0));
       return g;
-    }, 0.3);
+    }, 0.3, 2, ctx.R - 2.6);
   } else if (id === 'saturn') {
-    scatter(12, () => rockMesh(rr(0.08, 0.18), '#ffe2a0', rand), 0.15);
+    scatter(10, () => rockMesh(rr(0.08, 0.18), '#ffe2a0', rand), 0.15, 2, ctx.R - 2.6);
   } else if (id === 'alien') {
-    scatter(24, () => at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E(['#7aff5a', '#5affd8', '#d97aff'][Math.floor(rand() * 3)], 1.4)), 0, 0.08, 0), 0.15, 2, ctx.R - 2.6);
+    scatter(14, () => at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), E(['#7aff5a', '#5affd8', '#d97aff'][Math.floor(rand() * 3)], 1.4)), 0, 0.08, 0), 0.15, 2, ctx.R - 2.6);
   } else if (id === 'sonne') {
-    scatter(12, () => rockMesh(rr(0.1, 0.2), '#3a0e04', rand, rand() < 0.5 ? E('#ff8a1a', 0.9) : null), 0.18);
+    scatter(10, () => rockMesh(rr(0.1, 0.2), '#3a0e04', rand, rand() < 0.5 ? E('#ff8a1a', 0.9) : null), 0.18, 2, ctx.R - 2.6);
   }
 }
 
