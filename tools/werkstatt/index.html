@@ -159,7 +159,7 @@
     <button class="track" role="tab" type="button" data-track="welt"><b>Insel</b><span>Boden, Wege, Plätze, Wasser, Fels darunter</span><em id="tp-welt"></em></button>
     <button class="track" role="tab" type="button" data-track="gebaeude"><b>Gebäude</b><span>Häuser, Läden, Portale, Türme, Mauern</span><em id="tp-gebaeude"></em></button>
     <button class="track" role="tab" type="button" data-track="deko"><b>Deko</b><span>Bäume, Büsche, Blumen, Felsen, Kisten …</span><em id="tp-deko"></em></button>
-    <button class="track" role="tab" type="button" data-track="umgebung"><b>Umgebung</b><span>Schwebeinseln, Berge, Wolken, Wahrzeichen am Horizont</span><em id="tp-umgebung"></em></button>
+    <button class="track" role="tab" type="button" data-track="umgebung"><b>Himmel</b><span>Himmelsbild, Licht, Planeten, Sterne und Himmelseffekte</span><em id="tp-umgebung"></em></button>
     <button class="track" role="tab" type="button" data-track="portal"><b>Portale</b><span>Portal jeder Welt im Spawn und der Teleport dorthin</span><em id="tp-portal"></em></button>
     <button class="track" role="tab" type="button" data-track="spawn"><b>Spawn</b><span>Jedes Gebäude im Spawn und die UI, die dort aufgeht</span><em id="tp-spawn"></em></button>
   </div>
@@ -181,7 +181,7 @@
           <span class="sep" aria-hidden="true"></span>
           <button class="tool layer" id="l-geb" type="button" aria-pressed="true">Gebäude</button>
           <button class="tool layer" id="l-deko" type="button" aria-pressed="true">Deko</button>
-          <button class="tool layer" id="l-umg" type="button" aria-pressed="true">Umgebung</button>
+          <button class="tool layer" id="l-umg" type="button" aria-pressed="true">Himmel</button>
         </div>
         <div class="tpflash" id="tpflash"></div>
         <div class="loading" id="loading"><div><div class="coin"></div><span id="loading-text">Engine wird geladen …</span></div></div>
@@ -309,7 +309,8 @@ const TRACKS = {
   deko: { name: 'Deko', short: 'Deko von ', label: 'Was soll sich an der Deko ändern?', placeholder: 'Zum Beispiel: Mehr Bäume am Rand, weniger Kisten, Blumen in Gelb und Weiß …', layers: { gebaeude: true, deko: true, umgebung: false } },
   portal: { name: 'Portal', short: 'Portal von ', label: 'Was soll sich am Portal oder an der Teleport-Animation ändern?', placeholder: 'Zum Beispiel: Das Portal größer, der Strudel schneller, eine hellere Lichtsäule bei der Ankunft …', layers: { gebaeude: true, deko: true, umgebung: true } },
   spawn: { name: 'Spawn', short: 'Spawn: ', label: 'Was soll sich an diesem Gebäude oder an seiner UI ändern?', placeholder: 'Zum Beispiel: Der Laden größer, im Fenster mehr Angebote, die Kaufen-Knöpfe grün, ein Countdown für das Event …', layers: { gebaeude: true, deko: true, umgebung: false } },
-  umgebung: { name: 'Umgebung', short: 'Umgebung von ', label: 'Was soll sich an der Umgebung ändern?', placeholder: 'Zum Beispiel: Mehr Schwebeinseln, die Berge weiter weg, rosa Wolken bei Sonnenuntergang …', layers: { gebaeude: true, deko: true, umgebung: true } },
+  // „Himmel“ (früher „Umgebung“, die Doc-Ids bleiben umgebung-<welt>): es gibt keine Kulisse mehr, nur den Himmel
+  umgebung: { name: 'Himmel', short: 'Himmel von ', label: 'Was soll sich am Himmel ändern (Himmelsbild, Licht, Planeten, Sterne, Effekte)?', placeholder: 'Zum Beispiel: Ein rosa Sonnenuntergang, mehr Sterne, ein großer Mond, Polarlicht, weniger Wolken …', layers: { gebaeude: true, deko: true, umgebung: true } },
 };
 let track = 'welt';
 const docId = (id, t = track) => (t === 'welt' ? id : `${t}-${id}`);
@@ -607,7 +608,7 @@ function show(id) {
     $('b-parts').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     const wide = Math.round(built.data.meta.radius * 2);
     const nDeko = built.data.parts.filter((p) => p.deko).length, nBau = built.data.parts.filter((p) => p.bau).length, nUmg = built.data.sky.length;
-    if (track !== 'portal' && track !== 'spawn') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Umgebung <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
+    if (track !== 'portal' && track !== 'spawn') $('w-facts').innerHTML = `<span>Insel <b>${wide.toLocaleString('de-DE')} Studs</b> breit</span><span>Gebäude <b>${nBau.toLocaleString('de-DE')}</b> Teile</span><span>Deko <b>${nDeko.toLocaleString('de-DE')}</b> Teile</span><span>Himmel <b>${nUmg.toLocaleString('de-DE')}</b> Teile</span><span>≈ <b>${Math.round(wide / 4)}</b> Figuren nebeneinander</span>${w.hub ? `<span><b>${built.data.meta.areas.length}</b> Bereiche</span>` : `<span>Glück <b>${W.fmtLuck(w)}</b></span><span>Münzwert <b>${W.fmtValue(w)}</b></span>`}`;
     applyLayers();
     RW.showWeather(built.rw, 'klar', { instant: true }).catch((e) => console.error(e));
     $('loading').hidden = true;

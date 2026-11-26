@@ -1822,7 +1822,8 @@ function WorldFx.Apply(worldId, center, parent)
 	for i = 1, #worldId do seed = seed * 31 + string.byte(worldId, i) end
 	local k = { Folder = folder, C = center or V(0, 0, 0), R = Random.new(seed % 2147483647), W = w, Updates = {}, Calm = CALM[worldId], NoMotes = NO_MOTES[worldId] }
 	recipe(k, w)
-	horizon(k, worldId)
+	-- keine Wahrzeichen und Schichten am Horizont mehr (Werkstatt-Wunsch „keine Umgebung, nur ein angepasster
+	-- Himmel“): es bleiben Licht, Himmelskörper, Sterne, Polarlicht, Wolken und das Leben in der Luft
 	local start = os.clock()
 	local connection = RunService.Heartbeat:Connect(function()
 		local t = os.clock() - start

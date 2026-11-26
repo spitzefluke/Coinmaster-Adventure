@@ -1200,6 +1200,12 @@ Neue Münze: einen Eintrag in `COINS` ergänzen. Gravur, Zierband und Effekte ko
 erst wenn eine Welt gefällt, wird die nächste freigeschaltet. Je Welt kann man Änderungswünsche notieren; sie liegen
 in der Datenbank des Artifacts (Sammlung `welten`, ein Dokument je Welt und Ablauf mit `status`, `wish`, `reply`; Ids: `<welt>` für die Insel, `gebaeude-<welt>`, `deko-<welt>`, `umgebung-<welt>`, `portal-<welt>`). Die Vorschau trennt dafür vier Ebenen: Insel (Boden, flache Wege und Plätze), Gebäude, Deko (alles Gestreute) und Umgebung (Kulisse).
 
+Es gibt keine Umgebung mehr (Werkstatt-Wunsch): keine Nachbar- und Schwebeinseln, keine Berge, Felsen und
+Wahrzeichen am Horizont, kein Meer und keine Wolkenwand. Jede Welt hat nur ihren eigenen Himmel: Himmelsbild,
+Licht und Nebel, Himmelskörper (`userData.rbx.celestial`) und Himmelseffekte aus `WorldFx` (Sterne, Polarlicht,
+Wolken, Leben in der Luft). Was direkt unter der Insel hängt, bleibt. Der Werkstatt-Ablauf dazu heißt **Himmel**
+(Doc-Ids weiter `umgebung-<welt>`).
+
 Der Ablauf **Spawn** hat einen Punkt je Gebäude oder Platz im Spawn (Ids `spawn-<bereich>`: Shops mit Taschen-Laden und
 Event-Podest, Plätze und Anzeigen, Aktivitäten, Portal-Hallen). Die Kamera fliegt zum Gebäude, darunter läuft die echte
 Spiel-UI (`spiel/js/uiDemo.js`: dieselbe Roblox-ScreenGui wie auf der Seite „Spiel“, mit Beispiel-Spielstand) und öffnet

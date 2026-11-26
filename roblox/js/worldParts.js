@@ -10,7 +10,7 @@
 import { SKYBOXES } from '../../welten/js/skyboxes.js';
 import * as THREE from 'three';
 import { buildWorld, FX, ISLAND_RADIUS } from '../../welten/js/worldFactory.js';
-import { islandShell, miniIsland } from './islandShell.js';
+import { islandShell } from './islandShell.js';
 
 export const STUDS = 8; // 1 Einheit der Webseite = 8 Studs
 
@@ -591,6 +591,7 @@ function clouds(out, built, world) {
 // ein Nebelmeer (Weltraum) oder Sanddünen (Tiefsee), unter Wasser zusätzlich eine Wasseroberfläche.
 // Die Inseln stehen 1500 Studs auseinander; die Kuppel (Durchmesser 1280) verdeckt die Nachbarn.
 export const DOME_RADIUS = 640; // Studs
+const NO_ENV = true; // ohne Umgebung: nur Himmel (Kuppel, Himmelsbild, Himmelskörper, Himmelseffekte)
 function skyShield(sky, built, world) {
   const top = new THREE.Color(world.sky[0]), horizon = new THREE.Color(world.sky[1]);
   const lum = 0.3 * top.r + 0.59 * top.g + 0.11 * top.b;
@@ -607,8 +608,10 @@ function skyShield(sky, built, world) {
   // Mit Himmelsbild: eine Wolkenwand am Horizont verdeckt die Nachbarinseln (1500 Studs entfernt), darüber sieht
   // man das Himmelsbild. Sie steht hinter der fernen Kulisse von WorldFx (600–630 Studs) und noch in der Kuppel.
   // Die Kuppel blendet das Licht-Skript aus, sobald die Bild-IDs eingetragen sind.
+  // keine Wolkenwand und kein Meer unter der Insel mehr (Werkstatt-Wunsch „nur ein angepasster Himmel“):
+  // es gibt keine Nachbarinseln, die sie verdecken müsste
   const box = SKYBOXES[world.id];
-  if (box?.wall) {
+  if (box?.wall && !NO_ENV) {
     const W = box.wall, wr = seededRand(world.id + ':wand');
     const rows = [
       { y: -70, h: [200, 260], w: [300, 380], c: W.low },
@@ -649,6 +652,7 @@ function skyShield(sky, built, world) {
     sky.push({ shape: 'Block', name: 'Wasseroberflaeche', pos: [0, D * 0.62, 0], rot: id, size: [2 * D * 0.8, 2, 2 * D * 0.8], color: '#9fe8ff', material: 'Glass', transparency: 0.45, canCollide: false, castShadow: false, noShadow: true });
   }
   // Meer unter der Insel: Wolken, Nebel oder Dünen
+  if (NO_ENV) return;
   const R = built.radius * STUDS;
   const y0 = seaBase() * STUDS;
   const kind = water ? 'duene' : space ? 'nebel' : 'wolke';
@@ -844,11 +848,8 @@ export function worldToParts(world) {
       lights.push({ pos: [p.x * STUDS, p.y * STUDS, p.z * STUDS], color: '#' + o.color.getHexString(), range: Math.min(60, (o.distance || 10) * STUDS * 0.6), brightness: 2 });
       return;
     }
-    if (o.userData.rbx?.isle) {
-      const c = o.getWorldPosition(V(0, 0, 0));
-      miniIsland(sky, c, o.userData.rbx.isle.w, world, o.userData.rbx.isle.seed, { peak: o.userData.rbx.isle.peak });
-      return;
-    }
+    // Werkstatt-Wunsch „keine Umgebung, nur ein angepasster Himmel“: keine Nachbarinseln mehr
+    if (o.userData.rbx?.isle) return;
     if (!o.isMesh || !o.visible) return;
     const rbx = o.userData.rbx || {};
     let p = o.parent, skip = rbx.skip;
@@ -858,6 +859,12 @@ export function worldToParts(world) {
     }
     if (skip || rbx.kind === 'ground' || rbx.kind === 'underside' || rbx.name === 'Rand') return;
     if (o.material.blending === THREE.AdditiveBlending) return; // Lichtstrahlen, Strahl unter dem UFO
+    // … und keine Kulisse (Schwebeinseln, Berge, Felsen, ferne Modelle). Es bleiben die Himmelskörper
+    // (Planeten, Monde, Ringe) und was direkt unter der Insel hängt (Felszapfen, Wurzeln, Eiszapfen …)
+    if (rbx.sky && !rbx.celestial) {
+      const wp = o.getWorldPosition(V(0, 0, 0));
+      if (Math.hypot(wp.x, wp.z) > built.radius + 4 || wp.y > 2) return;
+    }
     const out = rbx.sky ? sky : parts, n0 = out.length;
     convertMesh(out, o, world);
     // Ebenen für die Vorschau (die Werkstatt blendet sie einzeln aus):

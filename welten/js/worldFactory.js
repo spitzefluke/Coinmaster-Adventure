@@ -1034,7 +1034,7 @@ function planetBackdrop(scene, { color, bands, ring, size = 9, pos = [-22, 10, -
   });
   const mat = emissive ? new THREE.MeshBasicMaterial({ map: tex, fog: false }) : new THREE.MeshStandardMaterial({ map: tex, roughness: 1, fog: false });
   const p = new THREE.Mesh(new THREE.SphereGeometry(size, 40, 24), mat);
-  p.userData.rbx = { color, name: 'Himmelskoerper', sky: true, neon: !!emissive };
+  p.userData.rbx = { color, name: 'Himmelskoerper', sky: true, celestial: true, neon: !!emissive };
   p.position.set(pos[0] * K, pos[1] * K, pos[2] * K);
   p.scale.setScalar(K);
   p.rotation.z = 0.3;
@@ -1050,7 +1050,7 @@ function planetBackdrop(scene, { color, bands, ring, size = 9, pos = [-22, 10, -
       }
     });
     const rm = new THREE.Mesh(new THREE.RingGeometry(size * 1.3, size * 2.1, 64), new THREE.MeshBasicMaterial({ map: rt, transparent: true, side: THREE.DoubleSide, fog: false, depthWrite: false }));
-    rm.userData.rbx = { color: `rgb(${ring})`, transparency: 0.4, sky: true };
+    rm.userData.rbx = { color: `rgb(${ring})`, transparency: 0.4, sky: true, celestial: true };
     rm.position.copy(p.position);
     rm.scale.setScalar(K);
     rm.rotation.set(1.2, 0.2, 0.3);
