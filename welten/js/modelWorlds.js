@@ -55,6 +55,41 @@ export function scatterModels(ctx, n, ids, sMin, sMax, opts = {}) {
   }
 }
 
+// Deko in natürlichen Gruppen (Werkstatt-Wunsch „Deko natürlicher verteilt“): je Gruppe ein Mittelstück, darum
+// weitere Stücke in verschiedenen Größen; nichts steckt ineinander, Wege und Plätze bleiben frei
+export function grove(ctx, groups, per, ids, sMin, sMax, { radius = 1.8, rMin = 2, rMax = ctx.R - 2, gap = 0.75 } = {}) {
+  for (let g = 0; g < groups; g++) {
+    const c = ctx.spot(radius * 0.6, rMin, rMax);
+    if (!c) continue;
+    for (let k = 0; k < per; k++) {
+      const a = ctx.rand() * TAU, d = k === 0 ? 0 : ctx.rr(0.6, radius);
+      const x = c[0] + Math.cos(a) * d, z = c[1] + Math.sin(a) * d;
+      if (Math.hypot(x, z) > ctx.R - 1.4) continue;
+      const m = model(pick(ctx.rand, ids), ctx.rr(sMin, sMax) * (k === 0 ? 1.1 : ctx.rr(0.7, 1)));
+      if (!ctx.free(x, z, m.userData.radius * gap)) continue;
+      ctx.reserve(x, z, m.userData.radius * gap);
+      stand(ctx, m, x, z);
+      m.userData.deko = true;
+    }
+  }
+}
+// dasselbe für selbst gebaute Stücke (make() liefert ein Objekt)
+export function groveOf(ctx, groups, per, make, { radius = 1.4, size = 0.4, rMin = 2, rMax = ctx.R - 2.4 } = {}) {
+  for (let g = 0; g < groups; g++) {
+    const c = ctx.spot(radius * 0.6, rMin, rMax);
+    if (!c) continue;
+    for (let k = 0; k < per; k++) {
+      const a = ctx.rand() * TAU, d = k === 0 ? 0 : ctx.rr(0.3, radius);
+      const x = c[0] + Math.cos(a) * d, z = c[1] + Math.sin(a) * d;
+      if (Math.hypot(x, z) > ctx.R - 1.4 || !ctx.free(x, z, size)) continue;
+      ctx.reserve(x, z, size);
+      const o = make(k);
+      ctx.put(o, x, z);
+      o.userData.deko = true;
+    }
+  }
+}
+
 // ── Kulisse: Berge und Hügel aus dem Paket, groß und weit weg (im Ordner „Himmel“) ──
 function mountainRing(ctx, ids, { n = 11, sMin = 12, sMax = 17, rMin = 54, rMax = 68, base = -28 } = {}) {
   const { rand } = ctx;
@@ -498,10 +533,14 @@ const NORMAL = {
       }
     }
     // Bäume einzeln und in Gruppen, Felsen
-    scatterModels(ctx, 9, ['tree_single_A', 'tree_single_B'], 2.4, 3.2, { gap: 0.8 });
+    // Deko natürlicher (Werkstatt-Wunsch): Haine aus mehreren Bäumen statt Einzelbäumen überall, Felsgruppen
+    // mit Moospolstern, wenige Baumstümpfe
+    grove(ctx, 3, 4, ['tree_single_A', 'tree_single_B'], 2.4, 3.2, { radius: 2.2, rMin: 4 });
+    scatterModels(ctx, 3, ['tree_single_A', 'tree_single_B'], 2.4, 3.0, { gap: 0.8 });
     scatterModels(ctx, 2, ['trees_B_small', 'trees_B_medium'], 2.2, 2.6, { rMin: R * 0.5, gap: 0.7 });
-    scatterModels(ctx, 6, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'], 2.6, 4, { gap: 0.8 });
-    scatterModels(ctx, 3, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.6);
+    grove(ctx, 2, 3, ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'], 2.4, 3.8, { radius: 1.1 });
+    groveOf(ctx, 3, 3, () => kit.mossMound(rr(0.3, 0.55), pick(rand, ['#3f8a3a', '#4f9a3f']), rand), { radius: 1.0, size: 0.35 });
+    scatterModels(ctx, 2, ['tree_single_A_cut', 'tree_single_B_cut'], 3, 3.6);
     // Laubbäume zwischen den Tannen (kantige Kronen), Büsche in Gruppen, Steingruppen. Feste Anzahl:
     // rMax unter R − 2,5, sonst vervielfacht scatter mit der Inselfläche
     const inner = R - 2.6;
@@ -517,7 +556,8 @@ const NORMAL = {
     }, 0.8, 2, inner);
     scatterModels(ctx, 4, ['rock_single_B', 'rock_single_C', 'rock_single_E'], 2.2, 3, { gap: 0.6 });
     // Blumen wachsen in Gruppen einer Farbe (das Paket hat keine Blumen)
-    ctx.scatter(16, () => kit.flowerPatch(['#ff7a9a', '#ffe25f', '#ffffff', '#b07bff', '#ff9a4a'], rand), 0.5, 2, inner);
+    // Blumenwiesen: Blumen in Flecken zusammen statt einzeln verstreut
+    groveOf(ctx, 4, 5, () => kit.flowerPatch(pick(rand, [['#ff7a9a', '#ffffff'], ['#ffe25f', '#ff9a4a'], ['#b07bff', '#ffffff'], ['#ff7a9a', '#ffe25f']]), rand, 6), { radius: 1.2, size: 0.35, rMax: inner });
   },
   backdrop(ctx) {
     // Umgebung: Nachbarinseln mit Schneebergen, schwebende Inselchen und Brocken am Rand (Wolken malt das Himmelsbild)
@@ -707,7 +747,9 @@ const STADT = {
     scatterModels(ctx, 6, ['city_bush'], 2.6, 3, { gap: 1 });
     scatterModels(ctx, 2, ['city_dumpster', 'city_box_A', 'city_trash_A'], 2.6, 2.6, { gap: 1 });
     place(ctx, 'city_watertower', 3.2, { rMin: 4, rMax: R - 2 });
-    scatterModels(ctx, 6, ['tree_single_B', 'tree_single_A'], 2.2, 2.8, { gap: 0.8 });
+    // Deko passend zur Stadt (Werkstatt-Wunsch): statt Nadelbäumen Stadtbäume in Baumscheiben mit Gitter,
+    // Hecken, und Stadtmöbel zwischen den Häusern: Fahrradständer, Zeitungskiosk, Telefonzelle, Litfaßsäule, Bauzaun
+    cityDeco(ctx, kit);
   },
   backdrop(ctx, kit) {
     planet1Backdrop(ctx, kit); // Skyline mit Warnlichtern in der Ferne
@@ -938,6 +980,75 @@ function logCabin(ctx, kit, x, z, face) {
   return g;
 }
 
+function cityDeco(ctx, kit) {
+  const { rand, rr, R } = ctx;
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
+  const E = (c, i = 1) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i });
+  const box = (g, w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  const cyl = (g, r0, r1, h, m, x, y, z, seg = 12) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, seg), m); c.position.set(x, y, z); g.add(c); return c; };
+  const place = (make, n, size) => {
+    for (let i = 0; i < n; i++) {
+      const p = ctx.spot(size, 3, R - 2.2);
+      if (!p) continue;
+      const o = make();
+      ctx.put(o, p[0], p[1]);
+      o.rotation.y = rand() * TAU;
+      o.userData.deko = true;
+    }
+  };
+  place(() => {
+    const g = new THREE.Group();
+    box(g, 0.9, 0.08, 0.9, M('#9a9690'), 0, 0.04, 0);
+    box(g, 0.75, 0.02, 0.75, M('#3a3a40', { metalness: 0.5 }), 0, 0.09, 0);
+    const t = kit.roundTree(rr(1.6, 2.1), pick(rand, ['#4f9a3f', '#5aa84a', '#6fb04a']), rand);
+    t.position.y = 0.08;
+    g.add(t);
+    return g;
+  }, 7, 0.8);
+  place(() => {
+    const g = new THREE.Group();
+    box(g, 1.6, 0.45, 0.45, M('#3f7a3a'), 0, 0.23, 0);
+    box(g, 1.65, 0.12, 0.5, M('#9a9690'), 0, 0.06, 0);
+    return g;
+  }, 4, 1.0);
+  place(() => {
+    const g = new THREE.Group();
+    for (let k = 0; k < 4; k++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 4, 12, Math.PI), M('#8a9098', { metalness: 0.6 })); r.position.set(-0.45 + k * 0.3, 0, 0); r.rotation.y = Math.PI / 2; g.add(r); }
+    return g;
+  }, 2, 0.7);
+  place(() => {
+    const g = new THREE.Group();
+    box(g, 1.0, 0.9, 0.8, M('#2a6a4a'), 0, 0.45, 0);
+    box(g, 1.2, 0.08, 1.0, M('#c8302a'), 0, 0.95, 0);
+    box(g, 0.8, 0.3, 0.05, E('#ffe2a0', 0.8), 0, 0.6, 0.42);
+    for (let k = 0; k < 5; k++) box(g, 0.14, 0.2, 0.03, M(['#ffffff', '#ffe25f', '#ff7a9a'][k % 3]), -0.3 + k * 0.15, 0.25, 0.42);
+    return g;
+  }, 1, 0.9);
+  place(() => {
+    const g = new THREE.Group();
+    box(g, 0.5, 1.3, 0.5, M('#c8302a'), 0, 0.65, 0);
+    box(g, 0.4, 0.9, 0.04, M('#bfe6ff', { transparent: true, opacity: 0.5 }), 0, 0.7, 0.26);
+    box(g, 0.52, 0.1, 0.52, M('#e0c040'), 0, 1.35, 0);
+    return g;
+  }, 1, 0.6);
+  place(() => {
+    const g = new THREE.Group();
+    cyl(g, 0.3, 0.32, 1.4, M('#2a4a3a'), 0, 0.7, 0, 16);
+    for (let k = 0; k < 4; k++) { const pst = box(g, 0.3, 0.45, 0.02, M(['#ff7a5a', '#5ad1ff', '#ffe25f', '#b07bff'][k]), Math.cos(k * 1.57) * 0.31, 0.75, Math.sin(k * 1.57) * 0.31); pst.rotation.y = -k * 1.57 + Math.PI / 2; }
+    cyl(g, 0.36, 0.3, 0.16, M('#2a4a3a'), 0, 1.48, 0, 16);
+    return g;
+  }, 2, 0.5);
+  place(() => {
+    const g = new THREE.Group();
+    for (let k = 0; k < 3; k++) {
+      box(g, 0.9, 0.6, 0.03, M('#ffffff', { transparent: true, opacity: 0.6 }), -0.95 + k * 0.95, 0.5, 0);
+      box(g, 0.9, 0.08, 0.035, M(k % 2 ? '#ffffff' : '#e83a2a'), -0.95 + k * 0.95, 0.85, 0);
+      box(g, 0.3, 0.06, 0.2, M('#e8e0d0'), -0.95 + k * 0.95 - 0.4, 0.03, 0);
+    }
+    return g;
+  }, 1, 1.4);
+}
+
 // ── Eis: verschneiter Tannenwald, Wachturm, Zeltlager mit Laternen ──
 const EIS = {
   landmark: true, // Eispalast
@@ -992,10 +1103,23 @@ const LAVA = {
     if (forge) around(ctx, [forge.position.x, forge.position.z], [['barrel_large', 0.7], ['keg', 0.7], ['torch_lit', 1.6], ['torch_lit', 1.6], ['crates_stacked', 0.7]], 2.6, 3.6);
     const ruin = place(ctx, 'building_destroyed@lava', 3.4, { rMin: 5, rMax: R - 3 });
     if (ruin) around(ctx, [ruin.position.x, ruin.position.z], [['rubble_large', 0.45], ['rubble_half', 0.6], ['chest_gold', 0.8], ['torch_lit', 1.6]], 2.4, 3.6);
-    scatterModels(ctx, 7, ['tree_dead_large', 'tree_dead_medium', 'tree_dead_small'], 0.55, 0.75, { gap: 0.8 });
+    // tote Bäume in kleinen Gruppen wie verbrannte Waldreste (Werkstatt-Wunsch „Deko natürlicher“)
+    grove(ctx, 2, 3, ['tree_dead_large', 'tree_dead_medium', 'tree_dead_small'], 0.55, 0.75, { radius: 1.6 });
+    scatterModels(ctx, 1, ['tree_dead_large'], 0.6, 0.7, { gap: 0.8 });
     scatterModels(ctx, 2, ['tree_single_A@lava'], 2.6, 3.2, { gap: 0.8 });
     scatterModels(ctx, 3, ['rubble_half'], 0.35, 0.5, { gap: 0.8 });
-    scatterModels(ctx, 9, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.8, 4.4, { gap: 0.8 });
+    grove(ctx, 3, 3, ['rock_single_A@lava', 'rock_single_B@lava', 'rock_single_C@lava', 'rock_single_D@lava', 'rock_single_E@lava'], 2.6, 4.2, { radius: 1.2 });
+    // Obsidian-Splitter mit glühenden Kanten in Gruppen (schönere Einzelteile)
+    groveOf(ctx, 3, 3, () => {
+      const g = new THREE.Group();
+      const sh = new THREE.Mesh(new THREE.ConeGeometry(rr(0.18, 0.3), rr(0.7, 1.3), 5), new THREE.MeshStandardMaterial({ color: '#141018', roughness: 0.15, metalness: 0.4, flatShading: true }));
+      sh.position.y = 0.4;
+      sh.rotation.set(rr(-0.25, 0.25), rand() * TAU, rr(-0.25, 0.25));
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.6, 0.03), new THREE.MeshStandardMaterial({ color: '#ff5a14', emissive: '#ff5a14', emissiveIntensity: 1.4 }));
+      edge.position.set(0.12, 0.35, 0);
+      g.add(sh, edge);
+      return g;
+    }, { radius: 1.0, size: 0.35 });
     // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
     scatterModels(ctx, 3, ['rock_single_C@lava', 'rock_single_D@lava', 'rock_single_B@lava'], 6.5, 8.5, { rMin: R * 0.55, gap: 0.7 });
     // wie auf einem echten Lavafeld: Flecken aus Asche und erkalteter Kruste, Felder aus scharfkantigem
@@ -1069,10 +1193,11 @@ const HOEHLE = {
       around(ctx, hall, [['candle_triple', 1.4], ['candle_triple', 1.4], ['rubble_half', 0.5]], 0.9, 1.4);
     }
     // große Felsbrocken statt der Sechseck-Bergplatten (deren Sockel stand kantig aus dem Boden)
-    scatterModels(ctx, 4, ['rock_single_B@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 6, 8, { rMin: R * 0.55, gap: 0.7 });
-    scatterModels(ctx, 8, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 2.8, 4.4, { gap: 0.8 });
-    scatterModels(ctx, 5, ['torch_lit'], 1.6, 1.6, { gap: 1 });
-    scatterModels(ctx, 3, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
+    // weniger, dafür schönere Deko (Werkstatt-Wunsch): Felsen in zwei Gruppen, je eine Fackel und Laterne weniger
+    scatterModels(ctx, 2, ['rock_single_B@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 6, 8, { rMin: R * 0.55, gap: 0.7 });
+    grove(ctx, 2, 3, ['rock_single_A@hoehle', 'rock_single_B@hoehle', 'rock_single_C@hoehle', 'rock_single_D@hoehle', 'rock_single_E@hoehle'], 2.6, 4.2, { radius: 1.2 });
+    scatterModels(ctx, 3, ['torch_lit'], 1.6, 1.6, { gap: 1 });
+    scatterModels(ctx, 2, ['lantern_standing'], 0.9, 0.9, { gap: 1 });
     // nasser, dunkler Boden in Flecken, Geröllhaufen von der Decke
     const { rand, rr } = ctx;
     for (let i = 0; i < 14; i++) {
@@ -1080,7 +1205,7 @@ const HOEHLE = {
       const [c, m] = pick(rand, [['#2e2a3c', 'Slate'], ['#3a3448', 'Pebble'], ['#463e52', 'Slate']]);
       ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.4), c, m);
     }
-    ctx.scatter(5, () => {
+    ctx.scatter(3, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 4; i++) {
         const rock = kit.rockMesh(rr(0.45, 0.6), pick(rand, ['#2e2838', '#3a3446', '#262230']), rand);
@@ -1119,9 +1244,10 @@ const CANDY = {
       });
       around(ctx, vc, [['fence_wood_straight@candy', 2.2], ['fence_wood_straight@candy', 2.2]], 2.2, 2.8);
     }
-    scatterModels(ctx, 4, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
-    scatterModels(ctx, 9, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { gap: 0.75 });
-    scatterModels(ctx, 4, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
+    // deutlich weniger Deko, dafür in Gruppen (Werkstatt-Wunsch)
+    scatterModels(ctx, 2, ['trees_B_small@candy', 'trees_B_medium@candy'], 2.2, 2.6, { gap: 0.62 });
+    grove(ctx, 2, 3, ['tree_single_A@candy', 'tree_single_B@candy'], 2.4, 3.2, { radius: 2.0 });
+    scatterModels(ctx, 2, ['rock_single_C@candy'], 3, 4, { gap: 0.8 });
     // wie in einem Süßwarenladen: Zuckergussflecken in Minze, Zitrone und Himbeere, Gummibären,
     // Gummidrops in Gruppen, Marshmallow-Türme, Lakritzschnecken
     const { rr } = ctx, inner = R - 2.6;
@@ -1129,13 +1255,13 @@ const CANDY = {
       const a = rand() * TAU, r = Math.sqrt(rand()) * (R - 2);
       ctx.paint(Math.cos(a) * r, Math.sin(a) * r, rr(1.2, 2.2), pick(rand, ['#c8f4e0', '#fff2b8', '#ffc0dc', '#d8e4ff']), 'SmoothPlastic');
     }
-    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 4).forEach((c) => {
+    ['#ff4a5a', '#ffb02e', '#5ad84a', '#ffe23a', '#ff7ad0'].slice(0, 3).forEach((c) => {
       const p = ctx.spot(0.8, 4, inner);
       if (!p) return;
       ctx.reserve(p[0], p[1], 0.8);
       ctx.put(kit.gummyBear(rr(1.1, 1.6), c), p[0], p[1]);
     });
-    ctx.scatter(8, () => {
+    ctx.scatter(4, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 5; i++) {
         const d = kit.gumdrop(pick(rand, ['#ff4a7a', '#ffb02e', '#5ad84a', '#7ac8ff', '#c87aff', '#ffe23a']));
@@ -1145,7 +1271,7 @@ const CANDY = {
       }
       return g;
     }, 0.6, 2, inner);
-    ctx.scatter(5, () => {
+    ctx.scatter(3, () => {
       const g = new THREE.Group();
       const n = 2 + Math.floor(rand() * 3);
       for (let i = 0; i < n; i++) {
@@ -1156,7 +1282,7 @@ const CANDY = {
       }
       return g;
     }, 0.4, 2, inner);
-    ctx.scatter(4, () => {
+    ctx.scatter(2, () => {
       const g = new THREE.Group();
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 20), new THREE.MeshStandardMaterial({ color: '#1e1a20', roughness: 0.4 }));
       const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.2, 12), new THREE.MeshStandardMaterial({ color: '#ff5fb0' }));
@@ -1273,6 +1399,62 @@ const MOND = {
     if (solar) around(ctx, solar, [['solarpanel', 2.6], ['solarpanel', 2.6], ['solarpanel', 2.6], ['space_lights', 2.4]], 1.4, 2.4);
     scatterModels(ctx, 3, ['cargo_A_stacked', 'cargo_B_stacked', 'spacetruck'], 2.4, 2.8, { gap: 0.9 });
     rocksOf(ctx, 'mond');
+    // Mond-Deko (Werkstatt-Wunsch „deutlich verbessern“): Gesteinsbrocken in Gruppen mit hellerer Oberseite,
+    // Messinstrumente der Astronauten (Seismometer, Antenne, Laserspiegel), kleine Fahnen, Fußspuren
+    const { rand, rr } = ctx;
+    groveOf(ctx, 4, 4, () => {
+      const g = new THREE.Group();
+      const s0 = rr(0.18, 0.4), rock = kit.rockMesh(s0, pick(rand, ['#8a8d96', '#9a9da6', '#7a7d86']), rand);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(s0 * 0.7, 8, 4, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#c8cad2', roughness: 1, flatShading: true }));
+      cap.position.y = s0 * 0.45;
+      cap.scale.y = 0.4;
+      g.add(rock, cap);
+      return g;
+    }, { radius: 1.2, size: 0.35 });
+    const metal = new THREE.MeshStandardMaterial({ color: '#c8c8cc', metalness: 0.6, roughness: 0.35 }), gold = new THREE.MeshStandardMaterial({ color: '#e8c86a', metalness: 0.6, roughness: 0.35 });
+    const instrument = (k) => {
+      const g = new THREE.Group();
+      if (k === 0) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.5), gold); b.position.y = 0.13; g.add(b);
+        const sp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.4), new THREE.MeshStandardMaterial({ color: '#1f3a7a', metalness: 0.5 })); sp.position.set(0.55, 0.2, 0); g.add(sp);
+      } else if (k === 1) {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 5), metal); m.position.y = 0.5; g.add(m);
+        const d = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 6, 0, TAU, 0, Math.PI * 0.35), metal); d.position.y = 1.15; d.rotation.x = Math.PI + 0.5; g.add(d);
+      } else {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), metal); m.position.y = 0.25; m.rotation.x = -0.4; g.add(m);
+        for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 8), new THREE.MeshStandardMaterial({ color: '#9ad8ff', metalness: 0.8 })); c.position.set(-0.15 + (i % 3) * 0.15, 0.29, -0.15 + Math.floor(i / 3) * 0.15); c.rotation.x = -0.4; g.add(c); }
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.06), metal); leg.position.y = 0.12; g.add(leg);
+      }
+      return g;
+    };
+    for (let k = 0; k < 3; k++) {
+      const p = ctx.spot(0.7, 3, R - 2.6);
+      if (!p) continue;
+      const o = instrument(k);
+      ctx.put(o, p[0], p[1]);
+      o.userData.deko = true;
+      ctx.reserve(p[0], p[1], 0.7);
+    }
+    for (let k = 0; k < 2; k++) {
+      const p = ctx.spot(0.3, 4, R - 2.6);
+      if (!p) continue;
+      const f = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 5), metal); pole.position.y = 0.4; f.add(pole);
+      const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.22, 0.01), new THREE.MeshStandardMaterial({ color: k ? '#ffd76a' : '#5ad1ff' })); cloth.position.set(0.18, 0.68, 0); f.add(cloth);
+      ctx.put(f, p[0], p[1]);
+      f.userData.deko = true;
+    }
+    for (let t = 0; t < 2; t++) {
+      const a0 = rand() * TAU, r0 = rr(3, 6);
+      for (let k = 0; k < 10; k++) {
+        const a = a0 + k * 0.09, x = Math.cos(a) * (r0 + k * 0.25), z = Math.sin(a) * (r0 + k * 0.25);
+        if (!ctx.free(x, z, 0.1)) continue;
+        const fp = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.012, 0.2), new THREE.MeshStandardMaterial({ color: '#6a6d76' }));
+        fp.position.set(x + (k % 2 ? 0.08 : -0.08), ctx.height(x, z) + 0.01, z);
+        fp.rotation.y = -a;
+        ctx.root.add(fp);
+      }
+    }
   },
   backdrop(ctx) {
     spaceBackdrop(ctx, 'mond');

@@ -563,12 +563,12 @@ function details(ctx, kit) {
     scatter(16, () => rockMesh(rr(0.1, 0.22), '#e8f6ff', rand), 0.18);
     scatter(8, () => { const m = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), M('#bfe8ff', { roughness: 0.2 })), 0, 0.25, 0); m.scale.set(0.7, rr(2, 3.5), 0.7); return m; }, 0.15);
   } else if (id === 'lava') {
-    scatter(14, () => rockMesh(rr(0.1, 0.22), '#1a1614', rand, rand() < 0.4 ? E('#ff3a0a', 0.8) : null), 0.18);
+    scatter(9, () => rockMesh(rr(0.1, 0.22), '#1a1614', rand, rand() < 0.4 ? E('#ff3a0a', 0.8) : null), 0.18);
   } else if (id === 'hoehle') {
-    scatter(6, () => mushroom(rr(0.18, 0.32), ['#6ae8ff', '#b07bff', '#ff7ae0'][Math.floor(rand() * 3)], rand, true), 0.2);
+    scatter(4, () => mushroom(rr(0.18, 0.32), ['#6ae8ff', '#b07bff', '#ff7ae0'][Math.floor(rand() * 3)], rand, true), 0.2);
   } else if (id === 'candy') {
     const cols = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a', '#b07bff'];
-    scatter(20, (i) => at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M(cols[i % 5])), 0, 0.1, 0), 0.12);
+    scatter(8, (i) => at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M(cols[i % 5])), 0, 0.1, 0), 0.12);
   }
 }
 

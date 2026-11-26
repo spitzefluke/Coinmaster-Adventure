@@ -2484,19 +2484,19 @@ const BUILDERS = {
     }
     const colors = ['#b07bff', '#6ae8ff', '#ff7ae0'];
     const cr = [];
-    scatter(11, (i) => {
-      const c = crystal(rr(0.8, 1.7), colors[i % 3], rand, 1.4);
+    scatter(7, (i) => {
+      const c = crystal(rr(0.9, 1.8), colors[i % 3], rand, 1.6);
       cr.push(c);
       return c;
     }, 0.55);
-    scatter(8, () => {
+    scatter(5, () => {
       const s = new THREE.Mesh(new THREE.ConeGeometry(rr(0.15, 0.3), rr(0.6, 1.4), 6), M('#4a4458'));
       s.position.y = 0.3;
       return group(s);
     }, 0.35);
     scatter(4, () => mushroom(rr(0.35, 0.6), '#6ae8ff', rand, true), 0.3);
     // Sinterstufen: flache, übereinanderliegende Kalkpolster (wie in Tropfsteinhöhlen)
-    scatter(5, () => {
+    scatter(3, () => {
       const g = new THREE.Group();
       for (let i = 0; i < 3; i++) {
         const s = rr(0.55, 0.85) * (1 - i * 0.25);
@@ -2523,10 +2523,11 @@ const BUILDERS = {
 
   candy({ put, scatter, rand, rr, modelWorld }) {
     const cols = ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a', '#b07bff', '#ff8a3d'];
-    scatter(4, (i) => lollipop(cols[i % cols.length], rand), 0.8, 1, R - 1);
-    scatter(4, () => candyCane(), 0.7);
-    scatter(4, () => donut(['#ff9ad5', '#7a4a2a', '#bfe8ff'][Math.floor(rand() * 3)]), 0.6);
-    scatter(12, (i) => gumdrop(cols[i % cols.length]), 0.3);
+    // deutlich weniger Süßigkeiten verstreut (Werkstatt-Wunsch „Deko verringern“)
+    scatter(3, (i) => lollipop(cols[i % cols.length], rand), 0.8, 1, R - 1);
+    scatter(2, () => candyCane(), 0.7);
+    scatter(2, () => donut(['#ff9ad5', '#7a4a2a', '#bfe8ff'][Math.floor(rand() * 3)]), 0.6);
+    scatter(5, (i) => gumdrop(cols[i % cols.length]), 0.3);
     if (!modelWorld) scatter(5, () => {
       // Zuckerwatte-Baum (sonst Bäume als Modelle in Zuckerfarben)
       return roundTree(rr(1.4, 2), ['#ffc2e2', '#c2e8ff', '#e2c2ff'][Math.floor(rand() * 3)], rand);
