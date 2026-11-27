@@ -236,7 +236,9 @@ function render() {
     G.meta.textContent = `${c.fertig} / ${list.length} überarbeitet` + (c.arbeit ? ` · ${c.arbeit} in Arbeit` : '');
     G.barWrap.replaceChildren(bar(c, list.length));
     G.add.hidden = !store.canEdit;
-    list.forEach((p, i) => {
+    // Offene und angefangene Punkte oben, fertige unten; sonst bleibt die Reihenfolge wie in den Daten
+    const sorted = [...list.filter((p) => p.status !== 'fertig'), ...list.filter((p) => p.status === 'fertig')];
+    sorted.forEach((p, i) => {
       let it = items.get(p.id);
       if (!it) items.set(p.id, (it = makeItem(p)));
       else it.update(p);
