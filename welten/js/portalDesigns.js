@@ -38,13 +38,33 @@ export function portalDesign(world, planetColor, anims, rand, K) {
   const box = (w, h, d, m, x, y, z, rx, ry, rz, p) => add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), x, y, z, rx, ry, rz, p);
   // kleine, verjüngte Zylinder (Tentakel, Laternendeckel, Finger) mit mehr Ecken: in Roblox dann wenige gestufte
   // Zylinder statt vieler Keilflächen
-  const cyl = (rt, rb, h, m, x, y, z, seg = 12, rx, ry, rz, p) =>
-    add(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, Math.max(rt, rb) < 0.15 && Math.abs(rt - rb) > 0.003 ? 16 : seg), m), x, y, z, rx, ry, rz, p);
+  const cyl = (rt, rb, h, m, x, y, z, seg = 12, rx, ry, rz, p) => {
+    const tapered = Math.abs(rt - rb) > 0.003;
+    const c = add(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, Math.max(rt, rb) < 0.15 && tapered ? 16 : seg), m), x, y, z, rx, ry, rz, p);
+    if (tapered && Math.max(rt, rb) >= 0.06) c.userData.rbx = { smooth: true }; // in Roblox feinere, überlappende Stufen (saubere Übergänge)
+    return c;
+  };
+  // Kette aus Kugeln mit Zwischenstücken: weicher, durchgehender Verlauf statt einzelner Perlen (Tentakel, Ranken)
+  const capsule = (pts, mats, parent = g, seg = 12) => {
+    pts.forEach(([x, y, z, r], i) => {
+      sph(r, mats[i % mats.length], x, y, z, parent, seg);
+      if (i === 0) return;
+      const [px, py, pz, pr] = pts[i - 1];
+      const a = new THREE.Vector3(px, py, pz), b = new THREE.Vector3(x, y, z), d = b.clone().sub(a), len = d.length();
+      if (len < 1e-4) return;
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.97, pr * 0.97, len, 12), mats[i % mats.length]);
+      c.position.copy(a.clone().add(b).multiplyScalar(0.5));
+      c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      if (Math.abs(r - pr) > 0.003) c.userData.rbx = { smooth: true };
+      parent.add(c);
+    });
+  };
   const sph = (r, m, x, y, z, p, seg = 12) => add(new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(6, seg * 0.6 | 0)), m), x, y, z, 0, 0, 0, p);
   const cone = (r, h, m, x, y, z, seg = 8, rx, ry, rz, p) => add(new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m), x, y, z, rx, ry, rz, p);
   const tor = (R, r, m, x, y, z, arc = TAU, seg = 16, rx, ry, rz, p) => {
     const t = add(new THREE.Mesh(new THREE.TorusGeometry(R, r, 6, seg, arc), m), x, y, z, rx, ry, rz, p);
-    t.userData.rbx = { segs: Math.max(4, Math.min(seg, 20)) }; // so viele Stücke auch in Roblox
+    // dicke Bögen mit mehr Stücken: sauberer Verlauf ohne sichtbare Knicke
+    t.userData.rbx = { segs: Math.max(4, Math.min(r >= 0.1 && arc >= Math.PI * 0.9 ? Math.max(seg, 18) : seg, 24)) };
     return t;
   };
   const oct = (r, m, x, y, z, sx = 1, sy = 1, sz = 1, p) => {
@@ -143,8 +163,9 @@ export function portalDesign(world, planetColor, anims, rand, K) {
     const sw = grp(0, DISC_Y, 0.04);
     [[0.32, 0], [0.58, 2.1], [0.84, 4.2]].forEach(([r, a], i) => {
       const c = i === 1 && swirl2 ? swirl2 : swirl;
-      tor(r, 0.06, E(c, 1.3, { transparent: true, opacity: 0.85 }), 0, 0, 0, Math.PI * 0.45, 4, 0, 0, a + Math.PI * 0.65, sw);
-      tor(r, 0.035, E(c, 1.1, { transparent: true, opacity: 0.6 }), 0, 0, 0, Math.PI * 0.7, i === 0 ? 4 : 5, 0, 0, a, sw);
+      tor(r, 0.06, E(c, 1.3, { transparent: true, opacity: 0.85 }), 0, 0, 0, Math.PI * 0.4, 4, 0, 0, a + Math.PI * 0.72, sw);
+      tor(r, 0.047, E(c, 1.2, { transparent: true, opacity: 0.72 }), 0, 0, 0, Math.PI * 0.36, 4, 0, 0, a + Math.PI * 0.38, sw);
+      tor(r, 0.035, E(c, 1.1, { transparent: true, opacity: 0.6 }), 0, 0, 0, Math.PI * 0.4, 4, 0, 0, a, sw);
     });
     anim(sw, 'spin', { speed, axis: [0, 0, 1] });
     // innerer Gegenstrudel, kleiner und schneller
@@ -266,7 +287,7 @@ export function portalDesign(world, planetColor, anims, rand, K) {
   };
 
   const build = DESIGNS[id] || DESIGNS._default;
-  build({ g, world, planetColor, rand, M, E, add, box, cyl, sph, cone, tor, oct, grp, anim, particles, disc, sign, mat, pillar, T });
+  build({ g, world, planetColor, rand, M, E, add, box, cyl, sph, cone, tor, oct, grp, anim, particles, disc, sign, mat, pillar, T, capsule });
   if (chaseLater) chase(chaseLater);
   lock();
   return g;
@@ -360,7 +381,8 @@ const DESIGNS = {
     const bark = mat.wood('#6b4a2e'), bark2 = mat.wood('#5a3c24'), leaf = M('#3f8a3f'), leaf2 = M('#5aa84a'), leaf3 = M('#2f6f34');
     for (const s of [-1, 1]) {
       cyl(0.19, 0.3, 1.4, bark, s * 1.27, 0.7, 0, 10, 0, 0, s * -0.04);
-      cyl(0.16, 0.2, 1.3, bark2, s * 1.22, 1.95, 0, 10, 0, 0, s * -0.1);
+      cyl(0.16, 0.19, 1.3, bark2, s * 1.22, 1.95, 0, 10, 0, 0, s * -0.1);
+      cyl(0.215, 0.215, 0.14, bark, s * 1.245, 1.36, 0, 12, 0, 0, s * -0.07); // Astknoten am Übergang
       // Wurzeln: verjüngte Kegel, flach ausgestreckt
       for (let k = 0; k < 4; k++) {
         const a = (k / 4) * TAU + 0.4;
@@ -481,7 +503,7 @@ const DESIGNS = {
     const basalt = mat.basalt('#2a2224'), basalt2 = mat.basalt('#3a3034'), glow = E('#ff5a12', 1.6), crust = mat.basalt('#1a1416');
     for (const s of [-1, 1]) {
       // sechseckige Basaltsäulen, leicht versetzt
-      for (let k = 0; k < 4; k++) cyl(0.3 - k * 0.02, 0.32 - k * 0.02, 0.72, k % 2 ? basalt2 : basalt, s * (1.3 + (rand() - 0.5) * 0.06), 0.36 + k * 0.72, 0, 6, 0, rand(), 0);
+      for (let k = 0; k < 4; k++) cyl(0.3 - k * 0.02, 0.32 - k * 0.02, 0.72, k % 2 ? basalt2 : basalt, s * 1.3, 0.36 + k * 0.72, 0, 6, 0, k * 0.5, 0);
       // Glut in den Fugen zwischen den Blöcken
       for (let k = 1; k < 4; k++) {
         const f = cyl(0.31 - k * 0.02, 0.31 - k * 0.02, 0.04, glow, s * 1.3, k * 0.72, 0, 6);
@@ -519,15 +541,15 @@ const DESIGNS = {
       r.scale.set(1, 0.85, 0.9);
     }
     for (const s of [-1, 1]) {
-      box(0.3, 3.0, 0.3, wood, s * 1.2, 1.5, 0.05, 0, 0, s * 0.04);
-      for (const y of [0.5, 1.6, 2.6]) box(0.33, 0.05, 0.33, iron, s * (1.2 + y * 0.002), y, 0.05, 0, 0, s * 0.04); // Beschläge
+      box(0.3, 3.0, 0.3, wood, s * 1.2, 1.5, 0.05);
+      for (const y of [0.5, 1.6, 2.6]) box(0.33, 0.05, 0.33, iron, s * 1.2, y, 0.05); // Beschläge
     }
-    box(3.0, 0.32, 0.36, wood, 0, 3.05, 0.05, 0, 0, 0.03);
-    for (const x of [-1.2, 1.2]) box(0.2, 0.34, 0.38, iron, x, 3.05, 0.05, 0, 0, 0.03); // Winkel an den Ecken
+    box(3.0, 0.32, 0.36, wood, 0, 3.05, 0.05);
+    for (const x of [-1.2, 1.2]) box(0.34, 0.36, 0.38, iron, x, 3.05, 0.05); // Winkel an den Ecken
     box(2.6, 0.14, 0.1, dark, 0, 2.75, 0.22);
     // Schild „Mine“ mit Rahmen
-    box(1.18, 0.38, 0.05, dark, 0, 3.05, 0.25, 0, 0, -0.05);
-    box(1.1, 0.3, 0.06, mat.planks('#8a6a3a'), 0, 3.05, 0.26, 0, 0, -0.05);
+    box(1.18, 0.38, 0.05, dark, 0, 3.05, 0.25);
+    box(1.1, 0.3, 0.06, mat.planks('#8a6a3a'), 0, 3.05, 0.26);
     // Laternen: Bügel, Dach, Glas und Flamme; schaukeln
     for (const s of [-1, 1]) {
       const lt = grp(s * 1.2, 2.7, 0.35);
@@ -570,10 +592,9 @@ const DESIGNS = {
   candy({ M, E, cyl, sph, tor, grp, anim, disc, sign, particles }) {
     const red = M('#ff3a5a', { roughness: 0.25 }), white = M('#fff8f8', { roughness: 0.25 });
     for (const s of [-1, 1]) {
-      for (let k = 0; k < 14; k++) {
-        const r = cyl(0.19, 0.19, 0.21, k % 2 ? white : red, s * 1.3, 0.11 + k * 0.212, 0, 12);
-        r.rotation.z = 0.12 * s; // schräge Streifen
-      }
+      // durchgehende weiße Stange mit roten Bändern (saubere Übergänge statt versetzter Ringe)
+      cyl(0.185, 0.185, 2.98, white, s * 1.3, 1.6, 0, 16);
+      for (let k = 0; k < 7; k++) cyl(0.192, 0.192, 0.2, red, s * 1.3, 0.32 + k * 0.42, 0, 16);
       tor(0.32, 0.19, red, s * 1.3 - s * 0.32, 3.05, 0, Math.PI, 12, 0, s < 0 ? Math.PI : 0, 0);
       tor(0.32, 0.195, white, s * 1.3 - s * 0.32, 3.05, 0, Math.PI * 0.25, 4, 0, s < 0 ? Math.PI : 0, Math.PI * 0.35);
       cyl(0.03, 0.03, 0.8, white, s * 1.6, 0.4, 0.3, 8);
@@ -697,7 +718,7 @@ const DESIGNS = {
     box(3.2, 0.05, 0.66, dark, 0, 2.9, 0);
     box(3.2, 0.05, 0.66, dark, 0, 3.3, 0);
     box(2.9, 0.32, 0.02, M('#1a1a1a'), 0, 3.1, 0.305);
-    for (let k = 0; k < 7; k++) box(0.2, 0.36, 0.02, M('#ffd23a'), -1.2 + k * 0.4, 3.1, 0.315, 0, 0, 0.5);
+    for (let k = 0; k < 7; k++) box(0.2, 0.32, 0.02, M('#ffd23a'), -1.2 + k * 0.4, 3.1, 0.315);
     cyl(0.04, 0.05, 0.8, dark, 1.0, 3.7, 0, 8);
     sph(0.06, dark, 1.0, 4.1, 0, undefined, 8); // Gelenk
     const dish = grp(1.0, 4.12, 0);
@@ -759,14 +780,20 @@ const DESIGNS = {
   },
   // Alien-Tentakel-Bogen: Tentakel aus mehr, eng überlappenden Gliedern mit Farbverlauf, Saugnäpfe mit Ring, Auge mit
   // Iris und Lid
-  alien({ M, E, sph, tor, grp, anim, disc, sign, particles , cyl}) {
+  alien({ M, E, sph, tor, grp, anim, disc, sign, particles, cyl, capsule }) {
     const tones = ['#4a2278', '#5a2a8a', '#6a32a0', '#7a3ab0', '#8a44c0'], sucker = E('#d97aff', 0.6);
     for (const s of [-1, 1]) {
       const t = grp(s * 1.3, 0, 0);
+      const pts = [], tm = [];
       for (let k = 0; k < 16; k++) {
         const u = k / 15, r = 0.34 - u * 0.24, a = u * 1.45;
-        const x = -s * (1 - Math.cos(a)) * 1.25, y = 0.2 + Math.sin(a) * 2.9;
-        sph(r, M(tones[Math.min(4, Math.floor(u * 5))]), x, y, 0, t, 12);
+        pts.push([-s * (1 - Math.cos(a)) * 1.25, 0.2 + Math.sin(a) * 2.9, 0, r]);
+        tm.push(M(tones[Math.min(4, Math.floor(u * 5))]));
+      }
+      // durchgehender Tentakel (Kugeln mit Zwischenstücken), Farbe je Glied
+      capsule(pts, tm, t);
+      for (let k = 0; k < 16; k++) {
+        const [x, y, , r] = pts[k];
         if (k % 2 === 0 && k < 13) {
           sph(r * 0.32, sucker, x, y, r * 0.85, t, 8);
           tor(r * 0.34, r * 0.07, M('#b05ad8'), x, y, r * 0.86, TAU, 5, 0, 0, 0, t);
@@ -958,15 +985,16 @@ const DESIGNS = {
   },
   // Tiefsee-Kraken: Fels aus Schiefer, Tentakel aus mehr Gliedern mit Farbverlauf und gleichmäßigem Schwung,
   // Saugnäpfe mit Ring, Leuchtpunkte
-  tiefseegraben({ M, E, sph, tor, grp, anim, disc, sign, particles, mat , box, cyl}) {
+  tiefseegraben({ capsule, M, E, sph, tor, grp, anim, disc, sign, particles, mat , box, cyl}) {
     const tones = ['#5a1a2a', '#6a2232', '#7a2a3a', '#8a323f', '#9a3a4a'], sucker = M('#e8b0b8');
     sph(0.9, mat.stone('#1a222c'), 0, 0.15, -0.2, undefined, 12).scale.set(1.7, 0.4, 1);
     const tentacle = (x, z, dir, h, lean, sp) => {
       const t = grp(x, 0.2, z);
+      const pts = [];
+      for (let k = 0; k < 14; k++) { const u = k / 13; pts.push([dir * Math.sin(u * 2.2) * lean, u * h, 0, 0.25 * (1 - u * 0.78)]); }
+      capsule(pts, pts.map((_, k) => M(tones[Math.min(4, Math.floor((k / 13) * 5))])), t);
       for (let k = 0; k < 14; k++) {
-        const u = k / 13, r = 0.25 * (1 - u * 0.78);
-        const px = dir * Math.sin(u * 2.2) * lean, py = u * h;
-        sph(r, M(tones[Math.min(4, Math.floor(u * 5))]), px, py, 0, t, 12);
+        const [px, py, , r] = pts[k];
         if (k % 2 === 0 && k < 12) {
           sph(r * 0.36, sucker, px - dir * r * 0.65, py, r * 0.5, t, 8);
           tor(r * 0.36, r * 0.07, M('#c88a94'), px - dir * r * 0.67, py, r * 0.52, TAU, 5, 0, dir * 0.9, 0, t);
@@ -1061,10 +1089,10 @@ const DESIGNS = {
     box(3.0, 0.12, 0.88, marble, 0, 0.2, 0);
     box(2.9, 0.12, 0.8, gold, 0, 0.32, 0);
     for (const s of [-1, 1]) {
-      cyl(0.26, 0.3, 2.85, marble, s * 1.35, 1.9, 0, 16);
+      cyl(0.28, 0.28, 2.85, marble, s * 1.35, 1.9, 0, 16);
       for (let k = 0; k < 8; k++) { // Kanneluren
         const a = (k / 8) * TAU;
-        box(0.03, 2.6, 0.03, marble2, s * 1.35 + Math.cos(a) * 0.28, 1.9, Math.sin(a) * 0.28);
+        box(0.035, 2.62, 0.035, marble2, s * 1.35 + Math.cos(a) * 0.275, 1.9, Math.sin(a) * 0.275);
       }
       cyl(0.38, 0.38, 0.12, gold, s * 1.35, 3.38, 0, 16);
       cyl(0.32, 0.36, 0.1, gold, s * 1.35, 3.27, 0, 16);
@@ -1171,7 +1199,8 @@ const DESIGNS = {
     const bark = mat.wood('#4a3a2a'), bark2 = mat.wood('#3a2c20');
     for (const s of [-1, 1]) {
       cyl(0.2, 0.3, 1.4, bark, s * 1.27, 0.7, 0, 10, 0, 0, s * -0.04);
-      cyl(0.16, 0.2, 1.4, bark2, s * 1.22, 2.0, 0, 10, 0, 0, s * -0.1);
+      cyl(0.16, 0.19, 1.4, bark2, s * 1.22, 2.0, 0, 10, 0, 0, s * -0.1);
+      cyl(0.215, 0.215, 0.14, bark, s * 1.245, 1.36, 0, 12, 0, 0, s * -0.07); // Astknoten am Übergang
       for (let k = 0; k < 3; k++) {
         const a = (k / 3) * TAU + 0.6;
         cone(0.09, 0.6, bark2, s * 1.27 + Math.cos(a) * 0.28, 0.1, Math.sin(a) * 0.28, 6, Math.sin(a) * 1.25, 0, -Math.cos(a) * 1.25);
@@ -1209,12 +1238,14 @@ const DESIGNS = {
     box(3.3, 0.18, 0.28, jade, 0, 2.95, 0);
     for (const s of [-1, 1]) box(0.12, 0.26, 0.34, dark, s * 1.3, 2.95, 0); // Keile
     // Dach (Kasagi) in fünf Stücken, außen nach oben geschwungen, mit Spitzen
-    box(1.6, 0.24, 0.42, dark, 0, 3.4, 0);
-    for (const s of [-1, 1]) {
-      box(0.7, 0.23, 0.41, dark, s * 1.1, 3.43, 0, 0, 0, s * 0.1);
-      box(0.6, 0.21, 0.4, dark, s * 1.68, 3.53, 0, 0, 0, s * 0.3);
-      box(0.12, 0.06, 0.42, gold, s * 1.97, 3.65, 0, 0, 0, s * 0.3);
+    // Kurve y = 3.4 + 0.22·(|x| − 0.7)² außen: Stücke liegen Kante an Kante und greifen leicht ineinander
+    const roofY = (x) => 3.4 + (Math.abs(x) > 0.7 ? 0.22 * (Math.abs(x) - 0.7) ** 2 * 2.2 : 0);
+    const xs = [-2.0, -1.65, -1.3, -0.95, -0.7, 0.7, 0.95, 1.3, 1.65, 2.0];
+    for (let i = 0; i < xs.length - 1; i++) {
+      const x0 = xs[i], x1 = xs[i + 1], y0 = roofY(x0), y1 = roofY(x1), len = Math.hypot(x1 - x0, y1 - y0);
+      box(len + 0.04, 0.24, 0.42, dark, (x0 + x1) / 2, (y0 + y1) / 2, 0, 0, 0, Math.atan2(y1 - y0, x1 - x0));
     }
+    for (const s of [-1, 1]) box(0.12, 0.07, 0.43, gold, s * 1.98, roofY(1.98) + 0.13, 0, 0, 0, s * 0.45);
     box(2.7, 0.06, 0.46, mat.marble('#2a7a58'), 0, 3.53, 0);
     box(0.46, 0.46, 0.06, gold, 0, 3.15, 0.15);
     box(0.4, 0.4, 0.08, red, 0, 3.15, 0.18);

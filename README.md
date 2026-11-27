@@ -1249,6 +1249,10 @@ Eiszapfen, Zuckerguss, Runen, Perlen, Lorbeer, Schriftrolle, Warnstreifen), Lauf
 (`chase`) und je Portal weitere Ausbauten am Tor mit eigener Bewegung.
 Die Schilder hängen auf Spielerhöhe rechts am Rahmen (vom Spieler aus gesehen), auf etwa 55 % verkleinert, mit Haken-Arm
 und Ketten, Pfosten bis zum Boden oder Hologramm-Projektor am Boden (`st.x`, `st.z`, `st.hy`, `st.scale`).
+Saubere Übergänge (Werkstatt-Wunsch „Blockübergänge besser und cleaner“): Ringstücke greifen in Roblox ineinander
+(keine Lücken und Knicke in Bögen), dicke Bögen mit mehr Stücken, verjüngte Teile mit sechs überlappenden Stufen
+(`rbx.smooth`), Tentakel als durchgehende Kette aus Kugeln mit Zwischenstücken (`capsule`), Zuckerstangen als Stange mit
+Bändern, gerade Balken ohne Versatz, Jade-Dach als stetige Kurve, Strudelbögen mit drei Stärken.
 
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem

@@ -183,10 +183,11 @@ export function convertMesh(out, mesh, world) {
       const cu = mesh.userData.rbx || {};
       if (!cu.sky && !cu.text && P.radialSegments <= 12 && P.heightSegments <= 4)
         return facetMesh(out, mesh, lk, { facetThick: Math.min(0.14, r * 0.2), name: ex.name || 'Kegel', facetsAll: P.openEnded }, world);
-      const n = rt < 0.01 || rb < 0.01 ? 4 : 3;
+      // smooth (Portale): mehr, sich leicht überlappende Stufen, damit der Übergang sauber verläuft
+      const n = cu.smooth ? 6 : rt < 0.01 || rb < 0.01 ? 4 : 3, over = cu.smooth ? 1.15 : 1;
       for (let i = 0; i < n; i++) {
         const k = (i + 0.5) / n, ri = rb + (rt - rb) * k;
-        emit(out, mesh, 'Cylinder', mul(T(0, -h / 2 + k * h, 0), RZ90.clone(), S(h / n, 2 * Math.max(ri, 0.02), 2 * Math.max(ri, 0.02))), lk, ex);
+        emit(out, mesh, 'Cylinder', mul(T(0, -h / 2 + k * h, 0), RZ90.clone(), S((h / n) * over, 2 * Math.max(ri, 0.02), 2 * Math.max(ri, 0.02))), lk, ex);
       }
       return;
     }
@@ -225,12 +226,16 @@ export function convertMesh(out, mesh, world) {
       // segs: feste Anzahl Stücke (bewegte Ringe der Portale: weniger Teile)
       const n = mesh.userData.rbx?.segs || Math.max(5, Math.round((arc / (Math.PI * 2)) * 18));
       const closed = arc > Math.PI * 1.99;
+      // Stücke greifen etwas ineinander (keine Lücke und kein Knick an der Außenseite der Biegung); am offenen Ende
+      // eines Bogens nicht verlängern
+      const ov = Math.min(0.5, (tube / R) * 0.6) * (arc / n);
       for (let i = 0; i < n; i++) {
-        const a0 = (i / n) * arc, a1 = ((i + 1) / n) * arc;
+        const a0 = (i / n) * arc - (i > 0 || closed ? ov : 0), a1 = ((i + 1) / n) * arc + (i < n - 1 || closed ? ov : 0);
         const m = cylLocal(V(Math.cos(a0) * R, Math.sin(a0) * R, 0), V(Math.cos(a1) * R, Math.sin(a1) * R, 0), tube);
         if (m) emit(out, mesh, 'Cylinder', m, lk, ex);
         // Kugelgelenk an jedem Knick: keine Lücke zwischen den Zylinderstücken (bei dicken Ringen sichtbar)
-        if ((i > 0 || closed) && tube > 0.06) emit(out, mesh, 'Ellipsoid', mul(T(Math.cos(a0) * R, Math.sin(a0) * R, 0), S(2 * tube, 2 * tube, 2 * tube)), lk, ex);
+        const aj = (i / n) * arc;
+        if ((i > 0 || closed) && tube > 0.06) emit(out, mesh, 'Ellipsoid', mul(T(Math.cos(aj) * R, Math.sin(aj) * R, 0), S(2 * tube, 2 * tube, 2 * tube)), lk, ex);
       }
       return;
     }
