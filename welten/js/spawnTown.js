@@ -13,6 +13,7 @@
 // über K herein, damit es keine Kreis-Importe gibt. Alles, was man im Spiel antippen kann, trägt
 // userData.area (siehe AREA_ACTIONS in spiel/js/main.js).
 
+import { portalDesign } from './portalDesigns.js';
 import * as THREE from 'three';
 
 const TAU = Math.PI * 2;
@@ -838,67 +839,85 @@ export function buildSpawnTown(ctx, K) {
   const byPlanet = {};
   for (const p of ctx.portals || []) (byPlanet[p.world.planet] ??= []).push(p);
   const hall = (planetId, d, build) => {
-    const a = deg(d), [cx, cz] = polar(a, HALL_R);
+    const a = deg(d), [cx, cz] = polar(a, HALL_R - 0.6); // etwas nach innen: die Portale stehen fast rundum
     const g = new THREE.Group();
     build(g);
     // Portale im Halbkreis hinter der Mitte, Blick zur Hallenmitte
-    const list = byPlanet[planetId] || [];
+    const list = [...(byPlanet[planetId] || [])];
     if (planetId === 'p3') list.push(...(byPlanet.p4 || []));
+    if (planetId === 'p5') list.push(...(byPlanet.p6 || []), ...(byPlanet.p7 || []));
+    // Werkstatt-Wunsch „jedes Portal mit eigenem Design und Animation“ (portalDesigns.js), etwas größer als vorher
+    // (0,94 statt 0,72); in der Sternentor-Halle stehen neun Portale, dort etwas kleiner und weiter gefächert
+    const many = list.length > 7;
+    const ring = many ? 4.6 : 4.0, scale = many ? 0.8 : 0.94, spreadMax = deg(many ? 280 : 260);
     list.forEach(({ world, color }, i) => {
-      const spread = Math.min(deg(170), deg(28) * (list.length - 1));
+      const spread = Math.min(spreadMax, deg(43) * (list.length - 1)); // fast rundum, vorne bleibt der Eingang frei
       const t = list.length > 1 ? -spread / 2 + (i / (list.length - 1)) * spread : 0;
-      const pa = portalArch(world, color, anims, rand);
-      pa.scale.setScalar(0.72);
-      const px = Math.sin(t) * 2.8, pz = -Math.cos(t) * 2.8 + 0.3;
-      pa.position.set(px, 0, pz);
-      pa.lookAt(0, 0, 0.6);
+      const pa = portalDesign(world, color, anims, rand, K);
+      pa.scale.setScalar(scale);
+      const px = Math.sin(t) * ring, pz = -Math.cos(t) * ring + 0.3;
+      pa.position.set(px, 0.2, pz);
+      pa.lookAt(0, 0.2, 0.6);
       g.add(pa);
+      portalsOut.push(pa);
     });
     // prächtiger (Werkstatt-Wunsch): Podest mit Leuchtring in Planetenfarbe unter den Portalen, zwei Obelisken
     // mit leuchtenden Kristallen am Eingang, Feuerschalen und Banner
     const pc = list[0]?.color || '#ffd76a', glowM = E(pc, 1.3);
     lampMats.push(glowM);
-    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.9, 0.22, 40), M('#d8d0c0')), 0, 0.11, 0.2));
-    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(3.45, 0.06, 6, 60), glowM), 0, 0.23, 0.2)).children.at(-1).rotation.x = Math.PI / 2;
+    const podR = many ? 5.3 : 4.7;
+    g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(podR - 0.2, podR, 0.22, 40), M('#d8d0c0')), 0, 0.11, 0.2));
+    g.add(at(new THREE.Mesh(new THREE.TorusGeometry(podR - 0.45, 0.06, 6, 60), glowM), 0, 0.23, 0.2)).children.at(-1).rotation.x = Math.PI / 2;
     for (const sx of [-1, 1]) {
-      const ox = sx * 4.6, oz = 2.8;
+      const ox = sx * (many ? 6.0 : 5.5), oz = many ? 4.0 : 3.6;
       g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), M('#a89e8c')), ox, 0.2, oz));
       const ob = at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, 5.4, 4), M('#e8e0d0')), ox, 3.1, oz);
       ob.rotation.y = Math.PI / 4;
       g.add(ob);
       g.add(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), glowM), ox, 6.25, oz));
-      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.24, 0.32, 12), M('#c8a040', { metalness: 0.6 })), sx * 2.4, 0.95, 3.4));
-      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 8), M('#4a4458')), sx * 2.4, 0.4, 3.4));
-      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.65, 8), E('#ffb02e', 1.8)), sx * 2.4, 1.42, 3.4);
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.24, 0.32, 12), M('#c8a040', { metalness: 0.6 })), sx * 1.7, 0.95, 4.5));
+      g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 8), M('#4a4458')), sx * 1.7, 0.4, 4.5));
+      const fl = at(new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.65, 8), E('#ffb02e', 1.8)), sx * 1.7, 1.42, 4.5);
       g.add(fl);
       anims.push((tt) => fl.scale.set(1, 0.85 + Math.sin(tt * 8 + sx * 2) * 0.15, 1));
       const ban = at(new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.6, 0.7), M(pc)), ox + sx * 0.25, 4.0, oz);
       g.add(ban);
     }
-    g.scale.setScalar(1.3);
-    reserve(cx, cz, 4.6);
+    g.scale.setScalar(many ? 1.2 : 1.3);
+    reserve(cx, cz, many ? 6.6 : 6.0);
     const o = put(g, cx, cz, { rot: false });
     o.lookAt(0, o.position.y, 0);
     o.userData.area = `portale-${planetId}`;
+    // Partikel der Portale (Blüten, Schnee, Funken …) an ihren Platz in der Welt rechnen
+    o.updateMatrixWorld(true);
+    for (const pa of portalsOut.splice(0)) {
+      const k = pa.getWorldScale(new THREE.Vector3()).x;
+      for (const { marker, spec } of pa.userData.emit || []) {
+        const w = marker.getWorldPosition(new THREE.Vector3());
+        (shared.emitters ||= []).push({ ...spec, pos: [w.x, w.y, w.z], size: spec.size.map((v) => v * k), particleSize: spec.particleSize * k, sizeEnd: (spec.sizeEnd ?? spec.particleSize) * k, speed: spec.speed.map((v) => v * k), ...(spec.acceleration ? { acceleration: spec.acceleration.map((v) => v * k) } : {}) });
+      }
+    }
     return o;
-  };  // Heimat-Tor (Planet 1)
+  };
+  const portalsOut = [];  // Heimat-Tor (Planet 1)
   hall('p1', 90, (g) => {
     const stone = M('#c8bea8');
     for (const s of [-1, 1]) {
-      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 0.8), stone), s * 3.4, 2, 1.6));
-      g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 4), M('#3f8a46')), s * 3.4, 4.45, 1.6));
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.8, 0.8), stone), s * 5.4, 2.4, 4.6));
+      g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 4), M('#3f8a46')), s * 5.4, 5.25, 4.6));
     }
-    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.6, 0.8), stone), 0, 4.1, 1.6));
+    // breiter und höher als früher: die größeren Portale stehen frei dahinter
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.6, 0.8), stone), 0, 4.9, 4.6));
     const sg = signBoard('Heimatplanet', { w: 3.4, h: 0.7, bg: '#2f6a3a', fg: '#ffffff', sub: '7 Welten · mit Moneten kaufen' });
-    sg.position.set(0, 3.45, 2.05);
+    sg.position.set(0, 4.25, 5.05);
     g.add(sg);
     for (const s of [-1, 1]) {
       const b = flag('#5fd38d', 3.6);
-      b.position.set(s * 2.6, 0, 1.6);
+      b.position.set(s * 4.4, 0, 4.6);
       g.add(b);
     }
     // Bäume seitlich hinter den Torpfeilern (vorher standen sie vor den äußeren Portalen)
-    for (const [x, z] of [[-4.3, 0.2], [4.3, 0.2]]) g.add(at(roundTree(1.6, '#4f9a3f', rand), x, 0, z));
+    for (const [x, z] of [[-6.2, 2.2], [6.2, 2.2]]) g.add(at(roundTree(1.6, '#4f9a3f', rand), x, 0, z));
   });
   addArea('portale-p1', 'Heimat-Tor (Planet 1)', ...polar(deg(90), HALL_R - 3.4));
   // Raketenstartplatz (Planet 2)
@@ -954,14 +973,15 @@ export function buildSpawnTown(ctx, K) {
     }
     anims.push((t) => swirl.forEach((r, i) => (r.rotation.z = t * (1.6 - i * 0.3))));
     // Kristalle seitlich am Hallenrand (vorher standen sie vor den äußeren Portalen)
-    for (const [x, z, c] of [[-4.2, 0.2, '#ff7a8a'], [4.2, 0.2, '#ffb05a']]) g.add(at(crystal(1.2, c, rand, 0.8), x, 0, z));
+    for (const [x, z, c] of [[-5.9, 3.4, '#ff7a8a'], [5.9, 3.4, '#ffb05a']]) g.add(at(crystal(1.2, c, rand, 0.8), x, 0, z));
     // Planet 4 teilt sich die Halle: goldene Himmelsleiter hinter dem Strudel
     const sky = (byPlanet.p4 || []).length > 0;
     if (sky) {
       const goldM = M('#ffcf4a', { metalness: 0.7, roughness: 0.3, emissive: '#b8860b', emissiveIntensity: 0.35 });
-      for (const sx of [-0.45, 0.45]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 6, 0.1), goldM), sx, 3, -2.6));
-      for (let y = 0.5; y < 6; y += 0.55) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), goldM), 0, y, -2.6));
-      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), M('#ffffff', { roughness: 1 })), 0, 6.2, -2.6));
+      // steigt jetzt mitten aus dem Strudel auf (dahinter stehen die Portale)
+      for (const sx of [-0.45, 0.45]) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 6, 0.1), goldM), sx, 3.4, -0.3));
+      for (let y = 0.9; y < 6.4; y += 0.55) g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), goldM), 0, y, -0.3));
+      g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), M('#ffffff', { roughness: 1 })), 0, 6.6, -0.3));
     }
     const sg = signBoard(sky ? 'Tiefsee & Himmel' : 'Tiefsee-Portal', { w: 3.0, h: 0.7, bg: '#0a4a6a', fg: '#9ff3f0', sub: sky ? 'Planet 3 ab 3 · Planet 4 ab 6 Wiedergeburten' : 'Planet 3 · ab 3 Wiedergeburten' });
     sg.position.set(0, 0.9, 2.0);
@@ -970,6 +990,36 @@ export function buildSpawnTown(ctx, K) {
     g.add(sg);
   });
   addArea('portale-p3', (byPlanet.p4 || []).length ? 'Tiefsee-Strudel und Himmelsleiter (Planet 3 und 4)' : 'Tiefsee-Strudel (Planet 3)', ...polar(deg(270), HALL_R - 3.4));
+  // Sternentor (Juwelnebel, Planeten 5 bis 7; Werkstatt-Wunsch „eigene Halle für die Edelstein-Portale“): neun Portale im
+  // weiten Halbkreis, dahinter ein schwebender Sternenring aus Kristallen, der sich dreht
+  if ((byPlanet.p5 || []).length) {
+    hall('p5', 335, (g) => {
+      const ringG = new THREE.Group();
+      ringG.position.set(0, 7.0, 0);
+      const cols = ['#c98bff', '#3ee08a', '#8af0ff', '#ff5fd2'];
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        const c = at(new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), E(cols[i % 4], 1.1)), Math.cos(a) * 1.6, Math.sin(a) * 1.6, 0);
+        c.scale.set(0.7, 1.4, 0.7);
+        c.rotation.z = a + Math.PI / 2;
+        c.userData.rbx = { facets: true };
+        ringG.add(c);
+      }
+      ringG.add(at(new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.06, 6, 24), E('#ffffff', 1.2)), 0, 0, 0));
+      ringG.children.at(-1).userData.rbx = { segs: 12 };
+      ringG.userData.pfx = { id: 'sternentor', type: 'spin', speed: 0.4, amp: 0, axis: [0, 0, 1] };
+      g.add(ringG);
+      anims.push((t) => (ringG.rotation.z = t * 0.4));
+      g.add(at(new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), E('#ffffff', 1.6)), 0, 7.0, 0)).children.at(-1).scale.set(0.8, 1.4, 0.8);
+      for (const s of [-1, 1]) g.add(at(crystal(1.4, s < 0 ? '#c98bff' : '#8af0ff', rand, 0.9), s * 6.6, 0, 2.4));
+      const sg = signBoard('Sternentor', { w: 3.4, h: 0.7, bg: '#3a1a5a', fg: '#ffd0f4', sub: 'Juwelnebel · Planet 5 bis 7 · nach der Supernova' });
+      sg.position.set(0, 0.9, 4.4);
+      sg.rotation.x = -0.3;
+      g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), M('#4a4458')), 0, 0.45, 4.35));
+      g.add(sg);
+    });
+    addArea('portale-p5', 'Sternentor (Juwelnebel)', ...polar(deg(335), HALL_R - 3.4));
+  }
 
   // ── Spielbereiche im äußeren Ring ──
   // Ei-Schlüpfplatz: alle elf Eier auf Podesten im Halbkreis

@@ -9,6 +9,7 @@ import { EGG_BUILDER } from './eggLuau.js';
 import { worldFxSource, WORLD_FX_CLIENT } from './worldFxLuau.js';
 import { JUICE_CLIENT } from './juiceLuau.js';
 import { TELEPORT_FX } from './teleportLuau.js';
+import { PORTAL_FX, PORTAL_FX_CLIENT } from './portalFxLuau.js';
 import { MUTATION_FX } from './mutationLuau.js';
 import { shopDataSource, GAME_UI, SHOP_SERVER, UI_CLIENT, UI_THEME } from './uiLuau.js';
 import { skillDataSource, rewardDataSource, playerServerSource } from './uiMoreLuau.js';
@@ -1955,6 +1956,7 @@ export function moduleSources(data) {
     { name: 'WeatherFx', source: WEATHER_FX },
     { name: 'WorldFx', source: worldFxSource(data) },
     { name: 'TeleportFx', source: TELEPORT_FX },
+    { name: 'PortalFx', source: PORTAL_FX },
     { name: 'EggBuilder', source: EGG_BUILDER },
     ...(data.AURAS ? [{ name: 'AuraData', source: auraDataSource(data) }, { name: 'AuraFx', source: AURA_FX }] : []),
     ...(data.PETS ? [{ name: 'PetData', source: petDataSource(data) }, { name: 'PetBuilder', source: PET_BUILDER }, { name: 'HatchFx', source: HATCH_FX }] : []),
@@ -2158,6 +2160,7 @@ addScript("Script", game:GetService("ServerScriptService"), "CoinmasterWeather",
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWeatherClient", ${longString(WEATHER_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldLighting", ${longString(WORLD_LIGHT_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterWorldFx", ${longString(WORLD_FX_CLIENT)})
+addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterPortalFx", ${longString(PORTAL_FX_CLIENT)})
 addScript("LocalScript", game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts"), "CoinmasterJuice", ${longString(JUICE_CLIENT)})
 -- Modelle der Welten: Skript mit Modul „Einsetzen“ (Bibliothek: ServerStorage > CoinmasterModelle)
 do

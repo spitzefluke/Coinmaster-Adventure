@@ -274,6 +274,7 @@ const SPAWN_ITEMS = [
     ['portale-p1', 'Heimat-Tor (Planet 1)', 'Portale zu den Welten des Heimatplaneten.'],
     ['portale-p2', 'Raketenstartplatz (Planet 2)', 'Portale zu den Welten im Weltraum.'],
     ['portale-p3', 'Tiefsee-Strudel und Himmelsleiter', 'Portale zu Tiefsee, Himmel und Milchstraße.'],
+    ['portale-p5', 'Sternentor (Juwelnebel)', 'Portale zu den neun Edelstein-Welten der zweiten Galaxie.'],
   ]],
 ].flatMap(([group, color, items]) => items.map(([id, name, text, area]) => ({ id, name, text, area: area || id, group, color, spawnItem: true })));
 const orderOf = (t) => (t === 'spawn' ? SPAWN_ITEMS : t === 'portal' ? ALL.filter((w) => !w.hub) : ALL);
@@ -590,6 +591,7 @@ function show(id) {
     if (built) {
       lua?.call('__weatherReset');
       lua?.call('__worldFxReset');
+      lua?.call('__portalFxReset');
       built.rw.dispose();
       built = null;
       figure = null;
@@ -598,6 +600,7 @@ function show(id) {
     try {
       built = RW.buildRobloxWorld(bw, { shadows: renderer.shadowMap.enabled });
       builtFor = bw;
+      if (bw.hub) RW.showPortalFx(built).catch((e) => console.error(e)); // Portale bewegen sich
     } catch (e) {
       console.error(e);
       $('loading-text').textContent = `${bw.name} konnte nicht gebaut werden.`;
@@ -679,10 +682,10 @@ function focusPortal(id) {
   const hall = halls.reduce((b, a) => (Math.hypot(a.pos[0] - pos.x, a.pos[2] - pos.z) < Math.hypot(b.pos[0] - pos.x, b.pos[2] - pos.z) ? a : b), halls[0]);
   const door = new THREE.Vector3(hall.pos[0], pos.y, hall.pos[2]);
   const r = disc.rot;
-  let n = new THREE.Vector3(r[2], 0, r[8]).normalize();
+  let n = new THREE.Vector3(r[0], 0, r[6]).normalize(); // Scheibe ist ein Zylinder: Achse X = Blickrichtung
   if (n.dot(door.clone().sub(pos)) < 0) n.negate(); // Vorderseite: zur Hallenmitte und zum Eingang
   const radius = disc.size ? Math.max(disc.size[0], disc.size[2] ?? 0) / 2 : 6.6;
-  portal = { id, pos, n, door, radius: Math.max(4, Math.min(radius, 9)), feetY: pos.y - 11.6 /* Scheibe 1,55 × 0,72 (Portal) × 1,3 (Halle) Einheiten über dem Boden */, world: ALL.find((w) => w.id === id) };
+  portal = { id, pos, n, door, radius: Math.max(4, Math.min(radius, 9)), feetY: hall.pos[1] + 0.42 * STUDS /* Boden der Halle; die Portale stehen auf dem Podest (0,2 × Hallengröße) */, world: ALL.find((w) => w.id === id) };
   controls.autoRotate = false;
   $('t-rot').setAttribute('aria-pressed', 'false');
   controls.minDistance = 2 * STUDS;
@@ -803,6 +806,7 @@ function arrive() {
     tp.fig.m.setParent(null);
     lua?.call('__weatherReset');
     lua?.call('__worldFxReset');
+    lua?.call('__portalFxReset');
     built.rw.dispose();
     fxShown = false;
     try {

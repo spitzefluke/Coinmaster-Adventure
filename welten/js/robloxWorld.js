@@ -10,6 +10,7 @@ import { skyboxFiles, dayNightAt } from './skyboxes.js';
 import { mutationDataSource, WEATHER_FX } from '../../roblox/js/luau.js';
 import { worldFxSource } from '../../roblox/js/worldFxLuau.js';
 import { TELEPORT_FX } from '../../roblox/js/teleportLuau.js';
+import { PORTAL_FX } from '../../roblox/js/portalFxLuau.js';
 import { WORLDS } from './worlds.js';
 import { skipAnimations } from '../../js/settings.js';
 import { MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN } from '../../muenzen/js/mutations.js';
@@ -90,7 +91,9 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
   const plain = [], bau = [], deko = [], around = [], signs = [];
   // mit Himmelsbild ist die Kuppel ausgeblendet (in Roblox macht das das Licht-Skript)
   const hideDome = !!data.lighting?.himmel;
-  for (const p of data.parts) (p.text ? signs : p.deko ? deko : p.bau ? bau : plain).push(p);
+  // bewegte Teile der Portale: baut showPortalFx in Luau (PortalFx muss sie finden und bewegen können)
+  const moving = [];
+  for (const p of data.parts) (/^PFX:/.test(p.name || '') ? moving : p.text ? signs : p.deko ? deko : p.bau ? bau : plain).push(p);
   for (const p of data.sky) if (p.name === 'Himmelskuppel' || p.name === 'Horizont') { if (!hideDome) plain.push(p); } else (p.text ? signs : around).push(p);
   rw.addStaticParts(plain);
   const layers = { gebaeude: rw.addStaticParts(bau), deko: rw.addStaticParts(deko), umgebung: rw.addStaticParts(around) };
@@ -135,7 +138,7 @@ export function buildRobloxWorld(world, { shadows = true } = {}) {
     layers[name].visible = on;
     for (const s of signParts[name]) if ((s.parent === model) !== on) s.setParent(on ? model : null);
   };
-  return { rw, data, model, layers, setLayer };
+  return { rw, data, model, layers, setLayer, moving };
 }
 
 // ── Luau für Wetter (WeatherFx) und Figuren (AuraFx.BuildDummy) ──
@@ -146,6 +149,7 @@ export function worldLua() {
     lua.call('__addModule', 'MutationData', mutationDataSource({ MUTATIONS, WEATHER, WEATHER_RARITIES, WEATHER_BLOCK, WEATHER_WARN }));
     lua.call('__addModule', 'WorldFx', worldFxSource({ WORLDS }));
     lua.call('__addModule', 'TeleportFx', TELEPORT_FX);
+    lua.call('__addModule', 'PortalFx', PORTAL_FX);
     lua.register('__tpFlash', () => lua.onTeleportFlash?.());
     lua.run(`
       local root = game:GetService("ReplicatedStorage"):WaitForChild("CoinmasterAdventure")
@@ -160,6 +164,47 @@ export function worldLua() {
       end
       function __worldFxReset()
         if worldFx then pcall(worldFx.Destroy) worldFx = nil end
+      end
+      -- Portale im Spawn bewegen sich (PortalFx, wie im Spiel). Die bewegten Teile baut Luau selbst (Ordner „Portale“),
+      -- damit PortalFx sie wie im Spiel unter workspace findet.
+      local portalFx, pfxFolder = nil, nil
+      function __portalFxReset()
+        if portalFx then pcall(portalFx.Stop) portalFx = nil end
+        if pfxFolder then pfxFolder:Destroy() pfxFolder = nil end
+      end
+      function __pfxBegin()
+        __portalFxReset()
+        pfxFolder = Instance.new("Folder")
+        pfxFolder.Name = "Portale"
+        pfxFolder.Parent = workspace
+      end
+      -- nums: Größe, Lage und Drehung als Text „sx,sy,sz,x,y,z,r00,…,r22“ (wenige Argumente: der Lua-Stapel ist klein)
+      function __pfxPart(name, cls, shape, nums, hex, mat, tr)
+        local v = {}
+        for _, s in ipairs(string.split(nums, ",")) do v[#v + 1] = tonumber(s) end
+        local sx, sy, sz, x, y, z, a, b, c, d, e, f, g, h, i = table.unpack(v)
+        local p = Instance.new(cls ~= "" and cls or "Part")
+        p.Name = name
+        p.Anchored = true
+        p.CanCollide = false
+        p.CastShadow = false
+        if cls == "" then
+          if shape == "Cylinder" then p.Shape = Enum.PartType.Cylinder elseif shape == "Ball" then p.Shape = Enum.PartType.Ball end
+        end
+        p.Size = Vector3.new(sx, sy, sz)
+        p.CFrame = CFrame.new(x, y, z, a, b, c, d, e, f, g, h, i)
+        p.Color = Color3.fromHex(hex)
+        p.Material = Enum.Material[mat]
+        p.Transparency = tr
+        if shape == "Ellipsoid" then
+          local m = Instance.new("SpecialMesh")
+          m.MeshType = Enum.MeshType.Sphere
+          m.Parent = p
+        end
+        p.Parent = pfxFolder
+      end
+      function __portalFx()
+        portalFx = require(root.PortalFx).Start(pfxFolder or workspace)
       end
       -- Teleport-Animation (TeleportFx): Abflug an der Portalscheibe, Ankunft an den Füßen
       function __tpDepart(px, py, pz, lx, ly, lz, r, g, b, radius)
@@ -193,6 +238,20 @@ export async function teleportArrive(rw, feet, color) {
   lua.setWorld(rw);
   const c = new THREE.Color(color);
   lua.call('__tpArrive', feet[0], feet[1], feet[2], c.r, c.g, c.b);
+  return lua;
+}
+
+// Portal-Animationen im Spawn (PortalFx, wie im Spiel); reset: vor dem Abbau der Welt aufrufen
+export async function showPortalFx(built) {
+  const lua = await worldLua();
+  lua.setWorld(built.rw);
+  lua.call('__pfxBegin');
+  for (const p of built.moving || []) {
+    const c = '#' + new THREE.Color(p.color).getHexString();
+    const nums = [...p.size, ...p.pos, ...p.rot].map((v) => +v.toFixed(4)).join(',');
+    lua.call('__pfxPart', p.name, p.className || '', p.shape, nums, c, p.material || 'SmoothPlastic', p.transparency || 0);
+  }
+  lua.call('__portalFx');
   return lua;
 }
 

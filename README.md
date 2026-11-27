@@ -1231,6 +1231,15 @@ Event-Podest, Plätze und Anzeigen, Aktivitäten, Portal-Hallen). Die Kamera fli
 Spiel-UI (`spiel/js/uiDemo.js`: dieselbe Roblox-ScreenGui wie auf der Seite „Spiel“, mit Beispiel-Spielstand) und öffnet
 das Fenster, das im Spiel an diesem Gebäude aufgeht; Käufe sind dort aus.
 
+**Portale im Spawn** (Werkstatt-Wunsch „jedes Portal verbessern, eigenes Design mit Portalanimation“): jede Welt hat
+ihr eigenes Tor (`welten/js/portalDesigns.js`), etwa 1,3-mal so groß wie vorher, mit drehendem Strudel, pulsierendem
+Leuchtrand, eigener Animation und eigenen Partikeln (z. B. Holztor mit Windmühle bei Normal, U-Bahn-Eingang bei Stadt,
+Minenschacht bei Höhle, Krakententakel beim Tiefseegraben, Pagoden-Tor beim Jadetempel). Die neun Edelstein-Welten haben
+eine eigene Halle **Sternentor** (Bereich `portale-p5`). Bewegte Teile heißen „PFX:<welt>:<art>:…“ (`worldParts.js`);
+das Luau-Modul `PortalFx` (`roblox/js/portalFxLuau.js`, im Spiel das LocalScript CoinmasterPortalFx, in der Werkstatt
+`showPortalFx`) bewegt sie. Gesperrte Welten (nicht im Spieler-Attribut „Worlds“) zeigen das Tor grau mit stillem Strudel
+und Kette mit Schloss.
+
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem
 Luau-Modul `TeleportFx` (`roblox/js/teleportLuau.js`): Abflug mit Lichtstrudel, eingesaugten Funken, kreisenden

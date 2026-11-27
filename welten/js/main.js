@@ -9,7 +9,7 @@ import { ISLAND_RADIUS, islandRadius } from './worldFactory.js';
 import { worldThumb } from './thumbs.js';
 import { pixelRatio, loadSettings, skipAnimations } from '../../js/settings.js';
 import { STUDS, FIGURE_STUDS } from './character.js';
-import { buildRobloxWorld, showWeather, showWorldFx, worldLua, addFigure } from './robloxWorld.js';
+import { buildRobloxWorld, showWeather, showWorldFx, showPortalFx, worldLua, addFigure } from './robloxWorld.js';
 import { WEATHER, weatherAt } from '../../muenzen/js/mutations.js';
 
 // Kameraabstände wachsen mit der Inselgröße (Werte unten gelten für Radius 10, mal 8 für Studs)
@@ -108,6 +108,7 @@ function showWorld(w) {
   if (built) {
     lua?.call('__weatherReset');
     lua?.call('__worldFxReset');
+    lua?.call('__portalFxReset');
     built.rw.dispose();
     built = null;
   }
@@ -122,6 +123,7 @@ function showWorld(w) {
     const count = built.data.parts.length + built.data.sky.length;
     $('rbx-count').textContent = `${count.toLocaleString('de-DE')} Roblox-Teile`;
     showWorldFx(built.rw, w.id);
+    if (w.hub) showPortalFx(built);
     applyWeather();
     if (compare) {
       const spot = built.data.meta.spot;

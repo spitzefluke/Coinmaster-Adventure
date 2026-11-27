@@ -219,7 +219,8 @@ export function convertMesh(out, mesh, world) {
     }
     case 'TorusGeometry': {
       const R = P.radius, tube = P.tube, arc = P.arc ?? Math.PI * 2;
-      const n = Math.max(5, Math.round((arc / (Math.PI * 2)) * 18));
+      // segs: feste Anzahl Stücke (bewegte Ringe der Portale: weniger Teile)
+      const n = mesh.userData.rbx?.segs || Math.max(5, Math.round((arc / (Math.PI * 2)) * 18));
       const closed = arc > Math.PI * 1.99;
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * arc, a1 = ((i + 1) / n) * arc;
@@ -884,6 +885,34 @@ function flatOnGround(mesh, built) {
   return flat;
 }
 
+// Portale im Spawn (welten/js/portalDesigns.js): bewegte Teile heißen „PFX:<welt>:<art>:<tempo>:<stärke>:<drehpunkt>:<achse>“
+// (Drehpunkt in Studs, Achse in Weltrichtung), das Luau-Modul PortalFx bewegt sie. Die übrigen Teile eines Portals heißen
+// „PortalDeko_<welt>“ (PortalFx färbt sie grau, solange die Welt nicht gekauft ist). Bewegte Teile stoßen nicht an,
+// damit man die Portalscheibe dahinter berühren kann.
+const r2 = (v) => Math.round(v * 100) / 100;
+function portalNames(out, n0, mesh) {
+  let fx = null, of = null;
+  for (let q = mesh; q && !of; q = q.parent) {
+    if (!fx && q.userData.pfx) fx = q;
+    if (q.userData.portalOf) of = q.userData.portalOf;
+  }
+  if (!fx && !of) return;
+  let name;
+  if (fx) {
+    const f = fx.userData.pfx;
+    const pv = fx.getWorldPosition(V(0, 0, 0)).multiplyScalar(STUDS);
+    const ax = V(...f.axis).normalize().applyQuaternion(fx.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    name = `PFX:${f.id}:${f.type}:${r2(f.speed)}:${r2(f.amp)}:${r2(pv.x)},${r2(pv.y)},${r2(pv.z)}:${r2(ax.x)},${r2(ax.y)},${r2(ax.z)}`;
+  } else name = `PortalDeko_${of}`;
+  for (let i = n0; i < out.length; i++) {
+    if (/^Portal_/.test(out[i].name || '')) continue; // die Portalscheibe behält ihren Namen
+    out[i].name = name;
+    if (fx) Object.assign(out[i], { canCollide: false, castShadow: false });
+    // Kette mit Schloss: zuerst unsichtbar, PortalFx zeigt sie bei gesperrten Welten
+    if (fx?.userData.pfx.type === 'lock') out[i].transparency = 1;
+  }
+}
+
 export function worldToParts(world) {
   const built = buildWorld(world, { particles: 0 });
   built.update(1, 0.016); // Grundhaltung der Animationen
@@ -917,6 +946,7 @@ export function worldToParts(world) {
     }
     const out = rbx.sky ? sky : parts, n0 = out.length;
     convertMesh(out, o, world);
+    portalNames(out, n0, o);
     // Ebenen für die Vorschau (die Werkstatt blendet sie einzeln aus):
     //   deko  Streu-Deko (Bäume, Büsche, Felsen, Kisten …)
     //   bau   feste Gebäude und alles andere, was auf der Insel steht
