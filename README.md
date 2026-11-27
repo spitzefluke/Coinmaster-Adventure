@@ -1239,6 +1239,10 @@ eine eigene Halle **Sternentor** (Bereich `portale-p5`). Bewegte Teile heißen �
 das Luau-Modul `PortalFx` (`roblox/js/portalFxLuau.js`, im Spiel das LocalScript CoinmasterPortalFx, in der Werkstatt
 `showPortalFx`) bewegt sie. Gesperrte Welten (nicht im Spieler-Attribut „Worlds“) zeigen das Tor grau mit stillem Strudel
 und Kette mit Schloss.
+Feinschliff (Werkstatt-Wunsch „Details deutlich verbessern“, nur die vorhandenen Teile): echte Roblox-Materialien über
+`material.userData.rbxMaterial` (Holz, Marmor, Metall, Riffelblech, Eis, Glas, Basalt, Sand …; `look()` in
+`worldParts.js` übernimmt sie), Säulen mit Sockel und Kapitell (`pillar`), Strudel aus Lichtbögen mit dickem Kopf und
+dünnem Schweif, heller Kern und gefasster Leuchtrand, weiches An- und Ausblenden (`seq`) und ruhigere Tempi.
 
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem

@@ -204,7 +204,7 @@ export function worldLua() {
         p.Parent = pfxFolder
       end
       function __portalFx()
-        portalFx = require(root.PortalFx).Start(pfxFolder or workspace)
+        portalFx = require(root.PortalFx).Start(pfxFolder or workspace, { MaxRate = 30, Split = 2 })
       end
       -- Teleport-Animation (TeleportFx): Abflug an der Portalscheibe, Ankunft an den Füßen
       function __tpDepart(px, py, pz, lx, ly, lz, r, g, b, radius)

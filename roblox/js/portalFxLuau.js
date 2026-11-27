@@ -29,8 +29,12 @@ local function grey(c)
 end
 
 -- Portale unter root suchen (Ordner/Model) und animieren; gibt { Stop } zurück
-function PortalFx.Start(root)
+-- opts.MaxRate: höchstens so viele Bewegungen pro Sekunde (Werkstatt-Vorschau: 30); im Spiel jedes Bild
+function PortalFx.Start(root, opts)
 	root = root or workspace
+	local minStep = (opts and opts.MaxRate) and 1 / opts.MaxRate or 0
+	-- opts.Split: Gruppen abwechselnd bewegen (Werkstatt: jede Gruppe nur jedes zweite Mal, halbe Rechenzeit)
+	local split, tick = (opts and opts.Split) or 1, 0
 	local items, byId, locks = {}, {}, {}
 	local function remember(id, p)
 		byId[id] = byId[id] or {}
@@ -116,17 +120,20 @@ function PortalFx.Start(root)
 	local start = os.clock()
 	local acc = 1
 	local connection = RunService.Heartbeat:Connect(function(dt)
-		-- höchstens 30 Bewegungen pro Sekunde (spart Rechenzeit, sieht gleich ruhig aus)
 		acc = acc + (dt or 0.016)
-		if acc < 1 / 30 then return end
+		if acc < minStep then return end
 		acc = 0
 		local t = os.clock() - start
 		local cam = workspace.CurrentCamera
 		local eye = cam and cam.CFrame.Position
-		for _, gr in ipairs(groups) do
-			local near = not eye or (gr.Pivot - eye).Magnitude < 180
+		tick = tick + 1
+		for gi, gr in ipairs(groups) do
+			local due = split <= 1 or gi % split == tick % split
+			local near = due and (not eye or (gr.Pivot - eye).Magnitude < 180)
 			local k = gr.Kind
-			if locked[gr.Id] then
+			if not due then
+				-- diesmal nicht dran (opts.Split)
+			elseif locked[gr.Id] then
 				if not gr.Still then
 					gr.Still = true
 					for _, it in ipairs(gr.Items) do it.Part.CFrame = it.Base it.Part.Transparency = it.T end
@@ -144,8 +151,10 @@ function PortalFx.Start(root)
 					local w = gr.Amp * (0.5 + 0.5 * math.sin(t * gr.Speed + gr.Phase))
 					for _, it in ipairs(gr.Items) do it.Part.Transparency = math.clamp(it.T + (1 - it.T) * w, 0, 1) end
 				elseif k == "seq" then
-					local on = math.sin(t * gr.Speed - gr.Amp) > 0
-					for _, it in ipairs(gr.Items) do it.Part.Transparency = on and it.T or math.min(1, it.T + 0.75) end
+					-- weich an- und ausblenden statt hart zu schalten
+					local on = math.clamp(math.sin(t * gr.Speed - gr.Amp) * 2.5 + 0.5, 0, 1)
+					local fade = on * on * (3 - 2 * on)
+					for _, it in ipairs(gr.Items) do it.Part.Transparency = math.min(1, it.T + 0.75 * (1 - fade)) end
 				end
 			end
 		end

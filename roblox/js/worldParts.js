@@ -76,6 +76,9 @@ function look(mesh, world) {
     transparency = Math.round((1 - m.opacity) * 0.8 * 100) / 100;
     if (material !== 'Neon') material = 'Glass';
   }
+  // fest gewünschtes Roblox-Material (z. B. Holz, Marmor, Eis an den Portalen); Leuchtendes bleibt Neon
+  const forced = rbx.material || m.userData?.rbxMaterial;
+  if (forced && material !== 'Neon') material = forced;
   return { color, material, transparency };
 }
 
@@ -907,7 +910,7 @@ function portalNames(out, n0, mesh) {
   for (let i = n0; i < out.length; i++) {
     if (/^Portal_/.test(out[i].name || '')) continue; // die Portalscheibe behält ihren Namen
     out[i].name = name;
-    if (fx) Object.assign(out[i], { canCollide: false, castShadow: false });
+    if (fx || mesh.userData.rbx?.noCollide) Object.assign(out[i], { canCollide: false, castShadow: false });
     // Kette mit Schloss: zuerst unsichtbar, PortalFx zeigt sie bei gesperrten Welten
     if (fx?.userData.pfx.type === 'lock') out[i].transparency = 1;
   }
