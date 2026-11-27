@@ -1247,6 +1247,8 @@ Zweite Runde (Werkstatt-Wunsch „Schild mit Preis anpassen, jedes Portal nochma
 Welt (`sign(y, bg, fg, st)`: Rahmen, Halterung wie Pfosten, Ketten oder Hologramm-Projektor, Verzierungen wie Moos,
 Eiszapfen, Zuckerguss, Runen, Perlen, Lorbeer, Schriftrolle, Warnstreifen), Lauflichter rund um jeden Portalrand
 (`chase`) und je Portal weitere Ausbauten am Tor mit eigener Bewegung.
+Die Schilder hängen auf Spielerhöhe rechts am Rahmen (vom Spieler aus gesehen), auf etwa 55 % verkleinert, mit Haken-Arm
+und Ketten, Pfosten bis zum Boden oder Hologramm-Projektor am Boden (`st.x`, `st.z`, `st.hy`, `st.scale`).
 
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem
