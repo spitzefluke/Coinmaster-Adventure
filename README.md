@@ -1226,6 +1226,10 @@ Fischschwärmen, Quallen und Leuchtplankton) und Licht (`LOOK[...].light` in `ro
 Umgebungslicht, Nebelfarbe und -weite, Atmosphäre). Die Höhle hat den Maler `cavern` (Kristallhöhle). Der Werkstatt-Ablauf dazu heißt **Himmel**
 (Doc-Ids weiter `umgebung-<welt>`).
 
+**Abgeschlossene Abläufe** (Werkstatt-Wunsch): Insel, Gebäude, Deko, Himmel und Portale sind mit einem Schloss gesichert
+(`LOCKED` in `tools/werkstatt/index.html`). Man kann sie weiter ansehen, aber keine Wünsche mehr schicken oder absegnen.
+Die Werkstatt startet im Ablauf Spawn, nur dort wird noch überarbeitet.
+
 Der Ablauf **Spawn** hat einen Punkt je Gebäude oder Platz im Spawn (Ids `spawn-<bereich>`: Shops mit Taschen-Laden und
 Event-Podest, Plätze und Anzeigen, Aktivitäten, Portal-Hallen). Die Kamera fliegt zum Gebäude, darunter läuft die echte
 Spiel-UI (`spiel/js/uiDemo.js`: dieselbe Roblox-ScreenGui wie auf der Seite „Spiel“, mit Beispiel-Spielstand) und öffnet

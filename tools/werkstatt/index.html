@@ -60,6 +60,10 @@
   .track:hover { border-color: var(--ink-faint); }
   .track[aria-selected="true"] { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--panel)); }
   .track[aria-selected="true"] em { color: var(--gold); }
+  .track.locked b::after { content: " 🔒"; }
+  .track.locked:not([aria-selected="true"]) { opacity: 0.62; }
+  .locknote { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: color-mix(in srgb, var(--gold) 7%, var(--panel)); font-size: 14px; }
+  #wish:disabled { opacity: 0.55; cursor: not-allowed; }
   .tool.layer::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; border: 1.5px solid currentColor; vertical-align: 0; }
   .tool.layer[aria-pressed="true"]::before { background: currentColor; }
   .tool.layer[aria-pressed="true"] { background: rgba(13, 11, 22, .72); color: var(--ink); border-color: var(--gold); }
@@ -325,7 +329,10 @@ const currentIndex = (t = track) => {
   const O = orderOf(t), i = O.findIndex((w) => !passed(w.id, t));
   return i < 0 ? O.length : i;
 };
-const unlocked = (i, t = track) => i <= currentIndex(t) || passed(orderOf(t)[i].id, t);
+// Werkstatt-Wunsch „fertige Bereiche mit einem Schloss sichern, nur noch Spawn überarbeiten“: diese Abläufe sind
+// abgeschlossen. Man kann sie ansehen (alle Punkte frei), aber keine Wünsche mehr schicken oder absegnen.
+const LOCKED = new Set(['welt', 'gebaeude', 'deko', 'umgebung', 'portal']);
+const unlocked = (i, t = track) => LOCKED.has(t) || i <= currentIndex(t) || passed(orderOf(t)[i].id, t);
 let selected = null; // Welt-Id in der Ansicht
 
 // ── Liste ──
@@ -345,7 +352,10 @@ function render() {
   for (const t of Object.keys(TRACKS)) {
     const O = orderOf(t), k = O.filter((w) => approved(w.id, t)).length;
     $('tp-' + t).textContent = `${k} / ${O.length} abgesegnet`;
-    document.querySelector(`.track[data-track="${t}"]`).setAttribute('aria-selected', String(t === track));
+    const tb = document.querySelector(`.track[data-track="${t}"]`);
+    tb.setAttribute('aria-selected', String(t === track));
+    tb.classList.toggle('locked', LOCKED.has(t));
+    if (LOCKED.has(t)) $('tp-' + t).textContent = 'abgeschlossen · gesperrt';
   }
   $('prog-bar').style.width = `${(n / ORDER.length) * 100}%`;
 
@@ -418,6 +428,17 @@ function renderJudge() {
   if (!selected) return;
   const i = ORDER.findIndex((w) => w.id === selected), w = ORDER[i], d = docs[docId(selected)] || {};
   const T = TRACKS[track];
+  const locked = LOCKED.has(track);
+  $('wish').disabled = locked;
+  $('save').hidden = locked;
+  if (locked) {
+    $('wish').value = d.wish || '';
+    $('save-state').textContent = '';
+    $('reply').hidden = !d.reply;
+    $('reply-text').textContent = d.reply || '';
+    $('verdict').innerHTML = `<div class="locknote">🔒 Der Ablauf „${esc(T.name)}“ ist abgeschlossen und gesperrt. Du kannst alles ansehen, Wünsche gehen nur noch im Ablauf <b>Spawn</b>.</div><div class="row" style="margin-top:8px"><button class="btn primary" id="to-spawn" type="button">Zum Ablauf Spawn</button></div>`;
+    return;
+  }
   if (!wishDirty && document.activeElement !== $('wish')) $('wish').value = d.wish || '';
   const st = statusOf(selected);
   $('save-state').textContent = d.wish ? (st === 'inarbeit' ? 'Abgeschickt – Claude setzt es um.' : 'Gespeichert.') : '';
@@ -437,6 +458,7 @@ function renderJudge() {
   }
 }
 $('verdict').addEventListener('click', async (e) => {
+  if (LOCKED.has(track) && e.target.id !== 'to-spawn') return;
   if (e.target.id === 'approve') {
     if (wishDirty) await saveWish();
     const i = ORDER.findIndex((w) => w.id === selected);
@@ -457,12 +479,15 @@ $('verdict').addEventListener('click', async (e) => {
     writeDoc(docId(selected), { status: 'offen' });
   } else if (e.target.id === 'reopen') {
     writeDoc(docId(selected), { status: 'offen' });
+  } else if (e.target.id === 'to-spawn') {
+    setTrack('spawn');
   } else if (e.target.id === 'go-next') {
     const i = ORDER.findIndex((w) => w.id === selected);
     if (ORDER[i + 1] && unlocked(i + 1)) show(ORDER[i + 1].id);
   }
 });
 function saveWish() {
+  if (LOCKED.has(track)) return Promise.resolve();
   const v = $('wish').value.trim();
   wishDirty = false;
   const d = docs[docId(selected)] || {};
@@ -880,7 +905,8 @@ loadLocal();
 function parseHash() {
   const h = location.hash.slice(1);
   for (const t of ['gebaeude', 'deko', 'umgebung', 'portal', 'spawn']) if (h.startsWith(t + '-')) return { t, id: h.slice(t.length + 1) };
-  return { t: 'welt', id: h };
+  // ohne Angabe beginnt die Werkstatt im Ablauf Spawn (die anderen sind abgeschlossen)
+  return h && !h.startsWith('spawn') ? { t: 'welt', id: h } : { t: 'spawn', id: h.replace(/^spawn-?/, '') };
 }
 const startId = () => {
   const { id } = parseHash();
