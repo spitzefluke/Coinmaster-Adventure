@@ -157,8 +157,10 @@ export function portalDesign(world, planetColor, anims, rand, K) {
     const rm = tor(0.97, 0.04, E(rim, 1.6, { transparent: true, opacity: 0.9 }), 0, DISC_Y, 0.03, TAU, 14);
     rm.scale.y = DISC_SY;
     anim(rm, 'pulse', { speed: 1.8, amp: 0.5 });
+    chaseLater = rim;
     return d;
   };
+  let chaseLater = null;
   // Kette mit Schloss vor dem Tor (PortalFx zeigt sie nur bei gesperrten Welten)
   const lock = () => {
     const lk = grp(0, 0, 0.16);
@@ -169,16 +171,92 @@ export function portalDesign(world, planetColor, anims, rand, K) {
     cyl(0.05, 0.05, 0.03, M('#3a3020'), 0, DISC_Y - 0.12, 0.14, 8, Math.PI / 2, 0, 0, lk); // Schlüsselloch
     lk.userData.pfx = { id, type: 'lock', speed: 0, amp: 0, axis: [0, 0, 1] };
   };
-  const sign = (y = 4.3, bg = '#1e1a26', fg = world.accent) => {
+  // Schild mit Name und Preis im Stil der Welt (Werkstatt-Wunsch „Schild mit dem Preis bei jedem anpassen“):
+  // Tafel mit Schrift (signBoard), Rahmen, Halterung und Verzierung. st:
+  //   w, h, font            Größe und Schrift der Tafel
+  //   frame, frameT         Material und Stärke des Rahmens (ohne: kein Rahmen)
+  //   inner                 dünne Innenleiste (Material, z. B. Glut, Neon)
+  //   mount                 'posts' (Pfosten bis drop), 'chains' (Ketten nach oben bis top), 'holo' (Projektor darunter)
+  //   deco                  Liste: corners, rivets, moss, icicles, snow, drips, sprinkles, runes, shells, pearls, algae,
+  //                         clouds, scroll, laurel, rainbow, facets, hazard, lamps, emblemPlanet, emblemSun, vines,
+  //                         tassels, barnacles, glyphs, logs
+  //   tilt                  leicht schief (Minenbrett)
+  const sign = (y = 4.3, bg = '#1e1a26', fg = world.accent, st = {}) => {
     const g2 = galaxyOfWorld(world).id === 'g2';
     const price = world.soon ? 'Bald' : world.price ? `${fmtShort(world.price)} ${g2 ? 'Staub' : 'Moneten'}` : 'Gratis';
-    const s = signBoard(world.soon ? 'Coming soon' : world.name, { w: 2.3, h: 0.62, bg, fg, sub: price });
-    s.position.set(0, y, 0);
-    g.add(s);
+    const w = st.w || 2.3, h = st.h || 0.62;
+    const sg = grp(0, y, 0);
+    if (st.tilt) sg.rotation.z = st.tilt;
+    const plate = signBoard(world.soon ? 'Coming soon' : world.name, { w, h, bg, fg, sub: price, ...(st.font ? { font: st.font } : {}) });
+    sg.add(plate);
+    const ft = st.frameT || 0.08, fd = 0.12;
+    if (st.frame) {
+      box(w + ft * 2, ft, fd, st.frame, 0, h / 2 + ft / 2, 0, 0, 0, 0, sg);
+      box(w + ft * 2, ft, fd, st.frame, 0, -h / 2 - ft / 2, 0, 0, 0, 0, sg);
+      for (const sx of [-1, 1]) box(ft, h, fd, st.frame, sx * (w / 2 + ft / 2), 0, 0, 0, 0, 0, sg);
+    }
+    if (st.inner) {
+      box(w, 0.02, 0.07, st.inner, 0, h / 2 - 0.01, 0.01, 0, 0, 0, sg);
+      box(w, 0.02, 0.07, st.inner, 0, -h / 2 + 0.01, 0.01, 0, 0, 0, sg);
+    }
+    const back = box(w + ft * 2 - 0.02, h + ft * 2 - 0.02, 0.04, st.frame || M(bg), 0, 0, -0.05, 0, 0, 0, sg); // Rückwand
+    void back;
+    const X = w / 2 + ft, Y = h / 2 + ft, deco = new Set(st.deco || []), c2 = st.accent || fg;
+    // Halterung
+    if (st.mount === 'posts') {
+      const len = y - (st.drop ?? y - 0.8);
+      for (const sx of [-1, 1]) cyl(0.035, 0.035, len, st.postM || st.frame || M('#4a4458'), sx * (w * 0.36), -h / 2 - len / 2, -0.02, 8, 0, 0, 0, sg);
+    } else if (st.mount === 'chains') {
+      const len = (st.top ?? y + 0.6) - y - h / 2;
+      for (const sx of [-1, 1]) for (let k = 0; k < Math.max(2, Math.round(len / 0.12)); k++) tor(0.04, 0.012, st.postM || M('#8a8f9a', { metalness: 0.7 }), sx * (w * 0.38), h / 2 + 0.06 + k * 0.1, 0, TAU, 5, 0, k % 2 ? Math.PI / 2 : 0, 0, sg);
+    } else if (st.mount === 'holo') {
+      cyl(0.22, 0.28, 0.12, mat.metal('#3a4a5a'), 0, -h / 2 - 0.5, 0, 12, 0, 0, 0, sg);
+      const ring = tor(0.2, 0.025, E(c2, 1.6), 0, -h / 2 - 0.43, 0, TAU, 10, Math.PI / 2, 0, 0, sg);
+      anim(ring, 'pulse', { speed: 3, amp: 0.5 });
+      const beam = cyl(w * 0.45, 0.18, 0.38, E(c2, 0.6, { transparent: true, opacity: 0.25 }), 0, -h / 2 - 0.24, 0, 12, 0, 0, 0, sg);
+      anim(beam, 'pulse', { speed: 2.2, amp: 0.35 });
+    }
+    // Verzierungen
+    const corners = [[-X, Y], [X, Y], [-X, -Y], [X, -Y]];
+    if (deco.has('corners')) for (const [cx, cy] of corners) oct(0.1, st.cornerM || mat.glass(c2, 0.9, 0.8), cx, cy, 0.05, 0.8, 1.2, 0.8, sg);
+    if (deco.has('rivets')) for (const [cx, cy] of corners) sph(0.03, st.rivetM || mat.metal('#5a5a62'), cx * 0.97, cy * 0.9, 0.07, sg, 6);
+    if (deco.has('moss')) for (let k = 0; k < 7; k++) sph(0.07 + rand() * 0.05, M(['#3f8a3f', '#5aa84a', '#2f6f34'][k % 3]), -X + (k + 0.5) * (2 * X / 7), Y + 0.02, 0.02, sg, 8).scale.y = 0.6;
+    if (deco.has('vines')) for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) sph(0.05, M('#4a9a3f'), sx * (X + 0.02), Y - k * (h / 3), 0.06, sg, 6);
+    if (deco.has('snow')) { box(w + ft * 2 + 0.04, 0.08, fd + 0.06, mat.snow('#ffffff'), 0, Y + 0.04, 0, 0, 0, 0, sg); for (const sx of [-1, 0, 1]) sph(0.08, mat.snow('#ffffff'), sx * w * 0.35, Y + 0.08, 0.02, sg, 8).scale.y = 0.5; }
+    if (deco.has('icicles')) for (let k = 0; k < 9; k++) cone(0.035, 0.12 + (k % 3) * 0.07, mat.ice('#d8f4ff', 0.85), -X + (k + 0.5) * (2 * X / 9), -Y - 0.08 - (k % 3) * 0.035, 0.03, 6, Math.PI, 0, 0, sg);
+    if (deco.has('drips')) for (let k = 0; k < 8; k++) { const dx = -X + (k + 0.5) * (2 * X / 8); box(2 * X / 8 + 0.01, 0.06, fd + 0.03, M('#fff0f8', { roughness: 0.3 }), dx, Y + 0.02, 0.01, 0, 0, 0, sg); sph(0.035, M('#fff0f8', { roughness: 0.3 }), dx, Y - 0.04 - (k % 3) * 0.03, 0.065, sg, 6).scale.y = 1.5; }
+    if (deco.has('sprinkles')) for (let k = 0; k < 14; k++) box(0.05, 0.015, 0.015, M(['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a'][k % 4]), -X + rand() * 2 * X, (rand() < 0.5 ? 1 : -1) * (Y - ft / 2), 0.065, 0, 0, rand() * 3, sg);
+    if (deco.has('runes')) for (let k = 0; k < 6; k++) { const r = box(0.07, 0.07, 0.02, E(c2, 1.8), -X * 0.8 + k * (X * 1.6 / 5), -Y + ft / 2, 0.065, 0, 0, 0.785, sg); anim(r, 'seq', { speed: 1.6, amp: k * 0.9 }); }
+    if (deco.has('glyphs')) for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU, r = sph(0.03, E(c2, 2), Math.cos(a) * (X + 0.08), Math.sin(a) * (Y + 0.08), 0.03, sg, 6); anim(r, 'seq', { speed: 2.2, amp: k * 0.8 }); }
+    if (deco.has('shells')) for (const [cx, cy] of corners) { const sh = cyl(0.08, 0.08, 0.03, mat.marble('#ffd8ec'), cx, cy, 0.07, 10, Math.PI / 2, 0, 0, sg); sh.scale.set(1, 1, 0.8); }
+    if (deco.has('barnacles')) for (let k = 0; k < 6; k++) cyl(0.025, 0.035, 0.03, M('#c8c0b0'), -X + rand() * 2 * X, (rand() < 0.5 ? 1 : -1) * Y, 0.07, 6, Math.PI / 2, 0, 0, sg);
+    if (deco.has('pearls')) { const n = 16; for (let k = 0; k < n; k++) { const u = k / n, t2 = u * 4, side = Math.floor(t2), f = t2 - side; const [px, py] = side === 0 ? [-X + f * 2 * X, Y] : side === 1 ? [X, Y - f * 2 * Y] : side === 2 ? [X - f * 2 * X, -Y] : [-X, -Y + f * 2 * Y]; sph(0.04, M('#fff8fc', { roughness: 0.15 }), px, py, 0.07, sg, 8); } }
+    if (deco.has('algae')) for (let k = 0; k < 6; k++) { const a = sph(0.04, E('#5affd8', 1.6), -X + rand() * 2 * X, (rand() < 0.5 ? 1 : -1) * Y, 0.07, sg, 6); anim(a, 'pulse', { speed: 1.5 + rand(), amp: 0.6 }); }
+    if (deco.has('clouds')) for (const [cx, cy, r] of [[-X - 0.1, -Y + 0.05, 0.22], [X + 0.1, -Y + 0.05, 0.22], [-X * 0.5, -Y - 0.08, 0.2], [X * 0.5, -Y - 0.08, 0.2], [0, -Y - 0.12, 0.22]]) sph(r, M('#ffffff', { roughness: 1 }), cx, cy, -0.06, sg, 10);
+    if (deco.has('scroll')) for (const sx of [-1, 1]) { cyl(0.09, 0.09, h + 0.1, st.frame || M('#e8d8b0'), sx * (w / 2 + 0.05), 0, 0.02, 12, 0, 0, 0, sg); for (const sy of [-1, 1]) sph(0.06, mat.gold('#ffcf4a'), sx * (w / 2 + 0.05), sy * (h / 2 + 0.08), 0.02, sg, 8); }
+    if (deco.has('laurel')) for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) { const lf = sph(0.07, M('#7a9a3a'), sx * (X + 0.08 + Math.sin(k * 0.6) * 0.05), -Y + 0.05 + k * (2 * Y / 5), 0.03, sg, 6); lf.scale.set(0.6, 1.4, 0.4); lf.rotation.z = sx * -0.5; }
+    if (deco.has('rainbow')) ['#ff5a5a', '#ffb02e', '#ffe25f', '#5aff8a', '#5ad1ff', '#b07bff'].forEach((c, k) => box(w + ft * 2 - k * 0.04, 0.025, fd + 0.01, E(c, 0.8), 0, Y + 0.015 + k * 0.025, 0, 0, 0, 0, sg));
+    if (deco.has('facets')) for (let k = 0; k < 10; k++) oct(0.05, mat.glass('#e8fdff', 0.8, 0.6), -X + (k + 0.5) * (2 * X / 10), Y, 0.05, 1, 1, 1, sg);
+    if (deco.has('hazard')) for (let k = 0; k < 12; k++) box(2 * X / 12 + 0.002, ft, fd + 0.01, M(k % 2 ? '#1a1a1a' : '#ffd23a'), -X + (k + 0.5) * (2 * X / 12), -Y + ft / 2 - 0.0, 0.005, 0, 0, 0, sg);
+    if (deco.has('lamps')) for (const sx of [-1, 1]) { const l = sph(0.05, E(st.lampC || '#ff3a1a', 2), sx * X, Y + 0.06, 0.03, sg, 8); anim(l, 'seq', { speed: 3, amp: sx > 0 ? 0 : Math.PI }); }
+    if (deco.has('emblemPlanet')) { sph(0.12, M('#e8c890'), 0, Y + 0.14, 0.02, sg, 12); tor(0.2, 0.02, mat.gold('#c8a060'), 0, Y + 0.14, 0.02, TAU, 12, Math.PI / 2 - 0.3, 0, 0, sg); }
+    if (deco.has('emblemSun')) { sph(0.11, E('#ffcf4a', 1.2), 0, Y + 0.08, 0.02, sg, 10); for (let k = 0; k < 7; k++) { const a = (k / 6) * Math.PI; box(0.04, 0.12, 0.02, mat.gold('#ffcf4a'), Math.cos(a) * 0.2, Y + 0.08 + Math.sin(a) * 0.2, 0.02, 0, 0, a - Math.PI / 2, sg); } }
+    if (deco.has('tassels')) for (const sx of [-1, 1]) { cyl(0.01, 0.01, 0.3, M('#c8302a'), sx * X, -Y - 0.15, 0, 4, 0, 0, 0, sg); cyl(0.015, 0.035, 0.14, mat.gold('#e0b040'), sx * X, -Y - 0.36, 0, 6, 0, 0, 0, sg); }
+    if (deco.has('logs')) { cyl(0.06, 0.06, w + 0.3, st.frame || mat.wood('#a08a6a'), 0, Y + 0.02, 0.02, 8, 0, 0, Math.PI / 2, sg); cyl(0.06, 0.06, w + 0.2, st.frame || mat.wood('#a08a6a'), 0.05, -Y - 0.02, 0.02, 8, 0, 0, Math.PI / 2 + 0.03, sg); }
+    return sg;
+  };
+  // Lauflichter rund um den Portalrand (Werkstatt-Wunsch „jedes Portal nochmal verbessern, Animation“)
+  const chase = (color, n = 10) => {
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * TAU + 0.15;
+      const l = sph(0.045, E(color, 2), Math.cos(a) * 1.1, DISC_Y + Math.sin(a) * 1.1 * DISC_SY, 0.05, undefined, 8);
+      anim(l, 'seq', { speed: 3.2, amp: k * (TAU / n) * 1.5 });
+    }
   };
 
   const build = DESIGNS[id] || DESIGNS._default;
   build({ g, world, planetColor, rand, M, E, add, box, cyl, sph, cone, tor, oct, grp, anim, particles, disc, sign, mat, pillar, T });
+  if (chaseLater) chase(chaseLater);
   lock();
   return g;
 }
@@ -254,8 +332,15 @@ const DESIGNS = {
         cyl(0.07, 0.05, 0.05, E(['#ff5a8a', '#ffd84a', '#ffffff'][k + 1], 0.4), s * 1.25 + k * 0.18, 0.7, 0.32, 8);
       }
     }
+    // Torbogen-Ausbau: Querriegel mit Kreuzstreben zwischen den Pfosten, Firstbalken mit Zierbrettern
+    for (const s of [-1, 1]) {
+      box(0.06, 0.95, 0.06, mat.wood('#5a3a20'), s * 1.25, 0.75, 0.17, 0, 0, s * 0.35);
+      box(0.08, 0.08, 0.36, mat.wood('#4a2e18'), s * 1.25, 3.05, 0);
+      box(0.32, 0.05, 0.04, mat.wood('#4a2e18'), s * 0.75, 3.24, 0.19, 0, 0, s * 0.3);
+    }
+    cyl(0.03, 0.03, 0.4, mat.metal('#5a5a62'), 0, 3.95, 0.12, 8, Math.PI / 2, 0, 0); // Achse der Mühle
     disc({ color: '#8ad8ff', swirl: '#ffffff', swirl2: '#d8f4ff', rim: '#ffe28a', speed: 0.9 });
-    sign(5.2, '#5a3a20', '#ffe7a8');
+    sign(5.75, '#7a5030', '#fff0c8', { frame: mat.wood('#4a2e18'), frameT: 0.09, mount: 'posts', drop: 3.42, postM: mat.wood('#5a3a20'), deco: ['rivets'], rivetM: mat.metal('#3a3a40') });
     particles({ name: 'PortalBlueten', colors: ['#ffd84a', '#ff8ac8', '#ffffff'], particleSize: 0.12, sizeEnd: 0.1, rate: 3, speed: [0.3, 0.6], lifetime: [3, 5], spread: [40, 40], size: [1.6, 0.2, 0.4], acceleration: [0, -0.05, 0.1] }, 0, 0.6, 0.4);
   },
   // Baumtor: Stämme mit Rinde (Wood) und verjüngten Wurzeln, Bogen als gewachsener Ast, Krone in drei Grüntönen,
@@ -285,8 +370,15 @@ const DESIGNS = {
       sph(0.3, leaf2, Math.cos(a) * 1.25, Math.sin(a) * 0.6 - 0.05, 0.3, crown, 10);
     }
     anim(crown, 'sway', { speed: 0.7, amp: 0.04, axis: [0, 0, 1] });
+    // Efeu rankt an den Stämmen hoch, Astansätze, Laub am Fuß
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 7; k++) sph(0.06 + (k % 2) * 0.02, M(['#3f8a3f', '#5aa84a'][k % 2]), s * (1.27 + Math.sin(k * 1.3) * 0.18), 0.4 + k * 0.33, 0.2 + Math.cos(k * 1.3) * 0.08, undefined, 8);
+      cyl(0.04, 0.08, 0.5, mat.wood('#5a3c24'), s * 1.45, 2.0, 0, 8, 0, 0, s * -0.9);
+      sph(0.14, M('#5aa84a'), s * 1.7, 2.18, 0, undefined, 10);
+      for (let k = 0; k < 3; k++) sph(0.08, M(['#c8a040', '#a8682a', '#d8b050'][k]), s * (1.0 + k * 0.25), 0.04, 0.45 + (k % 2) * 0.1, undefined, 6).scale.y = 0.3;
+    }
     disc({ color: '#4ac86a', swirl: '#c8ff8a', swirl2: '#8affc8', rim: '#d9ff7a', speed: 1.0 });
-    sign(4.6, '#2f5a2a', '#e8ffd0');
+    sign(4.75, '#6b4a2e', '#f0ffd8', { frame: mat.wood('#4a3020'), frameT: 0.1, deco: ['moss', 'vines'], w: 2.2 });
     particles({ name: 'PortalGluehwuermchen', colors: ['#e8ff7a', '#b4ffd6'], particleSize: 0.08, sizeEnd: 0.05, rate: 4, speed: [0.1, 0.3], lifetime: [3, 6], spread: [180, 180], size: [2.2, 2.4, 0.6] }, 0, 1.6, 0.3);
   },
   // U-Bahn-Eingang: gefliester Rahmen mit Metallkanten, Gesims, U-Schild mit Rahmen, Stufen mit gelben Kanten,
@@ -321,13 +413,21 @@ const DESIGNS = {
       const l = box(0.28, 0.07, 0.05, E('#ffe27a', 1.8), -0.85 + k * 0.34, 2.78, 0.28);
       anim(l, 'seq', { speed: 6, amp: k * 0.8 });
     }
+    // Bahnsteig-Ausbau: Pfeilerköpfe mit Leuchten, Gitter über dem Eingang, Bodenplatte mit Kante
+    for (const s of [-1, 1]) {
+      box(0.44, 0.12, 0.58, mat.metal('#3a4050'), s * 1.3, 3.06, 0);
+      const lamp = cyl(0.06, 0.08, 0.1, E('#ffe27a', 1.6), s * 1.3, 2.86, 0.27, 10, Math.PI / 2, 0, 0);
+      anim(lamp, 'pulse', { speed: 1.1, amp: 0.25 });
+    }
+    for (let k = 0; k < 9; k++) box(0.025, 0.4, 0.025, mat.metal('#4a5060'), -1.0 + k * 0.25, 3.24, -0.26);
+    box(2.9, 0.04, 1.4, mat.concrete('#b8bcc4'), 0, 0.02, 0.55);
     disc({ color: '#5a6ae8', swirl: '#ff7ad8', swirl2: '#7ad0ff', rim: '#ffe27a', speed: 1.7 });
-    sign(4.25, '#2a8a5a', '#ffffff');
+    sign(4.3, '#14181f', '#ffd84a', { font: 'Barlow, system-ui, sans-serif', frame: mat.metal('#3a4050'), frameT: 0.07, inner: E('#ffd84a', 1.4), mount: 'posts', drop: 3.52, postM: mat.metal('#4a5060'), deco: ['lamps', 'rivets'], lampC: '#7ad0ff' });
     particles({ name: 'PortalStadtlicht', colors: ['#ff7ad8', '#7ad0ff', '#ffe27a'], particleSize: 0.07, sizeEnd: 0.03, rate: 5, speed: [0.6, 1.2], lifetime: [0.8, 1.4], spread: [60, 60], size: [1.6, 0.2, 0.2] }, 0, 0.3, 0.3);
   },
   // Eiskristall-Tor: Kristalle aus echtem Eis in zwei Tönen, Sockel aus Schnee mit Kante, Schneestern mit
   // Verästelungen
-  eis({ E, box, cyl, oct, grp, anim, disc, sign, particles, rand, mat }) {
+  eis({ E, box, cyl, oct, grp, anim, disc, sign, particles, rand, mat , sph, cone}) {
     const ice = mat.ice('#bfeeff', 0.86), ice2 = mat.ice('#e8fbff', 0.9), deep = mat.ice('#7ac8f0', 0.88);
     box(3.0, 0.2, 0.8, mat.snow('#eef6ff'), 0, 0.1, 0);
     box(3.1, 0.06, 0.86, mat.ice('#d8f2ff', 0.9), 0, 0.22, 0);
@@ -351,13 +451,22 @@ const DESIGNS = {
     }
     cyl(0.07, 0.07, 0.05, flake, 0, 0, 0, 6, Math.PI / 2, 0, 0, star);
     anim(star, 'spin', { speed: 0.5, axis: [0, 0, 1] });
+    // Eissockel mit Frostkante, Schneewehen, Eiszapfen am Bogen, Reif-Glitzer pulsiert
+    for (const s of [-1, 1]) {
+      sph(0.4, mat.snow('#f4faff'), s * 1.45, 0.12, 0.25, undefined, 12).scale.set(1.3, 0.35, 0.9);
+      for (let k = 0; k < 3; k++) cone(0.05, 0.22 + k * 0.08, mat.ice('#d8f4ff', 0.85), s * (0.5 + k * 0.28), 3.42 - k * 0.12, 0.16, 6, Math.PI, 0, 0);
+    }
+    for (let k = 0; k < 6; k++) {
+      const gl = oct(0.05, E('#ffffff', 2), [-1.2, 1.25, -0.9, 0.95, -0.4, 0.5][k], [1.0, 1.6, 2.6, 2.9, 3.25, 3.3][k], 0.25, 0.6, 1.4, 0.6);
+      anim(gl, 'seq', { speed: 2.4, amp: k * 1.1 });
+    }
     disc({ color: '#8ad8ff', swirl: '#ffffff', swirl2: '#cfeeff', rim: '#e8fbff', speed: 1.5 });
-    sign(4.6, '#2a5a8a', '#e8fbff');
+    sign(4.7, '#d8f2ff', '#1a4a7a', { frame: mat.ice('#bfeeff', 0.88), frameT: 0.09, deco: ['snow', 'icicles'] });
     particles({ name: 'PortalSchnee', colors: ['#ffffff', '#e8f6ff'], particleSize: 0.1, sizeEnd: 0.08, rate: 6, speed: [0.2, 0.5], lifetime: [3, 5], spread: [30, 30], direction: 'Bottom', size: [2.6, 0.2, 0.8], acceleration: [0.05, -0.1, 0.1] }, 0, 3.1, 0.3);
   },
   // Vulkantor: Basaltsäulen aus kantigen Blöcken (versetzt, sechseckig), Glutrisse in Fugen, Bogen mit Glutkante,
   // Lavaschale mit Rand
-  lava({ E, cyl, cone, tor, grp, anim, disc, sign, particles, rand, mat }) {
+  lava({ E, cyl, cone, tor, grp, anim, disc, sign, particles, rand, mat , box, sph}) {
     const basalt = mat.basalt('#2a2224'), basalt2 = mat.basalt('#3a3034'), glow = E('#ff5a12', 1.6), crust = mat.basalt('#1a1416');
     for (const s of [-1, 1]) {
       // sechseckige Basaltsäulen, leicht versetzt
@@ -378,14 +487,21 @@ const DESIGNS = {
     tor(0.5, 0.08, crust, 0, 4.25, 0, TAU, 12, Math.PI / 2, 0, 0);
     const pool = cyl(0.42, 0.42, 0.05, E('#ffb02e', 2), 0, 4.22, 0, 12);
     anim(pool, 'pulse', { speed: 2.4, amp: 0.3 });
+    // Glutadern über den Bogen, Lavatropfen an der Schale, Krustenbrocken am Fuß
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 6) * Math.PI, v = box(0.04, 0.22, 0.03, E('#ff5a12', 1.6), Math.cos(a) * 1.3, 2.85 + Math.sin(a) * 1.3, 0.3, 0, 0, a);
+      anim(v, 'seq', { speed: 1.6, amp: k * 0.7 });
+    }
+    for (const sx of [-0.35, 0.3]) { const d = sph(0.05, E('#ffb02e', 1.8), sx, 3.75, 0.2, undefined, 8); d.scale.y = 1.6; anim(d, 'bob', { speed: 1.4, amp: 0.05 }); }
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) cyl(0.12 - k * 0.02, 0.15 - k * 0.02, 0.15, mat.basalt('#1a1416'), s * (1.75 + k * 0.12), 0.07, 0.45 - k * 0.1, 6);
     disc({ color: '#ff4a00', swirl: '#ffd27a', swirl2: '#ff8a2a', rim: '#ffb02e', speed: 1.3, intensity: 1.2 });
-    sign(4.8, '#2a1a14', '#ffb05a');
+    sign(4.95, '#141012', '#ffb05a', { frame: mat.basalt('#2a2224'), frameT: 0.1, inner: E('#ff5a12', 1.6), mount: 'posts', drop: 3.55, postM: mat.basalt('#1a1416'), deco: ['corners'], cornerM: E('#ff7a2a', 1.4), accent: '#ff7a2a' });
     particles({ name: 'PortalFunken', colors: ['#ffd27a', '#ff5a12'], particleSize: 0.08, sizeEnd: 0.03, rate: 6, speed: [1.2, 2.2], lifetime: [0.8, 1.4], spread: [25, 25], size: [0.6, 0.1, 0.6], acceleration: [0, -1.2, 0] }, 0, 4.25, 0);
     particles({ name: 'PortalRauch', texture: 'smoke', colors: ['#3a302c', '#6a605a'], particleSize: 0.5, sizeEnd: 1.6, rate: 1.5, speed: [0.4, 0.7], lifetime: [3, 4.5], spread: [10, 10], lightEmission: 0, size: [0.4, 0.1, 0.4], transparency: [[0, 1], [0.15, 0.4], [1, 1]] }, 0, 4.4, 0);
   },
   // Minenschacht: Felsen aus Schiefer, Balken aus Holz mit Eisenbeschlägen, Schild mit Rahmen, Laternen mit Glas und
   // Dach, Schienen auf Schwellen, Lore mit Rand und Speichenrädern
-  hoehle({ M, E, box, cyl, sph, grp, anim, disc, sign, particles, mat }) {
+  hoehle({ M, E, box, cyl, sph, grp, anim, disc, sign, particles, mat , oct}) {
     const wood = mat.wood('#6b4a2e'), dark = mat.wood('#3a2a1a'), rock = mat.rock('#4a4458'), rock2 = mat.stone('#5a5466'), iron = mat.metal('#5a5a62');
     for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
       const r = sph(0.45 - k * 0.08, k % 2 ? rock2 : rock, s * (1.5 - k * 0.05), 0.4 + k * 0.85, -0.15, undefined, 9);
@@ -427,8 +543,15 @@ const DESIGNS = {
     }
     sph(0.12, E('#ffd76a', 0.6), -0.1, 0.48, 0, cart, 10);
     sph(0.1, E('#b07bff', 0.8), 0.12, 0.47, 0.08, cart, 10);
+    // Stützbalken schräg an den Pfosten, Erzadern im Fels, Spitzhacke an der Wand
+    for (const s of [-1, 1]) box(0.14, 1.4, 0.14, mat.wood('#5a3c24'), s * 1.0, 0.65, 0.25, 0, 0, s * -0.35);
+    for (const [x, y, c] of [[-1.55, 0.9, '#ffd76a'], [1.5, 1.6, '#b07bff'], [-1.45, 2.0, '#6ae8ff'], [1.55, 0.6, '#ffd76a']]) { const o = oct(0.07, E(c, 1.2), x, y, 0.2, 0.7, 1.2, 0.7); anim(o, 'pulse', { speed: 1.4, amp: 0.4 }); }
+    const pick = grp(1.15, 1.9, 0.24);
+    pick.rotation.z = 0.6;
+    box(0.05, 0.75, 0.05, mat.wood('#8a5a32'), 0, 0, 0, 0, 0, 0, pick);
+    box(0.5, 0.06, 0.05, mat.metal('#6a6a72'), 0, 0.36, 0, 0, 0, 0.1, pick);
     disc({ color: '#3a2a6a', swirl: '#ffd27a', swirl2: '#b07bff', rim: '#ffb02e', speed: 1.1, opacity: 0.9, intensity: 0.6 });
-    sign(4.0, '#3a2a1a', '#ffd27a');
+    sign(4.05, '#8a6a3a', '#2a1a0a', { frame: mat.wood('#5a3a20'), frameT: 0.1, tilt: -0.06, mount: 'chains', top: 4.9, deco: ['rivets'], rivetM: mat.metal('#3a3a40'), w: 2.2 });
     particles({ name: 'PortalLichtpunkte', colors: ['#ffd27a', '#b07bff'], particleSize: 0.06, sizeEnd: 0.02, rate: 4, speed: [0.2, 0.4], lifetime: [2, 3.5], spread: [180, 180], size: [1.6, 2.2, 0.3] }, 0, 1.6, 0.1);
   },
   // Zuckerstangen-Tor: Stangen aus schräg versetzten Ringen (Spiraleindruck) mit glänzendem Lack, Haken rund,
@@ -456,15 +579,25 @@ const DESIGNS = {
       sph(0.04, M('#ffffff'), -0.06, 0.08, 0.13, b, 6); // Glanzpunkt
       if (i % 2 === 0) anim(b, 'bob', { speed: 1.6 + i * 0.2, amp: 0.05 });
     });
+    // Bogen-Ausbau: Zuckerguss-Wellen auf den Haken, Gummibärchen auf dem Sockel, Bonbon-Sockel
+    for (const s of [-1, 1]) {
+      cyl(0.32, 0.36, 0.12, M('#ff8ac8', { roughness: 0.3 }), s * 1.3, 0.06, 0, 16);
+      tor(0.3, 0.04, M('#fff0f8', { roughness: 0.3 }), s * 1.3, 0.13, 0, TAU, 12, Math.PI / 2, 0, 0);
+      const bear = grp(s * 1.85, 0.0, 0.35);
+      sph(0.1, M(s < 0 ? '#ff5a5a' : '#7aff8a', { transparent: true, opacity: 0.85, roughness: 0.2 }), 0, 0.12, 0, bear, 10).scale.y = 1.2;
+      sph(0.07, M(s < 0 ? '#ff5a5a' : '#7aff8a', { transparent: true, opacity: 0.85, roughness: 0.2 }), 0, 0.3, 0, bear, 10);
+      for (const ex of [-0.05, 0.05]) sph(0.03, M(s < 0 ? '#ff5a5a' : '#7aff8a'), ex, 0.36, 0, bear, 6);
+      anim(bear, 'bob', { speed: 1.6, amp: 0.04 });
+    }
     disc({ color: '#ff8ac8', swirl: '#ffffff', swirl2: '#ffe0f4', rim: '#ffffff', speed: 1.4 });
-    sign(4.0, '#ff5fb0', '#ffffff');
+    sign(4.15, '#5a2e14', '#fff0f8', { frame: M('#7a4424', { roughness: 0.4 }), frameT: 0.1, deco: ['drips', 'sprinkles'] });
     particles({ name: 'PortalKonfetti', colors: ['#ff5fb0', '#5fd3ff', '#ffe25f', '#7aff8a'], particleSize: 0.08, sizeEnd: 0.08, rate: 6, speed: [0.6, 1.2], lifetime: [1.5, 2.5], spread: [55, 55], size: [1.4, 0.2, 0.3], acceleration: [0, -0.5, 0] }, 0, 0.4, 0.4);
   },
 
   // ── Planet 2 ──
   // Mondsichel-Tor: Kraterstein aus Basalt mit Kraterrändern, Sichel aus poliertem Metall mit dünnerer Innenkante,
   // Sterne, Erde mit Wolkenband
-  mond({ M, E, cyl, sph, tor, oct, grp, anim, disc, sign, particles, mat }) {
+  mond({ M, E, cyl, sph, tor, oct, grp, anim, disc, sign, particles, mat , box}) {
     const rock = mat.stone('#9a9ca8'), rock2 = mat.stone('#7a7c88'), silver = T2(mat.metal('#e8ecf8'));
     cyl(1.35, 1.5, 0.35, rock, 0, 0.17, 0, 18);
     cyl(1.3, 1.36, 0.05, rock2, 0, 0.37, 0, 18);
@@ -485,13 +618,17 @@ const DESIGNS = {
     sph(0.12, M('#4ac86a'), 0.66, 0.08, 0.12, orbit, 8);
     tor(0.225, 0.02, M('#ffffff'), 0.6, 0, 0, TAU, 12, Math.PI / 2 + 0.3, 0, 0, orbit);
     anim(orbit, 'spin', { speed: 0.5, axis: [0, 1, 0] });
+    // Mondgestein am Fuß, Fußabdrücke im Staub, Sternenspur über der Sichel
+    for (const [x, z, r] of [[-1.3, 0.6, 0.18], [1.25, 0.4, 0.14], [-0.5, 0.8, 0.1]]) sph(r, mat.stone('#8a8c98'), x, 0.38, z, undefined, 8).scale.y = 0.6;
+    for (let k = 0; k < 4; k++) box(0.08, 0.01, 0.14, mat.stone('#6a6c78'), -0.15 + (k % 2) * 0.2, 0.36, 0.55 + k * 0.22);
+    for (let k = 0; k < 8; k++) { const a = Math.PI * 0.15 + k * 0.14, st2 = sph(0.025, E('#fff6c0', 2), Math.cos(a) * 1.65, DISC_Y + Math.sin(a) * 2.0, 0.05, undefined, 6); anim(st2, 'seq', { speed: 3, amp: k * 0.6 }); }
     disc({ color: '#1a1a4a', swirl: '#e8ecff', swirl2: '#9fd8ff', rim: '#cfe0ff', speed: 1.0, intensity: 0.7 });
-    sign(4.6, '#2a2a4a', '#e8ecff');
+    sign(4.75, '#c8ccd8', '#1a2a4a', { font: 'Barlow, system-ui, sans-serif', frame: mat.metal('#8a8f9a'), frameT: 0.08, inner: E('#7ad0ff', 1.4), deco: ['rivets'], rivetM: mat.metal('#5a5a62') });
     particles({ name: 'PortalSternenstaub', colors: ['#ffffff', '#cfe0ff'], particleSize: 0.06, sizeEnd: 0.02, rate: 5, speed: [0.3, 0.6], lifetime: [2, 3], spread: [20, 20], size: [1.6, 0.2, 0.3] }, 0, 0.4, 0.2);
   },
   // Sturmwirbel-Tor: Säulen aus Riffelblech mit Sockel und Kapitell, Eiskristalle in zwei Tönen, Bogen mit Leiste,
   // Windringe, Blitze
-  neptun({ E, box, tor, oct, grp, anim, disc, sign, particles, rand, mat, pillar }) {
+  neptun({ E, box, tor, oct, grp, anim, disc, sign, particles, rand, mat, pillar , cyl}) {
     const metal = mat.plate('#4a6a9a'), trim = mat.metal('#2a4a7a'), ice = mat.ice('#7ad0ff', 0.85), ice2 = mat.ice('#bff0ff', 0.88);
     for (const s of [-1, 1]) {
       pillar(s * 1.3, 3.0, 0.38, metal, trim);
@@ -517,8 +654,19 @@ const DESIGNS = {
       box(0.05, 0.35, 0.03, E('#ffffff', 2.4), 0.06, -0.15, 0, 0, 0, -a * 0.6, b);
       anim(b, 'seq', { speed: 4.5 + rand(), amp: x * 3 });
     }
+    // Sturmfahnen an den Säulen, Wirbelscheibe auf dem Bogen, Eisschollen am Fuß
+    for (const s of [-1, 1]) {
+      const fl = grp(s * 1.3, 3.25, 0);
+      cyl(0.02, 0.02, 0.5, mat.metal('#2a4a7a'), 0, 0.25, 0, 6, 0, 0, 0, fl);
+      box(0.32, 0.18, 0.02, E('#5aa8ff', 0.6), s * 0.16, 0.42, 0, 0, 0, 0, fl);
+      anim(fl, 'sway', { speed: 2.4, amp: 0.25, axis: [0, 1, 0] });
+      for (let k = 0; k < 2; k++) cyl(0.18 - k * 0.05, 0.2 - k * 0.05, 0.05, mat.ice('#bff0ff', 0.85), s * (1.6 + k * 0.25), 0.03, 0.4, 7);
+    }
+    const whirl = grp(0, 3.15, 0.25);
+    for (let k = 0; k < 3; k++) tor(0.12 + k * 0.07, 0.015, E('#bff0ff', 1.4, { transparent: true, opacity: 0.7 }), 0, 0, 0, Math.PI * 1.2, 4, 0, 0, k * 2.1, whirl);
+    anim(whirl, 'spin', { speed: 2.2, axis: [0, 0, 1] });
     disc({ color: '#1a4ab8', swirl: '#9fd8ff', swirl2: '#ffffff', rim: '#5aa8ff', speed: 2.0 });
-    sign(4.2, '#1a3a6a', '#bff0ff');
+    sign(4.35, '#0a2a4a', '#bff0ff', { font: 'Barlow, system-ui, sans-serif', frame: E('#5aa8ff', 1.2, { transparent: true, opacity: 0.7 }), frameT: 0.04, mount: 'holo', deco: ['glyphs'], accent: '#7ad0ff' });
     particles({ name: 'PortalBoeen', colors: ['#ffffff', '#bff0ff'], particleSize: 0.05, sizeEnd: 0.15, rate: 5, speed: [1.2, 2], lifetime: [0.8, 1.2], spread: [80, 80], size: [2.4, 2.6, 0.4], transparency: [[0, 1], [0.3, 0.5], [1, 1]] }, 0, 1.6, 0.1);
   },
   // Forschungsstation-Tor: Riffelblech mit Nietenleisten, Warnlichter mit Fassung, Warnstreifen sauber gerahmt,
@@ -549,8 +697,15 @@ const DESIGNS = {
     anim(dish, 'spin', { speed: 0.4, axis: [0, 1, 0] });
     cyl(0.03, 0.03, 0.9, dark, -1.0, 3.75, 0, 6);
     sph(0.07, E('#7aff8a', 1.5), -1.0, 4.22, 0, undefined, 8);
+    // Rohrleitungen an den Säulen, Lüftungsgitter, Marsgestein am Fuß
+    for (const s of [-1, 1]) {
+      cyl(0.04, 0.04, 2.6, mat.metal('#8a8f9a'), s * 1.62, 1.5, -0.1, 8);
+      for (const y of [0.5, 1.5, 2.5]) box(0.12, 0.05, 0.1, mat.metal('#4a4e58'), s * 1.58, y, -0.1);
+      for (let k = 0; k < 4; k++) box(0.3, 0.025, 0.02, mat.metal('#3a3e48'), s * 1.3, 2.1 + k * 0.08, 0.285);
+      for (let k = 0; k < 2; k++) sph(0.13 - k * 0.04, mat.rock('#b85a2e'), s * (1.75 + k * 0.2), 0.08, 0.35, undefined, 8).scale.y = 0.6;
+    }
     disc({ color: '#c8402e', swirl: '#ffb07a', swirl2: '#ff7a3a', rim: '#ff9b6a', speed: 1.4 });
-    sign(4.8, '#4a4e58', '#ffb07a');
+    sign(4.95, '#2a2e38', '#ffd23a', { font: 'Barlow, system-ui, sans-serif', frame: mat.metal('#4a4e58'), frameT: 0.08, mount: 'posts', drop: 3.32, postM: mat.metal('#4a4e58'), deco: ['hazard', 'lamps', 'rivets'] });
     particles({ name: 'PortalStaub', colors: ['#d8653a', '#e0905a'], particleSize: 0.12, sizeEnd: 0.3, rate: 4, speed: [0.5, 1], lifetime: [1.5, 2.5], spread: [70, 70], lightEmission: 0, size: [2, 0.2, 0.6], transparency: [[0, 1], [0.2, 0.4], [1, 1]] }, 0, 0.3, 0.3);
   },
   // Ringplanet-Tor: Sockel aus Sandstein mit Stufe, Stützen aus Gold, Rahmen mit Innenleiste, Ringe in zwei Tönen,
@@ -580,13 +735,20 @@ const DESIGNS = {
     tor(0.48, 0.04, M('#c8a060'), 0, 0, 0, TAU, 16, Math.PI / 2 - 0.3, 0, 0, top);
     tor(0.56, 0.025, M('#e8d0a0'), 0, 0, 0, TAU, 16, Math.PI / 2 - 0.3, 0, 0, top);
     anim(top, 'spin', { speed: 0.6, axis: [0, 1, 0] });
+    // Sternwarten-Ausbau: Stufensockel mit Goldkante, Zierkugeln auf den Stützen pulsieren, zweiter Brockenring
+    tor(1.0, 0.03, mat.gold('#ffe2a0'), 0, 0.23, 0, TAU, 18, Math.PI / 2, 0, 0);
+    for (const s of [-1, 1]) { const k2 = sph(0.07, E('#fff2c8', 1.4), s * 0.9, 1.15, 0, undefined, 8); anim(k2, 'pulse', { speed: 1.6, amp: 0.5 }); }
+    const ring2 = grp(0, DISC_Y, 0);
+    ring2.rotation.set(-0.2, 0, -0.3);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; oct(0.06, M('#c8a870'), Math.cos(a) * 1.95, 0, Math.sin(a) * 1.95, 1, 1, 1, ring2); }
+    anim(ring2, 'spin', { speed: -0.3, axis: [0, 1, 0] });
     disc({ color: '#e0a040', swirl: '#fff2c8', swirl2: '#ffd8a0', rim: '#ffe2a0', speed: 1.1 });
-    sign(4.45, '#5a4a32', '#ffe2a0');
+    sign(4.6, '#5a4a32', '#ffe2a0', { frame: mat.gold('#d8b070'), frameT: 0.08, deco: ['emblemPlanet', 'rivets'], rivetM: mat.gold('#ffe2a0') });
     particles({ name: 'PortalGoldstaub', colors: ['#ffe2a0', '#fff6d0'], particleSize: 0.06, sizeEnd: 0.03, rate: 5, speed: [0.2, 0.4], lifetime: [2, 3], spread: [180, 180], size: [2.4, 2.4, 0.4] }, 0, DISC_Y, 0);
   },
   // Alien-Tentakel-Bogen: Tentakel aus mehr, eng überlappenden Gliedern mit Farbverlauf, Saugnäpfe mit Ring, Auge mit
   // Iris und Lid
-  alien({ M, E, sph, tor, grp, anim, disc, sign, particles }) {
+  alien({ M, E, sph, tor, grp, anim, disc, sign, particles , cyl}) {
     const tones = ['#4a2278', '#5a2a8a', '#6a32a0', '#7a3ab0', '#8a44c0'], sucker = E('#d97aff', 0.6);
     for (const s of [-1, 1]) {
       const t = grp(s * 1.3, 0, 0);
@@ -609,13 +771,23 @@ const DESIGNS = {
     sph(0.025, M('#ffffff'), 0.04, 0.05, 0.36, eye, 6); // Glanz
     sph(0.31, M(tones[2]), 0, 0.12, -0.02, eye, 14).scale.set(1, 0.45, 1); // Lid
     anim(eye, 'sway', { speed: 0.6, amp: 0.45, axis: [0, 1, 0] });
+    // Schleimpfütze am Fuß, Sporenkapseln, leuchtende Pusteln auf den Tentakeln
+    const goo = cyl(0.9, 0.95, 0.03, E('#5aff3a', 0.8, { transparent: true, opacity: 0.7 }), 0, 0.02, 0.35, 16);
+    goo.scale.z = 0.5;
+    anim(goo, 'pulse', { speed: 1.3, amp: 0.3 });
+    for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
+      const pod = grp(s * (1.7 + k * 0.2), 0.0, 0.1 - k * 0.2);
+      cyl(0.02, 0.03, 0.35, M('#4a2278'), 0, 0.17, 0, 6, 0, 0, 0, pod);
+      const b = sph(0.08, E('#d97aff', 1), 0, 0.38, 0, pod, 10);
+      anim(b, 'pulse', { speed: 1.8 + k, amp: 0.4 });
+    }
     disc({ color: '#3aff3a', swirl: '#d9ff7a', swirl2: '#d97aff', rim: '#7aff5a', speed: 1.6, intensity: 1.1 });
-    sign(4.35, '#3a1a60', '#9aff7a');
+    sign(4.5, '#0a2a0a', '#9aff7a', { font: 'Barlow, system-ui, sans-serif', frame: E('#7aff5a', 1.2, { transparent: true, opacity: 0.7 }), frameT: 0.04, mount: 'holo', deco: ['glyphs'], accent: '#7aff5a' });
     particles({ name: 'PortalSchleim', colors: ['#7aff5a', '#d9ff7a'], particleSize: 0.1, sizeEnd: 0.04, rate: 4, speed: [0.3, 0.6], lifetime: [1.5, 2.5], spread: [30, 30], direction: 'Bottom', size: [1.6, 0.2, 0.3], acceleration: [0, -0.6, 0] }, 0, 2.8, 0.2);
   },
   // Sonnentor: Sockel aus Gold mit Stufe, Ring mit Innenleiste, Strahlen als Rauten (lang und kurz, zwei Töne),
   // innerer Glutring
-  sonne({ E, box, cyl, tor, grp, anim, disc, sign, particles, mat }) {
+  sonne({ E, box, cyl, tor, grp, anim, disc, sign, particles, mat , sph, cone}) {
     const gold = mat.gold('#ffcf4a'), dgold = mat.gold('#c8a040');
     cyl(1.0, 1.25, 0.22, dgold, 0, 0.11, 0, 16);
     cyl(0.85, 0.95, 0.12, gold, 0, 0.28, 0, 16);
@@ -632,8 +804,11 @@ const DESIGNS = {
     const inner = tor(1.32, 0.05, E('#fff2a0', 2, { transparent: true, opacity: 0.8 }), 0, DISC_Y, 0.05, TAU, 20);
     inner.scale.y = DISC_SY * 0.95;
     anim(inner, 'pulse', { speed: 2.4, amp: 0.45 });
+    // Flammenkranz am Sockel, Sonnenscheiben seitlich, Sockelrunen
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU, f = cone(0.07, 0.24, E(k % 2 ? '#ff8a1a' : '#ffd84a', 1.8), Math.cos(a) * 0.95, 0.42, Math.sin(a) * 0.45 + 0.1, 6); anim(f, 'bob', { speed: 4 + k * 0.3, amp: 0.03 }); }
+    for (const s of [-1, 1]) { const dsk = cyl(0.18, 0.18, 0.04, mat.gold('#ffcf4a'), s * 1.75, DISC_Y, 0, 14, Math.PI / 2, 0, 0); void dsk; const g3 = sph(0.09, E('#fff2a0', 1.6), s * 1.75, DISC_Y, 0.05, undefined, 8); anim(g3, 'pulse', { speed: 2.2, amp: 0.45 }); }
     disc({ color: '#ff8a1a', swirl: '#fff6c0', swirl2: '#ffd84a', rim: '#ffffff', speed: 1.5, intensity: 1.4 });
-    sign(4.4, '#6a3a0a', '#fff2a0');
+    sign(4.6, '#6a3a0a', '#fff2a0', { frame: mat.gold('#ffcf4a'), frameT: 0.08, inner: E('#ffb02e', 1.6), deco: ['emblemSun'] });
     particles({ name: 'PortalEruption', colors: ['#fff2a0', '#ffb02e', '#ff6a1a'], particleSize: 0.1, sizeEnd: 0.03, rate: 6, speed: [1, 1.8], lifetime: [0.8, 1.3], spread: [180, 180], size: [0.4, 0.4, 0.2], acceleration: [0, -0.4, 0] }, 0, DISC_Y, 0.1);
   },
 
@@ -673,13 +848,22 @@ const DESIGNS = {
       sph(0.018, M('#101010'), 0.05, 0.03, 0.1, f, 6);
     }
     anim(fish, 'spin', { speed: 0.7, axis: [0, 1, 0] });
+    // Seegras am Sockel, Sanddollar und Steinchen, Seestern auf dem Bogen
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const sg2 = grp(s * (0.9 + k * 0.2), 0.24, 0.55 - k * 0.12);
+      cyl(0.012, 0.03, 0.55, M('#3a9a6a'), 0, 0.27, 0, 6, 0, 0, 0, sg2);
+      anim(sg2, 'sway', { speed: 1.2 + k * 0.2, amp: 0.2, axis: [0, 0, 1] });
+    }
+    for (const [x, z] of [[-0.6, 0.7], [0.5, 0.75]]) cyl(0.1, 0.1, 0.02, mat.sand('#f0e0c0'), x, 0.25, z, 12);
+    const star = grp(0.6, 3.35, 0.2);
+    for (let k = 0; k < 5; k++) cyl(0.02, 0.045, 0.2, M('#ff8a5a'), Math.cos((k / 5) * TAU) * 0.08, Math.sin((k / 5) * TAU) * 0.08, 0, 5, 0, 0, (k / 5) * TAU - Math.PI / 2, star);
     disc({ color: '#2ab0c8', swirl: '#e8ffff', swirl2: '#9ff3f0', rim: '#bff8ff', speed: 1.1 });
-    sign(4.35, '#0a4a6a', '#bff8ff');
+    sign(4.5, '#a08a6a', '#0a3a4a', { frame: mat.wood('#8a7458'), frameT: 0.09, deco: ['logs', 'shells', 'barnacles'] });
     particles({ name: 'PortalBlasen', colors: ['#ffffff', '#bff8ff'], particleSize: 0.08, sizeEnd: 0.12, rate: 4, speed: [0.5, 0.9], lifetime: [2.5, 3.5], spread: [12, 12], size: [1.8, 0.2, 0.4] }, 0, 0.3, 0.2);
   },
   // Muschel-Torbogen: Muscheln aus Marmor (Perlmutt) mit Fächerrippen und Schlossrand, große Muschel mit zwei Schalen,
   // Perle, Seesterne mit Noppen
-  muschelland({ M, E, cyl, sph, grp, anim, disc, sign, particles, mat }) {
+  muschelland({ M, E, cyl, sph, grp, anim, disc, sign, particles, mat , tor}) {
     const cols = ['#ffd8ec', '#ffe8d0', '#f4c8e0', '#ffffff', '#ffd0a8', '#e8d0ff'];
     cyl(1.4, 1.55, 0.22, mat.sand('#ffe6c8'), 0, 0.11, 0, 18);
     cyl(1.42, 1.42, 0.04, mat.sand('#f0d0b0'), 0, 0.23, 0, 18);
@@ -709,8 +893,15 @@ const DESIGNS = {
       }
       sph(0.06, M('#ff9a6a'), 0, 0, 0.01, st, 8);
     }
+    // Perlenschnüre an der großen Muschel, Perlmutt-Sockel mit Perlenkante, Schneckenhäuser am Fuß
+    for (let k = 0; k < 14; k++) { const a = (k / 14) * TAU; sph(0.035, M('#fff8fc', { roughness: 0.15 }), Math.cos(a) * 1.45, 0.25, Math.sin(a) * 1.45 * 0.5 + 0.1, undefined, 6); }
+    for (const s of [-1, 1]) {
+      const sn = grp(s * 1.75, 0.08, 0.2);
+      for (let k = 0; k < 4; k++) tor(0.1 - k * 0.022, 0.035 - k * 0.006, mat.marble(s < 0 ? '#ffd0a8' : '#e8d0ff'), 0, k * 0.05, 0, TAU, 8, Math.PI / 2, 0, 0, sn);
+    }
+    for (let k = 0; k < 6; k++) { const a = Math.PI * 0.2 + k * 0.12, pr = sph(0.03, E('#fff4fb', 1.2), Math.cos(a) * 0.62, 3.6 + Math.sin(a) * 0.3, 0.08, undefined, 6); anim(pr, 'seq', { speed: 2, amp: k * 0.8 }); }
     disc({ color: '#e08ac0', swirl: '#ffffff', swirl2: '#ffe8f8', rim: '#ffd8f0', speed: 1.2 });
-    sign(4.45, '#8a3a6a', '#ffe8f8');
+    sign(4.65, '#f4e4f0', '#8a3a6a', { frame: mat.marble('#e8c8dc'), frameT: 0.07, deco: ['pearls'] });
     particles({ name: 'PortalGlitzer', colors: ['#fff2fa', '#e8d0ff', '#ffffff'], particleSize: 0.06, sizeEnd: 0.02, rate: 6, speed: [0.2, 0.4], lifetime: [1.5, 2.5], spread: [180, 180], size: [2.2, 2.6, 0.4] }, 0, DISC_Y, 0.1);
   },
   // Tempeltor mit Runen: Stufensockel und Säulen aus Marmor mit Basis, Ringen und Kapitell, Gebälk mit Leisten,
@@ -742,13 +933,21 @@ const DESIGNS = {
     for (const x of [-0.15, 0.15]) cyl(0.022, 0.022, 0.14, gold, x, 0.73, 0, 6, 0, 0, 0, tri);
     box(0.36, 0.04, 0.04, gold, 0, 0.78, 0, 0, 0, 0, tri);
     anim(tri, 'bob', { speed: 1.0, amp: 0.05 });
+    // Wasserrinnen an den Säulen, Akroterien auf dem Giebel, Muschelreliefs am Sockel
+    for (const s of [-1, 1]) {
+      const w = box(0.06, 2.4, 0.03, E('#5affd8', 0.6, { transparent: true, opacity: 0.5 }), s * 1.3, 1.6, 0.27);
+      anim(w, 'pulse', { speed: 2.4, amp: 0.4 });
+      cone(0.1, 0.25, mat.marble('#d0dce4'), s * 1.62, 3.75, 0, 6);
+      cyl(0.09, 0.09, 0.03, mat.marble('#c0ccd4'), s * 0.9, 0.2, 0.44, 10, Math.PI / 2, 0, 0);
+    }
+    cone(0.1, 0.25, mat.marble('#d0dce4'), 0, 4.3, 0, 6);
     disc({ color: '#0a6a8a', swirl: '#5affd8', swirl2: '#bff8ff', rim: '#5affd8', speed: 1.2 });
-    sign(5.15, '#0a3a5a', '#5affd8');
+    sign(5.35, '#e8eef2', '#0a5a6a', { frame: mat.marble('#c0ccd4'), frameT: 0.09, deco: ['runes'], accent: '#5affd8' });
     particles({ name: 'PortalBlasen', colors: ['#ffffff', '#bff8ff'], particleSize: 0.08, sizeEnd: 0.12, rate: 3, speed: [0.5, 0.9], lifetime: [2.5, 3.5], spread: [12, 12], size: [2, 0.2, 0.4] }, 0, 0.3, 0.2);
   },
   // Tiefsee-Kraken: Fels aus Schiefer, Tentakel aus mehr Gliedern mit Farbverlauf und gleichmäßigem Schwung,
   // Saugnäpfe mit Ring, Leuchtpunkte
-  tiefseegraben({ M, E, sph, tor, grp, anim, disc, sign, particles, mat }) {
+  tiefseegraben({ M, E, sph, tor, grp, anim, disc, sign, particles, mat , box, cyl}) {
     const tones = ['#5a1a2a', '#6a2232', '#7a2a3a', '#8a323f', '#9a3a4a'], sucker = M('#e8b0b8');
     sph(0.9, mat.stone('#1a222c'), 0, 0.15, -0.2, undefined, 12).scale.set(1.7, 0.4, 1);
     const tentacle = (x, z, dir, h, lean, sp) => {
@@ -772,14 +971,19 @@ const DESIGNS = {
       const l = sph(0.06, E('#5affd8', 2), x, y, 0.2, undefined, 8);
       anim(l, 'pulse', { speed: 2.0, amp: 0.65 });
     }
+    // Leuchtpilze und Röhrenwürmer am Fels, Wrackplanken am Fuß
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 3; k++) { const tw = grp(s * (0.9 + k * 0.25), 0.28, 0.3 - k * 0.1); cyl(0.025, 0.03, 0.35 + k * 0.1, M('#e8e0d0'), 0, 0.18, 0, 6, 0, 0, 0, tw); sph(0.05, E('#ff5a7a', 1.2), 0, 0.38 + k * 0.1, 0, tw, 8); anim(tw, 'sway', { speed: 1.5 + k * 0.3, amp: 0.15, axis: [0, 0, 1] }); }
+      box(0.7, 0.05, 0.14, mat.wood('#3a3228'), s * 1.25, 0.32, 0.55, 0, s * 0.4, 0.1);
+    }
     disc({ color: '#06142a', swirl: '#5affd8', swirl2: '#ff7ae0', rim: '#2affd8', speed: 1.0, opacity: 0.92, intensity: 0.6 });
-    sign(4.4, '#10161e', '#5affd8');
+    sign(4.6, '#2a2620', '#5affd8', { frame: mat.wood('#3a3228'), frameT: 0.1, tilt: 0.05, deco: ['algae', 'barnacles'] });
     particles({ name: 'PortalPlankton', colors: ['#5affd8', '#7ad0ff', '#ff7ae0'], particleSize: 0.05, sizeEnd: 0.02, rate: 5, speed: [0.1, 0.3], lifetime: [3, 5], spread: [180, 180], size: [2.6, 2.8, 0.6] }, 0, DISC_Y, 0.1);
   },
 
   // ── Planet 4 ──
   // Wolkentor: Wolken aus mehreren Bäuschen mit hellerer Oberseite, goldener Rand mit Innenleiste, kleine Wolken
-  wolkenburg({ M, sph, tor, grp, anim, disc, sign, particles, rand, mat }) {
+  wolkenburg({ M, sph, tor, grp, anim, disc, sign, particles, rand, mat , E, box}) {
     const cloud = M('#ffffff', { roughness: 1 }), cloud2 = M('#eef2ff', { roughness: 1 }), shade = M('#dce4f6', { roughness: 1 });
     sph(1.2, cloud2, 0, 0.1, 0, undefined, 14).scale.set(1.4, 0.35, 0.8);
     for (const x of [-0.9, 0, 0.9]) sph(0.42, cloud, x, 0.3, 0.1, undefined, 12);
@@ -798,13 +1002,18 @@ const DESIGNS = {
       sph(0.16, shade, 0, -0.1, -0.05, c, 10);
       anim(c, 'bob', { speed: 0.8 + s * 0.15, amp: 0.13 });
     }
+    // Goldene Zinnen auf der Wolke, Sonnenstrahlen hinter dem Tor, Wolkenpuffer schweben
+    for (let k = 0; k < 5; k++) box(0.1, 0.16, 0.06, mat.gold('#ffcf4a'), -0.5 + k * 0.25, 0.48, 0.42);
+    const rays = grp(0, DISC_Y, -0.2);
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * TAU; box(0.06, 0.5, 0.02, E('#fff3c4', 1, { transparent: true, opacity: 0.6 }), Math.cos(a) * 1.75, Math.sin(a) * 2.1, 0, 0, 0, a - Math.PI / 2, rays); }
+    anim(rays, 'spin', { speed: 0.15, axis: [0, 0, 1] });
     disc({ color: '#8ac4f6', swirl: '#ffffff', swirl2: '#fff3c4', rim: '#ffe28a', speed: 0.9 });
-    sign(4.5, '#4a78b8', '#ffffff');
+    sign(4.65, '#ffffff', '#4a78b8', { frame: mat.gold('#ffcf4a'), frameT: 0.05, deco: ['clouds'] });
     particles({ name: 'PortalWoelkchen', texture: 'smoke', colors: ['#ffffff'], particleSize: 0.3, sizeEnd: 0.6, rate: 2, speed: [0.3, 0.5], lifetime: [2.5, 3.5], spread: [40, 40], lightEmission: 0.3, size: [1.6, 0.3, 0.3], transparency: [[0, 1], [0.2, 0.3], [1, 1]] }, 0, 0.6, 0.3);
   },
   // Flügeltor: Marmorsockel mit Stufe, Säulen mit Basis und Kapitell aus Gold, Federn mit Kiel und Abstufung, Heiligen-
   // schein doppelt, goldener Rand
-  engelsgarten({ M, E, box, cyl, tor, grp, anim, disc, sign, particles, mat, pillar }) {
+  engelsgarten({ M, E, box, cyl, tor, grp, anim, disc, sign, particles, mat, pillar , sph, oct}) {
     const white = mat.marble('#fbfaf6'), feather = M('#fffdf8', { roughness: 0.7 }), feather2 = M('#fff3dc', { roughness: 0.7 }), gold = mat.gold('#ffcf4a');
     cyl(1.0, 1.2, 0.2, mat.marble('#f4f0e6'), 0, 0.1, 0, 16);
     cyl(0.85, 0.95, 0.12, white, 0, 0.26, 0, 16);
@@ -825,13 +1034,17 @@ const DESIGNS = {
     tor(0.4, 0.025, E('#ffffff', 2), 0, 0.05, 0, TAU, 16, Math.PI / 2, 0, 0, halo);
     anim(halo, 'bob', { speed: 1.0, amp: 0.07 });
     tor(1.05, 0.05, gold, 0, DISC_Y, 0.05, TAU, 22).scale.y = DISC_SY;
+    // Rosenranken an den Säulen, goldene Sterne um den Heiligenschein, Federn auf dem Sockel
+    for (const s of [-1, 1]) for (let k = 0; k < 5; k++) sph(0.06, M(k % 2 ? '#ff9ab8' : '#5aa84a'), s * (1.15 + Math.sin(k * 1.4) * 0.22), 0.5 + k * 0.45, 0.2 + Math.cos(k * 1.4) * 0.05, undefined, 8);
+    for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU, st2 = oct(0.05, E('#fff2a0', 2), Math.cos(a) * 0.62, 3.85, Math.sin(a) * 0.62, 0.6, 1.2, 0.6); anim(st2, 'seq', { speed: 2, amp: k * 1.2 }); }
+    for (const s of [-1, 1]) box(0.08, 0.3, 0.02, M('#fffdf8'), s * 0.6, 0.34, 0.6, Math.PI / 2 - 0.1, 0, s * 0.4);
     disc({ color: '#ffd76a', swirl: '#ffffff', swirl2: '#fff2a0', rim: '#ffffff', speed: 1.0, intensity: 1.1 });
-    sign(4.55, '#c8a040', '#ffffff');
+    sign(4.75, '#fff6dc', '#8a6a20', { frame: M('#e8d8b0'), frameT: 0.03, deco: ['scroll', 'tassels'], w: 2.1 });
     particles({ name: 'PortalFedern', colors: ['#ffffff', '#fff6e0'], particleSize: 0.1, sizeEnd: 0.1, rate: 2, speed: [0.1, 0.3], lifetime: [4, 6], spread: [50, 50], direction: 'Bottom', lightEmission: 0.3, size: [2.6, 0.2, 0.4], acceleration: [0.05, -0.05, 0] }, 0, 3.2, 0.1);
   },
   // Göttertor: Stufensockel, kannelierte Marmorsäulen (Rillen) mit Goldbasis und Kapitell, Gebälk mit Leisten, Krone
   // mit Zacken und Edelsteinen, Blitze im Zickzack
-  goetterthron({ E, box, cyl, oct, grp, anim, disc, sign, particles, mat , tor}) {
+  goetterthron({ E, box, cyl, oct, grp, anim, disc, sign, particles, mat , tor, M, sph}) {
     const marble = mat.marble('#f4f0e8'), marble2 = mat.marble('#e0d8c8'), gold = mat.gold('#ffcf4a');
     box(3.2, 0.14, 1.0, marble2, 0, 0.07, 0);
     box(3.0, 0.12, 0.88, marble, 0, 0.2, 0);
@@ -867,8 +1080,18 @@ const DESIGNS = {
       box(0.05, 0.3, 0.03, E('#fff6c0', 2.6), s * 0.05, -0.12, 0, 0, 0, -s * (0.4 - k * 0.8) * 0.5, b);
       anim(b, 'seq', { speed: 5, amp: k * 2 + (s > 0 ? 1 : 0) });
     }
+    // Adler-Akroterien aus Gold auf dem Gebälk, Lorbeer an den Säulen, Strahlen hinter der Krone
+    for (const s of [-1, 1]) {
+      const ea = grp(s * 1.45, 3.95, 0);
+      sph(0.1, mat.gold('#ffcf4a'), 0, 0.08, 0, ea, 8);
+      box(0.32, 0.05, 0.12, mat.gold('#ffcf4a'), s * 0.12, 0.14, 0, 0, 0, s * 0.4, ea);
+      for (let k = 0; k < 4; k++) { const lf = sph(0.06, M('#7a9a3a'), s * 1.35 + Math.cos(k * 1.5) * 0.3, 1.0 + k * 0.6, Math.sin(k * 1.5) * 0.3, undefined, 6); lf.scale.set(0.6, 1.3, 0.4); }
+    }
+    const halo = grp(0, 4.3, -0.1);
+    for (let k = 0; k < 9; k++) { const a = (k / 8) * Math.PI; box(0.04, 0.35, 0.02, E('#fff2a0', 1.2, { transparent: true, opacity: 0.7 }), Math.cos(a) * 0.75, Math.sin(a) * 0.75, 0, 0, 0, a - Math.PI / 2, halo); }
+    anim(halo, 'pulse', { speed: 1.4, amp: 0.4 });
     disc({ color: '#ffb02e', swirl: '#ffffff', swirl2: '#fff2a0', rim: '#ffe7a8', speed: 1.3, intensity: 1.2 });
-    sign(5.05, '#8a6a20', '#ffffff');
+    sign(5.25, '#8a6a20', '#ffffff', { frame: mat.gold('#ffcf4a'), frameT: 0.09, deco: ['laurel', 'corners'], cornerM: E('#ff3a5a', 1.2) });
     particles({ name: 'PortalGoldfunken', colors: ['#ffe7a8', '#ffffff'], particleSize: 0.06, sizeEnd: 0.02, rate: 6, speed: [0.4, 0.8], lifetime: [1.5, 2.5], spread: [180, 180], size: [2.6, 3, 0.4] }, 0, 1.9, 0.1);
   },
 
@@ -893,13 +1116,16 @@ const DESIGNS = {
     const spin = grp(0, 3.85, 0);
     for (let k = 0; k < 3; k++) oct(0.08, E('#ff8ae0', 1.4), Math.cos((k / 3) * TAU) * 0.55, 0, Math.sin((k / 3) * TAU) * 0.55, 0.7, 1.4, 0.7, spin);
     anim(spin, 'spin', { speed: 0.9, axis: [0, 1, 0] });
+    // Kristallgruppen am Fuß, Glanzadern in der Schale
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) oct(0.12 - k * 0.02, mat.glass(k % 2 ? '#c98bff' : '#8a4ad8', 0.88, 0.6), s * (1.6 + k * 0.15), 0.25, 0.3 - k * 0.12, 0.7, 1.7, 0.7).rotation.z = s * (-0.3 - k * 0.2);
+    for (let k = 0; k < 5; k++) { const v = sph(0.03, E('#ff8ae0', 2), Math.cos(k * 1.3) * 1.42, DISC_Y + Math.sin(k * 1.3) * 1.95, 0.12, undefined, 6); anim(v, 'seq', { speed: 2, amp: k }); }
     disc({ color: '#7a3ad8', swirl: '#ead2ff', swirl2: '#ff8ae0', rim: '#c98bff', speed: 1.3 });
-    sign(4.65, '#4a2a7a', '#ead2ff');
+    sign(4.8, '#3a2a4a', '#ead2ff', { frame: mat.granite('#6a5a6a'), frameT: 0.1, deco: ['facets', 'corners'], cornerM: mat.glass('#c98bff', 0.9, 0.7) });
     particles({ name: 'PortalSporen', colors: ['#c98bff', '#ead2ff', '#ff8ae0'], particleSize: 0.06, sizeEnd: 0.02, rate: 5, speed: [0.2, 0.4], lifetime: [2, 3.5], spread: [180, 180], size: [2.4, 2.8, 0.4] }, 0, DISC_Y, 0.1);
   },
   // Wüstentor: Sandsteinsäulen mit Basis, Schichtfugen und Kapitell, Topase mit Goldfassung, Bogen mit Leiste,
   // Spitzen als Pyramidchen, großer Topas
-  topasduenen({ E, box, cone, oct, tor, cyl, grp, anim, disc, sign, particles, mat, pillar }) {
+  topasduenen({ E, box, cone, oct, tor, cyl, grp, anim, disc, sign, particles, mat, pillar , sph}) {
     const sand = mat.sand('#e0b878'), sand2 = mat.sand('#c8985a'), gold = mat.gold('#e8b040');
     box(3.3, 0.14, 1.0, sand2, 0, 0.07, 0);
     box(3.1, 0.12, 0.88, sand, 0, 0.2, 0);
@@ -919,13 +1145,18 @@ const DESIGNS = {
     oct(0.3, mat.glass('#ffcf4a', 0.9, 1), 0, 0, 0, 0.85, 1.5, 0.85, gem);
     tor(0.22, 0.03, gold, 0, 0, 0, TAU, 12, Math.PI / 2, 0, 0, gem);
     anim(gem, 'spin', { speed: 0.7, axis: [0, 1, 0] });
+    // Sanddünen am Fuß, Hieroglyphen-Bänder an den Säulen, Kapitell-Topase
+    for (const s of [-1, 1]) {
+      sph(0.5, mat.sand('#e8c890'), s * 1.5, 0.05, 0.35, undefined, 12).scale.set(1.2, 0.25, 0.7);
+      for (let k = 0; k < 4; k++) box(0.08, 0.06, 0.02, mat.sand('#8a5a1a'), s * 1.3 + (k % 2 ? 0.08 : -0.08), 2.4 + k * 0.1, 0.25);
+    }
     disc({ color: '#d8901a', swirl: '#fff0b8', swirl2: '#ffd76a', rim: '#ffcf4a', speed: 1.4 });
-    sign(4.95, '#8a5a1a', '#fff0b8');
+    sign(5.1, '#e0b878', '#5a3a10', { frame: mat.sand('#c8985a'), frameT: 0.1, deco: ['corners'], cornerM: mat.glass('#ffb02e', 0.9, 0.9) });
     particles({ name: 'PortalSand', colors: ['#ffd76a', '#e0b878'], particleSize: 0.06, sizeEnd: 0.03, rate: 6, speed: [0.6, 1.2], lifetime: [1, 1.8], spread: [70, 70], size: [1.8, 0.2, 0.3] }, 0, 0.3, 0.3);
   },
   // Smaragd-Baumtor: Stämme aus Holz in zwei Abschnitten mit Wurzelansatz, Ast-Bogen mit Wulst, Smaragde aus Glas mit
   // kleineren Begleitern
-  smaragdwald({ cyl, cone, tor, oct, grp, anim, disc, sign, particles, rand, mat }) {
+  smaragdwald({ cyl, cone, tor, oct, grp, anim, disc, sign, particles, rand, mat , M, sph}) {
     const bark = mat.wood('#4a3a2a'), bark2 = mat.wood('#3a2c20');
     for (const s of [-1, 1]) {
       cyl(0.2, 0.3, 1.4, bark, s * 1.27, 0.7, 0, 10, 0, 0, s * -0.04);
@@ -944,13 +1175,19 @@ const DESIGNS = {
       oct(0.08, mat.glass('#b4ffd6', 0.85, 0.8), x * 0.85, y + 0.2, z + 0.15, 0.7, 1.2, 0.7, crown);
     }
     anim(crown, 'sway', { speed: 0.65, amp: 0.04, axis: [0, 0, 1] });
+    // Ranken mit Smaragdknospen, Moospolster an den Wurzeln
+    for (const s of [-1, 1]) {
+      for (let k = 0; k < 6; k++) sph(0.055, M('#3a9a5a'), s * (1.27 + Math.sin(k * 1.2) * 0.17), 0.45 + k * 0.38, 0.18, undefined, 8);
+      for (let k = 0; k < 2; k++) { const b = oct(0.06, mat.glass('#3ee08a', 0.9, 1), s * 1.42, 0.9 + k * 0.9, 0.2, 0.7, 1.2, 0.7); anim(b, 'pulse', { speed: 1.6 + k * 0.4, amp: 0.4 }); }
+      sph(0.25, M('#3f8a3f'), s * 1.45, 0.06, 0.25, undefined, 10).scale.y = 0.35;
+    }
     disc({ color: '#1ea860', swirl: '#d9ff7a', swirl2: '#b4ffd6', rim: '#3ee08a', speed: 1.1 });
-    sign(4.5, '#1a5a3a', '#b4ffd6');
+    sign(4.65, '#3a2c20', '#b4ffd6', { frame: mat.wood('#2a2018'), frameT: 0.1, deco: ['corners', 'vines'], cornerM: mat.glass('#1ec870', 0.9, 0.7) });
     particles({ name: 'PortalGluehwuermchen', colors: ['#d9ff7a', '#b4ffd6'], particleSize: 0.07, sizeEnd: 0.04, rate: 4, speed: [0.1, 0.3], lifetime: [3, 6], spread: [180, 180], size: [2.4, 2.6, 0.6] }, 0, 1.7, 0.3);
   },
   // Pagoden-Tor (Torii): Jade-Pfosten mit Steinfuß und Metallring, Querbalken mit Keilen, geschwungenes Dach in fünf
   // Stücken mit Spitzen, Tafel mit Rahmen, Laternen mit Deckel und Quaste
-  jadetempel({ M, E, box, cyl, sph, grp, anim, disc, sign, particles, mat }) {
+  jadetempel({ M, E, box, cyl, sph, grp, anim, disc, sign, particles, mat , tor}) {
     const jade = mat.marble('#3aa878'), dark = mat.wood('#1a4a3a'), red = M('#c8302a'), stone = mat.stone('#8a9488'), gold = mat.gold('#e0b040');
     for (const s of [-1, 1]) {
       cyl(0.17, 0.21, 3.2, jade, s * 1.3, 1.8, 0, 12);
@@ -980,13 +1217,24 @@ const DESIGNS = {
       cyl(0.01, 0.02, 0.12, M('#e0b040'), 0, -0.63, 0, 4, 0, 0, 0, lt); // Quaste
       anim(lt, 'sway', { speed: 1.0, amp: 0.13, axis: [0, 0, 1] });
     }
+    // Wolkenmuster am Dach, Steinlöwen am Fuß, Glöckchen an den Dachspitzen
+    for (const s of [-1, 1]) {
+      const li = grp(s * 1.75, 0, 0.35);
+      box(0.3, 0.12, 0.3, mat.stone('#8a9488'), 0, 0.06, 0, 0, 0, 0, li);
+      sph(0.13, mat.stone('#9aa498'), 0, 0.25, 0, li, 10);
+      sph(0.09, mat.stone('#9aa498'), 0, 0.42, 0.05, li, 10);
+      const bell = grp(s * 1.97, 3.55, 0.1);
+      cyl(0.04, 0.06, 0.08, mat.gold('#e0b040'), 0, -0.06, 0, 8, 0, 0, 0, bell);
+      anim(bell, 'sway', { speed: 2.5, amp: 0.25, axis: [0, 0, 1] });
+    }
+    for (let k = 0; k < 4; k++) tor(0.07, 0.015, mat.gold('#e0b040'), -0.6 + k * 0.4, 3.4, 0.22, Math.PI, 6);
     disc({ color: '#2a9a6a', swirl: '#d8ffe8', swirl2: '#ffb8d0', rim: '#5ad8a0', speed: 1.1 });
-    sign(4.4, '#1a4a3a', '#d8ffe8');
+    sign(4.3, '#a8201a', '#ffd76a', { frame: mat.gold('#e0b040'), frameT: 0.06, w: 1.7, h: 0.55, deco: ['tassels'] });
     particles({ name: 'PortalKirschblueten', colors: ['#ffb8d0', '#ffd8e8', '#ffffff'], particleSize: 0.08, sizeEnd: 0.08, rate: 3, speed: [0.2, 0.4], lifetime: [3, 5], spread: [50, 50], direction: 'Bottom', lightEmission: 0.2, size: [3, 0.2, 0.6], acceleration: [0.1, -0.08, 0.05] }, 0, 3.6, 0.2);
   },
   // Wassertor: Marmorsockel mit Stufe, Saphire aus Glas mit Silberfassung, Wasservorhänge in zwei Schichten,
   // Becken mit Rand, Saphir oben mit Fassung
-  saphirsee({ E, box, cyl, oct, tor, grp, anim, disc, sign, particles, rand, mat }) {
+  saphirsee({ E, box, cyl, oct, tor, grp, anim, disc, sign, particles, rand, mat , M, sph}) {
     const stone = mat.marble('#c8d4e8'), stone2 = mat.marble('#aebcd8'), silver = mat.metal('#d8e0ec');
     box(3.3, 0.14, 1.0, stone2, 0, 0.07, 0);
     box(3.1, 0.12, 0.88, stone, 0, 0.2, 0);
@@ -1009,12 +1257,15 @@ const DESIGNS = {
     oct(0.28, mat.glass('#3a6aff', 0.9, 1.1), 0, 0, 0, 0.85, 1.4, 0.85, gem);
     tor(0.2, 0.03, silver, 0, 0, 0, TAU, 12, Math.PI / 2, 0, 0, gem);
     anim(gem, 'spin', { speed: 0.6, axis: [0, 1, 0] });
+    // Seerosen im Becken, Wellenkämme, Tropfen-Laternen an den Seiten
+    for (const [x, c] of [[-0.45, '#ff9ad5'], [0.35, '#ffffff']]) { const lily = grp(x, 0.37, 0.45); cyl(0.12, 0.12, 0.015, M('#3a9a5a'), 0, 0, 0, 10, 0, 0, 0, lily); sph(0.05, M(c), 0, 0.04, 0, lily, 8); anim(lily, 'bob', { speed: 1.2, amp: 0.015 }); }
+    for (const s of [-1, 1]) { const d = sph(0.08, mat.glass('#8ac8ff', 0.8, 1), s * 1.8, 2.6, 0.1, undefined, 10); d.scale.y = 1.4; anim(d, 'pulse', { speed: 1.5, amp: 0.4 }); }
     disc({ color: '#1a4ac8', swirl: '#cfe0ff', swirl2: '#ffffff', rim: '#5a8aff', speed: 1.3 });
-    sign(4.65, '#1a2a6a', '#cfe0ff');
+    sign(4.8, '#1a3a8a', '#ffffff', { frame: mat.metal('#d8e0ec'), frameT: 0.07, deco: ['corners'], cornerM: mat.glass('#8ac8ff', 0.85, 0.8) });
     particles({ name: 'PortalTropfen', colors: ['#cfe0ff', '#ffffff'], particleSize: 0.06, sizeEnd: 0.04, rate: 6, speed: [0.4, 0.8], lifetime: [1, 1.6], spread: [20, 20], direction: 'Bottom', size: [3.2, 0.2, 0.2], acceleration: [0, -1.5, 0] }, 0, 3.2, 0.1);
   },
   // Rubin-Vulkantor: sechseckige Basaltsäulen mit Glutfugen, Rubine aus Glas, Bogen mit Glutkante, Rubin mit Fassung
-  rubinvulkan({ E, cyl, cone, oct, tor, grp, anim, disc, sign, particles, rand, mat }) {
+  rubinvulkan({ E, cyl, cone, oct, tor, grp, anim, disc, sign, particles, rand, mat , box}) {
     const rock = mat.basalt('#3a2a30'), rock2 = mat.basalt('#4a3640'), glow = E('#ff3a5a', 1.6), gold = mat.gold('#d89040');
     for (const s of [-1, 1]) {
       for (let k = 0; k < 4; k++) cyl(0.3 - k * 0.015, 0.32 - k * 0.015, 0.72, k % 2 ? rock2 : rock, s * 1.3, 0.36 + k * 0.72, 0, 6, 0, rand(), 0);
@@ -1032,8 +1283,11 @@ const DESIGNS = {
     tor(0.24, 0.035, gold, 0, 0, 0, TAU, 12, Math.PI / 2, 0, 0, ruby);
     anim(ruby, 'spin', { speed: 0.55, axis: [0, 1, 0] });
     for (const s of [-1, 1]) cone(0.32, 0.6, rock2, s * 1.62, 0.3, 0.15, 6);
+    // Glutadern im Bogen, Rubinsplitter am Fuß, Glutdunst
+    for (let k = 0; k < 7; k++) { const a = (k / 6) * Math.PI, v = box(0.04, 0.22, 0.03, E('#ff3a5a', 1.6), Math.cos(a) * 1.3, 2.85 + Math.sin(a) * 1.3, 0.3, 0, 0, a); anim(v, 'seq', { speed: 1.5, amp: k * 0.7 }); }
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) oct(0.06, mat.glass('#ff3a5a', 0.9, 1), s * (1.0 + k * 0.25), 0.08, 0.5 - k * 0.1, 0.8, 1.2, 0.8);
     disc({ color: '#c81a3a', swirl: '#ffb07a', swirl2: '#ff3a5a', rim: '#ff6a8a', speed: 1.4, intensity: 1.1 });
-    sign(4.65, '#3a1a20', '#ffb07a');
+    sign(4.85, '#141012', '#ff9a9a', { frame: mat.basalt('#3a2a30'), frameT: 0.1, inner: E('#ff3a5a', 1.6), deco: ['corners'], cornerM: mat.glass('#e8183a', 0.92, 1) });
     particles({ name: 'PortalFunken', colors: ['#ffb07a', '#ff3a5a'], particleSize: 0.07, sizeEnd: 0.03, rate: 5, speed: [1, 1.8], lifetime: [0.8, 1.3], spread: [30, 30], size: [0.5, 0.1, 0.5], acceleration: [0, -1, 0] }, 0, 4.1, 0);
   },
   // Opal-Wolkentor: Opalwolken aus mehreren Bäuschen mit Schimmer (Glas), Regenbogenbögen sauber gestaffelt
@@ -1053,14 +1307,17 @@ const DESIGNS = {
       rb.add(t);
     });
     anim(rb, 'pulse', { speed: 1.1, amp: 0.35 });
+    // Schimmerperlen um den Bogen, kleine Opal-Wölkchen schweben
+    for (let k = 0; k < 7; k++) { const a = (k / 6) * Math.PI, pr = sph(0.04, E(['#ffd0f0', '#d0e8ff', '#d8ffe8', '#fff2c8'][k % 4], 1.4), Math.cos(a) * 1.15, DISC_Y + Math.sin(a) * 1.7, 0.2, undefined, 8); anim(pr, 'seq', { speed: 1.8, amp: k * 0.9 }); }
+    for (const s of [-1, 1]) { const c = grp(s * 1.75, 2.6, 0.3); sph(0.18, mat.glass('#ffd0f0', 0.8, 0.4), 0, 0, 0, c, 10); sph(0.13, mat.glass('#d0e8ff', 0.8, 0.4), s * 0.15, -0.05, 0, c, 10); anim(c, 'bob', { speed: 0.9, amp: 0.12 }); }
     disc({ color: '#c8a8f4', swirl: '#ffffff', swirl2: '#ffd0f0', rim: '#e8d0ff', speed: 1.1 });
-    sign(4.55, '#6a5a9a', '#ffffff');
+    sign(4.75, '#f4f0ff', '#6a5a9a', { frame: mat.marble('#e8e0f8'), frameT: 0.07, deco: ['rainbow', 'pearls'] });
     particles({ name: 'PortalSchimmer', colors: ['#ffd0f0', '#d0e8ff', '#fff2c8'], particleSize: 0.07, sizeEnd: 0.02, rate: 5, speed: [0.2, 0.4], lifetime: [2, 3], spread: [180, 180], size: [2.6, 2.8, 0.4] }, 0, DISC_Y, 0.1);
     void M;
   },
   // Diamant-Tor: Sockel als achteckiger Schliff mit Fase, Facettenkranz aus Glas, Brillant oben mit Krone und
   // Unterteil, Facettenblitze
-  diamantkern({ E, cyl, oct, grp, anim, disc, sign, particles, mat }) {
+  diamantkern({ E, cyl, oct, grp, anim, disc, sign, particles, mat , box}) {
     const dia = mat.glass('#e8fdff', 0.82, 0.5), base = mat.marble('#c8e8f0');
     cyl(1.3, 1.5, 0.22, base, 0, 0.11, 0, 8);
     cyl(1.1, 1.3, 0.12, mat.metal('#d8f0f8'), 0, 0.28, 0, 8);
@@ -1080,8 +1337,13 @@ const DESIGNS = {
       const f = oct(0.06, E('#ffffff', 2.4), [-1.1, 1.0, -0.8, 1.2][k], [2.6, 2.3, 0.6, 0.9][k], 0.25, 0.5, 1.5, 0.5);
       anim(f, 'seq', { speed: 2.4, amp: k * 1.6 });
     }
+    // zweiter, gegenläufiger Facettenkranz innen, Lichtbrechungsstrahlen
+    const ring2 = grp(0, DISC_Y, 0.08);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU + 0.3; const d = oct(0.12, mat.glass('#ffffff', 0.8, 0.8), Math.cos(a) * 1.12, Math.sin(a) * 1.12, 0, 0.8, 1.4, 0.8, ring2); d.rotation.z = a + Math.PI / 2; }
+    anim(ring2, 'spin', { speed: -0.35, axis: [0, 0, 1] });
+    for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU, r = box(0.03, 0.6, 0.01, E(['#ff9ad5', '#8af0ff', '#fff27a'][k % 3], 1.2, { transparent: true, opacity: 0.6 }), Math.cos(a) * 0.5, 3.65 + Math.sin(a) * 0.5, 0, 0, 0, a - Math.PI / 2); anim(r, 'pulse', { speed: 2, amp: 0.5 }); }
     disc({ color: '#8af0ff', swirl: '#ffffff', swirl2: '#c84ad8', rim: '#e8fdff', speed: 1.3, intensity: 1.1 });
-    sign(4.35, '#2a5a6a', '#e8fdff');
+    sign(4.55, '#e8fdff', '#2a5a6a', { frame: mat.glass('#c8f0ff', 0.85, 0.5), frameT: 0.07, deco: ['facets', 'corners'], cornerM: mat.glass('#ffffff', 0.85, 1) });
     particles({ name: 'PortalRegenbogen', colors: ['#ffffff', '#8af0ff', '#ff9ad5', '#fff27a'], particleSize: 0.06, sizeEnd: 0.02, rate: 6, speed: [0.3, 0.6], lifetime: [1.5, 2.5], spread: [180, 180], size: [2.6, 2.8, 0.4] }, 0, DISC_Y, 0.1);
   },
 };
@@ -1095,7 +1357,7 @@ function T2(m) {
 
 // Kristallbogen (Quarzfeld): Sockel aus Marmor mit Stufe, Kristalle aus Glas in zwei Tönen mit Begleitern,
 // schwebender Kristall mit Splittern
-function gemArch({ E, box, oct, grp, anim, disc, sign, particles, rand, mat }, o) {
+function gemArch({ sph, E, box, oct, grp, anim, disc, sign, particles, rand, mat }, o) {
   box(3.3, 0.14, 1.0, mat.marble(o.base), 0, 0.07, 0);
   box(3.1, 0.12, 0.88, mat.marble('#f4f0fa'), 0, 0.2, 0);
   arcPoints(11, 1.32, 1.88).forEach(([x, y, a], i) => {
@@ -1114,6 +1376,9 @@ function gemArch({ E, box, oct, grp, anim, disc, sign, particles, rand, mat }, o
   for (let k = 0; k < 4; k++) oct(0.07, E(o.sparkle[k % o.sparkle.length], 1.6), Math.cos((k / 4) * TAU) * 0.6, 0, Math.sin((k / 4) * TAU) * 0.6, 0.6, 1.2, 0.6, sp);
   anim(sp, 'spin', { speed: -1.1, axis: [0, 1, 0] });
   disc({ color: o.disc, swirl: o.swirl, swirl2: o.swirl2, rim: o.a, speed: 1.2 });
-  sign(4.6, o.bg, '#ffffff');
+  sign(4.75, '#f4eaff', '#6a5a8a', { frame: mat.metal('#d8dce8'), frameT: 0.07, deco: ['corners'], cornerM: mat.glass(o.b, 0.9, 0.8) });
+  // Kristallgruppen am Fuß und Funkelpunkte im Bogen
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) oct(0.11 - k * 0.02, mat.glass(k % 2 ? o.a : o.b, 0.88, 0.6), s * (1.0 + k * 0.2), 0.28, 0.4 - k * 0.1, 0.7, 1.6, 0.7).rotation.z = s * (-0.2 - k * 0.2);
+  for (let k = 0; k < 6; k++) { const a = (k / 5) * Math.PI, f = sph(0.03, E(o.sparkle[k % o.sparkle.length], 2), Math.cos(a) * 1.5, DISC_Y + Math.sin(a) * 2.05, 0.1, undefined, 6); anim(f, 'seq', { speed: 2.2, amp: k }); }
   particles({ name: 'PortalFunkeln', colors: o.sparkle, particleSize: 0.06, sizeEnd: 0.02, rate: 6, speed: [0.3, 0.6], lifetime: [1.5, 2.5], spread: [180, 180], size: [2.6, 2.8, 0.4] }, 0, DISC_Y, 0.1);
 }

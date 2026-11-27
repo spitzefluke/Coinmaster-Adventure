@@ -1243,6 +1243,10 @@ Feinschliff (Werkstatt-Wunsch „Details deutlich verbessern“, nur die vorhand
 `material.userData.rbxMaterial` (Holz, Marmor, Metall, Riffelblech, Eis, Glas, Basalt, Sand …; `look()` in
 `worldParts.js` übernimmt sie), Säulen mit Sockel und Kapitell (`pillar`), Strudel aus Lichtbögen mit dickem Kopf und
 dünnem Schweif, heller Kern und gefasster Leuchtrand, weiches An- und Ausblenden (`seq`) und ruhigere Tempi.
+Zweite Runde (Werkstatt-Wunsch „Schild mit Preis anpassen, jedes Portal nochmal verbessern“): jedes Schild im Stil der
+Welt (`sign(y, bg, fg, st)`: Rahmen, Halterung wie Pfosten, Ketten oder Hologramm-Projektor, Verzierungen wie Moos,
+Eiszapfen, Zuckerguss, Runen, Perlen, Lorbeer, Schriftrolle, Warnstreifen), Lauflichter rund um jeden Portalrand
+(`chase`) und je Portal weitere Ausbauten am Tor mit eigener Bewegung.
 
 Der Ablauf **Portale** hat einen Punkt je Welt (ohne Spawn): Die Ansicht baut den Spawn und fliegt zum Portal der Welt
 (Kamera mit freier Sicht, Hallenteile werden umgangen). „Teleport abspielen“ zeigt die Teleport-Animation aus dem
