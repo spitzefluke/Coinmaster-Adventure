@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event-Läden · Coinmaster Adventure</title>
+<meta name="description" content="Vorschau aller Event-Läden von Coinmaster Adventure: 3D-Stände, Shopbesitzer, Shop mit Kaufen und Adventskalender.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Grenze+Gotisch:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Marcellus+SC&family=Lilita+One&family=Nunito:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<link rel="stylesheet" href="css/laeden.css">
+<link rel="stylesheet" href="css/spiel.css">
+</head>
+<body>
+<div class="page el">
+  <header class="masthead">
+    <p class="eyebrow"><a class="back" href="../">← Coinmaster Adventure</a> · Event-Läden</p>
+    <h1>Event-Läden</h1>
+    <p class="lede">Zu jedem Fest im Jahr öffnet am Spawn ein eigener Laden: von Silvester bis Weihnachten, jeder mit eigenem Stand, Shopbesitzer und Angebot, das alle paar Minuten wechselt.
+      Klick auf den Stand öffnet den Shop. Münzen und Käufe sind hier nur eine Vorschau in deinem Browser.</p>
+  </header>
+
+  <section class="el-work" aria-label="Vorschau der Event-Läden">
+    <aside class="el-list" aria-labelledby="listTitle">
+      <div class="el-listhead"><h2 id="listTitle">Events</h2><span class="el-today" id="todayLbl"></span></div>
+      <div class="elist" id="eventList"></div>
+    </aside>
+
+    <div class="stage" id="stage">
+      <canvas id="c" aria-label="3D-Vorschau des Event-Ladens mit Stand, Shopbesitzer und laufendem Spieler"></canvas>
+      <div class="bubble" id="bubble" hidden aria-live="polite"><b id="bName"></b><span id="bText"></span></div>
+      <div class="shopui" id="shopui" hidden role="dialog" aria-modal="true" aria-labelledby="suTitle"><div class="supanel" id="suPanel"><i class="sucorner tl"></i><i class="sucorner tr"></i><i class="sucorner bl"></i><i class="sucorner br"></i>
+        <header class="suhead" id="suHead"><div class="suport"><img id="suPortrait" alt=""></div><div><div class="sueyebrow" id="suEyebrow"></div><div class="sutitle" id="suTitle"></div><div class="susub" id="suSub"></div></div><div class="suring" id="suCd" role="timer" aria-label="Zeit bis zur neuen Ware"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="trk" cx="32" cy="32" r="28"/><circle class="val" id="suRing" cx="32" cy="32" r="28"/></svg><div><small>Neue Ware</small><strong id="suCdT">--:--</strong></div></div><div class="suwallet walletPill" aria-label="Deine Münzen"><span class="coin"></span><b class="walletVal">0</b></div><button class="suclose" id="suClose" type="button"></button></header>
+        <div class="subody"><div class="suowner"><b id="suOwner"></b><span id="suGreet"></span></div>
+          <div class="sutabs" role="tablist"><button role="tab" type="button" id="suTabOffer" aria-selected="true">Aktuelles Angebot</button><button role="tab" type="button" id="suTabAll" aria-selected="false">Sortiment</button><button role="tab" type="button" id="suTabFav" aria-selected="false">Gemerkt</button><button role="tab" type="button" id="suTabInv" aria-selected="false">Inventar</button></div>
+          <div id="suOffer"><div class="sushop"><div id="suFeat"></div><div class="sugrid" id="suGrid"></div></div></div>
+          <div id="suAll" hidden><div class="sufilter" id="suFilter"></div><div class="suinvbar" id="suInvBar" hidden><span>Käufe und Kalender-Geschenke aus allen Events. Hüte, Auren und Emotes kannst du hier anlegen.</span><div><button class="suchip" type="button" id="invCoins">Test: +250 Münzen</button><button class="suchip" type="button" id="invReset">Käufe zurücksetzen</button></div></div><div class="sugrid all" id="suAllGrid" style="margin-top:10px"></div></div>
+          <div class="sufoot" id="suFoot"></div></div>
+        <div class="sudetail" id="suDetail" hidden><button class="suback" id="suBack" type="button">‹ Zurück zum Shop</button><div class="sudet"><div class="sudetview"><canvas id="suDetCanvas" width="320" height="320" aria-label="Artikel in 3D, ziehen zum Drehen"></canvas></div><div class="sudetinfo"><span class="sur" id="sdRar"></span><div class="sutitle" id="sdName"></div><p id="sdText"></p><div class="sdstats" id="sdStats"></div><div class="sdbtns"><button class="subtn" id="sdBuy" type="button"></button><button class="sufav" id="sdFav" type="button"></button></div><button class="suback" id="sdCancel" type="button" hidden>Abbrechen</button></div></div></div>
+      </div></div>
+      <div class="calui" id="calui" hidden role="dialog" aria-modal="true" aria-labelledby="calTitle"><div class="calpanel"><header><div><div class="caleyebrow">24 Türchen voller Überraschungen</div><div class="caltitle" id="calTitle">Adventskalender</div><p class="calinfo" id="calInfo"></p></div><span class="btn walletPill"><span class="coin"></span><b class="walletVal">0</b></span><button class="btn" id="calClose" type="button">Schließen</button></header><div class="calgrid" id="calGrid"></div><p class="calnote">Tipp: Du kannst die Türchen auch direkt am 3D-Kalender hinter dem Stand anklicken.</p></div></div>
+      <div class="hint" id="hint">Ziehen zum Drehen · Scrollen zum Zoomen · Stand anklicken öffnet den Shop</div>
+      <div class="tools">
+        <button class="btn ghost" id="walkBtn" type="button" aria-pressed="true">Läuft</button>
+        <button class="btn ghost" id="waveBtn" type="button">Winken</button>
+        <button class="btn ghost" id="shopBtn" type="button">Shop öffnen</button>
+        <button class="btn ghost" id="calBtn" type="button" hidden>Adventskalender</button>
+        <button class="btn ghost" id="emoteBtn" type="button" hidden>Emote</button>
+        <span class="btn ghost walletPill" aria-label="Münzen"><span class="coin"></span><b class="walletVal">0</b></span>
+        <button class="btn ghost" id="tourBtn" type="button" aria-pressed="false">Event-Tour</button>
+        <button class="btn ghost" id="camBtn" type="button">Kamera zurück</button>
+      </div>
+      <div class="hud"><div class="card"><div class="t" id="hudName"></div><div class="d" id="hudDate"></div></div></div>
+    </div>
+  </section>
+
+  <section class="el-zeit" aria-labelledby="zeitTitle">
+    <div class="el-zeithead">
+      <div>
+        <h2 id="zeitTitle">Wann kommt welcher Laden?</h2>
+        <p class="lede">Jeder Laden öffnet in seinem Zeitraum. Bewegliche Feste wie Ostern, Karneval oder Thanksgiving rechnen sich automatisch aus.
+          Admins können für jedes Event einen festen Zeitraum setzen oder es ausschalten. Die Änderung gilt sofort für alle.</p>
+      </div>
+      <div class="z-login" id="zeitLogin"></div>
+    </div>
+    <p class="z-status" id="zeitStatus" role="status"></p>
+    <div class="z-list" id="zeitList"></div>
+  </section>
+
+  <footer class="foot">Coinmaster Adventure · Event-Läden</footer>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="module" src="js/laeden.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

@@ -32,6 +32,8 @@ export const BEREICHE = [
     kurz: '99 Rücken-Items in 3D, vom Kupferbeutel bis zum Unendlichen Münzthron.', eckdaten: ['99 Taschen', '9 Stufen', '3D-Vorschau'] },
   { gruppe: 'Ausrüstung', titel: 'Auras', href: 'auren/', status: 'vorschau', alias: 'auren bonus',
     kurz: '50 Auras um den Spieler, jede mit kleinem Bonus.', eckdaten: ['50 Auras', '6 Seltenheiten'] },
+  { gruppe: 'Spiel', titel: 'Event-Läden', href: 'eventlaeden/', status: 'vorschau', alias: 'events shop laden silvester ostern halloween weihnachten advent adventskalender feste kaufen',
+    kurz: 'Ein eigener Laden für jedes Fest im Jahr: 3D-Stand, Shopbesitzer, wechselndes Angebot und Adventskalender.', eckdaten: ['14 Events', 'Zeiträume für Admins'] },
   { gruppe: 'Export', titel: 'Roblox Studio', href: 'roblox/', status: 'code', alias: 'export luau installer',
     kurz: 'Alles als Paket für Roblox Studio: Daten, Logik, Modelle und Motive.', eckdaten: ['Installer-Skript', 'ModuleScripts'] },
   { gruppe: 'Admins', titel: 'Checkliste', href: 'checkliste/', status: 'admin', alias: 'aufgaben todo ueberarbeiten zustaendig axseleins',

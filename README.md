@@ -41,6 +41,7 @@ eigene 3D-Vorschau mit Three.js (noch nicht mit der Roblox-Engine).
 | Welten | `welten/` | Vorschau |
 | Wetter | `wetter/` | Vorschau |
 | Spiel-Oberfläche | `spiel/` | Vorschau |
+| Event-Läden | `eventlaeden/` | Vorschau, Zeiträume in Supabase (`eventlaeden/supabase.sql`) |
 | Nach Roblox Studio übertragen | `roblox/` | nur mit Code |
 
 ## Online stellen (GitHub Pages)
